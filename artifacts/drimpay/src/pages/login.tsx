@@ -8,24 +8,34 @@ import { Lock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth";
 
 const schema = z.object({
-  email: z.string().email("Invalid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.string().email("Adresse email invalide"),
+  password: z.string().min(1, "Mot de passe requis"),
 });
 
 export default function Login() {
   const [status, setStatus] = useState<"idle" | "loading">("idle");
+  const [serverError, setServerError] = useState("");
   const [, navigate] = useLocation();
+  const { login } = useAuth();
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
 
-  const onSubmit = (_values: z.infer<typeof schema>) => {
+  const onSubmit = async (values: z.infer<typeof schema>) => {
     setStatus("loading");
-    setTimeout(() => navigate("/dashboard-preview"), 1500);
+    setServerError("");
+    const { error } = await login(values.email, values.password);
+    if (error) {
+      setServerError(error);
+      setStatus("idle");
+      return;
+    }
+    navigate("/dashboard-preview");
   };
 
   return (
@@ -48,7 +58,7 @@ export default function Login() {
               <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Email Address</FormLabel>
-                  <FormControl><Input placeholder="you@company.com" type="email" data-testid="input-email" {...field} /></FormControl>
+                  <FormControl><Input placeholder="you@company.com" type="email" autoComplete="email" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -58,13 +68,18 @@ export default function Login() {
                     <FormLabel>Password</FormLabel>
                     <a href="#" className="text-xs text-primary hover:underline">Forgot password?</a>
                   </div>
-                  <FormControl><Input placeholder="••••••••" type="password" data-testid="input-password" {...field} /></FormControl>
+                  <FormControl><Input placeholder="••••••••" type="password" autoComplete="current-password" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-              <Button type="submit" size="lg" className="w-full text-primary-foreground font-semibold mt-2" disabled={status === "loading"} data-testid="button-signin">
+
+              {serverError && (
+                <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-3">{serverError}</p>
+              )}
+
+              <Button type="submit" size="lg" className="w-full text-primary-foreground font-semibold mt-2" disabled={status === "loading"}>
                 {status === "loading" ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Connexion en cours...</>
                 ) : (
                   <><Lock className="w-4 h-4 mr-2" /> Sign In Securely</>
                 )}

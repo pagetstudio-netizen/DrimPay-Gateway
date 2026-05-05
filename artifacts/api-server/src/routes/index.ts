@@ -7,9 +7,11 @@ import contactRouter from "./contact";
 import statusRouter from "./status";
 import partnersRouter from "./partners";
 import countriesRouter from "./countries";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
+router.use(authRouter);
 router.use(healthRouter);
 router.use(statsRouter);
 router.use(blogRouter);

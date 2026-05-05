@@ -2,11 +2,22 @@ import { pgTable, text, serial, boolean, integer, timestamp, pgEnum } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
 export const jobTypeEnum = pgEnum("job_type", ["full-time", "part-time", "contract", "internship"]);
 export const partnerTypeEnum = pgEnum("partner_type", ["mobile-money", "bank", "fintech", "aggregator"]);
 export const serviceStatusEnum = pgEnum("service_status", ["operational", "degraded", "outage", "maintenance"]);
 export const incidentStatusEnum = pgEnum("incident_status", ["investigating", "identified", "monitoring", "resolved"]);
 export const incidentSeverityEnum = pgEnum("incident_severity", ["minor", "major", "critical"]);
+
+export const usersTable = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  companyName: text("company_name").notNull(),
+  country: text("country").notNull().default("OTHER"),
+  role: userRoleEnum("role").notNull().default("user"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
 export const blogArticlesTable = pgTable("blog_articles", {
   id: serial("id").primaryKey(),

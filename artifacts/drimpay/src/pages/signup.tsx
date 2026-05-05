@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/lib/auth";
 
 const schema = z.object({
   companyName: z.string().min(2, "Company name is required"),
@@ -32,16 +33,25 @@ const countries = [
 
 export default function Signup() {
   const [status, setStatus] = useState<"idle" | "loading">("idle");
+  const [serverError, setServerError] = useState("");
   const [, navigate] = useLocation();
+  const { signup } = useAuth();
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { companyName: "", email: "", password: "", country: "" },
   });
 
-  const onSubmit = (_values: FormData) => {
+  const onSubmit = async (values: FormData) => {
     setStatus("loading");
-    setTimeout(() => navigate("/dashboard-preview"), 1500);
+    setServerError("");
+    const { error } = await signup(values);
+    if (error) {
+      setServerError(error);
+      setStatus("idle");
+      return;
+    }
+    navigate("/dashboard-preview");
   };
 
   return (
@@ -88,94 +98,91 @@ export default function Signup() {
             </Link>
           </div>
 
-          <>
-              <h1 className="text-2xl font-bold mb-2">Create your account</h1>
-              <p className="text-muted-foreground mb-8">Start accepting payments in minutes.</p>
+          <h1 className="text-2xl font-bold mb-2">Create your account</h1>
+          <p className="text-muted-foreground mb-8">Start accepting payments in minutes.</p>
 
-              <div className="rounded-2xl border border-border bg-card p-8">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
-                    <FormField control={form.control} name="companyName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Company Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Acme Corp Ltd." data-testid="input-company" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+          <div className="rounded-2xl border border-border bg-card p-8">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
+                <FormField control={form.control} name="companyName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Acme Corp Ltd." autoComplete="organization" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Business Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="ceo@company.com" type="email" data-testid="input-email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Business Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ceo@company.com" type="email" autoComplete="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                    <FormField control={form.control} name="country" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-country">
-                              <SelectValue placeholder="Select your country" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {countries.map((c) => (
-                              <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                <FormField control={form.control} name="country" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Country</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your country" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {countries.map((c) => (
+                          <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                    <FormField control={form.control} name="password" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Min. 8 characters" type="password" data-testid="input-password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                <FormField control={form.control} name="password" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Min. 8 characters" type="password" autoComplete="new-password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="w-full text-primary-foreground font-semibold mt-2"
-                      disabled={status === "loading"}
-                      data-testid="button-create"
-                    >
-                      {status === "loading" ? (
-                        <>
-                          <Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating account...
-                        </>
-                      ) : (
-                        <>
-                          Create Account <ArrowRight className="ml-2 w-4 h-4" />
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </Form>
+                {serverError && (
+                  <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-3">{serverError}</p>
+                )}
 
-                <div className="mt-6 pt-6 border-t border-border text-center text-sm text-muted-foreground">
-                  Already have an account?{" "}
-                  <Link href="/login" className="text-primary hover:underline font-medium">Sign in</Link>
-                </div>
-              </div>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full text-primary-foreground font-semibold mt-2"
+                  disabled={status === "loading"}
+                >
+                  {status === "loading" ? (
+                    <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating account...</>
+                  ) : (
+                    <>Create Account <ArrowRight className="ml-2 w-4 h-4" /></>
+                  )}
+                </Button>
+              </form>
+            </Form>
 
-              <p className="text-center text-xs text-muted-foreground mt-4">
-                By creating an account you agree to our{" "}
-                <Link href="/terms" className="hover:underline">Terms</Link> and{" "}
-                <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
-              </p>
-          </>
+            <div className="mt-6 pt-6 border-t border-border text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/login" className="text-primary hover:underline font-medium">Sign in</Link>
+            </div>
+          </div>
+
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            By creating an account you agree to our{" "}
+            <Link href="/terms" className="hover:underline">Terms</Link> and{" "}
+            <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+          </p>
         </motion.div>
       </div>
     </div>
