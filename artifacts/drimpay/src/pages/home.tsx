@@ -194,8 +194,8 @@ export default function Home() {
               },
               {
                 icon: ShieldCheck,
-                title: "Automated KYB & KYC",
-                desc: "Verify business identities effortlessly with our automated compliance pipelines."
+                title: "Automated KYB",
+                desc: "Verify business identities effortlessly with our automated KYB compliance pipelines."
               },
               {
                 icon: Code,

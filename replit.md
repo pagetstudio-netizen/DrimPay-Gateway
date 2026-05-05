@@ -1,13 +1,13 @@
 # DrimPay
 
-DrimPay (Digital Reliable Infrastructure for Money) is a complete fintech platform website — a public marketing site and developer portal for an API-first payment infrastructure serving West & Central Africa.
+DrimPay is a complete fintech platform — a public marketing/developer site plus a full merchant dashboard for API-first Mobile Money payment infrastructure across West & Central Africa.
 
 ## Run & Operate
 
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 Required env vars: `DATABASE_URL`, `SESSION_SECRET`
@@ -20,7 +20,6 @@ Required env vars: `DATABASE_URL`, `SESSION_SECRET`
 - **Backend**: Express 5 + Pino logging
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (server), generated Zod schemas (client)
-- **API codegen**: Orval (from OpenAPI spec in `lib/api-spec/openapi.yaml`)
 - **Build**: esbuild (CJS bundle for API server)
 
 ## Where things live
@@ -28,42 +27,47 @@ Required env vars: `DATABASE_URL`, `SESSION_SECRET`
 - `artifacts/drimpay/` — React+Vite frontend (previewPath: `/`)
 - `artifacts/api-server/` — Express API server (port 8080, previewPath: `/api`)
 - `lib/db/src/schema/drimpay.ts` — Full DB schema (all tables)
-- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for API contracts)
-- `lib/api-client-react/src/generated/` — Generated React Query hooks & Zod schemas
-- `artifacts/drimpay/src/pages/` — All 24 page components
-- `artifacts/drimpay/src/components/layout.tsx` — Header + Footer layout
-- `artifacts/drimpay/src/index.css` — Dark theme CSS variables
+- `artifacts/drimpay/src/pages/` — All page components
+- `artifacts/drimpay/src/pages/dashboard/` — Merchant dashboard pages
+- `artifacts/drimpay/src/pages/dashboard/layout.tsx` — Sidebar dashboard layout
+- `artifacts/drimpay/src/components/layout.tsx` — Public site header + footer
+- `artifacts/api-server/src/routes/dashboard.ts` — Merchant dashboard API routes
 
 ## Architecture decisions
 
-- **Contract-first API**: OpenAPI spec → Orval codegen → typed React Query hooks. Never write fetch calls manually.
-- **Dark mode forced**: `dark` class applied to `<html>` in `main.tsx`; `#C5FF4A` primary accent throughout.
-- **Path-based proxy**: All services behind shared reverse proxy. API routes prefixed `/api`, frontend at `/`.
-- **Drizzle ORM**: Schema-first with `drizzle-kit push` for development migrations; no migration files needed in dev.
-- **Operator fallback routing**: API routes intelligently aggregate country + operator data from PostgreSQL.
+- **Dashboard uses separate layout**: `/dashboard/*` routes skip the public Layout (no header/footer), use a sidebar instead. Routing conditional in `App.tsx` based on path prefix.
+- **Geo-isolated wallets**: Each merchant has one wallet per country. Pay-ins credit the wallet of the country where the payment originates. Pay-outs can only debit the same country's wallet. No cross-country transfers.
+- **3% flat fee**: Applied to every pay-in and pay-out. Fee deducted from net amount on pay-in; added to total debit on pay-out.
+- **KYB not KYC**: Business verification collects RCCM, statuts, registration number, business type, incorporation country, address.
+- **Dark mode forced**: `dark` class on `<html>`; `#C5FF4A` primary accent on deep near-black background.
+- **Contract-first API**: OpenAPI spec → Orval codegen → typed React Query hooks for public-facing pages.
 
 ## Product
 
-24 pages covering: Home, About, How it Works, Pricing, Countries, Security, API Overview, API Docs, Businesses/KYB, Blog (listing + articles), News, Careers (listing + detail), Contact, Status, Partners, Help Center, Terms, Privacy, Developer Portal, Dashboard Preview, Login, Signup.
+**Public site** (25 pages): Home, About, How it Works, Pricing, Countries, Security, API Overview, Docs, Businesses, Blog, News, Careers, Contact, Status, Partners, Help, Terms, Privacy, Developer Portal, Dashboard Preview, Login, Signup.
 
-Backend API endpoints: `/api/stats/platform`, `/api/blog/articles`, `/api/blog/categories`, `/api/blog/articles/:slug`, `/api/jobs`, `/api/jobs/:id`, `/api/contact` (POST), `/api/status/services`, `/api/status/incidents`, `/api/partners`, `/api/countries`.
+**Merchant Dashboard** (11 pages under `/dashboard`):
+- Overview, Wallets (per-country), Pay-in, Pay-out, API Keys, KYB Verification
+- API Docs: Pay-in, Pay-out, Virtual Cards, Communication Credits, Mass Payout
+
+**Backend** (`/api/dashboard/*`): overview, wallets, transactions, payin, payout, api-keys, kyb
 
 ## User preferences
 
 - Dark mode only — no light mode toggle
-- No emojis in UI
+- No emojis in UI copy (navigation/body text)
 - `#C5FF4A` electric lime accent on deep near-black background
 - Enterprise fintech aesthetic — dense information, serious design
+- French language in dashboard UI; English on public site
 
 ## Gotchas
 
-- API server build takes ~30s (esbuild + TypeScript); workflow timeout may race with port detection — restart if it reports DIDNT_OPEN_A_PORT.
+- API server build takes ~30s; restart workflow if DIDNT_OPEN_A_PORT error.
 - Use `z.string().email()` not `z.email()` in API server (Zod v3, not v4).
-- Blog/jobs seeding must use psql directly (not executeSql tool) due to multi-line string handling.
-- `pnpm-workspace.yaml` catalog pins shared package versions — use `"catalog:"` for already-pinned deps.
+- Dashboard routes bypass the public Layout — they render their own `DashboardLayout`.
+- Wallet created automatically on first pay-in for a given country.
 
 ## Pointers
 
-- `.local/skills/pnpm-workspace/references/openapi.md` — OpenAPI + codegen setup
-- `.local/skills/pnpm-workspace/references/server.md` — Express route patterns
 - `.local/skills/pnpm-workspace/references/db.md` — Drizzle schema + migrations
+- `.local/skills/pnpm-workspace/references/server.md` — Express route patterns

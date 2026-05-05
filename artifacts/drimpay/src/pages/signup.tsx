@@ -51,7 +51,7 @@ export default function Signup() {
       setStatus("idle");
       return;
     }
-    navigate("/dashboard-preview");
+    navigate("/dashboard");
   };
 
   return (

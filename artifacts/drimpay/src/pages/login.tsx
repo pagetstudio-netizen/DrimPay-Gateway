@@ -35,7 +35,7 @@ export default function Login() {
       setStatus("idle");
       return;
     }
-    navigate("/dashboard-preview");
+    navigate("/dashboard");
   };
 
   return (

@@ -8,6 +8,7 @@ import statusRouter from "./status";
 import partnersRouter from "./partners";
 import countriesRouter from "./countries";
 import authRouter from "./auth";
+import dashboardRouter from "./dashboard";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(contactRouter);
 router.use(statusRouter);
 router.use(partnersRouter);
 router.use(countriesRouter);
+router.use(dashboardRouter);
 
 export default router;

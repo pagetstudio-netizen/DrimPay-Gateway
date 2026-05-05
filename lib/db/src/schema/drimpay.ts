@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, integer, timestamp, pgEnum, numeric, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -8,6 +8,11 @@ export const partnerTypeEnum = pgEnum("partner_type", ["mobile-money", "bank", "
 export const serviceStatusEnum = pgEnum("service_status", ["operational", "degraded", "outage", "maintenance"]);
 export const incidentStatusEnum = pgEnum("incident_status", ["investigating", "identified", "monitoring", "resolved"]);
 export const incidentSeverityEnum = pgEnum("incident_severity", ["minor", "major", "critical"]);
+export const kybStatusEnum = pgEnum("kyb_status", ["pending", "submitted", "under_review", "approved", "rejected"]);
+export const transactionTypeEnum = pgEnum("transaction_type", ["payin", "payout"]);
+export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "success", "failed", "processing"]);
+export const apiKeyStatusEnum = pgEnum("api_key_status", ["active", "revoked"]);
+export const apiKeyEnvEnum = pgEnum("api_key_env", ["sandbox", "live"]);
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -17,6 +22,99 @@ export const usersTable = pgTable("users", {
   country: text("country").notNull().default("OTHER"),
   role: userRoleEnum("role").notNull().default("user"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const kybSubmissionsTable = pgTable("kyb_submissions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  status: kybStatusEnum("status").notNull().default("pending"),
+  companyLegalName: text("company_legal_name"),
+  registrationNumber: text("registration_number"),
+  businessType: text("business_type"),
+  incorporationCountry: text("incorporation_country"),
+  businessAddress: text("business_address"),
+  website: text("website"),
+  businessDescription: text("business_description"),
+  documentRccm: text("document_rccm"),
+  documentStatuts: text("document_statuts"),
+  documentId: text("document_id"),
+  documentProofAddress: text("document_proof_address"),
+  rejectionReason: text("rejection_reason"),
+  submittedAt: timestamp("submitted_at"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const walletsTable = pgTable("wallets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  countryCode: text("country_code").notNull(),
+  currency: text("currency").notNull(),
+  balance: numeric("balance", { precision: 18, scale: 2 }).notNull().default("0"),
+  lockedBalance: numeric("locked_balance", { precision: 18, scale: 2 }).notNull().default("0"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const transactionsTable = pgTable("transactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  walletId: integer("wallet_id").notNull().references(() => walletsTable.id),
+  reference: text("reference").notNull().unique(),
+  type: transactionTypeEnum("type").notNull(),
+  status: transactionStatusEnum("status").notNull().default("pending"),
+  amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+  fee: numeric("fee", { precision: 18, scale: 2 }).notNull(),
+  netAmount: numeric("net_amount", { precision: 18, scale: 2 }).notNull(),
+  currency: text("currency").notNull(),
+  countryCode: text("country_code").notNull(),
+  operator: text("operator").notNull(),
+  phone: text("phone").notNull(),
+  description: text("description"),
+  externalRef: text("external_ref"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const apiKeysTable = pgTable("api_keys", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull(),
+  prefix: text("prefix").notNull(),
+  env: apiKeyEnvEnum("env").notNull().default("sandbox"),
+  status: apiKeyStatusEnum("status").notNull().default("active"),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const virtualCardOrdersTable = pgTable("virtual_card_orders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  cardholderName: text("cardholder_name").notNull(),
+  email: text("email").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  spendingLimit: numeric("spending_limit", { precision: 18, scale: 2 }),
+  status: text("status").notNull().default("active"),
+  cardLast4: text("card_last4"),
+  expiryMonth: integer("expiry_month"),
+  expiryYear: integer("expiry_year"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const massPayoutJobsTable = pgTable("mass_payout_jobs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  reference: text("reference").notNull().unique(),
+  status: text("status").notNull().default("pending"),
+  totalCount: integer("total_count").notNull().default(0),
+  successCount: integer("success_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  totalAmount: numeric("total_amount", { precision: 18, scale: 2 }).notNull().default("0"),
+  currency: text("currency").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
 });
 
 export const blogArticlesTable = pgTable("blog_articles", {
@@ -118,3 +216,7 @@ export type Incident = typeof incidentsTable.$inferSelect;
 export type Partner = typeof partnersTable.$inferSelect;
 export type Country = typeof countriesTable.$inferSelect;
 export type Operator = typeof operatorsTable.$inferSelect;
+export type KybSubmission = typeof kybSubmissionsTable.$inferSelect;
+export type Wallet = typeof walletsTable.$inferSelect;
+export type Transaction = typeof transactionsTable.$inferSelect;
+export type ApiKey = typeof apiKeysTable.$inferSelect;

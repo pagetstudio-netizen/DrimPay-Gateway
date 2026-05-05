@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { useLocation } from "wouter";
 
 import Home from "@/pages/home";
 import About from "@/pages/about";
@@ -31,6 +32,18 @@ import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import NotFound from "@/pages/not-found";
 
+import DashboardOverview from "@/pages/dashboard/index";
+import DashboardWallets from "@/pages/dashboard/wallets";
+import DashboardPayin from "@/pages/dashboard/payin";
+import DashboardPayout from "@/pages/dashboard/payout";
+import DashboardApiKeys from "@/pages/dashboard/api-keys";
+import DashboardKyb from "@/pages/dashboard/kyb";
+import DocPayin from "@/pages/dashboard/docs/payin";
+import DocPayout from "@/pages/dashboard/docs/payout";
+import DocVirtualCards from "@/pages/dashboard/docs/virtual-cards";
+import DocCredits from "@/pages/dashboard/docs/credits";
+import DocMassPayout from "@/pages/dashboard/docs/mass-payout";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -40,7 +53,32 @@ const queryClient = new QueryClient({
   },
 });
 
+function isDashboardPath(path: string) {
+  return path.startsWith("/dashboard");
+}
+
 function Router() {
+  const [location] = useLocation();
+
+  if (isDashboardPath(location)) {
+    return (
+      <Switch>
+        <Route path="/dashboard" component={DashboardOverview} />
+        <Route path="/dashboard/wallets" component={DashboardWallets} />
+        <Route path="/dashboard/payin" component={DashboardPayin} />
+        <Route path="/dashboard/payout" component={DashboardPayout} />
+        <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
+        <Route path="/dashboard/kyb" component={DashboardKyb} />
+        <Route path="/dashboard/docs/payin" component={DocPayin} />
+        <Route path="/dashboard/docs/payout" component={DocPayout} />
+        <Route path="/dashboard/docs/virtual-cards" component={DocVirtualCards} />
+        <Route path="/dashboard/docs/credits" component={DocCredits} />
+        <Route path="/dashboard/docs/mass-payout" component={DocMassPayout} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
   return (
     <Layout>
       <Switch>
