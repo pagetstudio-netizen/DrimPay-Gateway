@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowRight, Lock } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -14,13 +15,17 @@ const schema = z.object({
 });
 
 export default function Login() {
+  const [status, setStatus] = useState<"idle" | "loading">("idle");
+  const [, navigate] = useLocation();
+
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
 
-  const onSubmit = (values: z.infer<typeof schema>) => {
-    console.log("Login attempt:", values.email);
+  const onSubmit = (_values: z.infer<typeof schema>) => {
+    setStatus("loading");
+    setTimeout(() => navigate("/dashboard-preview"), 1500);
   };
 
   return (
@@ -57,8 +62,12 @@ export default function Login() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <Button type="submit" size="lg" className="w-full text-primary-foreground font-semibold mt-2" data-testid="button-signin">
-                <Lock className="w-4 h-4 mr-2" /> Sign In Securely
+              <Button type="submit" size="lg" className="w-full text-primary-foreground font-semibold mt-2" disabled={status === "loading"} data-testid="button-signin">
+                {status === "loading" ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...</>
+                ) : (
+                  <><Lock className="w-4 h-4 mr-2" /> Sign In Securely</>
+                )}
               </Button>
             </form>
           </Form>
