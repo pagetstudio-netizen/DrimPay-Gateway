@@ -3,13 +3,28 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: DrimPay API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: blog
+    description: Blog articles
+  - name: jobs
+    description: Career job listings
+  - name: contact
+    description: Contact form
+  - name: stats
+    description: Platform statistics
+  - name: status
+    description: API status and uptime
+  - name: partners
+    description: Partner organizations
+  - name: countries
+    description: Supported countries and operators
+
 paths:
   /healthz:
     get:
@@ -24,6 +39,203 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /stats/platform:
+    get:
+      operationId: getPlatformStats
+      tags: [stats]
+      summary: Get platform statistics
+      description: Returns platform-wide stats for display on the homepage
+      responses:
+        "200":
+          description: Platform statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformStats"
+
+  /blog/articles:
+    get:
+      operationId: listBlogArticles
+      tags: [blog]
+      summary: List blog articles
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 9
+      responses:
+        "200":
+          description: Blog articles list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogArticleList"
+
+  /blog/articles/{slug}:
+    get:
+      operationId: getBlogArticle
+      tags: [blog]
+      summary: Get a single blog article
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Blog article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogArticle"
+
+  /blog/categories:
+    get:
+      operationId: listBlogCategories
+      tags: [blog]
+      summary: List blog categories
+      responses:
+        "200":
+          description: Blog categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BlogCategory"
+
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List career job listings
+      parameters:
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a single job listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+  /contact:
+    post:
+      operationId: submitContact
+      tags: [contact]
+      summary: Submit a contact form
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactFormBody"
+      responses:
+        "200":
+          description: Contact form submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFormResponse"
+
+  /status/services:
+    get:
+      operationId: getServiceStatuses
+      tags: [status]
+      summary: Get status of all DrimPay services
+      responses:
+        "200":
+          description: Service statuses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceStatusList"
+
+  /status/incidents:
+    get:
+      operationId: listIncidents
+      tags: [status]
+      summary: List recent incidents and maintenance
+      responses:
+        "200":
+          description: Incident list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Incident"
+
+  /partners:
+    get:
+      operationId: listPartners
+      tags: [partners]
+      summary: List partner organizations
+      responses:
+        "200":
+          description: Partners list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Partner"
+
+  /countries:
+    get:
+      operationId: listSupportedCountries
+      tags: [countries]
+      summary: List supported countries with operators
+      responses:
+        "200":
+          description: Supported countries and their mobile money operators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Country"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +246,305 @@ components:
       required:
         - status
 
+    PlatformStats:
+      type: object
+      properties:
+        totalTransactions:
+          type: integer
+        totalVolume:
+          type: string
+        supportedCountries:
+          type: integer
+        activePartners:
+          type: integer
+        uptimePercent:
+          type: number
+        merchantsOnboarded:
+          type: integer
+      required:
+        - totalTransactions
+        - totalVolume
+        - supportedCountries
+        - activePartners
+        - uptimePercent
+        - merchantsOnboarded
+
+    BlogArticle:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+        author:
+          type: string
+        authorTitle:
+          type: string
+        publishedAt:
+          type: string
+        readingTimeMinutes:
+          type: integer
+        imageUrl:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - slug
+        - title
+        - excerpt
+        - content
+        - category
+        - author
+        - authorTitle
+        - publishedAt
+        - readingTimeMinutes
+        - tags
+
+    BlogArticleList:
+      type: object
+      properties:
+        articles:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlogArticle"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - articles
+        - total
+        - page
+        - totalPages
+
+    BlogCategory:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        count:
+          type: integer
+      required:
+        - name
+        - slug
+        - count
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        department:
+          type: string
+        location:
+          type: string
+        type:
+          type: string
+          enum: [full-time, part-time, contract, internship]
+        remote:
+          type: boolean
+        description:
+          type: string
+        requirements:
+          type: array
+          items:
+            type: string
+        responsibilities:
+          type: array
+          items:
+            type: string
+        postedAt:
+          type: string
+      required:
+        - id
+        - title
+        - department
+        - location
+        - type
+        - remote
+        - description
+        - requirements
+        - responsibilities
+        - postedAt
+
+    ContactFormBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        company:
+          type: string
+        subject:
+          type: string
+        message:
+          type: string
+      required:
+        - name
+        - email
+        - subject
+        - message
+
+    ContactFormResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    ServiceStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [operational, degraded, outage, maintenance]
+        uptimePercent:
+          type: number
+        latencyMs:
+          type: integer
+      required:
+        - name
+        - status
+        - uptimePercent
+        - latencyMs
+
+    ServiceStatusList:
+      type: object
+      properties:
+        overall:
+          type: string
+          enum: [operational, degraded, outage, maintenance]
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceStatus"
+        lastUpdated:
+          type: string
+      required:
+        - overall
+        - services
+        - lastUpdated
+
+    Incident:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [investigating, identified, monitoring, resolved]
+        severity:
+          type: string
+          enum: [minor, major, critical]
+        startedAt:
+          type: string
+        resolvedAt:
+          type: string
+        affectedServices:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - title
+        - description
+        - status
+        - severity
+        - startedAt
+        - affectedServices
+
+    Partner:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [mobile-money, bank, fintech, aggregator]
+        country:
+          type: string
+        logoUrl:
+          type: string
+        description:
+          type: string
+        website:
+          type: string
+      required:
+        - id
+        - name
+        - type
+        - country
+        - description
+
+    Country:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        flag:
+          type: string
+        currency:
+          type: string
+        operators:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+        payinEnabled:
+          type: boolean
+        payoutEnabled:
+          type: boolean
+      required:
+        - code
+        - name
+        - flag
+        - currency
+        - operators
+        - payinEnabled
+        - payoutEnabled
+
+    Operator:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        active:
+          type: boolean
+      required:
+        - name
+        - type
+        - active

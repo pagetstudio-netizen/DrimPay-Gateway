@@ -1,0 +1,89 @@
+import { Switch, Route, Router as WouterRouter } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Layout } from "@/components/layout";
+
+import Home from "@/pages/home";
+import About from "@/pages/about";
+import HowItWorks from "@/pages/how-it-works";
+import Pricing from "@/pages/pricing";
+import Countries from "@/pages/countries";
+import Security from "@/pages/security";
+import ApiOverview from "@/pages/api-overview";
+import Docs from "@/pages/docs";
+import Businesses from "@/pages/businesses";
+import Blog from "@/pages/blog";
+import BlogPost from "@/pages/blog-post";
+import Careers from "@/pages/careers";
+import CareerDetail from "@/pages/career-detail";
+import Contact from "@/pages/contact";
+import Status from "@/pages/status";
+import Partners from "@/pages/partners";
+import Help from "@/pages/help";
+import Terms from "@/pages/terms";
+import Privacy from "@/pages/privacy";
+import DeveloperPortal from "@/pages/developer-portal";
+import DashboardPreview from "@/pages/dashboard-preview";
+import News from "@/pages/news";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
+import NotFound from "@/pages/not-found";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
+
+function Router() {
+  return (
+    <Layout>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/about" component={About} />
+        <Route path="/how-it-works" component={HowItWorks} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/countries" component={Countries} />
+        <Route path="/security" component={Security} />
+        <Route path="/api-overview" component={ApiOverview} />
+        <Route path="/docs" component={Docs} />
+        <Route path="/businesses" component={Businesses} />
+        <Route path="/blog" component={Blog} />
+        <Route path="/blog/:slug" component={BlogPost} />
+        <Route path="/news" component={News} />
+        <Route path="/careers" component={Careers} />
+        <Route path="/careers/:id" component={CareerDetail} />
+        <Route path="/contact" component={Contact} />
+        <Route path="/status" component={Status} />
+        <Route path="/partners" component={Partners} />
+        <Route path="/help" component={Help} />
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/developer-portal" component={DeveloperPortal} />
+        <Route path="/dashboard-preview" component={DashboardPreview} />
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <Router />
+        </WouterRouter>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
