@@ -1,32 +1,33 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Lock, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 const schema = z.object({
-  email: z.string().email("Adresse email invalide"),
-  password: z.string().min(1, "Mot de passe requis"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+  remember: z.boolean().optional(),
 });
 
+type FormData = z.infer<typeof schema>;
+
 export default function Login() {
+  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
   const [serverError, setServerError] = useState("");
   const [, navigate] = useLocation();
   const { login } = useAuth();
 
-  const form = useForm<z.infer<typeof schema>>({
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", remember: false },
   });
 
-  const onSubmit = async (values: z.infer<typeof schema>) => {
+  const onSubmit = async (values: FormData) => {
     setStatus("loading");
     setServerError("");
     const { error } = await login(values.email, values.password);
@@ -39,64 +40,126 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center pt-20 pb-20 px-4">
-      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <Link href="/" className="inline-flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-sm bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl leading-none">D</span>
-            </div>
-            <span className="font-bold text-xl tracking-tight">DrimPay</span>
-          </Link>
-          <h1 className="text-3xl font-bold mb-2">Welcome back</h1>
-          <p className="text-muted-foreground">Sign in to your DrimPay account</p>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-8">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
-              <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl><Input placeholder="you@company.com" type="email" autoComplete="email" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="password" render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Password</FormLabel>
-                    <a href="#" className="text-xs text-primary hover:underline">Forgot password?</a>
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-12 bg-background"
+      style={{
+        backgroundImage: `radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)`,
+        backgroundSize: "24px 24px",
+      }}
+    >
+      <div className="w-full max-w-sm">
+        <div className="bg-card border border-border rounded-2xl shadow-xl overflow-hidden">
+          <div className="px-8 pt-10 pb-8">
+            <div className="flex justify-center mb-8">
+              <Link href="/">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+                    <span className="text-primary-foreground font-bold text-xl leading-none">D</span>
                   </div>
-                  <FormControl><Input placeholder="••••••••" type="password" autoComplete="current-password" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+                  <span className="font-bold text-2xl tracking-tight">DrimPay</span>
+                </div>
+              </Link>
+            </div>
+
+            <h1 className="text-2xl font-bold text-foreground mb-1">Jump right back in</h1>
+            <p className="text-sm text-muted-foreground mb-7">
+              New Here?{" "}
+              <Link href="/signup" className="text-primary font-semibold hover:underline underline-offset-2">
+                Create an Account
+              </Link>
+            </p>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Email</label>
+                <input
+                  type="email"
+                  placeholder="name@email.com"
+                  autoComplete="email"
+                  {...register("email")}
+                  className={cn(
+                    "w-full h-12 rounded-xl border bg-muted/30 px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all",
+                    "focus:border-primary focus:ring-2 focus:ring-primary/20",
+                    errors.email ? "border-red-400" : "border-border"
+                  )}
+                />
+                {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-foreground">Password</label>
+                  <a href="#" className="text-sm text-primary hover:underline underline-offset-2 font-medium">
+                    Forgot Password?
+                  </a>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••••"
+                    autoComplete="current-password"
+                    {...register("password")}
+                    className={cn(
+                      "w-full h-12 rounded-xl border bg-muted/30 px-4 pr-12 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all",
+                      "focus:border-primary focus:ring-2 focus:ring-primary/20",
+                      errors.password ? "border-red-400" : "border-border"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                  </button>
+                </div>
+                {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer select-none pt-1">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    {...register("remember")}
+                    className="sr-only peer"
+                  />
+                  <div className="w-5 h-5 rounded border-2 border-border bg-muted/30 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                    <svg className="w-3 h-3 text-primary-foreground hidden peer-checked:block" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                </div>
+                <span className="text-sm text-muted-foreground">Stayed signed in for 30 days</span>
+              </label>
 
               {serverError && (
-                <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-3">{serverError}</p>
+                <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3">{serverError}</p>
               )}
 
-              <Button type="submit" size="lg" className="w-full text-primary-foreground font-semibold mt-2" disabled={status === "loading"}>
+              <button
+                type="submit"
+                disabled={status === "loading"}
+                className="w-full h-13 rounded-xl bg-foreground text-background font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-60 mt-2"
+                style={{ height: "52px" }}
+              >
                 {status === "loading" ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Connexion en cours...</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
                 ) : (
-                  <><Lock className="w-4 h-4 mr-2" /> Sign In Securely</>
+                  "Sign In"
                 )}
-              </Button>
+              </button>
             </form>
-          </Form>
+          </div>
 
-          <div className="mt-6 pt-6 border-t border-border text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline font-medium">Create one free</Link>
+          <div className="px-8 py-4 border-t border-border bg-muted/10 text-center">
+            <p className="text-xs text-muted-foreground">
+              Protected by DrimPay security ·{" "}
+              <Link href="/privacy" className="hover:underline underline-offset-2">Privacy Policy</Link>
+            </p>
           </div>
         </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Protected by DrimPay security · <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
-        </p>
-      </motion.div>
+      </div>
     </div>
   );
 }

@@ -1,51 +1,100 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Eye, EyeOff, Loader2, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
-const schema = z.object({
-  companyName: z.string().min(2, "Company name is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  country: z.string().min(1, "Please select your country"),
-});
+const COUNTRY_CODES = [
+  { flag: "🇹🇬", code: "+228", country: "TG" },
+  { flag: "🇧🇯", code: "+229", country: "BJ" },
+  { flag: "🇨🇲", code: "+237", country: "CM" },
+  { flag: "🇧🇫", code: "+226", country: "BF" },
+  { flag: "🇲🇱", code: "+223", country: "ML" },
+  { flag: "🇸🇳", code: "+221", country: "SN" },
+  { flag: "🇨🇮", code: "+225", country: "CI" },
+  { flag: "🇫🇷", code: "+33", country: "FR" },
+  { flag: "🇧🇪", code: "+32", country: "BE" },
+  { flag: "🇺🇸", code: "+1", country: "US" },
+];
 
-type FormData = z.infer<typeof schema>;
-
-const countries = [
+const BUSINESS_COUNTRIES = [
   { code: "TG", name: "Togo" },
-  { code: "BJ", name: "Benin" },
-  { code: "CM", name: "Cameroon" },
+  { code: "BJ", name: "Bénin" },
+  { code: "CM", name: "Cameroun" },
   { code: "BF", name: "Burkina Faso" },
   { code: "ML", name: "Mali" },
-  { code: "SN", name: "Senegal" },
+  { code: "SN", name: "Sénégal" },
   { code: "CI", name: "Côte d'Ivoire" },
   { code: "OTHER", name: "Other" },
 ];
 
+const schema = z.object({
+  companyName: z.string().min(2, "Business name is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  phoneCode: z.string().min(1),
+  phone: z.string().min(6, "Phone number is required"),
+  country: z.string().min(1, "Please select your country"),
+  password: z.string().min(8, "Minimum 8 characters"),
+  referralCode: z.string().optional(),
+});
+
+type FormData = z.infer<typeof schema>;
+
+function Field({
+  label, error, required, children,
+}: { label: string; error?: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-foreground mb-1.5">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      {children}
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+const inputCls = (hasError?: boolean) =>
+  cn(
+    "w-full h-12 rounded-xl border bg-muted/30 px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all",
+    "focus:border-primary focus:ring-2 focus:ring-primary/20",
+    hasError ? "border-red-400" : "border-border"
+  );
+
 export default function Signup() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [phoneCode, setPhoneCode] = useState("+228");
+  const [showCodePicker, setShowCodePicker] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
   const [serverError, setServerError] = useState("");
   const [, navigate] = useLocation();
   const { signup } = useAuth();
 
-  const form = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { companyName: "", email: "", password: "", country: "" },
+    defaultValues: {
+      companyName: "", firstName: "", lastName: "",
+      email: "", phoneCode: "+228", phone: "", country: "",
+      password: "", referralCode: "",
+    },
   });
+
+  const selectedCountry = watch("country");
 
   const onSubmit = async (values: FormData) => {
     setStatus("loading");
     setServerError("");
-    const { error } = await signup(values);
+    const { error } = await signup({
+      companyName: values.companyName,
+      email: values.email,
+      password: values.password,
+      country: values.country,
+    });
     if (error) {
       setServerError(error);
       setStatus("idle");
@@ -54,136 +103,202 @@ export default function Signup() {
     navigate("/dashboard");
   };
 
+  const selectedPhoneEntry = COUNTRY_CODES.find((c) => c.code === phoneCode) ?? COUNTRY_CODES[0];
+
   return (
-    <div className="min-h-screen flex pt-20 pb-20">
-      <div className="hidden lg:flex flex-1 bg-primary/5 border-r border-border items-center justify-center p-16">
-        <div className="max-w-sm">
-          <div className="flex items-center gap-2 mb-10">
-            <div className="w-8 h-8 rounded-sm bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">D</span>
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-12 bg-background"
+      style={{
+        backgroundImage: `radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)`,
+        backgroundSize: "24px 24px",
+      }}
+    >
+      <div className="w-full max-w-sm">
+        <div className="bg-card border border-border rounded-2xl shadow-xl overflow-hidden">
+          <div className="px-8 pt-10 pb-8">
+            <div className="flex justify-center mb-8">
+              <Link href="/">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+                    <span className="text-primary-foreground font-bold text-xl leading-none">D</span>
+                  </div>
+                  <span className="font-bold text-2xl tracking-tight">DrimPay</span>
+                </div>
+              </Link>
             </div>
-            <span className="font-bold text-xl">DrimPay</span>
-          </div>
-          <h2 className="text-3xl font-bold mb-6">Start processing payments across Africa today.</h2>
-          <ul className="space-y-4">
-            {[
-              "Sandbox access immediately upon signup",
-              "Live payments after KYB verification",
-              "No monthly fees — pay only per transaction",
-              "7 countries, 15+ mobile money operators",
-              "24/7 technical support",
-            ].map((item, i) => (
-              <li key={i} className="flex items-center gap-3 text-sm text-muted-foreground">
-                <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
 
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
-          <div className="text-center mb-8 lg:hidden">
-            <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-7 h-7 rounded-sm bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">D</span>
-              </div>
-              <span className="font-bold text-lg">DrimPay</span>
-            </Link>
-          </div>
-
-          <h1 className="text-2xl font-bold mb-2">Create your account</h1>
-          <p className="text-muted-foreground mb-8">Start accepting payments in minutes.</p>
-
-          <div className="rounded-2xl border border-border bg-card p-8">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
-                <FormField control={form.control} name="companyName" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Acme Corp Ltd." autoComplete="organization" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="email" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Business Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ceo@company.com" type="email" autoComplete="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="country" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Country</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your country" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {countries.map((c) => (
-                          <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="password" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Min. 8 characters" type="password" autoComplete="new-password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                {serverError && (
-                  <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-3">{serverError}</p>
-                )}
-
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full text-primary-foreground font-semibold mt-2"
-                  disabled={status === "loading"}
-                >
-                  {status === "loading" ? (
-                    <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating account...</>
-                  ) : (
-                    <>Create Account <ArrowRight className="ml-2 w-4 h-4" /></>
-                  )}
-                </Button>
-              </form>
-            </Form>
-
-            <div className="mt-6 pt-6 border-t border-border text-center text-sm text-muted-foreground">
+            <h1 className="text-2xl font-bold text-foreground mb-1">Create your Business account</h1>
+            <p className="text-sm text-muted-foreground mb-7">
               Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline font-medium">Sign in</Link>
-            </div>
+              <Link href="/login" className="text-primary font-semibold hover:underline underline-offset-2">
+                Sign in here
+              </Link>
+            </p>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <Field label="Legal Business Name" error={errors.companyName?.message} required>
+                <input
+                  type="text"
+                  placeholder="Eg, Acme Corp Ltd."
+                  autoComplete="organization"
+                  {...register("companyName")}
+                  className={inputCls(!!errors.companyName)}
+                />
+              </Field>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Legal First Name" error={errors.firstName?.message} required>
+                  <input
+                    type="text"
+                    placeholder="John"
+                    autoComplete="given-name"
+                    {...register("firstName")}
+                    className={inputCls(!!errors.firstName)}
+                  />
+                </Field>
+                <Field label="Legal Last Name" error={errors.lastName?.message} required>
+                  <input
+                    type="text"
+                    placeholder="Doe"
+                    autoComplete="family-name"
+                    {...register("lastName")}
+                    className={inputCls(!!errors.lastName)}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Email" error={errors.email?.message} required>
+                <input
+                  type="email"
+                  placeholder="name@email.com"
+                  autoComplete="email"
+                  {...register("email")}
+                  className={inputCls(!!errors.email)}
+                />
+              </Field>
+
+              <Field label="Phone" error={errors.phone?.message} required>
+                <div className="flex gap-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowCodePicker((v) => !v)}
+                      className={cn(
+                        "h-12 px-3 rounded-xl border bg-muted/30 flex items-center gap-1.5 text-sm font-medium hover:border-primary/50 transition-colors whitespace-nowrap",
+                        "border-border text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      )}
+                    >
+                      <span className="text-base">{selectedPhoneEntry.flag}</span>
+                      <span>{phoneCode}</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    {showCodePicker && (
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl py-1 w-44 max-h-56 overflow-y-auto">
+                        {COUNTRY_CODES.map((c) => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/40 transition-colors text-left"
+                            onClick={() => {
+                              setPhoneCode(c.code);
+                              setValue("phoneCode", c.code);
+                              setShowCodePicker(false);
+                            }}
+                          >
+                            <span className="text-base">{c.flag}</span>
+                            <span className="font-mono">{c.code}</span>
+                            <span className="text-muted-foreground text-xs ml-auto">{c.country}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="XXXX-XXXX-XXXX"
+                    autoComplete="tel"
+                    {...register("phone")}
+                    className={cn(inputCls(!!errors.phone), "flex-1")}
+                  />
+                </div>
+              </Field>
+
+              <Field label="Country of Business" error={errors.country?.message} required>
+                <div className="relative">
+                  <select
+                    {...register("country")}
+                    className={cn(
+                      inputCls(!!errors.country),
+                      "appearance-none pr-10 cursor-pointer",
+                      !selectedCountry && "text-muted-foreground/60"
+                    )}
+                  >
+                    <option value="" disabled>Select your country</option>
+                    {BUSINESS_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>{c.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
+              </Field>
+
+              <Field label="Password" error={errors.password?.message} required>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Min. 8 characters"
+                    autoComplete="new-password"
+                    {...register("password")}
+                    className={cn(inputCls(!!errors.password), "pr-12")}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </Field>
+
+              <Field label="Referral Merchant ID">
+                <input
+                  type="text"
+                  placeholder="Optional"
+                  {...register("referralCode")}
+                  className={inputCls()}
+                />
+              </Field>
+
+              {serverError && (
+                <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3">{serverError}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={status === "loading"}
+                style={{ height: "52px" }}
+                className="w-full rounded-xl bg-foreground text-background font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-60 mt-2"
+              >
+                {status === "loading" ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Creating account...</>
+                ) : (
+                  "Create Account"
+                )}
+              </button>
+            </form>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            By creating an account you agree to our{" "}
-            <Link href="/terms" className="hover:underline">Terms</Link> and{" "}
-            <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
-          </p>
-        </motion.div>
+          <div className="px-8 py-4 border-t border-border bg-muted/10 text-center">
+            <p className="text-xs text-muted-foreground">
+              By creating an account you agree to our{" "}
+              <Link href="/terms" className="hover:underline underline-offset-2">Terms</Link>
+              {" "}and{" "}
+              <Link href="/privacy" className="hover:underline underline-offset-2">Privacy Policy</Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
