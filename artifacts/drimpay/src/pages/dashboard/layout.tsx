@@ -192,9 +192,16 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           <button className="relative text-muted-foreground hover:text-foreground transition-colors">
             <Bell className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Link href="/" className="hover:text-foreground transition-colors text-xs">← Site public</Link>
-          </div>
+          <Link href="/dashboard/profile">
+            <button className="flex items-center gap-2 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors px-3 py-1.5">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <img src={userImg} alt="" className="w-3.5 h-3.5 object-contain" style={{ filter: "brightness(0) opacity(0.7)" }} />
+              </div>
+              <span className="text-xs font-semibold text-foreground max-w-[100px] truncate hidden sm:block">
+                {user?.companyName ?? "Profil"}
+              </span>
+            </button>
+          </Link>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
