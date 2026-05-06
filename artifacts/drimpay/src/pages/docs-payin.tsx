@@ -16,11 +16,14 @@ const SECTIONS = [
   { id: "request", label: "Request Format", group: "API REFERENCE" },
   { id: "response", label: "Response Format", group: "API REFERENCE" },
   { id: "errors", label: "Error Codes", group: "API REFERENCE" },
+  { id: "limits", label: "Limits & Security", group: "API REFERENCE" },
   { id: "initiate", label: "Initiate a Pay-in", group: "ENDPOINTS" },
   { id: "status", label: "Check Status", group: "ENDPOINTS" },
   { id: "list", label: "List Transactions", group: "ENDPOINTS" },
   { id: "webhooks", label: "Webhooks", group: "WEBHOOKS" },
+  { id: "webhook-receive", label: "Receive Webhook", group: "WEBHOOKS" },
   { id: "resend", label: "Resend Webhook", group: "WEBHOOKS" },
+  { id: "retry", label: "Retry Logic", group: "WEBHOOKS" },
 ];
 
 function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
@@ -394,7 +397,12 @@ print(data["reference"])`,
 
             <section id="errors" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4">Error Codes</h2>
-              <div className="overflow-x-auto rounded-xl border border-border">
+              <p className="text-muted-foreground mb-4">All error responses include an <code className="font-mono text-primary text-sm">error</code> code and a human-readable <code className="font-mono text-primary text-sm">message</code> field.</p>
+              <CodeBlock lang="json" code={`{
+  "error": "INVALID_PHONE",
+  "message": "Phone must be in E.164 format (e.g. +22890000000)"
+}`} />
+              <div className="overflow-x-auto rounded-xl border border-border mt-4">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border bg-muted/20">
                     <th className="text-left px-4 py-3 font-semibold">HTTP Code</th>
@@ -403,15 +411,19 @@ print(data["reference"])`,
                   </tr></thead>
                   <tbody>
                     {[
-                      ["400", "INVALID_PARAMS", "Missing or malformed request parameters"],
+                      ["400", "INVALID_PHONE", "Phone must be in E.164 format"],
+                      ["400", "INVALID_AMOUNT", "Amount must be a positive integer"],
+                      ["400", "INVALID_CURRENCY", "Unsupported currency code"],
+                      ["400", "INVALID_OPERATOR", "Operator not supported for this country"],
                       ["401", "UNAUTHORIZED", "Missing or invalid API key"],
                       ["402", "INSUFFICIENT_FUNDS", "Customer wallet has insufficient funds"],
+                      ["403", "LIMIT_EXCEEDED", "Amount exceeds max transaction or daily limit"],
                       ["409", "DUPLICATE_ORDER", "order_id already exists — original transaction returned"],
                       ["422", "OPERATOR_UNAVAILABLE", "Operator temporarily unavailable, retry later"],
-                      ["429", "RATE_LIMITED", "Too many requests — slow down"],
+                      ["429", "RATE_LIMITED", "Too many requests — 100 req/min max per API key"],
                       ["500", "INTERNAL_ERROR", "Server error — contact support"],
                     ].map(([code, err, desc]) => (
-                      <tr key={code} className="border-b border-border/50 last:border-0">
+                      <tr key={err} className="border-b border-border/50 last:border-0">
                         <td className="px-4 py-3"><Badge color={code.startsWith("4") ? "red" : "yellow"}>{code}</Badge></td>
                         <td className="px-4 py-3 font-mono text-xs text-orange-400">{err}</td>
                         <td className="px-4 py-3 text-muted-foreground">{desc}</td>
@@ -420,6 +432,23 @@ print(data["reference"])`,
                   </tbody>
                 </table>
               </div>
+            </section>
+
+            <section id="limits" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-primary" /> Limits & Security</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {[
+                  { label: "Max per transaction", value: "1 000 000 FCFA" },
+                  { label: "Max per day", value: "10 000 000 FCFA" },
+                  { label: "Rate limit", value: "100 req / min / key" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
+                    <p className="text-xl font-bold text-primary mb-1">{value}</p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-muted-foreground text-sm">Requests that exceed these limits receive a <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code> response. Contact support to request higher limits for your account.</p>
             </section>
 
             <section id="initiate" className="mb-14 scroll-mt-20">
@@ -493,13 +522,16 @@ print(data["reference"])`,
               <h3 className="text-base font-semibold mb-2 mt-4">Status values</h3>
               <div className="flex flex-wrap gap-3">
                 {[
+                  { s: "queued", icon: Clock, desc: "Request accepted, waiting in queue", color: "purple" },
                   { s: "pending", icon: Clock, desc: "Waiting for customer to confirm", color: "yellow" },
-                  { s: "processing", icon: AlertCircle, desc: "Operator is processing", color: "blue" },
-                  { s: "success", icon: CheckCircle2, desc: "Payment confirmed and credited", color: "green" },
+                  { s: "processing", icon: AlertCircle, desc: "Operator is processing the payment", color: "blue" },
+                  { s: "success", icon: CheckCircle2, desc: "Payment confirmed and wallet credited", color: "green" },
                   { s: "failed", icon: XCircle, desc: "Payment declined or timed out", color: "red" },
+                  { s: "reversed", icon: XCircle, desc: "Payment was refunded to customer", color: "red" },
+                  { s: "cancelled", icon: XCircle, desc: "Payment cancelled before processing", color: "red" },
                 ].map(({ s, icon: Icon, desc, color }) => (
                   <div key={s} className="flex items-start gap-2 p-3 rounded-lg border border-border bg-card flex-1 min-w-[200px]">
-                    <Icon className={cn("w-4 h-4 shrink-0 mt-0.5", { yellow: "text-yellow-400", blue: "text-blue-400", green: "text-green-400", red: "text-red-400" }[color])} />
+                    <Icon className={cn("w-4 h-4 shrink-0 mt-0.5", { yellow: "text-yellow-400", blue: "text-blue-400", green: "text-green-400", red: "text-red-400", purple: "text-purple-400" }[color])} />
                     <div>
                       <p className="text-xs font-mono font-bold">{s}</p>
                       <p className="text-xs text-muted-foreground">{desc}</p>
@@ -541,10 +573,25 @@ print(data["reference"])`,
               <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 mb-5 flex gap-3">
                 <Shield className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-blue-400 mb-1">Verify webhook signatures</p>
-                  <p className="text-sm text-muted-foreground">Each webhook includes a <code className="font-mono text-xs">X-DrimPay-Signature</code> header — an HMAC-SHA256 of the raw body signed with your webhook secret. Always verify this before processing.</p>
+                  <p className="text-sm font-semibold text-blue-400 mb-1">Webhook signature — mandatory</p>
+                  <p className="text-sm text-muted-foreground">Every webhook includes an <code className="font-mono text-xs">X-DrimPay-Signature</code> header in the format <code className="font-mono text-xs">sha256=HASH</code>. This HMAC-SHA256 is signed with your webhook secret. Always verify it before processing any event.</p>
                 </div>
               </div>
+              <h3 className="text-base font-semibold mb-2">Signature header</h3>
+              <CodeBlock lang="bash" code={`X-DrimPay-Signature: sha256=a3f9e1c2b4d5...`} />
+              <h3 className="text-base font-semibold mb-2 mt-4">How DrimPay signs the payload</h3>
+              <CodeBlock lang="node.js" code={`const crypto = require("crypto");
+
+function signPayload(payload, secret) {
+  return "sha256=" + crypto
+    .createHmac("sha256", secret)
+    .update(JSON.stringify(payload))
+    .digest("hex");
+}
+
+// Header sent with every webhook:
+// X-DrimPay-Signature: sha256=<hex>`} />
+              <h3 className="text-base font-semibold mb-2 mt-4">Webhook payload</h3>
               <CodeBlock lang="json" code={`{
   "event": "payin.success",
   "reference": "TG-A1B2C3D4E5F677809900AABBCC",
@@ -558,34 +605,39 @@ print(data["reference"])`,
   "operator": "tmoney",
   "phone": "+22890000000",
   "gateway_reference": "TMONEY-REF-98765",
-  "mno_reference": "MNO-REF-00112233",
   "created_at": "2026-05-06T08:30:00.000Z",
   "confirmed_at": "2026-05-06T08:31:12.000Z"
 }`} />
-              <h3 className="text-base font-semibold mb-3 mt-4">Signature verification (Node.js)</h3>
+            </section>
+
+            <section id="webhook-receive" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-2">Receive Webhook</h2>
+              <div className="flex items-center gap-3 mb-4">
+                <Badge color="green">POST</Badge>
+                <code className="text-sm font-mono text-muted-foreground">/v2/payin/webhook</code>
+              </div>
+              <p className="text-muted-foreground mb-4">DrimPay POSTs to this endpoint on your server (your <code className="font-mono text-primary text-sm">webhook_url</code>). Below is a complete verification example.</p>
               <CodeBlock lang="node.js" code={`const crypto = require("crypto");
 
-function verifyWebhook(rawBody, signature, secret) {
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(expected),
-    Buffer.from(signature)
-  );
-}
-
-// Express middleware
+// Always use express.raw() — NOT express.json() — so the raw body is preserved for signature verification
 app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, res) => {
-  const sig = req.headers["x-drimpay-signature"];
-  if (!verifyWebhook(req.body, sig, process.env.DRIMPAY_WEBHOOK_SECRET)) {
-    return res.status(401).send("Invalid signature");
+  const signature = req.headers["x-drimpay-signature"]; // "sha256=<hex>"
+
+  const expectedSignature = "sha256=" + crypto
+    .createHmac("sha256", process.env.WEBHOOK_SECRET)
+    .update(req.body) // raw Buffer
+    .digest("hex");
+
+  if (signature !== expectedSignature) {
+    return res.status(400).send("Invalid signature");
   }
+
   const event = JSON.parse(req.body);
+
   if (event.status === "success") {
     // Fulfill the order
   }
+
   res.status(200).send("OK");
 });`} />
             </section>
@@ -602,6 +654,36 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
               <CodeBlock lang="bash" code={`curl -X POST https://api.drimpay.africa/v2/payin/TG-A1B2C3D4E5F677809900AABBCC/resend-webhook \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
               <CodeBlock lang="json" code={`{ "message": "Webhook queued for resend", "reference": "TG-A1B2C3D4E5F677809900AABBCC" }`} />
+            </section>
+
+            <section id="retry" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Webhook className="w-5 h-5 text-primary" /> Retry Logic</h2>
+              <p className="text-muted-foreground mb-4">
+                If your webhook endpoint fails (non-200 response or timeout), DrimPay automatically retries up to <strong className="text-foreground">3 times</strong> with exponential backoff. If all retries fail, use the Resend Webhook endpoint or dashboard to re-trigger manually.
+              </p>
+              <p className="text-muted-foreground mb-4">
+                On your side, if you need to retry a payin initiation after a network failure, always reuse the same <code className="font-mono text-primary">order_id</code> — the API is idempotent and will return the original transaction without creating a duplicate.
+              </p>
+              <CodeBlock lang="node.js" code={`async function initiatePayinWithRetry(payload, attempts = 0) {
+  if (attempts >= 3) throw new Error("Max retries reached");
+
+  try {
+    const res = await fetch("https://api.drimpay.africa/v2/payin/initiate", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + process.env.DRIMPAY_SECRET_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload), // same order_id on every attempt
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch (err) {
+    const delay = 2000 * Math.pow(2, attempts); // 2s, 4s, 8s
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return initiatePayinWithRetry(payload, attempts + 1);
+  }
+}`} />
             </section>
 
             <div className="border border-border rounded-2xl p-6 bg-card mt-6">

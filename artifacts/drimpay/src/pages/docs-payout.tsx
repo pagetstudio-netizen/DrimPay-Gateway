@@ -16,12 +16,16 @@ const SECTIONS = [
   { id: "request", label: "Request Format", group: "API REFERENCE" },
   { id: "response", label: "Response Format", group: "API REFERENCE" },
   { id: "errors", label: "Error Codes", group: "API REFERENCE" },
+  { id: "limits", label: "Limits & Security", group: "API REFERENCE" },
+  { id: "kyb", label: "KYB Verification", group: "API REFERENCE" },
+  { id: "wallet-protection", label: "Wallet Protection", group: "API REFERENCE" },
   { id: "send", label: "Send a Pay-out", group: "ENDPOINTS" },
   { id: "status", label: "Check Status", group: "ENDPOINTS" },
   { id: "list", label: "List Transactions", group: "ENDPOINTS" },
   { id: "mass", label: "Mass Pay-out", group: "ENDPOINTS" },
   { id: "webhooks", label: "Webhooks", group: "WEBHOOKS" },
   { id: "resend", label: "Resend Webhook", group: "WEBHOOKS" },
+  { id: "retry", label: "Retry Logic", group: "WEBHOOKS" },
 ];
 
 function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
@@ -384,7 +388,12 @@ print(data["reference"])`,
 
             <section id="errors" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4">Error Codes</h2>
-              <div className="overflow-x-auto rounded-xl border border-border">
+              <p className="text-muted-foreground mb-4">All error responses include both an <code className="font-mono text-primary text-sm">error</code> code and a human-readable <code className="font-mono text-primary text-sm">message</code> field.</p>
+              <CodeBlock lang="json" code={`{
+  "error": "INVALID_PHONE",
+  "message": "Phone must be in E.164 format (e.g. +22890000000)"
+}`} />
+              <div className="overflow-x-auto rounded-xl border border-border mt-4">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border bg-muted/20">
                     <th className="text-left px-4 py-3 font-semibold">HTTP Code</th>
@@ -393,16 +402,21 @@ print(data["reference"])`,
                   </tr></thead>
                   <tbody>
                     {[
-                      ["400", "INVALID_PARAMS", "Missing or malformed request parameters"],
+                      ["400", "INVALID_PHONE", "Phone must be in E.164 format"],
+                      ["400", "INVALID_AMOUNT", "Amount must be a positive integer"],
+                      ["400", "INVALID_CURRENCY", "Unsupported currency code"],
+                      ["400", "INVALID_OPERATOR", "Operator not supported for this country"],
                       ["401", "UNAUTHORIZED", "Missing or invalid API key"],
                       ["402", "WALLET_INSUFFICIENT_FUNDS", "Your wallet balance is too low for this payout"],
+                      ["403", "KYB_REQUIRED", "KYB not approved — complete verification first"],
                       ["403", "NO_WALLET_FOR_COUNTRY", "No active wallet for this country — fund one first"],
+                      ["403", "LIMIT_EXCEEDED", "Amount exceeds max transaction or daily limit"],
                       ["409", "DUPLICATE_ORDER", "order_id already used — original payout returned"],
                       ["422", "OPERATOR_UNAVAILABLE", "Operator temporarily unavailable"],
-                      ["429", "RATE_LIMITED", "Too many requests — apply exponential backoff"],
+                      ["429", "RATE_LIMITED", "Too many requests — 100 req/min max per API key"],
                       ["500", "INTERNAL_ERROR", "Server error — contact support"],
                     ].map(([code, err, desc]) => (
-                      <tr key={code} className="border-b border-border/50 last:border-0">
+                      <tr key={err} className="border-b border-border/50 last:border-0">
                         <td className="px-4 py-3"><Badge color={code.startsWith("4") ? "red" : "yellow"}>{code}</Badge></td>
                         <td className="px-4 py-3 font-mono text-xs text-orange-400">{err}</td>
                         <td className="px-4 py-3 text-muted-foreground">{desc}</td>
@@ -411,6 +425,64 @@ print(data["reference"])`,
                   </tbody>
                 </table>
               </div>
+            </section>
+
+            <section id="limits" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-orange-400" /> Limits & Security</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {[
+                  { label: "Max per transaction", value: "1 000 000 FCFA" },
+                  { label: "Max per day", value: "10 000 000 FCFA" },
+                  { label: "Rate limit", value: "100 req / min / key" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
+                    <p className="text-xl font-bold text-orange-400 mb-1">{value}</p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-muted-foreground text-sm">Requests exceeding these limits return <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code>. Contact support to request higher limits.</p>
+            </section>
+
+            <section id="kyb" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Users className="w-5 h-5 text-orange-400" /> KYB Verification</h2>
+              <p className="text-muted-foreground mb-4">
+                Pay-out is a privileged operation. Your business account must pass KYB (Know Your Business) verification before you can initiate any live payouts. Sandbox payouts are unrestricted.
+              </p>
+              <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 mb-5 flex gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-400 mb-1">KYB required for live payouts</p>
+                  <p className="text-sm text-muted-foreground">If your account is not approved, the API returns <code className="font-mono text-xs">403 KYB_REQUIRED</code>. Submit your documents in the <Link href="/dashboard/kyb" className="text-primary hover:underline">KYB dashboard</Link>.</p>
+                </div>
+              </div>
+              <CodeBlock lang="json" code={`// Response when KYB is not approved
+{
+  "error": "KYB_REQUIRED",
+  "message": "Your account must complete KYB verification before sending live payouts"
+}`} />
+            </section>
+
+            <section id="wallet-protection" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-orange-400" /> Wallet Protection</h2>
+              <p className="text-muted-foreground mb-4">
+                DrimPay uses database-level row locking to prevent double-spending. Every payout debit is wrapped in a serialized transaction — concurrent requests for the same wallet are queued, never processed in parallel.
+              </p>
+              <CodeBlock lang="sql" code={`-- DrimPay internal wallet debit logic (simplified)
+BEGIN;
+
+SELECT balance FROM wallets
+  WHERE id = :wallet_id
+  FOR UPDATE; -- row-level lock, blocks concurrent debits
+
+-- balance check happens here
+
+UPDATE wallets
+  SET balance = balance - :total_debit
+  WHERE id = :wallet_id;
+
+COMMIT;`} />
+              <p className="text-sm text-muted-foreground mt-3">This guarantees your wallet can never go negative due to race conditions. Use idempotent <code className="font-mono text-primary">order_id</code> values to safely retry without risking duplicate payouts.</p>
             </section>
 
             <section id="send" className="mb-14 scroll-mt-20">
@@ -523,6 +595,35 @@ print(data["reference"])`,
             <section id="webhooks" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Webhook className="w-5 h-5 text-orange-400" /> Webhooks</h2>
               <p className="text-muted-foreground mb-4">DrimPay POSTs to your <code className="font-mono text-primary text-sm">webhook_url</code> when a payout is confirmed or fails. Your server must return HTTP 200 within 10 seconds.</p>
+              <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-4 mb-5 flex gap-3">
+                <Shield className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-orange-400 mb-1">Webhook signature — mandatory</p>
+                  <p className="text-sm text-muted-foreground">Every webhook includes an <code className="font-mono text-xs">X-DrimPay-Signature</code> header in the format <code className="font-mono text-xs">sha256=HASH</code>. Always verify it before processing.</p>
+                </div>
+              </div>
+              <h3 className="text-base font-semibold mb-2">Signature header</h3>
+              <CodeBlock lang="bash" code={`X-DrimPay-Signature: sha256=a3f9e1c2b4d5...`} />
+              <h3 className="text-base font-semibold mb-2 mt-4">Signature verification (Node.js)</h3>
+              <CodeBlock lang="node.js" code={`const crypto = require("crypto");
+
+app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, res) => {
+  const signature = req.headers["x-drimpay-signature"]; // "sha256=<hex>"
+
+  const expectedSignature = "sha256=" + crypto
+    .createHmac("sha256", process.env.WEBHOOK_SECRET)
+    .update(req.body) // raw Buffer — do NOT parse as JSON first
+    .digest("hex");
+
+  if (signature !== expectedSignature) {
+    return res.status(400).send("Invalid signature");
+  }
+
+  const event = JSON.parse(req.body);
+  // handle event.status: queued | processing | success | failed | reversed | cancelled
+  res.status(200).send("OK");
+});`} />
+              <h3 className="text-base font-semibold mb-2 mt-4">Webhook payload</h3>
               <CodeBlock lang="json" code={`{
   "event": "payout.success",
   "reference": "SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8",
@@ -536,7 +637,6 @@ print(data["reference"])`,
   "operator": "orange",
   "phone": "+221770000000",
   "gateway_reference": "ORANGE-REF-55443",
-  "mno_reference": "MNO-REF-99887",
   "created_at": "2026-05-06T09:00:00.000Z",
   "completed_at": "2026-05-06T09:00:47.000Z"
 }`} />
@@ -551,6 +651,33 @@ print(data["reference"])`,
               <p className="text-muted-foreground mb-4">Re-trigger the webhook notification for any payout. Also available directly from your <Link href="/dashboard/payments" className="text-primary hover:underline">Payment History dashboard</Link>.</p>
               <CodeBlock lang="bash" code={`curl -X POST https://api.drimpay.africa/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8/resend-webhook \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
+            </section>
+
+            <section id="retry" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Webhook className="w-5 h-5 text-orange-400" /> Retry Logic</h2>
+              <p className="text-muted-foreground mb-4">
+                If your webhook endpoint fails, DrimPay retries up to <strong className="text-foreground">3 times</strong> with exponential backoff. For your own retries on network errors, always reuse the same <code className="font-mono text-primary">order_id</code> — the API is idempotent and will never double-pay.
+              </p>
+              <CodeBlock lang="node.js" code={`async function payoutWithRetry(payload, attempts = 0) {
+  if (attempts >= 3) throw new Error("Max retries reached");
+
+  try {
+    const res = await fetch("https://api.drimpay.africa/v2/payout/send", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + process.env.DRIMPAY_SECRET_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload), // same order_id on every attempt
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch (err) {
+    const delay = 2000 * Math.pow(2, attempts); // 2s, 4s, 8s
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return payoutWithRetry(payload, attempts + 1);
+  }
+}`} />
             </section>
 
             <div className="border border-border rounded-2xl p-6 bg-card mt-6">

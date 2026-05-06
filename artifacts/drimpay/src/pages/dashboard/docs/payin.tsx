@@ -171,10 +171,18 @@ export default function DocPayin() {
   -H "Authorization: Bearer dp_live_xxxx"`} />
         </Section>
 
-        <Section title="Webhooks">
+        <Section title="Webhooks & Signature">
           <p className="text-sm text-muted-foreground mb-4">
-            DrimPay envoie des notifications POST en temps réel à votre <code className="font-mono text-primary">webhook_url</code> lors de chaque changement de statut.
+            DrimPay envoie des notifications POST en temps réel à votre <code className="font-mono text-primary">webhook_url</code> lors de chaque changement de statut. Chaque requête inclut un header de signature obligatoire.
           </p>
+          <div className="flex items-start gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 mb-4">
+            <div>
+              <p className="text-sm font-semibold text-blue-400 mb-1">Header de signature</p>
+              <p className="text-xs text-muted-foreground">Chaque webhook est signé avec votre <code className="font-mono text-primary">webhook_secret</code>. Vérifiez toujours la signature avant de traiter l'événement.</p>
+            </div>
+          </div>
+          <CodeBlock lang="bash" code={`X-DrimPay-Signature: sha256=a3f9e1c2b4d5...`} />
+          <h3 className="text-sm font-semibold mt-5 mb-3">Payload du webhook</h3>
           <CodeBlock code={`{
   "event": "payin.success",
   "reference": "PAY-1715000000-A1B2C3D4",
@@ -187,21 +195,42 @@ export default function DocPayin() {
   "operator": "TMoney",
   "phone": "+22890123456",
   "external_ref": "order_1234",
-  "timestamp": "2024-05-07T10:02:35Z",
-  "signature": "sha256=abc123..."
+  "timestamp": "2024-05-07T10:02:35Z"
 }`} />
-          <p className="text-sm text-muted-foreground mt-4">
-            Vérifiez la signature webhook avec votre <code className="font-mono text-primary">webhook_secret</code> disponible dans les paramètres de votre compte.
-          </p>
+          <h3 className="text-sm font-semibold mt-5 mb-3">Vérification de signature (Node.js)</h3>
+          <CodeBlock lang="javascript" code={`const crypto = require("crypto");
+
+// Utiliser express.raw() pour conserver le body brut
+app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, res) => {
+  const signature = req.headers["x-drimpay-signature"]; // "sha256=<hex>"
+
+  const expectedSignature = "sha256=" + crypto
+    .createHmac("sha256", process.env.WEBHOOK_SECRET)
+    .update(req.body) // Buffer brut — ne pas parser en JSON avant
+    .digest("hex");
+
+  if (signature !== expectedSignature) {
+    return res.status(400).send("Invalid signature");
+  }
+
+  const event = JSON.parse(req.body);
+  if (event.status === "success") {
+    // Valider la commande
+  }
+  res.status(200).send("OK");
+});`} />
         </Section>
 
         <Section title="Statuts de transaction">
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             {[
+              { status: "queued", color: "text-purple-600 bg-purple-500/10", desc: "Requête acceptée, en attente dans la file" },
               { status: "pending", color: "text-yellow-600 bg-yellow-500/10", desc: "Transaction initiée, en attente de paiement du client" },
-              { status: "processing", color: "text-blue-600 bg-blue-500/10", desc: "Paiement reçu, crédit en cours sur le wallet" },
+              { status: "processing", color: "text-blue-600 bg-blue-500/10", desc: "Paiement reçu, traitement en cours chez l'opérateur" },
               { status: "success", color: "text-green-600 bg-green-500/10", desc: "Transaction complète, wallet crédité" },
               { status: "failed", color: "text-red-600 bg-red-500/10", desc: "Transaction échouée (annulée, expirée, ou refusée)" },
+              { status: "reversed", color: "text-red-600 bg-red-500/10", desc: "Remboursement effectué au client" },
+              { status: "cancelled", color: "text-red-600 bg-red-500/10", desc: "Transaction annulée avant traitement" },
             ].map((s) => (
               <div key={s.status} className="flex items-center gap-4 px-5 py-3 border-b border-border last:border-0">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-semibold font-mono ${s.color}`}>{s.status}</span>
@@ -209,6 +238,48 @@ export default function DocPayin() {
               </div>
             ))}
           </div>
+        </Section>
+
+        <Section title="Limites & Sécurité">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            {[
+              { label: "Max par transaction", value: "1 000 000 FCFA" },
+              { label: "Max par jour", value: "10 000 000 FCFA" },
+              { label: "Limite de requêtes", value: "100 req / min / clé" },
+            ].map(({ label, value }) => (
+              <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
+                <p className="text-lg font-bold text-primary mb-1">{value}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">Les requêtes dépassant ces limites reçoivent une réponse <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code>. Contactez le support pour augmenter vos limites.</p>
+        </Section>
+
+        <Section title="Retry automatique">
+          <p className="text-sm text-muted-foreground mb-4">
+            En cas d'échec réseau, réessayez avec le même <code className="font-mono text-primary">order_id</code> — l'API est idempotente et ne créera pas de doublon. DrimPay réessaie automatiquement les webhooks jusqu'à 3 fois avec backoff exponentiel.
+          </p>
+          <CodeBlock lang="javascript" code={`async function initierPayinAvecRetry(payload, tentatives = 0) {
+  if (tentatives >= 3) throw new Error("Nombre max de tentatives atteint");
+
+  try {
+    const res = await fetch("https://api.drimpay.africa/v2/payin/initiate", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + process.env.DRIMPAY_SECRET_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload), // même order_id à chaque tentative
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch (err) {
+    const delai = 2000 * Math.pow(2, tentatives); // 2s, 4s, 8s
+    await new Promise(resolve => setTimeout(resolve, delai));
+    return initierPayinAvecRetry(payload, tentatives + 1);
+  }
+}`} />
         </Section>
 
         <Section title="Pays et opérateurs supportés">
