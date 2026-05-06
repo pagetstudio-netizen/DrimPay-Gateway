@@ -12,7 +12,6 @@ import HowItWorks from "@/pages/how-it-works";
 import Pricing from "@/pages/pricing";
 import Countries from "@/pages/countries";
 import Security from "@/pages/security";
-import ApiOverview from "@/pages/api-overview";
 import Docs from "@/pages/docs";
 import Businesses from "@/pages/businesses";
 import Blog from "@/pages/blog";
@@ -20,12 +19,10 @@ import BlogPost from "@/pages/blog-post";
 import Careers from "@/pages/careers";
 import CareerDetail from "@/pages/career-detail";
 import Contact from "@/pages/contact";
-import Status from "@/pages/status";
 import Partners from "@/pages/partners";
 import Help from "@/pages/help";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
-import DeveloperPortal from "@/pages/developer-portal";
 import DashboardPreview from "@/pages/dashboard-preview";
 import News from "@/pages/news";
 import Login from "@/pages/login";
@@ -91,7 +88,6 @@ function Router() {
         <Route path="/pricing" component={Pricing} />
         <Route path="/countries" component={Countries} />
         <Route path="/security" component={Security} />
-        <Route path="/api-overview" component={ApiOverview} />
         <Route path="/docs" component={Docs} />
         <Route path="/businesses" component={Businesses} />
         <Route path="/blog" component={Blog} />
@@ -100,12 +96,10 @@ function Router() {
         <Route path="/careers" component={Careers} />
         <Route path="/careers/:id" component={CareerDetail} />
         <Route path="/contact" component={Contact} />
-        <Route path="/status" component={Status} />
         <Route path="/partners" component={Partners} />
         <Route path="/help" component={Help} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
-        <Route path="/developer-portal" component={DeveloperPortal} />
         <Route path="/dashboard-preview" component={DashboardPreview} />
         <Route path="/docs/payin" component={DocsPayin} />
         <Route path="/docs/payout" component={DocsPayout} />

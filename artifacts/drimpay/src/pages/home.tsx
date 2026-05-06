@@ -138,11 +138,6 @@ export default function Home() {
                 ))}
               </ul>
               
-              <Link href="/api-overview">
-                <Button variant="link" className="text-primary p-0 h-auto font-semibold group text-base">
-                  Explore API Overview <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
             </div>
             
             <div className="rounded-xl overflow-hidden border border-border bg-[#0d1117] shadow-2xl">
