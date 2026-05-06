@@ -9,23 +9,26 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { useT } from "@/lib/i18n";
 
-const schema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  company: z.string().optional(),
-  subject: z.string().min(3, "Subject is required"),
-  message: z.string().min(10, "Message must be at least 10 characters"),
-});
+const makeSchema = (t: ReturnType<typeof useT>) =>
+  z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    company: z.string().optional(),
+    subject: z.string().min(3),
+    message: z.string().min(10),
+  });
 
-type FormData = z.infer<typeof schema>;
+type FormData = { name: string; email: string; company?: string; subject: string; message: string };
 
 export default function Contact() {
+  const t = useT();
   const [submitted, setSubmitted] = useState(false);
   const mutation = useSubmitContact();
 
   const form = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(makeSchema(t)),
     defaultValues: { name: "", email: "", company: "", subject: "", message: "" },
   });
 
@@ -37,8 +40,8 @@ export default function Contact() {
     <div className="pt-24 pb-20">
       <div className="container mx-auto px-4 md:px-8">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">Get in touch.</h1>
-          <p className="text-xl text-muted-foreground">Whether you have a question about the API, need help with integration, or want to discuss enterprise pricing — our team responds within 24 hours.</p>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">{t.contact.title}</h1>
+          <p className="text-xl text-muted-foreground">{t.contact.desc}</p>
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-12">
@@ -46,8 +49,8 @@ export default function Contact() {
             {submitted ? (
               <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-primary/20 bg-primary/5">
                 <CheckCircle2 className="w-16 h-16 text-primary mb-6" />
-                <h2 className="text-2xl font-bold mb-3">Message received</h2>
-                <p className="text-muted-foreground max-w-md">Our team will get back to you within 24 hours at the email you provided. For urgent issues, you can also reach us at support@drimpay.io.</p>
+                <h2 className="text-2xl font-bold mb-3">{t.contact.successTitle}</h2>
+                <p className="text-muted-foreground max-w-md">{t.contact.successDesc}</p>
               </motion.div>
             ) : (
               <div className="rounded-2xl border border-border bg-card p-8">
@@ -56,42 +59,42 @@ export default function Contact() {
                     <div className="grid md:grid-cols-2 gap-6">
                       <FormField control={form.control} name="name" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl><Input placeholder="Aminata Diallo" data-testid="input-name" {...field} /></FormControl>
+                          <FormLabel>{t.contact.fullName}</FormLabel>
+                          <FormControl><Input placeholder={t.contact.namePlaceholder} {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="email" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email Address</FormLabel>
-                          <FormControl><Input placeholder="aminata@company.com" type="email" data-testid="input-email" {...field} /></FormControl>
+                          <FormLabel>{t.contact.email}</FormLabel>
+                          <FormControl><Input placeholder="aminata@company.com" type="email" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                     </div>
                     <FormField control={form.control} name="company" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Company (Optional)</FormLabel>
-                        <FormControl><Input placeholder="Your company name" data-testid="input-company" {...field} /></FormControl>
+                        <FormLabel>{t.contact.company}</FormLabel>
+                        <FormControl><Input placeholder={t.contact.companyPlaceholder} {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="subject" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Subject</FormLabel>
-                        <FormControl><Input placeholder="API Integration Help" data-testid="input-subject" {...field} /></FormControl>
+                        <FormLabel>{t.contact.subject}</FormLabel>
+                        <FormControl><Input placeholder={t.contact.subjectPlaceholder} {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="message" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Message</FormLabel>
-                        <FormControl><Textarea placeholder="Tell us how we can help..." rows={6} data-testid="input-message" {...field} /></FormControl>
+                        <FormLabel>{t.contact.message}</FormLabel>
+                        <FormControl><Textarea placeholder={t.contact.messagePlaceholder} rows={6} {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <Button type="submit" size="lg" className="text-primary-foreground font-semibold" disabled={mutation.isPending} data-testid="button-submit">
-                      {mutation.isPending ? "Sending..." : "Send Message"} <ArrowRight className="ml-2 w-4 h-4" />
+                    <Button type="submit" size="lg" className="text-primary-foreground font-semibold" disabled={mutation.isPending}>
+                      {mutation.isPending ? t.contact.sending : t.contact.send} <ArrowRight className="ml-2 w-4 h-4" />
                     </Button>
                   </form>
                 </Form>
@@ -101,9 +104,9 @@ export default function Contact() {
 
           <div className="flex flex-col gap-6">
             {[
-              { icon: Mail, title: "Email", details: ["support@drimpay.io", "enterprise@drimpay.io"] },
-              { icon: Phone, title: "Phone", details: ["+228 22 00 11 22", "+237 699 001 122"] },
-              { icon: MapPin, title: "Headquarters", details: ["DrimPay Tower, Rue du Commerce", "Lomé, Togo 01 BP 3578"] },
+              { icon: Mail, title: t.contact.emailLabel, details: ["support@drimpay.io", "enterprise@drimpay.io"] },
+              { icon: Phone, title: t.contact.phoneLabel, details: ["+228 22 00 11 22", "+237 699 001 122"] },
+              { icon: MapPin, title: t.contact.hqLabel, details: ["DrimPay Tower, Rue du Commerce", "Lomé, Togo 01 BP 3578"] },
             ].map((item, i) => (
               <div key={i} className="p-6 rounded-xl border border-border bg-card">
                 <div className="flex items-center gap-3 mb-4">
@@ -115,10 +118,10 @@ export default function Contact() {
             ))}
 
             <div className="p-6 rounded-xl border border-primary/20 bg-primary/5">
-              <h3 className="font-semibold mb-2">Support Hours</h3>
-              <p className="text-sm text-muted-foreground">Monday — Friday: 8:00 AM — 8:00 PM WAT</p>
-              <p className="text-sm text-muted-foreground">Saturday: 9:00 AM — 5:00 PM WAT</p>
-              <p className="text-sm text-muted-foreground mt-2">Emergency API issues: 24/7 on-call</p>
+              <h3 className="font-semibold mb-2">{t.contact.supportHoursTitle}</h3>
+              <p className="text-sm text-muted-foreground">{t.contact.supportHours1}</p>
+              <p className="text-sm text-muted-foreground">{t.contact.supportHours2}</p>
+              <p className="text-sm text-muted-foreground mt-2">{t.contact.supportHours3}</p>
             </div>
           </div>
         </div>

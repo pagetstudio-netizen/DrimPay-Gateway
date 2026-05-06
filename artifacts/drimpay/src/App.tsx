@@ -1,10 +1,11 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { useLocation } from "wouter";
+import { LangProvider, type Lang } from "@/lib/i18n";
+import { useEffect } from "react";
 
 import Home from "@/pages/home";
 import About from "@/pages/about";
@@ -59,30 +60,15 @@ function isDashboardPath(path: string) {
   return path.startsWith("/dashboard");
 }
 
-function Router() {
-  const [location] = useLocation();
+function Redirect({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    navigate(to, { replace: true } as any);
+  }, [to]);
+  return null;
+}
 
-  if (isDashboardPath(location)) {
-    return (
-      <Switch>
-        <Route path="/dashboard" component={DashboardOverview} />
-        <Route path="/dashboard/wallets" component={DashboardWallets} />
-        <Route path="/dashboard/payments" component={DashboardPayments} />
-        <Route path="/dashboard/reversement" component={DashboardReversement} />
-        <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
-        <Route path="/dashboard/kyb" component={DashboardKyb} />
-        <Route path="/dashboard/settings" component={DashboardSettings} />
-        <Route path="/dashboard/profile" component={DashboardProfile} />
-        <Route path="/dashboard/docs/payin" component={DocPayin} />
-        <Route path="/dashboard/docs/payout" component={DocPayout} />
-        <Route path="/dashboard/docs/virtual-cards" component={DocVirtualCards} />
-        <Route path="/dashboard/docs/credits" component={DocCredits} />
-        <Route path="/dashboard/docs/mass-payout" component={DocMassPayout} />
-        <Route component={NotFound} />
-      </Switch>
-    );
-  }
-
+function PublicSwitch() {
   return (
     <Layout>
       <Switch>
@@ -113,6 +99,48 @@ function Router() {
       </Switch>
     </Layout>
   );
+}
+
+function DashboardSwitch() {
+  return (
+    <Switch>
+      <Route path="/dashboard" component={DashboardOverview} />
+      <Route path="/dashboard/wallets" component={DashboardWallets} />
+      <Route path="/dashboard/payments" component={DashboardPayments} />
+      <Route path="/dashboard/reversement" component={DashboardReversement} />
+      <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
+      <Route path="/dashboard/kyb" component={DashboardKyb} />
+      <Route path="/dashboard/settings" component={DashboardSettings} />
+      <Route path="/dashboard/profile" component={DashboardProfile} />
+      <Route path="/dashboard/docs/payin" component={DocPayin} />
+      <Route path="/dashboard/docs/payout" component={DocPayout} />
+      <Route path="/dashboard/docs/virtual-cards" component={DocVirtualCards} />
+      <Route path="/dashboard/docs/credits" component={DocCredits} />
+      <Route path="/dashboard/docs/mass-payout" component={DocMassPayout} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function Router() {
+  const [location] = useLocation();
+
+  if (isDashboardPath(location)) {
+    return <DashboardSwitch />;
+  }
+
+  if (location.startsWith("/fr") || location.startsWith("/en")) {
+    const lang: Lang = location.startsWith("/en") ? "en" : "fr";
+    return (
+      <LangProvider lang={lang}>
+        <WouterRouter base={`/${lang}`}>
+          <PublicSwitch />
+        </WouterRouter>
+      </LangProvider>
+    );
+  }
+
+  return <Redirect to={`/fr${location === "/" ? "" : location}`} />;
 }
 
 function App() {
