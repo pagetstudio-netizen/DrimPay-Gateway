@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { FileCheck, CheckCircle2, Clock, XCircle, AlertCircle, Upload, Building, Globe, FileText, Hash } from "lucide-react";
+import { FileCheck, CheckCircle2, Clock, XCircle, AlertCircle, Upload, Building, Globe, FileText, Hash, X, Paperclip } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -75,12 +75,116 @@ const steps = [
   { id: 2, label: "Documents requis", icon: FileText },
 ];
 
+const DOCUMENTS = [
+  { key: "documentRccm", label: "RCCM / Registre du Commerce", description: "Document d'immatriculation officiel de l'entreprise", required: true },
+  { key: "documentStatuts", label: "Statuts de l'entreprise", description: "Actes constitutifs signés et enregistrés", required: true },
+  { key: "documentId", label: "Pièce d'identité du dirigeant", description: "CNI, passeport ou permis de conduire du représentant légal", required: true },
+  { key: "documentProofAddress", label: "Justificatif de domicile", description: "Facture ou relevé bancaire de moins de 3 mois", required: false },
+];
+
+function FileUploadRow({
+  doc,
+  isEditable,
+  file,
+  onFileChange,
+}: {
+  doc: typeof DOCUMENTS[0];
+  isEditable: boolean;
+  file: File | null;
+  onFileChange: (file: File | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleClick = () => {
+    if (!isEditable) return;
+    inputRef.current?.click();
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    onFileChange(f);
+    e.target.value = "";
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+  };
+
+  return (
+    <div className="flex items-start gap-4 p-4 rounded-xl border border-border bg-muted/20">
+      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+        <FileText className="w-5 h-5 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <p className="text-sm font-medium">{doc.label}</p>
+          {doc.required ? (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 font-semibold shrink-0">Obligatoire</span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold shrink-0">Optionnel</span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">{doc.description}</p>
+
+        {isEditable ? (
+          <div>
+            {file ? (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 w-fit max-w-full">
+                <Paperclip className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-xs text-primary font-medium truncate">{file.name}</span>
+                <span className="text-xs text-primary/60 shrink-0">({formatSize(file.size)})</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onFileChange(null); }}
+                  className="ml-1 text-primary/60 hover:text-primary transition-colors shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleClick}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-border hover:border-primary/60 hover:bg-primary/5 transition-all text-sm text-muted-foreground hover:text-foreground font-medium active:scale-95"
+              >
+                <Upload className="w-4 h-4" />
+                Choisir un fichier
+              </button>
+            )}
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={handleChange}
+              className="hidden"
+              aria-label={`Téléverser ${doc.label}`}
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
+            Document soumis
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Kyb() {
   const [kyb, setKyb] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState(1);
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({
+    documentRccm: null,
+    documentStatuts: null,
+    documentId: null,
+    documentProofAddress: null,
+  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -97,19 +201,21 @@ export default function Kyb() {
 
   useEffect(() => {
     fetch("/api/dashboard/kyb", { credentials: "include" })
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : null)
       .then((d) => {
-        setKyb(d);
-        if (d && d.companyLegalName) {
-          form.reset({
-            companyLegalName: d.companyLegalName ?? "",
-            registrationNumber: d.registrationNumber ?? "",
-            businessType: d.businessType ?? "",
-            incorporationCountry: d.incorporationCountry ?? "",
-            businessAddress: d.businessAddress ?? "",
-            website: d.website ?? "",
-            businessDescription: d.businessDescription ?? "",
-          });
+        if (d) {
+          setKyb(d);
+          if (d.companyLegalName) {
+            form.reset({
+              companyLegalName: d.companyLegalName ?? "",
+              registrationNumber: d.registrationNumber ?? "",
+              businessType: d.businessType ?? "",
+              incorporationCountry: d.incorporationCountry ?? "",
+              businessAddress: d.businessAddress ?? "",
+              website: d.website ?? "",
+              businessDescription: d.businessDescription ?? "",
+            });
+          }
         }
       })
       .catch(console.error)
@@ -119,13 +225,24 @@ export default function Kyb() {
   const onSubmit = async (values: FormData) => {
     setSubmitting(true);
     setError("");
+
+    const formData = new FormData();
+    Object.entries(values).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) formData.append(k, String(v));
+    });
+    Object.entries(uploadedFiles).forEach(([k, f]) => {
+      if (f) formData.append(k, f);
+    });
+
     const res = await fetch("/api/dashboard/kyb", {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      body: formData,
     });
-    const data = await res.json();
+
+    let data: any = {};
+    try { data = await res.json(); } catch {}
+
     if (!res.ok) {
       setError(data.error ?? "Erreur lors de la soumission");
       setSubmitting(false);
@@ -135,16 +252,17 @@ export default function Kyb() {
     setSubmitting(false);
   };
 
+  const setFile = (key: string) => (file: File | null) => {
+    setUploadedFiles(prev => ({ ...prev, [key]: file }));
+  };
+
+  const requiredDocsUploaded = DOCUMENTS
+    .filter(d => d.required)
+    .every(d => uploadedFiles[d.key] !== null);
+
   const status = kyb?.status ?? "pending";
   const statusInfo = kybStatusConfig[status] ?? kybStatusConfig.pending;
   const isEditable = status === "pending" || status === "rejected";
-
-  const documents = [
-    { key: "documentRccm", label: "RCCM / Registre du Commerce", description: "Document d'immatriculation officiel de l'entreprise", required: true },
-    { key: "documentStatuts", label: "Statuts de l'entreprise", description: "Actes constitutifs signés et enregistrés", required: true },
-    { key: "documentId", label: "Pièce d'identité du dirigeant", description: "CNI, passeport ou permis de conduire du représentant légal", required: true },
-    { key: "documentProofAddress", label: "Justificatif de domicile", description: "Facture ou relevé bancaire de moins de 3 mois", required: false },
-  ];
 
   return (
     <DashboardLayout>
@@ -159,9 +277,7 @@ export default function Kyb() {
         <div className={`flex items-start gap-4 p-5 rounded-xl border mb-8 ${statusInfo.bg} border-current/10`}>
           <statusInfo.icon className={`w-6 h-6 ${statusInfo.color} shrink-0 mt-0.5`} />
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <p className={`font-semibold ${statusInfo.color}`}>{statusInfo.label}</p>
-            </div>
+            <p className={`font-semibold ${statusInfo.color} mb-1`}>{statusInfo.label}</p>
             <p className="text-sm text-muted-foreground">{statusInfo.description}</p>
             {status === "rejected" && kyb?.rejectionReason && (
               <p className="text-sm text-red-600 mt-2 font-medium">Raison : {kyb.rejectionReason}</p>
@@ -190,8 +306,9 @@ export default function Kyb() {
               {steps.map((s, i) => (
                 <div key={s.id} className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => setStep(s.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${step === s.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${step === s.id ? "bg-primary text-black" : "bg-muted text-muted-foreground hover:text-foreground"}`}
                   >
                     <s.icon className="w-4 h-4" />
                     {s.label}
@@ -294,7 +411,7 @@ export default function Kyb() {
                       </div>
                     </div>
                     <div className="flex justify-end">
-                      <Button type="button" onClick={() => setStep(2)} className="text-primary-foreground">
+                      <Button type="button" onClick={() => setStep(2)} className="text-black">
                         Suivant : Documents →
                       </Button>
                     </div>
@@ -304,45 +421,32 @@ export default function Kyb() {
                 {step === 2 && (
                   <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                     <div className="rounded-xl border border-border bg-card p-5">
-                      <h3 className="font-semibold mb-2 flex items-center gap-2">
+                      <h3 className="font-semibold mb-1 flex items-center gap-2">
                         <FileText className="w-4 h-4" />
                         Documents requis
                       </h3>
                       <p className="text-xs text-muted-foreground mb-5">
                         Formats acceptés : PDF, JPG, PNG · Taille max : 5 Mo par document
                       </p>
-                      <div className="space-y-4">
-                        {documents.map((doc) => (
-                          <div key={doc.key} className="flex items-start gap-4 p-4 rounded-lg border border-border bg-muted/20">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                              <FileText className="w-5 h-5 text-primary" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <p className="text-sm font-medium">{doc.label}</p>
-                                {doc.required ? (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 font-semibold">Obligatoire</span>
-                                ) : (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold">Optionnel</span>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground mb-3">{doc.description}</p>
-                              {isEditable ? (
-                                <label className="flex items-center gap-2 cursor-pointer w-fit px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs text-muted-foreground">
-                                  <Upload className="w-4 h-4" />
-                                  Téléverser un fichier
-                                  <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" />
-                                </label>
-                              ) : (
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                  Document soumis
-                                </div>
-                              )}
-                            </div>
-                          </div>
+
+                      <div className="space-y-3">
+                        {DOCUMENTS.map((doc) => (
+                          <FileUploadRow
+                            key={doc.key}
+                            doc={doc}
+                            isEditable={isEditable}
+                            file={uploadedFiles[doc.key]}
+                            onFileChange={setFile(doc.key)}
+                          />
                         ))}
                       </div>
+
+                      {isEditable && !requiredDocsUploaded && (
+                        <p className="mt-4 text-xs text-amber-500 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          Veuillez téléverser tous les documents obligatoires avant de soumettre.
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex gap-3 justify-between">
@@ -350,8 +454,16 @@ export default function Kyb() {
                         ← Retour
                       </Button>
                       {isEditable && (
-                        <Button type="submit" className="text-primary-foreground" disabled={submitting}>
-                          {submitting ? "Soumission en cours..." : <><FileCheck className="w-4 h-4 mr-2" />Soumettre le dossier KYB</>}
+                        <Button
+                          type="submit"
+                          className="text-black"
+                          disabled={submitting || !requiredDocsUploaded}
+                        >
+                          {submitting ? (
+                            "Soumission en cours..."
+                          ) : (
+                            <><FileCheck className="w-4 h-4 mr-2" />Soumettre le dossier KYB</>
+                          )}
                         </Button>
                       )}
                     </div>
