@@ -117,6 +117,24 @@ export const massPayoutJobsTable = pgTable("mass_payout_jobs", {
   completedAt: timestamp("completed_at"),
 });
 
+export const reversementStatusEnum = pgEnum("reversement_status", ["pending", "completed", "failed"]);
+
+export const reversementsTable = pgTable("reversements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  walletId: integer("wallet_id").notNull().references(() => walletsTable.id),
+  countryCode: text("country_code").notNull(),
+  currency: text("currency").notNull(),
+  operator: text("operator").notNull(),
+  phone: text("phone").notNull(),
+  amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+  fee: numeric("fee", { precision: 18, scale: 2 }).notNull(),
+  net: numeric("net", { precision: 18, scale: 2 }).notNull(),
+  note: text("note"),
+  status: reversementStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const blogArticlesTable = pgTable("blog_articles", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
@@ -220,3 +238,4 @@ export type KybSubmission = typeof kybSubmissionsTable.$inferSelect;
 export type Wallet = typeof walletsTable.$inferSelect;
 export type Transaction = typeof transactionsTable.$inferSelect;
 export type ApiKey = typeof apiKeysTable.$inferSelect;
+export type Reversement = typeof reversementsTable.$inferSelect;

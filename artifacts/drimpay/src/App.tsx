@@ -34,8 +34,7 @@ import NotFound from "@/pages/not-found";
 
 import DashboardOverview from "@/pages/dashboard/index";
 import DashboardWallets from "@/pages/dashboard/wallets";
-import DashboardPayin from "@/pages/dashboard/payin";
-import DashboardPayout from "@/pages/dashboard/payout";
+import DashboardReversement from "@/pages/dashboard/reversement";
 import DashboardApiKeys from "@/pages/dashboard/api-keys";
 import DashboardKyb from "@/pages/dashboard/kyb";
 import DocPayin from "@/pages/dashboard/docs/payin";
@@ -65,8 +64,7 @@ function Router() {
       <Switch>
         <Route path="/dashboard" component={DashboardOverview} />
         <Route path="/dashboard/wallets" component={DashboardWallets} />
-        <Route path="/dashboard/payin" component={DashboardPayin} />
-        <Route path="/dashboard/payout" component={DashboardPayout} />
+        <Route path="/dashboard/reversement" component={DashboardReversement} />
         <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
         <Route path="/dashboard/kyb" component={DashboardKyb} />
         <Route path="/dashboard/docs/payin" component={DocPayin} />

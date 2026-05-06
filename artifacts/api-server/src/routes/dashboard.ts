@@ -7,6 +7,7 @@ import {
   apiKeysTable,
   kybSubmissionsTable,
   usersTable,
+  reversementsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -376,6 +377,85 @@ router.post("/dashboard/kyb", requireAuth, async (req, res) => {
   }
 
   res.status(201).json(kyb);
+});
+
+const reversementSchema = z.object({
+  countryCode: z.string().min(2),
+  operator: z.string().min(1),
+  phone: z.string().min(8),
+  amount: z.number().positive(),
+  note: z.string().optional(),
+});
+
+router.get("/dashboard/reversements", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const rows = await db
+    .select()
+    .from(reversementsTable)
+    .where(eq(reversementsTable.userId, userId))
+    .orderBy(desc(reversementsTable.createdAt))
+    .limit(50);
+  res.json(rows);
+});
+
+router.post("/dashboard/reversements", requireAuth, async (req, res) => {
+  const parsed = reversementSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+    return;
+  }
+  const userId = req.session.userId!;
+  const { countryCode, operator, phone, amount, note } = parsed.data;
+
+  const countryMeta = COUNTRIES.find((c) => c.code === countryCode);
+  if (!countryMeta) {
+    res.status(400).json({ error: "Pays non supporté" });
+    return;
+  }
+
+  const [wallet] = await db
+    .select()
+    .from(walletsTable)
+    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, countryCode)));
+
+  if (!wallet) {
+    res.status(400).json({ error: "Aucun wallet actif pour ce pays." });
+    return;
+  }
+
+  const balance = parseFloat(wallet.balance as string);
+  if (amount > balance) {
+    res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
+    return;
+  }
+
+  const fee = +(amount * FEE_RATE).toFixed(2);
+  const net = +(amount - fee).toFixed(2);
+
+  const newBalance = +(balance - amount).toFixed(2);
+  await db
+    .update(walletsTable)
+    .set({ balance: String(newBalance) })
+    .where(eq(walletsTable.id, wallet.id));
+
+  const [reversement] = await db
+    .insert(reversementsTable)
+    .values({
+      userId,
+      walletId: wallet.id,
+      countryCode,
+      currency: countryMeta.currency,
+      operator,
+      phone,
+      amount: String(amount),
+      fee: String(fee),
+      net: String(net),
+      note: note ?? null,
+      status: "pending",
+    })
+    .returning();
+
+  res.status(201).json(reversement);
 });
 
 export default router;

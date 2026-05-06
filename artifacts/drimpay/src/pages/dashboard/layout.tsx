@@ -1,19 +1,17 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  LayoutDashboard, Wallet, ArrowDownLeft, ArrowUpRight, Key,
-  FileCheck, CreditCard, Radio, Users, Settings, LogOut,
-  Menu, X, ChevronRight, Bell, Building2
+  LayoutDashboard, Wallet, Key,
+  FileCheck, CreditCard, Radio, Users, LogOut,
+  Menu, X, ChevronRight, Bell, Building2, ArrowDownLeft, ArrowUpRight, Banknote
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard },
   { href: "/dashboard/wallets", label: "Wallets", icon: Wallet },
-  { href: "/dashboard/payin", label: "Pay-in", icon: ArrowDownLeft },
-  { href: "/dashboard/payout", label: "Pay-out", icon: ArrowUpRight },
+  { href: "/dashboard/reversement", label: "Reversement", icon: Banknote },
   { href: "/dashboard/api-keys", label: "Clés API", icon: Key },
   { href: "/dashboard/kyb", label: "Vérification KYB", icon: FileCheck },
 ];
