@@ -38,6 +38,7 @@ import DashboardReversement from "@/pages/dashboard/reversement";
 import DashboardPayments from "@/pages/dashboard/payments";
 import DashboardApiKeys from "@/pages/dashboard/api-keys";
 import DashboardKyb from "@/pages/dashboard/kyb";
+import DashboardSettings from "@/pages/dashboard/settings";
 import DocPayin from "@/pages/dashboard/docs/payin";
 import DocPayout from "@/pages/dashboard/docs/payout";
 import DocVirtualCards from "@/pages/dashboard/docs/virtual-cards";
@@ -69,6 +70,7 @@ function Router() {
         <Route path="/dashboard/reversement" component={DashboardReversement} />
         <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
         <Route path="/dashboard/kyb" component={DashboardKyb} />
+        <Route path="/dashboard/settings" component={DashboardSettings} />
         <Route path="/dashboard/docs/payin" component={DocPayin} />
         <Route path="/dashboard/docs/payout" component={DocPayout} />
         <Route path="/dashboard/docs/virtual-cards" component={DocVirtualCards} />

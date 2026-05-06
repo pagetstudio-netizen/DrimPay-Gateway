@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Wallet, Key,
   FileCheck, CreditCard, Radio, Users, LogOut,
-  Menu, X, ChevronRight, Bell, Building2, ArrowDownLeft, ArrowUpRight, Banknote, History
+  Menu, X, ChevronRight, Bell, Building2, ArrowDownLeft, ArrowUpRight, Banknote, History, Settings
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/dashboard/reversement", label: "Reversement", icon: Banknote },
   { href: "/dashboard/api-keys", label: "Clés API", icon: Key },
   { href: "/dashboard/kyb", label: "Vérification KYB", icon: FileCheck },
+  { href: "/dashboard/settings", label: "Paramètres", icon: Settings },
 ];
 
 const apiItems = [

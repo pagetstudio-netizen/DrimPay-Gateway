@@ -553,4 +553,62 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
   res.status(201).json(reversement);
 });
 
+// ─── Settings ───────────────────────────────────────────────────────────────
+
+router.get("/dashboard/settings", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const [user] = await db.select({
+    email: usersTable.email,
+    companyName: usersTable.companyName,
+    webhookUrl: usersTable.webhookUrl,
+    staticIp: usersTable.staticIp,
+  }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.json(user);
+});
+
+router.patch("/dashboard/settings/webhook", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const schema = z.object({
+    webhookUrl: z.string().url("URL invalide").or(z.literal("")),
+  });
+  const result = schema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" });
+
+  await db.update(usersTable).set({ webhookUrl: result.data.webhookUrl || null }).where(eq(usersTable.id, userId));
+  res.json({ success: true });
+});
+
+router.patch("/dashboard/settings/ip", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const schema = z.object({
+    staticIp: z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$/, "Adresse IP invalide").or(z.literal("")),
+  });
+  const result = schema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" });
+
+  await db.update(usersTable).set({ staticIp: result.data.staticIp || null }).where(eq(usersTable.id, userId));
+  res.json({ success: true });
+});
+
+router.patch("/dashboard/settings/password", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const schema = z.object({
+    currentPassword: z.string().min(1, "Mot de passe actuel requis"),
+    newPassword: z.string().min(8, "Minimum 8 caractères"),
+  });
+  const result = schema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" });
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
+
+  const valid = await bcrypt.compare(result.data.currentPassword, user.passwordHash);
+  if (!valid) return res.status(400).json({ error: "Mot de passe actuel incorrect" });
+
+  const newHash = await bcrypt.hash(result.data.newPassword, 12);
+  await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, userId));
+  res.json({ success: true });
+});
+
 export default router;
