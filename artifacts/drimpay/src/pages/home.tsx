@@ -57,15 +57,20 @@ export default function Home() {
                 Digital Reliable Infrastructure for Money. One unified API to handle Payins, Payouts, and Virtual Wallets across West & Central Africa.
               </motion.p>
               
-              <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4">
+              <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 flex-wrap">
                 <Link href="/signup">
                   <Button size="lg" className="h-14 px-8 text-lg font-semibold text-primary-foreground group">
                     Start Building <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
-                <Link href="/docs">
+                <Link href="/docs/payin">
                   <Button size="lg" variant="outline" className="h-14 px-8 text-lg font-medium border-border/50 hover:bg-secondary">
-                    Read the Docs
+                    Pay-in Docs
+                  </Button>
+                </Link>
+                <Link href="/docs/payout">
+                  <Button size="lg" variant="outline" className="h-14 px-8 text-lg font-medium border-border/50 hover:bg-secondary">
+                    Pay-out Docs
                   </Button>
                 </Link>
               </motion.div>

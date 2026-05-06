@@ -115,7 +115,8 @@ export function Layout({ children }: { children: ReactNode }) {
             <div>
               <h4 className="font-semibold mb-6">Developers</h4>
               <ul className="flex flex-col gap-4">
-                <li><Link href="/docs" className="text-muted-foreground hover:text-foreground transition-colors">Documentation</Link></li>
+                <li><Link href="/docs/payin" className="text-muted-foreground hover:text-foreground transition-colors">Pay-in API Docs</Link></li>
+                <li><Link href="/docs/payout" className="text-muted-foreground hover:text-foreground transition-colors">Pay-out API Docs</Link></li>
                 <li><Link href="/api-overview" className="text-muted-foreground hover:text-foreground transition-colors">API Overview</Link></li>
                 <li><Link href="/status" className="text-muted-foreground hover:text-foreground transition-colors">API Status</Link></li>
                 <li><Link href="/developer-portal" className="text-muted-foreground hover:text-foreground transition-colors">Developer Portal</Link></li>

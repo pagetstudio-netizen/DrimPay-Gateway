@@ -112,6 +112,101 @@ router.get("/dashboard/transactions", requireAuth, async (req, res) => {
   res.json({ transactions: txs, total, page: parseInt(page), limit: parseInt(limit) });
 });
 
+router.get("/dashboard/payments", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const { type, status, search, page = "1", limit = "20" } = req.query as Record<string, string>;
+
+  const conditions: any[] = [eq(transactionsTable.userId, userId)];
+  if (type && type !== "all") conditions.push(eq(transactionsTable.type, type as any));
+  if (status && status !== "all") conditions.push(eq(transactionsTable.status, status as any));
+
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+  const offset = (pageNum - 1) * limitNum;
+
+  let txs = await db
+    .select()
+    .from(transactionsTable)
+    .where(and(...conditions))
+    .orderBy(desc(transactionsTable.createdAt))
+    .limit(limitNum)
+    .offset(offset);
+
+  if (search) {
+    const q = search.toLowerCase();
+    txs = txs.filter(t =>
+      t.reference.toLowerCase().includes(q) ||
+      (t.orderId ?? "").toLowerCase().includes(q) ||
+      t.phone.toLowerCase().includes(q)
+    );
+  }
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(transactionsTable)
+    .where(and(...conditions));
+
+  res.json({ transactions: txs, total, page: pageNum, limit: limitNum });
+});
+
+router.post("/dashboard/transactions/:id/resend-webhook", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const txId = parseInt(req.params.id);
+
+  const [tx] = await db
+    .select()
+    .from(transactionsTable)
+    .where(and(eq(transactionsTable.id, txId), eq(transactionsTable.userId, userId)));
+
+  if (!tx) {
+    res.status(404).json({ error: "Transaction not found" });
+    return;
+  }
+
+  const webhookUrl = tx.webhookUrl ?? "https://your-server.com/webhook";
+  const payload = {
+    event: tx.type === "payin" ? "payin." + tx.status : "payout." + tx.status,
+    reference: tx.reference,
+    order_id: tx.orderId,
+    status: tx.status,
+    amount: tx.amount,
+    fee: tx.fee,
+    net_amount: tx.netAmount,
+    currency: tx.currency,
+    country_code: tx.countryCode,
+    operator: tx.operator,
+    phone: tx.phone,
+    created_at: tx.createdAt,
+  };
+
+  let statusCode = 200;
+  let body = "";
+  try {
+    const r = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
+    });
+    statusCode = r.status;
+    body = await r.text().catch(() => "");
+  } catch {
+    statusCode = 0;
+    body = "Connection failed";
+  }
+
+  await db
+    .update(transactionsTable)
+    .set({
+      webhookLastStatusCode: statusCode,
+      webhookLastBody: body.slice(0, 500),
+      webhookLastSentAt: new Date(),
+    })
+    .where(eq(transactionsTable.id, txId));
+
+  res.json({ message: "Webhook resent", statusCode, sentAt: new Date() });
+});
+
 const payinSchema = z.object({
   amount: z.number().positive(),
   currency: z.string().length(3),

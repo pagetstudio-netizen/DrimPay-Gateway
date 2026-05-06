@@ -56,11 +56,14 @@ export const walletsTable = pgTable("wallets", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const transactionModeEnum = pgEnum("transaction_mode", ["sandbox", "live"]);
+
 export const transactionsTable = pgTable("transactions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   walletId: integer("wallet_id").notNull().references(() => walletsTable.id),
   reference: text("reference").notNull().unique(),
+  orderId: text("order_id"),
   type: transactionTypeEnum("type").notNull(),
   status: transactionStatusEnum("status").notNull().default("pending"),
   amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
@@ -72,6 +75,14 @@ export const transactionsTable = pgTable("transactions", {
   phone: text("phone").notNull(),
   description: text("description"),
   externalRef: text("external_ref"),
+  gatewayReference: text("gateway_reference"),
+  mnoReference: text("mno_reference"),
+  mode: transactionModeEnum("mode").notNull().default("sandbox"),
+  failureReason: text("failure_reason"),
+  webhookUrl: text("webhook_url"),
+  webhookLastStatusCode: integer("webhook_last_status_code"),
+  webhookLastBody: text("webhook_last_body"),
+  webhookLastSentAt: timestamp("webhook_last_sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -32,9 +32,13 @@ import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import NotFound from "@/pages/not-found";
 
+import DocsPayin from "@/pages/docs-payin";
+import DocsPayout from "@/pages/docs-payout";
+
 import DashboardOverview from "@/pages/dashboard/index";
 import DashboardWallets from "@/pages/dashboard/wallets";
 import DashboardReversement from "@/pages/dashboard/reversement";
+import DashboardPayments from "@/pages/dashboard/payments";
 import DashboardApiKeys from "@/pages/dashboard/api-keys";
 import DashboardKyb from "@/pages/dashboard/kyb";
 import DocPayin from "@/pages/dashboard/docs/payin";
@@ -64,6 +68,7 @@ function Router() {
       <Switch>
         <Route path="/dashboard" component={DashboardOverview} />
         <Route path="/dashboard/wallets" component={DashboardWallets} />
+        <Route path="/dashboard/payments" component={DashboardPayments} />
         <Route path="/dashboard/reversement" component={DashboardReversement} />
         <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
         <Route path="/dashboard/kyb" component={DashboardKyb} />
@@ -102,6 +107,8 @@ function Router() {
         <Route path="/privacy" component={Privacy} />
         <Route path="/developer-portal" component={DeveloperPortal} />
         <Route path="/dashboard-preview" component={DashboardPreview} />
+        <Route path="/docs/payin" component={DocsPayin} />
+        <Route path="/docs/payout" component={DocsPayout} />
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
         <Route component={NotFound} />
