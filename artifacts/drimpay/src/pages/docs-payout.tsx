@@ -32,14 +32,14 @@ function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   return (
-    <div className="relative rounded-xl border border-border bg-[#0a0a0a] overflow-hidden my-4">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-muted/10">
-        <span className="text-xs font-mono text-muted-foreground">{lang}</span>
-        <button onClick={copy} className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-xs">
+    <div className="relative rounded-xl border border-white/10 bg-[#0d1117] overflow-hidden my-4">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/5">
+        <span className="text-xs font-mono text-white/40">{lang}</span>
+        <button onClick={copy} className="text-white/40 hover:text-white/80 transition-colors flex items-center gap-1.5 text-xs">
           {copied ? <><Check className="w-3.5 h-3.5 text-green-400" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
         </button>
       </div>
-      <pre className="p-4 text-sm font-mono text-foreground overflow-x-auto leading-relaxed whitespace-pre">{code}</pre>
+      <pre className="p-4 text-sm font-mono text-slate-200 overflow-x-auto leading-relaxed whitespace-pre">{code}</pre>
     </div>
   );
 }

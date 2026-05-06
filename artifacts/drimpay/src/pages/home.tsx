@@ -171,10 +171,10 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-primary z-[-2]" />
-        <div className="absolute inset-0 bg-black/80 z-[-1]" />
-        <div className="container mx-auto px-4 md:px-8 text-center relative z-10">
+      <section className="py-32 relative overflow-hidden isolate">
+        <div className="absolute inset-0 bg-primary" style={{ zIndex: -2 }} />
+        <div className="absolute inset-0 bg-black/80" style={{ zIndex: -1 }} />
+        <div className="container mx-auto px-4 md:px-8 text-center relative" style={{ zIndex: 1 }}>
           <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">{t.home.ctaTitle}</h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">{t.home.ctaDesc}</p>
           <Link href="/signup">
