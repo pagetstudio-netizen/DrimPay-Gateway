@@ -18,8 +18,8 @@ const navItems = [
 ];
 
 const apiItems = [
-  { href: "/dashboard/docs/payin", label: "API Pay-in", icon: ArrowDownLeft },
-  { href: "/dashboard/docs/payout", label: "API Pay-out", icon: ArrowUpRight },
+  { href: "/docs/payin", label: "API Pay-in", icon: ArrowDownLeft },
+  { href: "/docs/payout", label: "API Pay-out", icon: ArrowUpRight },
   { href: "/dashboard/docs/virtual-cards", label: "Cartes Virtuelles", icon: CreditCard },
   { href: "/dashboard/docs/credits", label: "Crédits Communication", icon: Radio },
   { href: "/dashboard/docs/mass-payout", label: "Paiement de Masse", icon: Users },
