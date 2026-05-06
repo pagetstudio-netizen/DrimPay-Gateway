@@ -68,6 +68,59 @@ function Redirect({ to }: { to: string }) {
   return null;
 }
 
+/**
+ * Detect the best language for the user based on:
+ * 1. Browser/OS language setting
+ * 2. Timezone (to catch French-speaking West/Central Africa users)
+ * Defaults to French since DrimPay is primarily a Francophone Africa platform.
+ */
+function detectLang(): Lang {
+  try {
+    const browserLang = (
+      navigator.language ||
+      (navigator.languages && navigator.languages[0]) ||
+      ""
+    ).toLowerCase();
+
+    if (browserLang.startsWith("fr")) return "fr";
+    if (browserLang.startsWith("en")) return "en";
+
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const frenchAfricaZones = [
+      "Africa/Abidjan",
+      "Africa/Porto-Novo",
+      "Africa/Cotonou",
+      "Africa/Douala",
+      "Africa/Yaoundé",
+      "Africa/Ouagadougou",
+      "Africa/Bamako",
+      "Africa/Dakar",
+      "Africa/Lome",
+      "Africa/Kinshasa",
+      "Africa/Lubumbashi",
+      "Africa/Libreville",
+      "Africa/Malabo",
+      "Africa/Niamey",
+      "Africa/Ndjamena",
+      "Africa/Brazzaville",
+      "Africa/Bangui",
+      "Africa/Bujumbura",
+      "Africa/Kigali",
+      "Africa/Djibouti",
+      "Indian/Comoro",
+      "Indian/Mayotte",
+      "Africa/Tunis",
+      "Africa/Algiers",
+      "Africa/Casablanca",
+      "Africa/Nouakchott",
+      "Africa/Conakry",
+    ];
+    if (frenchAfricaZones.includes(tz)) return "fr";
+  } catch {}
+
+  return "fr";
+}
+
 function PublicSwitch() {
   return (
     <Layout>
@@ -140,7 +193,8 @@ function Router() {
     );
   }
 
-  return <Redirect to={`/fr${location === "/" ? "" : location}`} />;
+  const lang = detectLang();
+  return <Redirect to={`/${lang}${location === "/" ? "" : location}`} />;
 }
 
 function App() {
