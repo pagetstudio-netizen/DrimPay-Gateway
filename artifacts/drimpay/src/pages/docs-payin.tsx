@@ -3,7 +3,8 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowDownLeft, ArrowUpRight, ChevronRight, Copy, Check, BookOpen, Shield, Globe,
-  Zap, Webhook, Code, Terminal, AlertTriangle, CheckCircle2, Clock, XCircle, AlertCircle
+  Zap, Webhook, Code, Terminal, AlertTriangle, CheckCircle2, Clock, XCircle, AlertCircle,
+  Menu, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,7 @@ function ParamRow({ name, type, required, desc }: { name: string; type: string; 
 export default function DocsPayin() {
   const [active, setActive] = useState("introduction");
   const [langTab, setLangTab] = useState("curl");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const scroll = (id: string) => {
     setActive(id);
@@ -154,7 +156,14 @@ print(data["reference"])`,
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-border bg-background/90 backdrop-blur-md flex items-center px-6 gap-4">
+      <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-border bg-background/90 backdrop-blur-md flex items-center px-4 md:px-6 gap-3">
+        <button
+          className="lg:hidden text-muted-foreground hover:text-foreground transition-colors p-1"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open navigation"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <Link href="/">
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-7 h-7 rounded-sm bg-primary flex items-center justify-center">
@@ -163,7 +172,7 @@ print(data["reference"])`,
             <span className="font-bold text-lg tracking-tight">DrimPay</span>
           </div>
         </Link>
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
           <ChevronRight className="w-4 h-4" />
           <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             <ArrowDownLeft className="w-4 h-4 text-primary" /> Pay-in API
@@ -171,7 +180,7 @@ print(data["reference"])`,
         </div>
         <div className="flex-1" />
         <Link href="/docs/payout">
-          <span className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pay-out Docs →</span>
+          <span className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">Pay-out Docs →</span>
         </Link>
         <Link href="/signup">
           <button className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-primary/90 transition-colors">
@@ -179,6 +188,49 @@ print(data["reference"])`,
           </button>
         </Link>
       </header>
+
+      {/* Mobile nav drawer */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-[60] lg:hidden">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileNavOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-sm bg-primary flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm leading-none">D</span>
+                </div>
+                <span className="font-bold tracking-tight">Pay-in API</span>
+              </div>
+              <button onClick={() => setMobileNavOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-0.5">
+              {groups.map(g => (
+                <div key={g} className="mb-4">
+                  <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest px-3 mb-2">{g}</p>
+                  {SECTIONS.filter(s => s.group === g).map(s => (
+                    <button key={s.id} onClick={() => { scroll(s.id); setMobileNavOpen(false); }}
+                      className={cn("w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                        active === s.id ? "bg-primary/10 text-primary border border-primary/20" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                      )}>
+                      {active === s.id && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </nav>
+            <div className="px-4 py-4 border-t border-border">
+              <Link href="/docs/payout" onClick={() => setMobileNavOpen(false)}>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all">
+                  <ArrowUpRight className="w-4 h-4" /> Pay-out Docs
+                </div>
+              </Link>
+            </div>
+          </aside>
+        </div>
+      )}
 
       <div className="flex pt-14 flex-1">
         <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card/30 fixed top-14 bottom-0 overflow-y-auto">
