@@ -11,6 +11,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { getClapayClient, isClapayConfigured, ClapayError } from "../lib/clapay";
+import { getPayDunyaClient, isPayDunyaConfigured, PayDunyaError } from "../lib/paydunya";
 
 const router = Router();
 
@@ -296,99 +297,119 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
     })
     .returning();
 
-  // ── LIVE mode: route through Clapay ──────────────────────────────────────
+  // ── LIVE mode: route through the configured aggregator (Clapay or PayDunya) ─
   if (mode === "live") {
-    if (!isClapayConfigured()) {
-      // Clapay not yet configured — mark transaction as failed immediately
+    // Aggregator priority: env var ACTIVE_AGGREGATOR → clapay → paydunya → error
+    // Admin can override by setting ACTIVE_AGGREGATOR=clapay|paydunya
+    const preferred = (process.env.ACTIVE_AGGREGATOR ?? "").toLowerCase();
+    const useClapay   = preferred === "clapay"   || (preferred !== "paydunya" && isClapayConfigured());
+    const usePayDunya = preferred === "paydunya" || (!useClapay && isPayDunyaConfigured());
+
+    if (!useClapay && !usePayDunya) {
       await db
         .update(transactionsTable)
-        .set({ status: "failed", failureReason: "Aggregateur Clapay non configuré (clés API manquantes)", updatedAt: new Date() })
+        .set({ status: "failed", failureReason: "Aucun agrégateur configuré (Clapay / PayDunya)", updatedAt: new Date() })
         .where(eq(transactionsTable.id, tx.id));
-
       res.status(503).json({
         error: "AGGREGATOR_NOT_CONFIGURED",
-        message: "L'agrégateur Clapay n'est pas encore configuré. Contactez votre administrateur.",
+        message: "Aucun agrégateur de paiement n'est encore configuré. Contactez votre administrateur.",
       });
       return;
     }
 
-    try {
-      const clapay = getClapayClient();
-      const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : "https://api.drimpay.com";
+    const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "https://api.drimpay.com";
 
-      const clapayRes = await clapay.initiatePayin({
-        amount,
-        currency,
-        country_code,
-        operator,
-        phone,
-        reference,
-        order_id,
-        callback_url: `${baseCallbackUrl}/api/webhooks/clapay`,
-        description,
-      });
+    // ── Via Clapay ────────────────────────────────────────────────────────
+    if (useClapay) {
+      try {
+        const clapay = getClapayClient();
+        const clapayRes = await clapay.initiatePayin({
+          amount, currency, country_code, operator, phone, reference, order_id,
+          callback_url: `${baseCallbackUrl}/api/webhooks/clapay`,
+          description,
+        });
 
-      if (!clapayRes.success) {
-        await db
-          .update(transactionsTable)
-          .set({ status: "failed", failureReason: clapayRes.message ?? "Échec Clapay", updatedAt: new Date() })
+        if (!clapayRes.success) {
+          await db.update(transactionsTable)
+            .set({ status: "failed", failureReason: clapayRes.message ?? "Échec Clapay", updatedAt: new Date() })
+            .where(eq(transactionsTable.id, tx.id));
+          res.status(502).json({ error: "GATEWAY_ERROR", message: clapayRes.message ?? "Erreur Clapay", reference });
+          return;
+        }
+
+        await db.update(transactionsTable)
+          .set({ status: "processing", externalRef: clapayRes.clapay_reference, updatedAt: new Date() })
           .where(eq(transactionsTable.id, tx.id));
 
-        res.status(502).json({
-          error: "GATEWAY_ERROR",
-          message: clapayRes.message ?? "Erreur de l'agrégateur Clapay",
-          reference,
+        res.status(201).json({
+          reference, order_id, status: "processing",
+          amount, fee, net_amount: netAmount, currency, country_code, operator, phone, mode,
+          expires_at: expiresAt.toISOString(),
+          webhook_url: webhook_url ?? null,
+          payment_url: clapayRes.payment_url ?? null,
+          ussd_code: clapayRes.ussd_code ?? null,
+          message: "Prompt de paiement envoyé au téléphone du client",
+          gateway: "clapay",
+          clapay_reference: clapayRes.clapay_reference,
+          created_at: tx.createdAt.toISOString(),
         });
         return;
+
+      } catch (err: any) {
+        const message = err instanceof ClapayError ? `Clapay: ${err.message}` : `Erreur interne: ${err.message}`;
+        await db.update(transactionsTable)
+          .set({ status: "failed", failureReason: message, updatedAt: new Date() })
+          .where(eq(transactionsTable.id, tx.id));
+        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+        return;
       }
+    }
 
-      // Store Clapay's reference for status polling / webhook matching
-      await db
-        .update(transactionsTable)
-        .set({
-          status: "processing",
-          externalRef: clapayRes.clapay_reference,
-          updatedAt: new Date(),
-        })
-        .where(eq(transactionsTable.id, tx.id));
+    // ── Via PayDunya ──────────────────────────────────────────────────────
+    if (usePayDunya) {
+      try {
+        const paydunya = getPayDunyaClient();
+        const pdRes = await paydunya.initiatePayin({
+          amount, currency, country_code, operator, phone, reference, order_id,
+          callback_url: `${baseCallbackUrl}/api/webhooks/paydunya`,
+          description,
+        });
 
-      res.status(201).json({
-        reference,
-        order_id,
-        status: "processing",
-        amount,
-        fee,
-        net_amount: netAmount,
-        currency,
-        country_code,
-        operator,
-        phone,
-        mode,
-        expires_at: expiresAt.toISOString(),
-        webhook_url: webhook_url ?? null,
-        payment_url: clapayRes.payment_url ?? null,
-        ussd_code: clapayRes.ussd_code ?? null,
-        message: "Prompt de paiement envoyé au téléphone du client",
-        gateway: "clapay",
-        clapay_reference: clapayRes.clapay_reference,
-        created_at: tx.createdAt.toISOString(),
-      });
-      return;
+        if (!pdRes.success) {
+          await db.update(transactionsTable)
+            .set({ status: "failed", failureReason: pdRes.message ?? "Échec PayDunya", updatedAt: new Date() })
+            .where(eq(transactionsTable.id, tx.id));
+          res.status(502).json({ error: "GATEWAY_ERROR", message: pdRes.message ?? "Erreur PayDunya", reference });
+          return;
+        }
 
-    } catch (err: any) {
-      const message = err instanceof ClapayError
-        ? `Clapay: ${err.message}`
-        : `Erreur interne: ${err.message}`;
+        await db.update(transactionsTable)
+          .set({ status: "processing", externalRef: pdRes.paydunya_reference, updatedAt: new Date() })
+          .where(eq(transactionsTable.id, tx.id));
 
-      await db
-        .update(transactionsTable)
-        .set({ status: "failed", failureReason: message, updatedAt: new Date() })
-        .where(eq(transactionsTable.id, tx.id));
+        res.status(201).json({
+          reference, order_id, status: "processing",
+          amount, fee, net_amount: netAmount, currency, country_code, operator, phone, mode,
+          expires_at: expiresAt.toISOString(),
+          webhook_url: webhook_url ?? null,
+          payment_url: pdRes.payment_url ?? null,
+          message: "Prompt de paiement envoyé au téléphone du client",
+          gateway: "paydunya",
+          paydunya_reference: pdRes.paydunya_reference,
+          created_at: tx.createdAt.toISOString(),
+        });
+        return;
 
-      res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
-      return;
+      } catch (err: any) {
+        const message = err instanceof PayDunyaError ? `PayDunya: ${err.message}` : `Erreur interne: ${err.message}`;
+        await db.update(transactionsTable)
+          .set({ status: "failed", failureReason: message, updatedAt: new Date() })
+          .where(eq(transactionsTable.id, tx.id));
+        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+        return;
+      }
     }
   }
 

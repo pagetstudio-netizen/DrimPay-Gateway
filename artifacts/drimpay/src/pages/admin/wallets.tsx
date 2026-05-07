@@ -146,7 +146,7 @@ export default function AdminWallets() {
     setLoading(true);
     const r = await fetch("/api/admin/wallets", { credentials: "include" });
     const d = await r.json();
-    setCountries(d);
+    setCountries(Array.isArray(d) ? d : []);
     setLoading(false);
   };
 
