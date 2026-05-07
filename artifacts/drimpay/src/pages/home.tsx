@@ -208,19 +208,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── OPERATOR LOGOS ───────────────────────────────────────────── */}
-      <section className="py-10 bg-white border-b border-[#E5E3DC]">
-        <div className="max-w-5xl mx-auto px-6 md:px-10 flex flex-col items-center gap-4">
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Opérateurs connectés</p>
-          <div className="flex items-center gap-4 flex-wrap justify-center">
-            {["🟠 Orange Money", "🌊 Wave", "📱 MTN", "✈️ Airtel Money", "💙 Moov"].map((op, i) => (
-              <span key={i} className="text-sm font-bold text-[#0f0f0f]/60 bg-[#F5F0E8] px-4 py-2 rounded-full border border-[#E5E3DC]">
-                {op}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── BETTER WAY ───────────────────────────────────────────────── */}
       <section className="py-24 bg-[#F5F0E8]">
@@ -314,38 +301,29 @@ export default function Home() {
       <section className="py-24 bg-[#F5F0E8]">
         <div className="max-w-6xl mx-auto px-6 md:px-10">
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col" style={{ background: "#EDE8DF" }}>
-              {/* Concentric circles + lock icon — Arc style */}
-              <div className="relative flex items-center justify-center overflow-hidden" style={{ minHeight: "260px", background: "#EDE8DF" }}>
-                {/* Concentric rings */}
-                {[220, 165, 115, 75].map((size, i) => (
-                  <div
-                    key={i}
-                    className="absolute rounded-full border border-[#0f0f0f]/10"
-                    style={{ width: size, height: size }}
-                  />
-                ))}
-                {/* Lock PNG — has its own white circle built-in */}
+            <div className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col" style={{ background: "#F8F6F1" }}>
+              {/* Operators hub image */}
+              <div className="relative flex items-center justify-center overflow-hidden px-4 pt-6 pb-2" style={{ minHeight: "280px", background: "#F8F6F1" }}>
                 <img
-                  src="/security-lock.png"
-                  alt="Sécurité DrimPay"
-                  className="relative z-10 object-contain drop-shadow-lg"
-                  style={{ width: 110, height: 110 }}
+                  src="/operators-hub.png"
+                  alt="DrimPay Opérateurs"
+                  className="w-full object-contain"
+                  style={{ maxWidth: "380px", maxHeight: "270px" }}
                 />
               </div>
               {/* Text content */}
-              <div className="p-8 flex flex-col flex-1" style={{ background: "#EDE8DF" }}>
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#0f0f0f]/8 text-[#0f0f0f]/60 text-xs font-semibold mb-4 w-fit">
-                  Sécurité / Conformité
+              <div className="p-8 flex flex-col flex-1" style={{ background: "#F8F6F1" }}>
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#B5F03C]/30 text-[#3a7a00] text-xs font-semibold mb-4 w-fit">
+                  Réseau d'opérateurs
                 </div>
-                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Une sécurité de niveau bancaire</h3>
+                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Connecté à tous les opérateurs</h3>
                 <p className="text-sm text-[#0f0f0f]/60 leading-relaxed mb-6 flex-1">
-                  Chiffrement de bout en bout, conformité PCI-DSS, KYB automatisé et contrôles d'accès granulaires pour protéger vos transactions.
+                  Wave, Orange Money, MTN MoMo, Moov Money, Wizall, TMoney, Vodacom et Airtel — une seule intégration pour les atteindre tous.
                 </p>
-                <Link href="/security">
-                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0f0f0f] hover:opacity-60 transition-opacity cursor-pointer">
-                    En savoir plus <ArrowRight className="w-4 h-4" />
-                  </span>
+                <Link href="/signup">
+                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
+                    Commencer maintenant <ArrowRight className="w-4 h-4" />
+                  </button>
                 </Link>
               </div>
             </div>
