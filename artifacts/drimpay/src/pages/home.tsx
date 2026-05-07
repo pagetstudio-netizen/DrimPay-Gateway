@@ -355,26 +355,38 @@ export default function Home() {
       <section className="py-24 bg-[#F5F0E8]">
         <div className="max-w-6xl mx-auto px-6 md:px-10">
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-[#F8F6F1] rounded-3xl border border-[#e5e3dc] overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
-              {/* Features image — concentric circles + lime pills */}
-              <div className="flex items-center justify-center bg-[#F8F6F1] overflow-hidden" style={{ minHeight: "240px" }}>
+            <div className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col" style={{ background: "#EDE8DF" }}>
+              {/* Concentric circles + lock icon — Arc style */}
+              <div className="relative flex items-center justify-center overflow-hidden" style={{ minHeight: "260px", background: "#EDE8DF" }}>
+                {/* Concentric rings */}
+                {[220, 165, 115, 75].map((size, i) => (
+                  <div
+                    key={i}
+                    className="absolute rounded-full border border-[#0f0f0f]/10"
+                    style={{ width: size, height: size }}
+                  />
+                ))}
+                {/* Lock PNG — has its own white circle built-in */}
                 <img
-                  src="/drimpay-features.png"
-                  alt="Fonctionnalités DrimPay"
-                  className="w-full object-contain"
-                  style={{ maxHeight: "240px" }}
+                  src="/security-lock.png"
+                  alt="Sécurité DrimPay"
+                  className="relative z-10 object-contain drop-shadow-lg"
+                  style={{ width: 110, height: 110 }}
                 />
               </div>
               {/* Text content */}
-              <div className="p-8 flex flex-col flex-1">
-                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Tout ce dont vous avez besoin</h3>
-                <p className="text-sm text-[#0f0f0f]/55 leading-relaxed mb-6 flex-1">
-                  API de paiement, Mass Payments, Payment Link et Virtual Card — une seule plateforme pour tous vos besoins financiers.
+              <div className="p-8 flex flex-col flex-1" style={{ background: "#EDE8DF" }}>
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#0f0f0f]/8 text-[#0f0f0f]/60 text-xs font-semibold mb-4 w-fit">
+                  Sécurité / Conformité
+                </div>
+                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Une sécurité de niveau bancaire</h3>
+                <p className="text-sm text-[#0f0f0f]/60 leading-relaxed mb-6 flex-1">
+                  Chiffrement de bout en bout, conformité PCI-DSS, KYB automatisé et contrôles d'accès granulaires pour protéger vos transactions.
                 </p>
-                <Link href="/signup">
-                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
-                    Démarrer gratuitement <ArrowRight className="w-4 h-4" />
-                  </button>
+                <Link href="/security">
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0f0f0f] hover:opacity-60 transition-opacity cursor-pointer">
+                    En savoir plus <ArrowRight className="w-4 h-4" />
+                  </span>
                 </Link>
               </div>
             </div>
