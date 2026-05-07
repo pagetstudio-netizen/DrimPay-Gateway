@@ -50,6 +50,20 @@ import DashboardPaymentLinks from "@/pages/dashboard/payment-links";
 import DashboardMassPayout from "@/pages/dashboard/mass-payout";
 import PayPage from "@/pages/pay";
 
+import AdminDashboard from "@/pages/admin/index";
+import AdminMerchants from "@/pages/admin/merchants";
+import AdminKyb from "@/pages/admin/kyb";
+import AdminTransactions from "@/pages/admin/transactions";
+import AdminWallets from "@/pages/admin/wallets";
+import AdminAggregators from "@/pages/admin/aggregators";
+import AdminOperators from "@/pages/admin/operators";
+import AdminApiKeys from "@/pages/admin/api-keys";
+import AdminPaymentLinks from "@/pages/admin/payment-links";
+import AdminKybContracts from "@/pages/admin/kyb-contracts";
+import AdminLogs from "@/pages/admin/logs";
+import AdminNotifications from "@/pages/admin/notifications";
+import AdminSettings from "@/pages/admin/settings";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -61,6 +75,10 @@ const queryClient = new QueryClient({
 
 function isDashboardPath(path: string) {
   return path.startsWith("/dashboard");
+}
+
+function isAdminPath(path: string) {
+  return path.startsWith("/admin");
 }
 
 function Redirect({ to }: { to: string }) {
@@ -161,6 +179,47 @@ function PublicSwitch() {
   );
 }
 
+function AdminSwitch() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="w-8 h-8 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    window.location.replace("/fr/login");
+    return null;
+  }
+
+  if (user.role !== "admin") {
+    window.location.replace("/dashboard");
+    return null;
+  }
+
+  return (
+    <Switch>
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/merchants" component={AdminMerchants} />
+      <Route path="/admin/kyb" component={AdminKyb} />
+      <Route path="/admin/transactions" component={AdminTransactions} />
+      <Route path="/admin/wallets" component={AdminWallets} />
+      <Route path="/admin/aggregators" component={AdminAggregators} />
+      <Route path="/admin/operators" component={AdminOperators} />
+      <Route path="/admin/api-keys" component={AdminApiKeys} />
+      <Route path="/admin/payment-links" component={AdminPaymentLinks} />
+      <Route path="/admin/kyb-contracts" component={AdminKybContracts} />
+      <Route path="/admin/logs" component={AdminLogs} />
+      <Route path="/admin/notifications" component={AdminNotifications} />
+      <Route path="/admin/settings" component={AdminSettings} />
+      <Route component={AdminDashboard} />
+    </Switch>
+  );
+}
+
 function DashboardSwitch() {
   const { user, loading } = useAuth();
   const [location] = useLocation();
@@ -203,10 +262,19 @@ function DashboardSwitch() {
 function Router() {
   const [location] = useLocation();
 
-  // Strip language prefix from dashboard paths (e.g. /fr/dashboard → /dashboard)
+  // Strip language prefix from dashboard or admin paths
   const langDashboardMatch = location.match(/^\/(fr|en)(\/dashboard.*)/);
   if (langDashboardMatch) {
     return <Redirect to={langDashboardMatch[2]} />;
+  }
+
+  const langAdminMatch = location.match(/^\/(fr|en)(\/admin.*)/);
+  if (langAdminMatch) {
+    return <Redirect to={langAdminMatch[2]} />;
+  }
+
+  if (isAdminPath(location)) {
+    return <AdminSwitch />;
   }
 
   if (isDashboardPath(location)) {

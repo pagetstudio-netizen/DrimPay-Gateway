@@ -52,7 +52,9 @@ export default function Login() {
       setStatus("idle");
       return;
     }
-    window.location.assign("/dashboard");
+    const meRes = await fetch("/api/auth/me", { credentials: "include" });
+    const me = await meRes.json();
+    window.location.assign(me?.role === "admin" ? "/admin" : "/dashboard");
   };
 
   return (

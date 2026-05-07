@@ -295,6 +295,51 @@ export const paymentLinksTable = pgTable("payment_links", {
 
 export type PaymentLink = typeof paymentLinksTable.$inferSelect;
 
+export const aggregatorsTable = pgTable("aggregators", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const operatorAggregatorsTable = pgTable("operator_aggregators", {
+  id: serial("id").primaryKey(),
+  countryCode: text("country_code").notNull(),
+  operatorName: text("operator_name").notNull(),
+  operatorType: text("operator_type").notNull().default("mobile-money"),
+  aggregatorCode: text("aggregator_code").notNull(),
+  dailyLimit: numeric("daily_limit", { precision: 18, scale: 2 }).notNull().default("1000000"),
+  active: boolean("active").notNull().default(true),
+  priority: integer("priority").notNull().default(1),
+  blockDeposits: boolean("block_deposits").notNull().default(false),
+  blockWithdrawals: boolean("block_withdrawals").notNull().default(false),
+  blockApi: boolean("block_api").notNull().default(false),
+  blockPaymentLinks: boolean("block_payment_links").notNull().default(false),
+  maintenanceMode: boolean("maintenance_mode").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const adminLogsTable = pgTable("admin_logs", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").notNull().references(() => usersTable.id),
+  action: text("action").notNull(),
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const adminSettingsTable = pgTable("admin_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertBlogArticleSchema = createInsertSchema(blogArticlesTable).omit({ id: true });
 export const insertJobSchema = createInsertSchema(jobsTable).omit({ id: true });
 export const insertContactSchema = createInsertSchema(contactSubmissionsTable).omit({ id: true });
