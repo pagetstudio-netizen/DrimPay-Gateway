@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, Search, RefreshCw, Eye, Edit2, Trash2, KeyRound,
-  ShieldCheck, ShieldX, UserCheck, UserX, ChevronLeft, ChevronRight, X, Check,
-  MoreVertical, Download, Wallet,
+  Users, Search, RefreshCw, Edit2, Trash2, KeyRound,
+  ShieldCheck, UserX, ChevronLeft, ChevronRight, X, Check,
+  Download, Wallet, ShieldOff, AlertTriangle,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
@@ -120,6 +120,80 @@ function WalletModal({ merchant, onClose }: { merchant: any; onClose: () => void
   );
 }
 
+function PromoteModal({ merchant, onClose, onDone }: { merchant: any; onClose: () => void; onDone: () => void }) {
+  const isAdmin = merchant.role === "admin";
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const confirm = async () => {
+    setLoading(true);
+    await fetch(`/api/admin/merchants/${merchant.id}/role`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: isAdmin ? "user" : "admin" }),
+    });
+    setDone(true);
+    setLoading(false);
+    onDone();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900">
+            {isAdmin ? "Rétrograder en marchand" : "Promouvoir en administrateur"}
+          </h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200"><X className="w-4 h-4" /></button>
+        </div>
+
+        {done ? (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <Check className="w-8 h-8 text-green-600 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-green-800">
+              {isAdmin ? "Rétrogradé en marchand avec succès" : "Promu administrateur avec succès"}
+            </p>
+            <button onClick={onClose} className="mt-4 px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700">Fermer</button>
+          </div>
+        ) : (
+          <>
+            <div className={cn("rounded-xl p-4 mb-5 flex gap-3", isAdmin ? "bg-orange-50 border border-orange-200" : "bg-blue-50 border border-blue-200")}>
+              <AlertTriangle className={cn("w-5 h-5 shrink-0 mt-0.5", isAdmin ? "text-orange-500" : "text-blue-500")} />
+              <div>
+                <p className={cn("text-sm font-semibold", isAdmin ? "text-orange-800" : "text-blue-800")}>
+                  {isAdmin
+                    ? `Retirer les droits admin de ${merchant.companyName} ?`
+                    : `Donner les droits admin à ${merchant.companyName} ?`}
+                </p>
+                <p className={cn("text-xs mt-1", isAdmin ? "text-orange-600" : "text-blue-600")}>
+                  {isAdmin
+                    ? "Ce compte n'aura plus accès au panneau d'administration."
+                    : "Ce compte aura un accès complet au panneau d'administration, y compris la gestion des marchands, KYB, wallets et paramètres."}
+                </p>
+                <p className="text-xs text-gray-500 mt-2">Email : <strong>{merchant.email}</strong></p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Annuler</button>
+              <button
+                onClick={confirm}
+                disabled={loading}
+                className={cn(
+                  "flex-1 px-4 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50",
+                  isAdmin ? "bg-orange-600 hover:bg-orange-700" : "bg-blue-600 hover:bg-blue-700"
+                )}
+              >
+                {loading ? "En cours..." : isAdmin ? "Rétrograder" : "Promouvoir"}
+              </button>
+            </div>
+          </>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 function ResetPasswordModal({ merchant, onClose }: { merchant: any; onClose: () => void }) {
   const [newPwd, setNewPwd] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -171,6 +245,7 @@ export default function AdminMerchants() {
   const [editMerchant, setEditMerchant] = useState<any>(null);
   const [walletMerchant, setWalletMerchant] = useState<any>(null);
   const [resetMerchant, setResetMerchant] = useState<any>(null);
+  const [promoteMerchant, setPromoteMerchant] = useState<any>(null);
   const LIMIT = 20;
 
   const fetch_ = async (p = page, q = search) => {
@@ -262,6 +337,13 @@ export default function AdminMerchants() {
                           <button onClick={() => setEditMerchant(m)} title="Modifier" className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
                           <button onClick={() => setWalletMerchant(m)} title="Wallets" className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-500 transition-colors"><Wallet className="w-3.5 h-3.5" /></button>
                           <button onClick={() => setResetMerchant(m)} title="Reset mdp" className="p-1.5 rounded-lg hover:bg-yellow-50 text-yellow-500 transition-colors"><KeyRound className="w-3.5 h-3.5" /></button>
+                          <button
+                            onClick={() => setPromoteMerchant(m)}
+                            title={m.role === "admin" ? "Rétrograder" : "Promouvoir admin"}
+                            className={cn("p-1.5 rounded-lg transition-colors", m.role === "admin" ? "hover:bg-orange-50 text-orange-400" : "hover:bg-indigo-50 text-indigo-400")}
+                          >
+                            {m.role === "admin" ? <ShieldOff className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                          </button>
                           <button onClick={() => suspend(m)} title="Suspendre" className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-500 transition-colors"><UserX className="w-3.5 h-3.5" /></button>
                           <button onClick={() => deleteMerchant(m)} title="Supprimer" className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
@@ -286,6 +368,7 @@ export default function AdminMerchants() {
       {editMerchant && <EditModal merchant={editMerchant} onClose={() => setEditMerchant(null)} onSave={() => fetch_()} />}
       {walletMerchant && <WalletModal merchant={walletMerchant} onClose={() => setWalletMerchant(null)} />}
       {resetMerchant && <ResetPasswordModal merchant={resetMerchant} onClose={() => setResetMerchant(null)} />}
+      {promoteMerchant && <PromoteModal merchant={promoteMerchant} onClose={() => setPromoteMerchant(null)} onDone={() => fetch_()} />}
     </AdminLayout>
   );
 }

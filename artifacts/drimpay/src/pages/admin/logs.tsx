@@ -47,6 +47,8 @@ const ACTION_LABELS: Record<string, string> = {
   DELETE_OPERATOR: "Opérateur supprimé",
   DELETE_PAYMENT_LINK: "Lien de paiement supprimé",
   SUSPEND_PAYMENT_LINK: "Lien de paiement suspendu",
+  PROMOTE_ADMIN: "Promu administrateur",
+  DEMOTE_ADMIN: "Rétrogradé marchand",
 };
 
 export default function AdminLogs() {

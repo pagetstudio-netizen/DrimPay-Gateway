@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Layers, RefreshCw, Plus, Edit2, Trash2, X, Check, Toggle, Globe2,
+  Layers, RefreshCw, Plus, Edit2, Trash2, X, Check, Globe2,
   ChevronDown, ChevronRight, AlertTriangle, Shield,
 } from "lucide-react";
 import { AdminLayout } from "./layout";

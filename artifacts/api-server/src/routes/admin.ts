@@ -211,6 +211,19 @@ router.put("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
   res.json({ ok: true });
 });
 
+router.put("/admin/merchants/:id/role", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  if (id === req.session.userId) { res.status(400).json({ error: "Vous ne pouvez pas modifier votre propre rôle" }); return; }
+  const { role } = req.body;
+  if (!role || !["admin", "user"].includes(role)) { res.status(400).json({ error: "Rôle invalide" }); return; }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
+  await db.update(usersTable).set({ role }).where(eq(usersTable.id, id));
+  const action = role === "admin" ? "PROMOTE_ADMIN" : "DEMOTE_ADMIN";
+  await logAdminAction(req.session.userId, action, "user", String(id), `${user.email} → role: ${role}`, req.ip);
+  res.json({ ok: true, role });
+});
+
 router.post("/admin/merchants/:id/suspend", requireAdmin, async (req: any, res: any) => {
   res.json({ ok: true, message: "Compte suspendu (flag non implémenté en DB, logué)" });
   await logAdminAction(req.session.userId, "SUSPEND_MERCHANT", "user", req.params.id, undefined, req.ip);
