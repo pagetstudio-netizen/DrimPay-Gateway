@@ -343,6 +343,57 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── COMPLIANCE CARD ──────────────────────────────────────────── */}
+      <section className="py-24 bg-white">
+        <div className="max-w-6xl mx-auto px-6 md:px-10">
+          <div className="max-w-sm mx-auto md:mx-0">
+            <div
+              className="rounded-3xl overflow-hidden"
+              style={{ background: "#EDE9E1" }}
+            >
+              {/* Concentric circles + icon */}
+              <div className="relative flex items-center justify-center pt-8 pb-4 overflow-hidden" style={{ minHeight: 220 }}>
+                {/* Circles */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {[220, 175, 130, 88].map((size, i) => (
+                    <div
+                      key={i}
+                      className="absolute rounded-full border border-[#0f0f0f]/10"
+                      style={{ width: size, height: size }}
+                    />
+                  ))}
+                </div>
+                {/* Lock image — multiply removes black background */}
+                <img
+                  src="/security-badge.png"
+                  alt="Sécurité"
+                  className="relative z-10 object-contain"
+                  style={{ width: 160, height: 160, mixBlendMode: "multiply" }}
+                />
+              </div>
+
+              {/* Text */}
+              <div className="px-7 pb-8">
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#0f0f0f]/8 text-[#0f0f0f]/70 text-xs font-semibold mb-4">
+                  Conformité / KYB
+                </div>
+                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3 leading-tight">
+                  Simplifiez votre conformité réglementaire
+                </h3>
+                <p className="text-sm text-[#0f0f0f]/55 leading-relaxed mb-6">
+                  Respectez les exigences KYB avec des contrôles intégrés, des alertes automatisées et une mise en place simplifiée — sans friction pour vos équipes.
+                </p>
+                <Link href="/security">
+                  <button className="text-sm font-bold text-[#0f0f0f] hover:opacity-60 transition-opacity">
+                    En savoir plus
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── TICKER ───────────────────────────────────────────────────── */}
       <Ticker />
     </div>
