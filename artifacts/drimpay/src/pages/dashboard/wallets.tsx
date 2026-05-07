@@ -64,7 +64,7 @@ export default function Wallets() {
             title="Aucun wallet actif"
             description="Vos wallets seront créés automatiquement lors de votre premier pay-in dans chaque pays."
             action={
-              <Link href="/dashboard/payin">
+              <Link href="/dashboard/payments">
                 <span className="text-sm text-primary hover:underline cursor-pointer font-medium">Effectuer un pay-in →</span>
               </Link>
             }
@@ -116,7 +116,7 @@ export default function Wallets() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <Link href={`/dashboard/payin?country=${w.countryCode}`}>
+                    <Link href={`/dashboard/payments?country=${w.countryCode}`}>
                       <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors cursor-pointer text-xs font-medium">
                         <ArrowDownLeft className="w-3 h-3" />
                         Pay-in

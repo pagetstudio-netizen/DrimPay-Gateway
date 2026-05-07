@@ -163,7 +163,7 @@ export default function DashboardOverview() {
           <div className="lg:col-span-2 rounded-xl border border-border bg-card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="font-semibold text-sm">Transactions récentes</h2>
-              <Link href="/dashboard/payin">
+              <Link href="/dashboard/payments">
                 <span className="text-xs text-primary hover:underline cursor-pointer">Voir tout →</span>
               </Link>
             </div>
