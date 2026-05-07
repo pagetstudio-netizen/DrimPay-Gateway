@@ -498,7 +498,7 @@ export default function Kyb() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="max-w-5xl mx-auto space-y-4">
           {[1, 2, 3].map((i) => <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />)}
         </div>
       </DashboardLayout>
@@ -507,7 +507,7 @@ export default function Kyb() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Vérification KYB</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -884,7 +884,7 @@ export default function Kyb() {
                           Documents d'identité
                         </h3>
                         <p className="text-xs text-muted-foreground mb-5">Formats acceptés : PDF, JPG, PNG · Taille max : 10 Mo par document</p>
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {STEP2_DOCS.map((doc) => (
                             <FileUploadRow key={doc.key} doc={doc} isEditable={isEditable} file={uploadedFiles[doc.key]} onFileChange={setFile(doc.key)} />
                           ))}
@@ -922,7 +922,7 @@ export default function Kyb() {
 
                     <div className="mb-4">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Documents obligatoires</p>
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {STEP3_DOCS.filter(d => d.required).map((doc) => (
                           <FileUploadRow key={doc.key} doc={doc} isEditable={isEditable} file={uploadedFiles[doc.key]} onFileChange={setFile(doc.key)} />
                         ))}
@@ -931,7 +931,7 @@ export default function Kyb() {
 
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Documents optionnels</p>
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {STEP3_DOCS.filter(d => !d.required).map((doc) => (
                           <FileUploadRow key={doc.key} doc={doc} isEditable={isEditable} file={uploadedFiles[doc.key]} onFileChange={setFile(doc.key)} />
                         ))}
