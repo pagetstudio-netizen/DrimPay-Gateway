@@ -167,8 +167,7 @@ function DashboardSwitch() {
   }
 
   if (!user) {
-    const returnTo = encodeURIComponent(location);
-    window.location.replace(`/fr/login?next=${returnTo}`);
+    window.location.replace(`/fr/login`);
     return null;
   }
 
@@ -194,6 +193,12 @@ function DashboardSwitch() {
 
 function Router() {
   const [location] = useLocation();
+
+  // Strip language prefix from dashboard paths (e.g. /fr/dashboard → /dashboard)
+  const langDashboardMatch = location.match(/^\/(fr|en)(\/dashboard.*)/);
+  if (langDashboardMatch) {
+    return <Redirect to={langDashboardMatch[2]} />;
+  }
 
   if (isDashboardPath(location)) {
     return <DashboardSwitch />;
