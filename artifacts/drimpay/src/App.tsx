@@ -126,34 +126,38 @@ function detectLang(): Lang {
 
 function PublicSwitch() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/about" component={About} />
-        <Route path="/how-it-works" component={HowItWorks} />
-        <Route path="/pricing" component={Pricing} />
-        <Route path="/countries" component={Countries} />
-        <Route path="/security" component={Security} />
-        <Route path="/docs" component={Docs} />
-        <Route path="/businesses" component={Businesses} />
-        <Route path="/blog" component={Blog} />
-        <Route path="/blog/:slug" component={BlogPost} />
-        <Route path="/news" component={News} />
-        <Route path="/careers" component={Careers} />
-        <Route path="/careers/:id" component={CareerDetail} />
-        <Route path="/contact" component={Contact} />
-        <Route path="/partners" component={Partners} />
-        <Route path="/help" component={Help} />
-        <Route path="/terms" component={Terms} />
-        <Route path="/privacy" component={Privacy} />
-        <Route path="/dashboard-preview" component={DashboardPreview} />
-        <Route path="/docs/payin" component={DocsPayin} />
-        <Route path="/docs/payout" component={DocsPayout} />
-        <Route path="/login" component={Login} />
-        <Route path="/signup" component={Signup} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/about" component={About} />
+            <Route path="/how-it-works" component={HowItWorks} />
+            <Route path="/pricing" component={Pricing} />
+            <Route path="/countries" component={Countries} />
+            <Route path="/security" component={Security} />
+            <Route path="/docs" component={Docs} />
+            <Route path="/businesses" component={Businesses} />
+            <Route path="/blog" component={Blog} />
+            <Route path="/blog/:slug" component={BlogPost} />
+            <Route path="/news" component={News} />
+            <Route path="/careers" component={Careers} />
+            <Route path="/careers/:id" component={CareerDetail} />
+            <Route path="/contact" component={Contact} />
+            <Route path="/partners" component={Partners} />
+            <Route path="/help" component={Help} />
+            <Route path="/terms" component={Terms} />
+            <Route path="/privacy" component={Privacy} />
+            <Route path="/dashboard-preview" component={DashboardPreview} />
+            <Route path="/docs/payin" component={DocsPayin} />
+            <Route path="/docs/payout" component={DocsPayout} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
