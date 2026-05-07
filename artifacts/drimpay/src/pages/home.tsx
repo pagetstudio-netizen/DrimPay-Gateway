@@ -20,17 +20,17 @@ function DesktopMockup() {
           <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
           <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
         </div>
-        <div className="flex-1 mx-4 bg-white rounded-md px-3 py-1 text-xs text-gray-400 font-mono border border-[#E0DDD6] max-w-xs">
-          app.drimpay.io/dashboard
+        <div className="flex-1 mx-4 bg-white rounded-md px-3 py-1 text-xs text-gray-400 font-mono border border-[#E0DDD6] max-w-xs select-none">
+          drimpay.africa/dashboard
         </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[#27C93F]" />
           <span className="text-[10px] text-gray-400 font-medium">Live</span>
         </div>
       </div>
-      {/* Actual dashboard screenshot */}
+      {/* Dashboard screenshot */}
       <img
-        src="/dashboard-preview.jpg"
+        src="/dashboard-hero.jpg"
         alt="DrimPay Dashboard"
         className="w-full block"
         style={{ display: "block" }}
