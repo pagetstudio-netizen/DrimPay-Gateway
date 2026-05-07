@@ -331,29 +331,121 @@ router.put("/admin/merchants/:userId/wallets/:walletId", requireAdmin, async (re
 
 // ─── KYB ─────────────────────────────────────────────────────────────────────
 router.get("/admin/kyb", requireAdmin, async (req: any, res: any) => {
-  const { status, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const {
+    status, page = "1", limit = "20",
+    search = "", country = "", dateFrom = "", dateTo = "",
+    sortBy = "createdAt", sortDir = "desc",
+  } = req.query as Record<string, string>;
+
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
   const offset = (pageNum - 1) * limitNum;
 
   const conditions: any[] = [];
-  if (status && status !== "all") conditions.push(eq(kybSubmissionsTable.status, status as any));
 
-  const submissions = await db.select().from(kybSubmissionsTable)
-    .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(kybSubmissionsTable.createdAt))
-    .limit(limitNum).offset(offset);
+  if (status && status !== "all") {
+    conditions.push(eq(kybSubmissionsTable.status, status as any));
+  }
+  if (country) {
+    conditions.push(sql`lower(${kybSubmissionsTable.incorporationCountry}) = lower(${country})`);
+  }
+  if (dateFrom) {
+    conditions.push(gte(kybSubmissionsTable.createdAt, new Date(dateFrom)));
+  }
+  if (dateTo) {
+    const to = new Date(dateTo);
+    to.setHours(23, 59, 59, 999);
+    conditions.push(lt(kybSubmissionsTable.createdAt, to));
+  }
+  if (search.trim()) {
+    const q = `%${search.trim().toLowerCase()}%`;
+    conditions.push(sql`(
+      lower(${usersTable.email}) LIKE ${q}
+      OR lower(${usersTable.company_name}) LIKE ${q}
+      OR lower(coalesce(${kybSubmissionsTable.companyLegalName}, '')) LIKE ${q}
+      OR lower(coalesce(${kybSubmissionsTable.tradeName}, '')) LIKE ${q}
+      OR lower(coalesce(${kybSubmissionsTable.legalRepName}, '')) LIKE ${q}
+    )`);
+  }
 
-  const [{ total }] = await db.select({ total: count() }).from(kybSubmissionsTable)
-    .where(conditions.length ? and(...conditions) : undefined);
+  const whereClause = conditions.length ? and(...conditions) : undefined;
 
-  const enriched = await Promise.all(submissions.map(async (k) => {
-    const [user] = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName })
-      .from(usersTable).where(eq(usersTable.id, k.userId));
-    return { ...k, user };
+  const orderCol = sortBy === "submittedAt" ? kybSubmissionsTable.submittedAt
+    : sortBy === "status" ? kybSubmissionsTable.status
+    : kybSubmissionsTable.createdAt;
+  const orderFn = sortDir === "asc" ? asc(orderCol) : desc(orderCol);
+
+  const [submissions, [{ total }], countries] = await Promise.all([
+    db.select({
+      id: kybSubmissionsTable.id,
+      userId: kybSubmissionsTable.userId,
+      status: kybSubmissionsTable.status,
+      companyLegalName: kybSubmissionsTable.companyLegalName,
+      tradeName: kybSubmissionsTable.tradeName,
+      incorporationCountry: kybSubmissionsTable.incorporationCountry,
+      city: kybSubmissionsTable.city,
+      businessType: kybSubmissionsTable.businessType,
+      website: kybSubmissionsTable.website,
+      registrationNumber: kybSubmissionsTable.registrationNumber,
+      taxNumber: kybSubmissionsTable.taxNumber,
+      businessAddress: kybSubmissionsTable.businessAddress,
+      businessDescription: kybSubmissionsTable.businessDescription,
+      foundingDate: kybSubmissionsTable.foundingDate,
+      legalRepName: kybSubmissionsTable.legalRepName,
+      legalRepDob: kybSubmissionsTable.legalRepDob,
+      legalRepNationality: kybSubmissionsTable.legalRepNationality,
+      legalRepPhone: kybSubmissionsTable.legalRepPhone,
+      legalRepEmail: kybSubmissionsTable.legalRepEmail,
+      legalRepPosition: kybSubmissionsTable.legalRepPosition,
+      legalRepIdType: kybSubmissionsTable.legalRepIdType,
+      legalRepIdNumber: kybSubmissionsTable.legalRepIdNumber,
+      legalRepIdExpiry: kybSubmissionsTable.legalRepIdExpiry,
+      documentIdFront: kybSubmissionsTable.documentIdFront,
+      documentIdBack: kybSubmissionsTable.documentIdBack,
+      documentSelfie: kybSubmissionsTable.documentSelfie,
+      documentRccm: kybSubmissionsTable.documentRccm,
+      documentCertificate: kybSubmissionsTable.documentCertificate,
+      documentProofAddress: kybSubmissionsTable.documentProofAddress,
+      documentBankStatement: kybSubmissionsTable.documentBankStatement,
+      documentStatuts: kybSubmissionsTable.documentStatuts,
+      documentLicense: kybSubmissionsTable.documentLicense,
+      documentId: kybSubmissionsTable.documentId,
+      contractEmail: kybSubmissionsTable.contractEmail,
+      contractVersion: kybSubmissionsTable.contractVersion,
+      contractSignedAt: kybSubmissionsTable.contractSignedAt,
+      contractIp: kybSubmissionsTable.contractIp,
+      contractAccepted: kybSubmissionsTable.contractAccepted,
+      rejectionReason: kybSubmissionsTable.rejectionReason,
+      submittedAt: kybSubmissionsTable.submittedAt,
+      reviewedAt: kybSubmissionsTable.reviewedAt,
+      createdAt: kybSubmissionsTable.createdAt,
+      userEmail: usersTable.email,
+      userCompanyName: usersTable.companyName,
+    })
+    .from(kybSubmissionsTable)
+    .innerJoin(usersTable, eq(kybSubmissionsTable.userId, usersTable.id))
+    .where(whereClause)
+    .orderBy(orderFn)
+    .limit(limitNum).offset(offset),
+
+    db.select({ total: count() })
+      .from(kybSubmissionsTable)
+      .innerJoin(usersTable, eq(kybSubmissionsTable.userId, usersTable.id))
+      .where(whereClause),
+
+    db.selectDistinct({ country: kybSubmissionsTable.incorporationCountry })
+      .from(kybSubmissionsTable)
+      .where(sql`${kybSubmissionsTable.incorporationCountry} IS NOT NULL AND ${kybSubmissionsTable.incorporationCountry} != ''`),
+  ]);
+
+  const enriched = submissions.map(s => ({
+    ...s,
+    user: { id: s.userId, email: s.userEmail, companyName: s.userCompanyName },
   }));
 
-  res.json({ kyb: enriched, total: Number(total), page: pageNum, limit: limitNum });
+  const availableCountries = countries.map(c => c.country).filter(Boolean).sort();
+
+  res.json({ kyb: enriched, total: Number(total), page: pageNum, limit: limitNum, availableCountries });
 });
 
 router.put("/admin/kyb/:id/approve", requireAdmin, async (req: any, res: any) => {
