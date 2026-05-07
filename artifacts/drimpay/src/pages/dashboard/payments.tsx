@@ -10,6 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+
+function EmptyStateTd() {
+  return (
+    <EmptyState
+      title="Aucune transaction trouvée"
+      description="Vos transactions apparaîtront ici une fois que votre API traitera des paiements."
+    />
+  );
+}
 
 type Tx = {
   id: number;
@@ -386,10 +396,8 @@ export default function DashboardPayments() {
                   ))
                 ) : txs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-16 text-center text-muted-foreground">
-                      <Search className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                      <p className="font-medium">No transactions found</p>
-                      <p className="text-xs mt-1">Transactions will appear here once your API processes payments.</p>
+                    <td colSpan={7}>
+                      <EmptyStateTd />
                     </td>
                   </tr>
                 ) : (

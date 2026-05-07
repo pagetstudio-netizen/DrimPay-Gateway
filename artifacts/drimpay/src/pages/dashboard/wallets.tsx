@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, Info } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { Link } from "wouter";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const COUNTRY_MAP: Record<string, { name: string; flag: string; currency: string; operators: string[] }> = {
   TG: { name: "Togo", flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Togo", "Flooz"] },
@@ -57,16 +58,15 @@ export default function Wallets() {
             {[1, 2, 3].map((i) => <div key={i} className="h-48 bg-muted rounded-xl animate-pulse" />)}
           </div>
         ) : !wallets.length ? (
-          <div className="text-center py-20">
-            <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-semibold mb-2">Aucun wallet actif</h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              Vos wallets seront créés automatiquement lors de votre premier pay-in dans chaque pays.
-            </p>
-            <Link href="/dashboard/payin">
-              <span className="text-sm text-primary hover:underline cursor-pointer">Effectuer un pay-in →</span>
-            </Link>
-          </div>
+          <EmptyState
+            title="Aucun wallet actif"
+            description="Vos wallets seront créés automatiquement lors de votre premier pay-in dans chaque pays."
+            action={
+              <Link href="/dashboard/payin">
+                <span className="text-sm text-primary hover:underline cursor-pointer font-medium">Effectuer un pay-in →</span>
+              </Link>
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {wallets.map((w: any, i: number) => {

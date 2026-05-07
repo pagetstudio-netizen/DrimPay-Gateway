@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Banknote, CheckCircle2, Clock, XCircle, AlertTriangle, ChevronDown } from "lucide-react";
 import { DashboardLayout } from "./layout";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -269,10 +270,10 @@ export default function DashboardReversement() {
                   ))}
                 </div>
               ) : history.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground">
-                  <Banknote className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Aucun reversement effectué</p>
-                </div>
+                <EmptyState
+                  title="Aucun reversement effectué"
+                  description="Vos demandes de reversement apparaîtront ici une fois soumises."
+                />
               ) : (
                 <div className="space-y-3">
                   {history.map((r) => {
