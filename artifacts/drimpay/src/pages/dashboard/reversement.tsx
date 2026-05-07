@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Banknote, CheckCircle2, Clock, XCircle, AlertTriangle, ChevronDown } from "lucide-react";
+import { Banknote, CheckCircle2, Clock, XCircle, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useForm } from "react-hook-form";
@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CountryPicker } from "@/components/ui/country-picker";
 
 const COUNTRIES = [
   { code: "TG", name: "Togo", flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Togo", "Flooz"] },
@@ -139,23 +139,22 @@ export default function DashboardReversement() {
                   <FormField control={form.control} name="countryCode" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Wallet source (pays)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner le wallet à débiter" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {COUNTRIES.map((c) => {
+                      <FormControl>
+                        <CountryPicker
+                          options={COUNTRIES.map((c) => {
                             const w = wallets.find((w) => w.countryCode === c.code);
-                            return (
-                              <SelectItem key={c.code} value={c.code}>
-                                {c.flag} {c.name} {w ? `— Solde : ${w.balance.toLocaleString()} ${w.currency}` : ""}
-                              </SelectItem>
-                            );
+                            return {
+                              code: c.code,
+                              name: c.name,
+                              flag: c.flag,
+                              subtitle: w ? `Solde : ${w.balance.toLocaleString()} ${w.currency}` : "Aucun wallet",
+                            };
                           })}
-                        </SelectContent>
-                      </Select>
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Sélectionner le wallet à débiter"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

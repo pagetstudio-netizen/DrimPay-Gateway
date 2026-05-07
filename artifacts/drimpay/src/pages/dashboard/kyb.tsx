@@ -10,6 +10,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CountryPicker } from "@/components/ui/country-picker";
+
+const KYB_COUNTRY_OPTIONS = [
+  { code: "Togo",           name: "Togo",           flag: "🇹🇬" },
+  { code: "Bénin",          name: "Bénin",           flag: "🇧🇯" },
+  { code: "Cameroun",       name: "Cameroun",        flag: "🇨🇲" },
+  { code: "Burkina Faso",   name: "Burkina Faso",    flag: "🇧🇫" },
+  { code: "Mali",           name: "Mali",            flag: "🇲🇱" },
+  { code: "Sénégal",        name: "Sénégal",         flag: "🇸🇳" },
+  { code: "Côte d'Ivoire",  name: "Côte d'Ivoire",   flag: "🇨🇮" },
+  { code: "Ghana",          name: "Ghana",           flag: "🇬🇭" },
+  { code: "Nigeria",        name: "Nigeria",         flag: "🇳🇬" },
+  { code: "France",         name: "France",          flag: "🇫🇷" },
+  { code: "Autre",          name: "Autre",           flag: "🌍" },
+];
 
 const schema = z.object({
   companyLegalName: z.string().min(2, "Nom légal requis"),
@@ -366,12 +381,16 @@ export default function Kyb() {
                         <FormField control={form.control} name="incorporationCountry" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Pays d'incorporation</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!isEditable}>
-                              <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                {COUNTRIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <CountryPicker
+                                options={KYB_COUNTRY_OPTIONS}
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="Sélectionner un pays"
+                                disabled={!isEditable}
+                                error={false}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />

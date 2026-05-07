@@ -7,6 +7,7 @@ import { Eye, EyeOff, Loader2, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { CountryPicker } from "@/components/ui/country-picker";
 
 const COUNTRY_CODES = [
   { flag: "🇹🇬", code: "+228", country: "TG" },
@@ -22,13 +23,14 @@ const COUNTRY_CODES = [
 ];
 
 const BUSINESS_COUNTRIES = [
-  { code: "TG", name: "Togo" },
-  { code: "BJ", name: "Bénin" },
-  { code: "CM", name: "Cameroun" },
-  { code: "BF", name: "Burkina Faso" },
-  { code: "ML", name: "Mali" },
-  { code: "SN", name: "Sénégal" },
-  { code: "CI", name: "Côte d'Ivoire" },
+  { code: "TG", name: "Togo",          flag: "🇹🇬" },
+  { code: "BJ", name: "Bénin",         flag: "🇧🇯" },
+  { code: "CM", name: "Cameroun",      flag: "🇨🇲" },
+  { code: "BF", name: "Burkina Faso",  flag: "🇧🇫" },
+  { code: "ML", name: "Mali",          flag: "🇲🇱" },
+  { code: "SN", name: "Sénégal",       flag: "🇸🇳" },
+  { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮" },
+  { code: "OTHER", name: "Autre",      flag: "🌍" },
 ];
 
 type FormData = {
@@ -163,16 +165,13 @@ export default function Signup() {
               </Field>
 
               <Field label={t.signup.countryLabel} error={errors.country?.message} required>
-                <div className="relative">
-                  <select {...register("country")} className={cn(inputCls(!!errors.country), "appearance-none pr-10 cursor-pointer", !selectedCountry && "text-muted-foreground/60")}>
-                    <option value="" disabled>{t.signup.countryDefault}</option>
-                    {BUSINESS_COUNTRIES.map(c => (
-                      <option key={c.code} value={c.code}>{c.name}</option>
-                    ))}
-                    <option value="OTHER">{t.signup.countryOther}</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                </div>
+                <CountryPicker
+                  options={BUSINESS_COUNTRIES}
+                  value={watch("country")}
+                  onChange={(code) => setValue("country", code, { shouldValidate: true })}
+                  placeholder={t.signup.countryDefault}
+                  error={!!errors.country}
+                />
               </Field>
 
               <Field label={t.signup.passwordLabel} error={errors.password?.message} required>
