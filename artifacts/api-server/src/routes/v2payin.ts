@@ -10,6 +10,7 @@ import {
 import { eq, and, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { getClapayClient, isClapayConfigured, ClapayError } from "../lib/clapay";
 
 const router = Router();
 
@@ -295,7 +296,103 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
     })
     .returning();
 
-  // Simulate async Mobile Money processing (sandbox: auto-resolve after 3s)
+  // ── LIVE mode: route through Clapay ──────────────────────────────────────
+  if (mode === "live") {
+    if (!isClapayConfigured()) {
+      // Clapay not yet configured — mark transaction as failed immediately
+      await db
+        .update(transactionsTable)
+        .set({ status: "failed", failureReason: "Aggregateur Clapay non configuré (clés API manquantes)", updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+
+      res.status(503).json({
+        error: "AGGREGATOR_NOT_CONFIGURED",
+        message: "L'agrégateur Clapay n'est pas encore configuré. Contactez votre administrateur.",
+      });
+      return;
+    }
+
+    try {
+      const clapay = getClapayClient();
+      const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : "https://api.drimpay.com";
+
+      const clapayRes = await clapay.initiatePayin({
+        amount,
+        currency,
+        country_code,
+        operator,
+        phone,
+        reference,
+        order_id,
+        callback_url: `${baseCallbackUrl}/api/webhooks/clapay`,
+        description,
+      });
+
+      if (!clapayRes.success) {
+        await db
+          .update(transactionsTable)
+          .set({ status: "failed", failureReason: clapayRes.message ?? "Échec Clapay", updatedAt: new Date() })
+          .where(eq(transactionsTable.id, tx.id));
+
+        res.status(502).json({
+          error: "GATEWAY_ERROR",
+          message: clapayRes.message ?? "Erreur de l'agrégateur Clapay",
+          reference,
+        });
+        return;
+      }
+
+      // Store Clapay's reference for status polling / webhook matching
+      await db
+        .update(transactionsTable)
+        .set({
+          status: "processing",
+          externalRef: clapayRes.clapay_reference,
+          updatedAt: new Date(),
+        })
+        .where(eq(transactionsTable.id, tx.id));
+
+      res.status(201).json({
+        reference,
+        order_id,
+        status: "processing",
+        amount,
+        fee,
+        net_amount: netAmount,
+        currency,
+        country_code,
+        operator,
+        phone,
+        mode,
+        expires_at: expiresAt.toISOString(),
+        webhook_url: webhook_url ?? null,
+        payment_url: clapayRes.payment_url ?? null,
+        ussd_code: clapayRes.ussd_code ?? null,
+        message: "Prompt de paiement envoyé au téléphone du client",
+        gateway: "clapay",
+        clapay_reference: clapayRes.clapay_reference,
+        created_at: tx.createdAt.toISOString(),
+      });
+      return;
+
+    } catch (err: any) {
+      const message = err instanceof ClapayError
+        ? `Clapay: ${err.message}`
+        : `Erreur interne: ${err.message}`;
+
+      await db
+        .update(transactionsTable)
+        .set({ status: "failed", failureReason: message, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+
+      res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+      return;
+    }
+  }
+
+  // ── SANDBOX mode: simulate async Mobile Money processing (auto-resolve after 3s) ──
   if (mode === "sandbox") {
     setTimeout(async () => {
       const isExpired = new Date() > expiresAt;

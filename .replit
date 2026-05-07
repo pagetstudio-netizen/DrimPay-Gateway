@@ -40,3 +40,5 @@ externalPort = 80
 SUPABASE_DATABASE_URL = "postgresql://postgres.terlzivzppufjjtewekw:2orJHsLwwxXiSjC3@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
 SUPABASE_URL = "https://terlzivzppufjjtewekw.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlcmx6aXZ6cHB1ZmpqdGV3ZWt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODQ0ODIsImV4cCI6MjA5Mzc2MDQ4Mn0.hjyowyvc8YkbPE4dRkV6MPvQDhLgu4oMXQHvSnzW1Ho"
+CLAPAY_BASE_URL = "https://api.clapay.io/v1"
+CLAPAY_WEBHOOK_SECRET = "to-be-configured"

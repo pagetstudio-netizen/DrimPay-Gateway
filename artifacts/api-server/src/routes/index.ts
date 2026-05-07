@@ -11,6 +11,7 @@ import authRouter from "./auth";
 import dashboardRouter from "./dashboard";
 import v2payinRouter from "./v2payin";
 import adminRouter from "./admin";
+import clapayWebhookRouter from "./clapay-webhook";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(countriesRouter);
 router.use(dashboardRouter);
 router.use(v2payinRouter);
 router.use(adminRouter);
+router.use(clapayWebhookRouter);
 
 export default router;
