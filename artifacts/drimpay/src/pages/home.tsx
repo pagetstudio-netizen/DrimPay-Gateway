@@ -1,10 +1,6 @@
 import { Link } from "wouter";
 import { useState } from "react";
-import {
-  ArrowRight, LayoutDashboard, Wallet, Clock, Link2,
-  Send, ArrowDownToLine, ShieldCheck, Settings, LogOut,
-  ChevronRight, BarChart3, Bell, Search,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 /*  DASHED GRID HERO BACKGROUND                                               */
@@ -12,22 +8,11 @@ import {
 const GRID_SVG = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='60' y1='0' x2='0' y2='0' stroke='%23000' stroke-width='0.6' stroke-dasharray='3 5' stroke-opacity='0.10'/%3E%3Cline x1='0' y1='0' x2='0' y2='60' stroke='%23000' stroke-width='0.6' stroke-dasharray='3 5' stroke-opacity='0.10'/%3E%3C/svg%3E")`;
 
 /* ══════════════════════════════════════════════════════════════════════════ */
-/*  DESKTOP APP MOCKUP  (Sidebar + KYB form)                                 */
+/*  DESKTOP APP MOCKUP  (real screenshot)                                     */
 /* ══════════════════════════════════════════════════════════════════════════ */
 function DesktopMockup() {
-  const navItems = [
-    { icon: LayoutDashboard, label: "Vue d'ensemble", active: true, color: "text-[#B5F03C]" },
-    { icon: Wallet,          label: "Wallets",         color: "text-blue-500" },
-    { icon: Clock,           label: "Historique",      color: "text-slate-400" },
-    { icon: Link2,           label: "Liens de Paiement", color: "text-slate-400" },
-    { icon: Send,            label: "Paiement de Masse", color: "text-slate-400" },
-    { icon: ArrowDownToLine, label: "Reversement",     color: "text-slate-400" },
-    { icon: ShieldCheck,     label: "Vérification KYB", color: "text-[#B5F03C]" },
-    { icon: Settings,        label: "Paramètres",      color: "text-slate-400" },
-  ];
-
   return (
-    <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden border border-[#E0DDD6] shadow-2xl bg-white">
+    <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden border border-[#E0DDD6] shadow-2xl">
       {/* Browser chrome */}
       <div className="flex items-center gap-2 px-4 py-3 bg-[#F2F0EA] border-b border-[#E0DDD6]">
         <div className="flex gap-1.5">
@@ -36,251 +21,20 @@ function DesktopMockup() {
           <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
         </div>
         <div className="flex-1 mx-4 bg-white rounded-md px-3 py-1 text-xs text-gray-400 font-mono border border-[#E0DDD6] max-w-xs">
-          app.drimpay.io/dashboard/kyb
+          app.drimpay.io/dashboard
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Bell className="w-4 h-4 text-gray-400" />
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-[10px] font-bold text-white">
-            DA
-          </div>
+          <div className="w-2 h-2 rounded-full bg-[#27C93F]" />
+          <span className="text-[10px] text-gray-400 font-medium">Live</span>
         </div>
       </div>
-
-      {/* App body */}
-      <div className="flex h-[520px]">
-
-        {/* ── Sidebar ───────────────────────────────────────────────── */}
-        <aside className="w-56 shrink-0 bg-white border-r border-[#F0EDE6] flex flex-col">
-          {/* Logo */}
-          <div className="flex items-center gap-2 px-4 py-4 border-b border-[#F0EDE6]">
-            <div className="w-7 h-7 rounded-lg bg-[#B5F03C] flex items-center justify-center font-bold text-[#0f0f0f] text-sm">
-              D
-            </div>
-            <span className="font-bold text-[#0f0f0f] text-sm">DrimPay</span>
-            <span className="ml-auto text-[9px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-              MARCH
-            </span>
-          </div>
-
-          {/* User */}
-          <div className="flex items-center gap-2.5 px-4 py-3 mx-3 mt-3 bg-gray-50 rounded-xl border border-[#F0EDE6]">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-              DA
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-[#0f0f0f] truncate">DARWIN</p>
-              <p className="text-[9px] text-gray-400 truncate">attiglosylvain@gmail.com</p>
-            </div>
-          </div>
-
-          {/* Nav */}
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-2 mt-1">
-              Principal
-            </p>
-            {navItems.map(({ icon: Icon, label, active, color }) => (
-              <div
-                key={label}
-                className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                  active
-                    ? "bg-[#B5F03C]/15 text-[#0f0f0f] border-l-2 border-[#B5F03C]"
-                    : "text-gray-500 hover:bg-gray-50"
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? "text-[#3a7a00]" : color}`} />
-                <span className="truncate">{label}</span>
-                {active && <ChevronRight className="w-3 h-3 ml-auto text-gray-400" />}
-              </div>
-            ))}
-
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-2 mt-4">
-              Documentation API
-            </p>
-            <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-50 cursor-pointer">
-              <BarChart3 className="w-3.5 h-3.5 text-slate-400" />
-              <span>API Pay-in</span>
-            </div>
-          </div>
-
-          {/* Logout */}
-          <div className="border-t border-[#F0EDE6] px-3 py-3">
-            <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-50 cursor-pointer">
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Déconnexion</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Main content: KYB form ─────────────────────────────────── */}
-        <main className="flex-1 bg-[#FAFAF7] overflow-y-auto">
-          <div className="max-w-2xl mx-auto px-6 py-6">
-
-            {/* Page title */}
-            <div className="mb-4">
-              <h1 className="text-base font-bold text-[#0f0f0f]">Vérification KYB</h1>
-              <p className="text-[11px] text-gray-400 mt-0.5">
-                Know Your Business — Complétez les 4 étapes pour activer votre compte production
-              </p>
-            </div>
-
-            {/* Alert */}
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
-              <div className="w-4 h-4 rounded-full bg-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-amber-800">Non soumis</p>
-                <p className="text-[11px] text-amber-700 mt-0.5">
-                  Soumettez vos documents d'entreprise pour activer les paiements live.
-                </p>
-              </div>
-            </div>
-
-            {/* Stepper */}
-            <div className="flex items-center gap-0 mb-5">
-              {[
-                { label: "Entreprise", step: 1, active: true },
-                { label: "Représentant", step: 2 },
-                { label: "Documents", step: 3 },
-                { label: "Contrat", step: 4 },
-              ].map((s, i) => (
-                <div key={s.label} className="flex items-center flex-1">
-                  <div className="flex flex-col items-center flex-1">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
-                      s.active
-                        ? "border-[#B5F03C] bg-[#B5F03C] text-[#0f0f0f]"
-                        : "border-gray-200 bg-white text-gray-400"
-                    }`}>
-                      {s.step}
-                    </div>
-                    <span className={`text-[9px] mt-1 font-semibold ${s.active ? "text-[#3a7a00]" : "text-gray-400"}`}>
-                      {s.label}
-                    </span>
-                  </div>
-                  {i < 3 && (
-                    <div className="flex-1 h-px bg-gray-200 mb-4 -mx-2" />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <p className="text-[10px] text-gray-400 mb-4 font-medium">Étape 1 sur 4 — Entreprise</p>
-
-            {/* Form card */}
-            <div className="bg-white rounded-2xl border border-[#E5E3DC] p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-5 h-5 rounded bg-[#B5F03C]/20 flex items-center justify-center">
-                  <ShieldCheck className="w-3 h-3 text-[#3a7a00]" />
-                </div>
-                <h2 className="text-xs font-bold text-[#0f0f0f]">Informations de l'entreprise</h2>
-              </div>
-
-              <div className="space-y-3">
-                {/* Row 1 */}
-                <div>
-                  <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                    Nom légal de l'entreprise <span className="text-red-400">*</span>
-                  </label>
-                  <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-600 bg-white">
-                    ACME SARL
-                  </div>
-                </div>
-                {/* Row 2 */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">Nom commercial</label>
-                    <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-600 bg-white">ACME</div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                      Type d'entreprise <span className="text-red-400">*</span>
-                    </label>
-                    <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-400 bg-white flex items-center justify-between">
-                      Sélectionner <ChevronRight className="w-3 h-3 rotate-90" />
-                    </div>
-                  </div>
-                </div>
-                {/* Row 3 */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                      Numéro RCCM / Registre <span className="text-red-400">*</span>
-                    </label>
-                    <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-400 bg-white flex items-center gap-1">
-                      <span className="text-gray-300">#</span> TG-LOM-2024-B-12345
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                      Numéro fiscal <span className="text-red-400">*</span>
-                    </label>
-                    <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-400 bg-white flex items-center gap-1">
-                      <span className="text-gray-300">#</span> NIF / TIN
-                    </div>
-                  </div>
-                </div>
-                {/* Row 4 */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                      Pays d'enregistrement <span className="text-red-400">*</span>
-                    </label>
-                    <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-400 bg-white flex items-center justify-between">
-                      Sélectionner un pays <ChevronRight className="w-3 h-3 rotate-90" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                      Ville <span className="text-red-400">*</span>
-                    </label>
-                    <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-600 bg-white">Lomé</div>
-                  </div>
-                </div>
-                {/* Row 5 */}
-                <div>
-                  <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                    Adresse complète du siège social <span className="text-red-400">*</span>
-                  </label>
-                  <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-600 bg-white">
-                    Avenue de la Victoire, Lomé, Togo
-                  </div>
-                </div>
-                {/* Row 6 */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                      Date de création <span className="text-red-400">*</span>
-                    </label>
-                    <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-400 bg-white flex items-center justify-between">
-                      jj/mm/aaaa <ChevronRight className="w-3 h-3 rotate-90" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">Site web</label>
-                    <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-xs text-gray-400 bg-white flex items-center gap-1">
-                      <span className="text-gray-300">🌐</span> https://votre-site.com
-                    </div>
-                  </div>
-                </div>
-                {/* Description */}
-                <div>
-                  <label className="text-[10px] font-semibold text-gray-500 mb-1 block">
-                    Description de l'activité <span className="text-red-400">*</span>
-                  </label>
-                  <div className="border border-[#E5E3DC] rounded-lg px-3 py-2 text-[10px] text-gray-400 bg-white h-12">
-                    Décrivez votre activité principale, vos produits/services et le type de transactions...
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit */}
-              <div className="flex justify-end mt-4">
-                <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#B5F03C] text-[#0f0f0f] text-xs font-bold hover:bg-[#a8e032] transition-colors">
-                  Suivant <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
+      {/* Actual dashboard screenshot */}
+      <img
+        src="/dashboard-preview.jpg"
+        alt="DrimPay Dashboard"
+        className="w-full block"
+        style={{ display: "block" }}
+      />
     </div>
   );
 }
