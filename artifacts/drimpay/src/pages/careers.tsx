@@ -80,10 +80,28 @@ export default function Careers() {
           </div>
         )}
 
-        <div className="mt-16 text-center rounded-2xl border border-border bg-card p-10">
-          <h2 className="text-2xl font-bold mb-4">{t.careers.openAppTitle}</h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">{t.careers.openAppDesc}</p>
-          <Link href="/contact"><Button size="lg" className="text-primary-foreground font-semibold">{t.careers.openAppBtn} <ArrowRight className="ml-2 w-4 h-4" /></Button></Link>
+        <div className="mt-16 rounded-3xl overflow-hidden" style={{ background: "#0f0f0f" }}>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8 px-8 py-10 md:px-12 md:py-12">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 mb-5">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-xs font-semibold text-white/70">Candidature ouverte</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-white mb-3 leading-tight">
+                {t.careers.openAppTitle}
+              </h2>
+              <p className="text-sm md:text-base text-white/55 leading-relaxed max-w-lg">
+                {t.careers.openAppDesc}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Link href="/contact">
+                <button className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full font-semibold text-sm transition-all hover:opacity-90 whitespace-nowrap" style={{ background: "#B5F03C", color: "#0f0f0f" }}>
+                  {t.careers.openAppBtn} <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
