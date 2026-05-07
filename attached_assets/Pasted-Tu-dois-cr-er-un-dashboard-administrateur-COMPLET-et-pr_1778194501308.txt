@@ -1,0 +1,532 @@
+Tu dois créer un dashboard administrateur COMPLET et professionnel pour DrimPay, inspiré du style visible sur les captures d’écran SendavaPay fournies.
+
+IMPORTANT :
+
+- conserver tout le système actuel
+- ne pas casser les paiements automatiques
+- ne pas modifier la logique de crédit automatique
+- ne pas modifier les APIs existantes
+- uniquement améliorer et ajouter l’interface administrateur avancée
+
+Le système doit fonctionner comme une vraie infrastructure fintech moderne.
+
+──────────────────────────────
+🎨 DESIGN GÉNÉRAL
+──────────────────────────────
+
+Créer un dashboard admin moderne style fintech/SaaS.
+
+Style :
+
+- fond clair
+- cartes modernes
+- sidebar fixe
+- animations fluides
+- design responsive
+- ombres légères
+- bordures arrondies
+- interface professionnelle type Stripe / Flutterwave
+
+Couleurs :
+
+- blanc
+- gris clair
+- vert DrimPay
+- noir léger
+
+Icônes :
+
+- Lucide React
+- Feather Icons
+
+Technologie :
+
+- React
+- TailwindCSS
+- Framer Motion
+- React Router / Next.js routing
+- tableaux modernes
+- modals premium
+
+──────────────────────────────
+🧭 LAYOUT ADMIN
+──────────────────────────────
+
+Créer :
+
+1. Sidebar fixe à gauche
+2. Header fixe en haut
+3. Contenu principal responsive
+
+HEADER :
+
+- Logo DrimPay
+- Texte : “Administration DrimPay”
+- Barre de recherche
+- Icône notifications 🔔 avec badge rouge
+- Profil admin à droite
+- Dropdown :
+  - Profil
+  - Paramètres
+  - Déconnexion
+
+SIDEBAR :
+
+1. Dashboard
+2. Marchands
+3. KYB Vérifications
+4. Transactions
+5. Wallets Pays
+6. Agrégateurs
+7. Opérateurs & Pays
+8. APIs & Clés
+9. Liens de paiement
+10. Contrats KYB
+11. Logs & Sécurité
+12. Notifications Globales
+13. Paramètres
+
+Responsive mobile obligatoire.
+
+──────────────────────────────
+📊 DASHBOARD PRINCIPAL
+──────────────────────────────
+
+Créer statistiques premium :
+
+Cartes statistiques :
+
+- Total Marchands
+- Transactions aujourd’hui
+- Volume Pay-in
+- Volume Pay-out
+- Wallets actifs
+- APIs actives
+- Taux succès
+- Revenus frais 3%
+
+Chaque carte :
+
+- animation
+- icône moderne
+- graphique miniature
+- chiffres visibles
+
+Ajouter :
+
+- graphique paiements
+- graphique payouts
+- volume par pays
+- top opérateurs
+- dernières transactions
+
+Ajouter alertes :
+
+- grosses transactions > 60 000 FCFA
+- erreurs API
+- wallets faibles
+
+──────────────────────────────
+👥 SECTION MARCHANDS
+──────────────────────────────
+
+Tableau complet :
+
+Colonnes :
+
+- ID marchand
+- Entreprise
+- Email professionnel
+- Pays
+- Wallets actifs
+- Statut KYB
+- Volume total
+- Date inscription
+- Statut compte
+
+Actions :
+
+- Voir profil
+- Modifier email
+- Modifier téléphone
+- Modifier pays
+- Modifier soldes wallet
+- Suspendre
+- Réactiver
+- Supprimer
+- Ajouter note admin
+- Donner rôle admin
+- Réinitialiser mot de passe
+- Voir logs
+
+Ajouter :
+
+- recherche avancée
+- filtres
+- export CSV / Excel
+
+IMPORTANT :
+ne jamais casser le système automatique.
+
+──────────────────────────────
+🪪 SECTION KYB
+──────────────────────────────
+
+Créer système KYB en 4 étapes.
+
+Étape 1 :
+Informations entreprise :
+
+- nom légal
+- RCCM
+- registre commerce
+- adresse
+- pays
+- activité
+
+Étape 2 :
+Documents :
+
+- registre entreprise
+- statuts
+- pièce dirigeant
+- selfie
+- justificatif
+
+Étape 3 :
+Validation risque :
+
+- activité
+- volume prévu
+- pays activité
+- source revenus
+
+Étape 4 :
+Signature contrat
+
+Afficher :
+
+- contrat
+- politique AML/CFT
+- lutte blanchiment
+- responsabilités légales
+- conformité
+
+Cases obligatoires :
+☑ Je confirme avoir lu le contrat
+☑ J’accepte les politiques AML
+☑ Je suis responsable des activités
+☑ J’accepte les conditions DrimPay
+
+Puis :
+
+- email professionnel
+- bouton envoyer contrat
+
+Le contrat :
+
+- envoyé par email
+- signé électroniquement
+- renvoyé sur plateforme
+
+L’admin peut :
+
+- uploader nouveau contrat
+- modifier contrat
+- versionner contrats
+- approuver/rejeter KYB
+
+──────────────────────────────
+💳 SECTION TRANSACTIONS
+──────────────────────────────
+
+Tableau complet :
+
+- référence
+- marchand
+- type
+- montant
+- frais
+- pays
+- opérateur
+- statut
+- date
+
+Filtres :
+
+- pays
+- statut
+- type
+- opérateur
+- période
+
+Actions :
+
+- voir détails
+- exporter CSV
+- renvoyer webhook
+
+Afficher badge rouge si nouvelle transaction.
+
+Ajouter :
+alertes automatiques :
+
+- montants élevés
+- trop d’échecs
+- activité suspecte
+
+──────────────────────────────
+🌍 SECTION WALLET PAYS
+──────────────────────────────
+
+IMPORTANT :
+Chaque pays possède son wallet indépendant.
+
+Créer système :
+
+Wallet Togo
+Wallet Bénin
+Wallet Sénégal
+Wallet Cameroun
+etc.
+
+Règles :
+
+- fonds isolés
+- impossible transférer entre pays
+- payin TG → wallet TG
+- payout TG → wallet TG uniquement
+
+Afficher :
+
+- balance
+- volume entrant
+- volume sortant
+- opérateurs
+- statut
+
+Actions admin :
+
+- créditer wallet
+- débiter wallet
+- suspendre wallet
+- voir historique
+
+──────────────────────────────
+🔄 SECTION AGRÉGATEURS
+──────────────────────────────
+
+Créer système permettant de basculer entre agrégateurs de paiement.
+
+Inspiré EXACTEMENT des captures SendavaPay.
+
+Fonctionnement :
+
+Chaque opérateur peut utiliser plusieurs agrégateurs :
+
+Exemples :
+
+- Paydunya 
+- Clapay 
+
+Créer interface :
+
+Champs :
+
+- nom opérateur
+- type
+- pays
+- limite journalière
+- agrégateur sélectionné
+
+Dropdown agrégateur :
+
+- choisir fournisseur
+
+Afficher :
+
+- pays supportés
+- opérateurs supportés
+- statut actif
+
+Switch :
+
+- Actif / Inactif
+
+Maintenance :
+
+- bloquer dépôts
+- bloquer retraits
+- bloquer API
+- bloquer liens paiement
+- maintenance globale
+
+IMPORTANT :
+Basculer agrégateur sans casser système.
+
+Si un agrégateur échoue :
+
+- fallback automatique possible
+
+Ajouter :
+
+- priorité agrégateurs
+- monitoring uptime
+- taux succès
+- temps réponse
+
+──────────────────────────────
+🌍 SECTION OPÉRATEURS & PAYS
+──────────────────────────────
+
+Gérer :
+
+- pays actifs
+- devises
+- opérateurs
+- disponibilité
+
+Ajouter :
+
+- activer/désactiver opérateur
+- maintenance opérateur
+- limites pays
+- frais pays
+
+──────────────────────────────
+🔑 SECTION API & CLÉS
+──────────────────────────────
+
+Afficher :
+
+- clés sandbox
+- clés live
+- webhooks
+- SDKs
+- documentation
+
+Actions :
+
+- générer clé
+- révoquer
+- limiter permissions
+- logs API
+
+IMPORTANT :
+Documentation actuelle = API REST HTTP
+PAS SDK natif.
+
+Mais afficher exemples :
+
+- Node.js
+- PHP
+- Python
+- Curl
+
+──────────────────────────────
+🔗 SECTION LIENS PAIEMENT
+──────────────────────────────
+
+Afficher :
+
+- créateur
+- montant
+- référence
+- statut
+- pays
+- date
+
+Actions :
+
+- supprimer
+- suspendre
+- rechercher
+- voir paiements liés
+
+──────────────────────────────
+🔐 LOGS & SÉCURITÉ
+──────────────────────────────
+
+Historique complet :
+
+- connexions
+- modifications
+- payouts
+- changements agrégateurs
+- changements KYB
+- actions admin
+
+Filtres :
+
+- admin
+- date
+- type action
+
+Export CSV.
+
+──────────────────────────────
+🔔 NOTIFICATIONS
+──────────────────────────────
+
+Créer centre notifications temps réel :
+
+- nouveaux marchands
+- nouveaux KYB
+- transactions
+- erreurs API
+- maintenance
+- wallets faibles
+
+Drawer latéral moderne.
+
+──────────────────────────────
+⚙️ PARAMÈTRES
+──────────────────────────────
+
+Modifier :
+
+- nom plateforme
+- logo
+- couleurs
+- emails
+- contrats
+- clés API
+- frais globaux
+- limites
+- webhooks
+
+Bouton sauvegarder.
+
+──────────────────────────────
+📈 STATISTIQUES AVANCÉES
+──────────────────────────────
+
+Ajouter :
+
+- graphique volumes
+- taux succès
+- revenus frais
+- pays performants
+- opérateurs performants
+- erreurs API
+- uptime
+
+Dashboard type fintech premium.
+
+──────────────────────────────
+⚠️ RÈGLES IMPORTANTES
+──────────────────────────────
+
+1. Ne jamais casser système automatique.
+2. Ne jamais modifier logique paiement.
+3. Ne jamais modifier crédit automatique.
+4. Tout doit être responsive.
+5. Tout doit être moderne.
+6. Animations fluides.
+7. Routes admin sécurisées.
+8. Middleware auth obligatoire.
+9. Logs complets.
+10. Optimisé mobile et desktop.
+11. Architecture propre et scalable.
+
+Le résultat final doit ressembler à une vraie infrastructure fintech enterprise moderne internationale.
