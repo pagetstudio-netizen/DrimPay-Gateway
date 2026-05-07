@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Search, RefreshCw, Eye, Edit2, Trash2, KeyRound,
   ShieldCheck, ShieldX, UserCheck, UserX, ChevronLeft, ChevronRight, X, Check,
-  MoreVertical, Download,
+  MoreVertical, Download, Wallet,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
@@ -260,7 +260,7 @@ export default function AdminMerchants() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <button onClick={() => setEditMerchant(m)} title="Modifier" className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setWalletMerchant(m)} title="Wallets" className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-500 transition-colors"><Wallet2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setWalletMerchant(m)} title="Wallets" className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-500 transition-colors"><Wallet className="w-3.5 h-3.5" /></button>
                           <button onClick={() => setResetMerchant(m)} title="Reset mdp" className="p-1.5 rounded-lg hover:bg-yellow-50 text-yellow-500 transition-colors"><KeyRound className="w-3.5 h-3.5" /></button>
                           <button onClick={() => suspend(m)} title="Suspendre" className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-500 transition-colors"><UserX className="w-3.5 h-3.5" /></button>
                           <button onClick={() => deleteMerchant(m)} title="Supprimer" className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
