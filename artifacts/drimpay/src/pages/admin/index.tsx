@@ -56,8 +56,8 @@ export default function AdminDashboard() {
 
   const statCards = stats ? [
     { icon: Users, label: "Total Marchands", value: stats.totalMerchants, sub: `${stats.kybApproved} KYB approuvés`, color: "bg-blue-500", delay: 0 },
-    { icon: ArrowDownLeft, label: "Pay-in Aujourd'hui", value: fmt(stats.payinToday.volume), sub: `${stats.payinToday.count} transactions`, color: "bg-emerald-500", delay: 0.05 },
-    { icon: ArrowUpRight, label: "Pay-out Aujourd'hui", value: fmt(stats.payoutToday.volume), sub: `${stats.payoutToday.count} transactions`, color: "bg-orange-500", delay: 0.1 },
+    { icon: ArrowDownLeft, label: "Pay-in Aujourd'hui", value: fmt(stats.payinToday?.volume ?? 0), sub: `${stats.payinToday?.count ?? 0} transactions`, color: "bg-emerald-500", delay: 0.05 },
+    { icon: ArrowUpRight, label: "Pay-out Aujourd'hui", value: fmt(stats.payoutToday?.volume ?? 0), sub: `${stats.payoutToday?.count ?? 0} transactions`, color: "bg-orange-500", delay: 0.1 },
     { icon: TrendingUp, label: "Volume Pay-in Total", value: fmt(stats.totalPayinVolume), sub: "Toutes périodes", color: "bg-purple-500", delay: 0.15 },
     { icon: Wallet2, label: "Wallets Actifs", value: stats.activeWallets, sub: "Tous pays confondus", color: "bg-teal-500", delay: 0.2 },
     { icon: KeyRound, label: "APIs Actives", value: stats.activeApiKeys, sub: "Clés sandbox + live", color: "bg-indigo-500", delay: 0.25 },
