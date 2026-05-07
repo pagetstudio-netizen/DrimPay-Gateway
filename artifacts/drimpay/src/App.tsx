@@ -155,6 +155,23 @@ function PublicSwitch() {
 }
 
 function DashboardSwitch() {
+  const { user, loading } = useAuth();
+  const [location] = useLocation();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    const returnTo = encodeURIComponent(location);
+    window.location.replace(`/fr/login?next=${returnTo}`);
+    return null;
+  }
+
   return (
     <Switch>
       <Route path="/dashboard" component={DashboardOverview} />

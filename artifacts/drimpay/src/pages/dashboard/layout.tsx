@@ -40,9 +40,10 @@ const apiItems: NavItem[] = [
 ];
 
 function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
-  const darkFilter = active
-    ? "brightness(0) saturate(100%)"
-    : "brightness(0) saturate(100%)";
+  // Active = bg-black → icons must be white (brightness(0) invert(1))
+  // Inactive = bg-primary lime → icons must be black (brightness(0))
+  const activeFilter = "brightness(0) invert(1)";
+  const inactiveFilter = "brightness(0)";
 
   if (item.img) {
     return (
@@ -50,11 +51,7 @@ function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
         src={item.img}
         alt=""
         className="w-[18px] h-[18px] shrink-0 object-contain"
-        style={{
-          filter: item.imgInvert
-            ? `invert(1) ${darkFilter}`
-            : darkFilter,
-        }}
+        style={{ filter: active ? activeFilter : inactiveFilter }}
       />
     );
   }
