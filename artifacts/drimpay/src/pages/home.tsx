@@ -1,319 +1,514 @@
 import { Link } from "wouter";
-import { motion } from "framer-motion";
-import { useGetPlatformStats } from "@workspace/api-client-react";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, ShieldCheck, Zap, Globe, Code, CheckCircle2, TrendingUp, Wallet, CreditCard, Users, BarChart3, Download, Send, ChevronDown } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useT } from "@/lib/i18n";
+import { useState, useEffect, useRef } from "react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 
-const itemVariants = {
-  hidden: { y: 24, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.55, ease: "easeOut" } },
-};
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-
-function DecorativeLeft() {
+/* ─── Ticker ─────────────────────────────────────────────────────────────── */
+function Ticker() {
+  const items = [
+    "Grow Your Revenue.",
+    "Grow Your Loyalty.",
+    "Grow Your Business.",
+    "Grow Your Reach.",
+    "Grow Your Impact.",
+    "Grow Your Revenue.",
+    "Grow Your Loyalty.",
+    "Grow Your Business.",
+    "Grow Your Reach.",
+    "Grow Your Impact.",
+  ];
   return (
-    <svg viewBox="0 0 180 420" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute left-0 top-16 h-[420px] w-[180px] opacity-[0.07] pointer-events-none select-none hidden xl:block">
-      <path d="M160 20 L80 20 L80 80 L20 80 L20 200 L60 200 L60 260 L120 260 L120 380 L160 380" stroke="currentColor" strokeWidth="1.5" className="text-foreground" />
-      <path d="M140 50 L100 50 L100 120 L40 120 L40 180" stroke="currentColor" strokeWidth="1" className="text-primary" />
-      <circle cx="80" cy="20" r="3" fill="currentColor" className="text-primary" />
-      <circle cx="20" cy="80" r="3" fill="currentColor" className="text-foreground" />
-      <circle cx="60" cy="200" r="3" fill="currentColor" className="text-primary" />
-      <circle cx="120" cy="260" r="3" fill="currentColor" className="text-foreground" />
-      <circle cx="120" cy="380" r="3" fill="currentColor" className="text-primary" />
-      <rect x="30" y="150" width="8" height="8" stroke="currentColor" strokeWidth="1" className="text-primary" />
-      <rect x="90" y="230" width="8" height="8" stroke="currentColor" strokeWidth="1" className="text-foreground" />
-      <path d="M150 100 L150 150 L170 150" stroke="currentColor" strokeWidth="1" strokeDasharray="4 3" className="text-foreground" />
-    </svg>
-  );
-}
-
-function DecorativeRight() {
-  return (
-    <svg viewBox="0 0 180 420" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute right-0 top-16 h-[420px] w-[180px] opacity-[0.07] pointer-events-none select-none hidden xl:block">
-      <path d="M20 20 L100 20 L100 80 L160 80 L160 200 L120 200 L120 260 L60 260 L60 380 L20 380" stroke="currentColor" strokeWidth="1.5" className="text-foreground" />
-      <path d="M40 50 L80 50 L80 120 L140 120 L140 180" stroke="currentColor" strokeWidth="1" className="text-primary" />
-      <circle cx="100" cy="20" r="3" fill="currentColor" className="text-primary" />
-      <circle cx="160" cy="80" r="3" fill="currentColor" className="text-foreground" />
-      <circle cx="120" cy="200" r="3" fill="currentColor" className="text-primary" />
-      <circle cx="60" cy="260" r="3" fill="currentColor" className="text-foreground" />
-      <circle cx="60" cy="380" r="3" fill="currentColor" className="text-primary" />
-      <rect x="140" y="150" width="8" height="8" stroke="currentColor" strokeWidth="1" className="text-primary" />
-      <rect x="80" y="230" width="8" height="8" stroke="currentColor" strokeWidth="1" className="text-foreground" />
-      <path d="M30 100 L30 150 L10 150" stroke="currentColor" strokeWidth="1" strokeDasharray="4 3" className="text-foreground" />
-    </svg>
-  );
-}
-
-function DashboardMockup() {
-  return (
-    <div className="relative w-full max-w-5xl mx-auto rounded-2xl overflow-hidden border border-border shadow-2xl bg-white">
-      <div className="flex items-center px-4 py-3 bg-[#f5f5f7] border-b border-[#e5e5ea]">
-        <div className="flex gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
-          <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
-          <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
-        </div>
-        <div className="mx-auto text-xs text-gray-400 font-mono">app.drimpay.io/dashboard</div>
-      </div>
-      <div className="flex h-[340px] md:h-[400px]">
-        <div className="w-52 shrink-0 bg-[#0f172a] flex flex-col py-4 px-3 gap-1 hidden md:flex">
-          <div className="flex items-center gap-2 px-3 py-2 mb-3">
-            <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-              <span className="text-[10px] font-bold text-black">D</span>
-            </div>
-            <span className="text-white font-semibold text-sm">DrimPay</span>
-          </div>
-          {[
-            { icon: BarChart3, label: "Dashboard", active: true },
-            { icon: Wallet, label: "Solde", active: false },
-            { icon: Download, label: "Collecte", active: false },
-            { icon: Send, label: "Reversement", active: false },
-            { icon: CreditCard, label: "Cartes", active: false },
-            { icon: Users, label: "Entreprise", active: false },
-          ].map(({ icon: Icon, label, active }) => (
-            <div key={label} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${active ? "bg-primary/20 text-primary" : "text-slate-400 hover:text-slate-200"}`}>
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </div>
-          ))}
-        </div>
-        <div className="flex-1 bg-[#f8fafc] p-4 overflow-hidden flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Dashboard</p>
-              <p className="text-sm font-semibold text-gray-800">Bonjour, Ibrahim 👋</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm">
-                <span className="text-base">🇸🇳</span> Sénégal <ChevronDown className="w-3 h-3" />
-              </div>
-              <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-black">IB</div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: "Solde Disponible", value: "2 450 000", currency: "XOF", icon: Wallet, color: "text-emerald-600", bg: "bg-emerald-50" },
-              { label: "Montant Encaissé", value: "8 348 000", currency: "XOF", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
-              { label: "Reversements", value: "01 Demande", currency: "", icon: Download, color: "text-violet-600", bg: "bg-violet-50" },
-              { label: "Chiffre d'affaires", value: "984 093", currency: "XOF", icon: BarChart3, color: "text-primary", bg: "bg-primary/10" },
-            ].map(({ label, value, currency, icon: Icon, color, bg }) => (
-              <div key={label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-                <div className={`w-6 h-6 rounded-lg ${bg} flex items-center justify-center mb-2`}>
-                  <Icon className={`w-3 h-3 ${color}`} />
-                </div>
-                <p className="text-[9px] text-gray-400 font-medium mb-0.5 truncate">{label}</p>
-                <p className="text-xs font-bold text-gray-800 truncate">{value}</p>
-                {currency && <p className="text-[9px] text-gray-400">{currency}</p>}
-              </div>
-            ))}
-          </div>
-          <div className="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm p-3 overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-semibold text-gray-700">Transactions · Mars 2025</p>
-              <div className="flex items-center gap-3 text-[9px] text-gray-400">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary inline-block" /> Succès: 56 269</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /> Échec: 312</span>
-              </div>
-            </div>
-            <div className="flex items-end gap-1.5 h-16">
-              {[35, 52, 41, 68, 45, 78, 55, 85, 62, 90, 71, 95].map((h, i) => (
-                <div key={i} className="flex-1 flex flex-col justify-end gap-0.5">
-                  <div style={{ height: `${h}%` }} className={`rounded-sm transition-all ${i === 11 ? "bg-primary" : "bg-primary/25"}`} />
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-1">
-              {["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"].map((m) => (
-                <span key={m} className="text-[8px] text-gray-300 flex-1 text-center">{m}</span>
-              ))}
-            </div>
-          </div>
-        </div>
+    <div className="ticker-wrapper overflow-hidden py-5 border-t border-b border-[#E5E3DC]">
+      <div className="ticker-track flex gap-12 whitespace-nowrap animate-ticker">
+        {items.map((item, i) => (
+          <span key={i} className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1a1a1a] shrink-0">
+            {item}
+            <span className="inline-block mx-4 w-2 h-2 rounded-full bg-[#A8E63D] align-middle" />
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
-export default function Home() {
-  const { data: stats, isLoading: statsLoading } = useGetPlatformStats();
-  const t = useT();
+/* ─── Nav Mockup inside hero ─────────────────────────────────────────────── */
+function ProductMockup() {
+  return (
+    <div className="relative w-full">
+      {/* Browser shell */}
+      <div className="rounded-2xl overflow-hidden border border-[#E0DDD5] shadow-2xl bg-white">
+        <div className="flex items-center gap-2 px-4 py-3 bg-[#F2F0EA] border-b border-[#E0DDD5]">
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
+            <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
+            <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
+          </div>
+          <div className="flex-1 mx-3 bg-white rounded-md px-3 py-1 text-xs text-gray-400 font-mono border border-[#E0DDD5]">
+            app.drimpay.io
+          </div>
+        </div>
+        {/* App content */}
+        <div className="bg-[#F8F7F2] p-4 min-h-[300px]">
+          {/* Top row: two small cards */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="bg-[#0D0C18] rounded-xl p-4 text-white">
+              <p className="text-[10px] text-gray-400 mb-1">Solde disponible</p>
+              <p className="text-2xl font-bold">2 450 000</p>
+              <p className="text-[10px] text-[#A8E63D] mt-0.5">XOF · DrimPay Wallet</p>
+              <div className="mt-3 flex gap-2">
+                <div className="h-1.5 flex-1 rounded bg-[#A8E63D]" />
+                <div className="h-1.5 flex-1 rounded bg-white/10" />
+                <div className="h-1.5 w-6 rounded bg-white/10" />
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-[#E5E3DC]">
+              <p className="text-[10px] text-gray-400 mb-1">Transactions</p>
+              <p className="text-2xl font-bold text-[#1a1a1a]">56 269</p>
+              <p className="text-[10px] text-green-500 mt-0.5">+12.4% ce mois</p>
+              <div className="mt-3 flex items-end gap-1 h-8">
+                {[30, 50, 38, 65, 44, 72, 55, 80, 60, 85, 68, 95].map((h, i) => (
+                  <div key={i} style={{ height: `${h}%` }} className={`flex-1 rounded-sm ${i === 11 ? "bg-[#A8E63D]" : "bg-[#A8E63D]/25"}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Payment flow visualization */}
+          <div className="bg-white rounded-xl border border-[#E5E3DC] p-3">
+            <p className="text-[10px] font-semibold text-gray-500 mb-2">Flux de paiement récents</p>
+            <div className="space-y-1.5">
+              {[
+                { name: "Orange Money → DrimPay", amount: "+45 000 XOF", status: "Succès", color: "text-green-600 bg-green-50" },
+                { name: "Wave → Client Dakar", amount: "+12 500 XOF", status: "Succès", color: "text-green-600 bg-green-50" },
+                { name: "MTN → Lagos Business", amount: "+88 200 XOF", status: "En cours", color: "text-orange-600 bg-orange-50" },
+                { name: "Airtel Money → Lomé", amount: "+23 400 XOF", status: "Succès", color: "text-green-600 bg-green-50" },
+              ].map((tx, i) => (
+                <div key={i} className="flex items-center justify-between text-[10px]">
+                  <span className="text-gray-600 font-medium truncate w-40">{tx.name}</span>
+                  <span className="text-gray-800 font-bold">{tx.amount}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${tx.color}`}>{tx.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Floating badge */}
+      <div className="absolute -top-3 -right-3 bg-[#A8E63D] text-[#0D0C18] text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg">
+        Live · 99.98% uptime
+      </div>
+    </div>
+  );
+}
+
+/* ─── Virtual Card Mockup ─────────────────────────────────────────────────── */
+function CardMockup({ color, label, rotate }: { color: string; label: string; rotate?: string }) {
+  return (
+    <div
+      className={`w-52 h-32 rounded-2xl p-4 flex flex-col justify-between shadow-xl ${color} ${rotate || ""}`}
+      style={{ transform: rotate }}
+    >
+      <div className="flex justify-between items-start">
+        <div className="w-7 h-5 rounded bg-white/30" />
+        <span className="text-white/80 text-[10px] font-bold tracking-wider">DRIMPAY</span>
+      </div>
+      <div>
+        <p className="text-white text-xs font-mono tracking-widest opacity-70">•••• •••• •••• 4242</p>
+        <p className="text-white text-[10px] mt-0.5 opacity-60">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Feature Card for "better way" section ──────────────────────────────── */
+function FeatureSmallCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-[#E5E3DC] p-5 hover:shadow-md transition-shadow">
+      <div className="text-2xl mb-3">{icon}</div>
+      <h4 className="font-bold text-sm text-[#1a1a1a] mb-1">{title}</h4>
+      <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+    </div>
+  );
+}
+
+/* ─── Blog Card ───────────────────────────────────────────────────────────── */
+function BlogCard({ tag, title, date, color }: { tag: string; title: string; date: string; color: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-[#E5E3DC] overflow-hidden hover:shadow-md transition-shadow group cursor-pointer">
+      <div className={`h-32 ${color} flex items-center justify-center`}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-white/30" />
+          <span className="text-white font-bold text-sm">DrimPay</span>
+        </div>
+      </div>
+      <div className="p-4">
+        <span className="text-[10px] font-semibold text-[#A8E63D] uppercase tracking-wider bg-[#A8E63D]/10 px-2 py-0.5 rounded">{tag}</span>
+        <h4 className="font-bold text-sm text-[#1a1a1a] mt-2 mb-2 leading-snug group-hover:text-[#1a1a1a]/70 transition-colors">{title}</h4>
+        <p className="text-[10px] text-gray-400">{date}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Products Tab ────────────────────────────────────────────────────────── */
+const PRODUCTS = [
+  { label: "Mobile Money →", title: "Collecte Mobile Money", desc: "Acceptez des paiements depuis Orange Money, Wave, MTN, Airtel Money et bien plus. Une seule intégration, tous les opérateurs.", color: "bg-[#FF6B35]" },
+  { label: "Cartes Virtuelles →", title: "Cartes Virtuelles Instantanées", desc: "Émettez des cartes virtuelles Visa/Mastercard liées à vos wallets DrimPay pour les achats en ligne et business.", color: "bg-[#5B5EF5]" },
+  { label: "Paiement par lien →", title: "Liens de Paiement", desc: "Créez des liens de paiement en quelques secondes. Partagez par WhatsApp, SMS ou email. Aucun site web requis.", color: "bg-[#A8E63D]" },
+  { label: "Mass Payout →", title: "Décaissements Massifs", desc: "Envoyez des paiements en masse à des centaines de destinataires simultanément. Parfait pour les paies, commissions et remboursements.", color: "bg-[#0D0C18]" },
+  { label: "Voir Tout →", title: "Toute la Plateforme", desc: "Découvrez l'ensemble des produits DrimPay : wallets, KYB automatisé, webhooks temps réel, et tableau de bord no-code.", color: "bg-[#1a6b4a]" },
+];
+
+function ProductsSection() {
+  const [active, setActive] = useState(0);
+  const p = PRODUCTS[active];
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Hero */}
-      <section className="relative pt-28 pb-16 md:pt-40 md:pb-20 overflow-hidden bg-background">
-        <DecorativeLeft />
-        <DecorativeRight />
-        <div className="container mx-auto px-4 md:px-8">
-          <motion.div initial="hidden" animate="visible" variants={containerVariants} className="flex flex-col items-center text-center">
-            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-8">
-              <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-xs font-semibold text-primary tracking-wide">{t.home.badge}</span>
-            </motion.div>
-            <motion.h1 variants={itemVariants} className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 text-foreground leading-[1.08] max-w-4xl">
-              {t.home.heroTitle1}{" "}
-              <span className="text-primary">{t.home.heroTitle2}</span>
-            </motion.h1>
-            <motion.p variants={itemVariants} className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-10 leading-relaxed font-normal">
-              {t.home.heroDesc}
-            </motion.p>
-            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3 mb-16">
-              <Link href="/signup">
-                <Button size="lg" className="h-12 px-8 text-base font-semibold bg-foreground text-background hover:bg-foreground/90 rounded-xl shadow-md group">
-                  {t.home.startBuilding} <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-              <Link href="/docs/payin">
-                <Button size="lg" variant="outline" className="h-12 px-8 text-base font-medium border-border rounded-xl hover:bg-secondary">
-                  {t.home.payinDocs}
-                </Button>
-              </Link>
-              <Link href="/docs/payout">
-                <Button size="lg" variant="outline" className="h-12 px-8 text-base font-medium border-border rounded-xl hover:bg-secondary">
-                  {t.home.payoutDocs}
-                </Button>
-              </Link>
-            </motion.div>
-            <motion.div variants={itemVariants} className="w-full">
-              <DashboardMockup />
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="py-14 border-y border-border bg-card/50">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-            {statsLoading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2">
-                  <Skeleton className="h-10 w-24" />
-                  <Skeleton className="h-4 w-28" />
-                </div>
-              ))
-            ) : stats ? (
-              <>
-                <div className="flex flex-col items-center text-center">
-                  <span className="text-4xl md:text-5xl font-extrabold text-foreground mb-1">{stats.totalVolume}</span>
-                  <span className="text-xs text-muted-foreground font-semibold tracking-widest uppercase">{t.home.statsVolume}</span>
-                </div>
-                <div className="flex flex-col items-center text-center">
-                  <span className="text-4xl md:text-5xl font-extrabold text-foreground mb-1">{(stats.uptimePercent || 99.99).toFixed(2)}%</span>
-                  <span className="text-xs text-muted-foreground font-semibold tracking-widest uppercase">{t.home.statsUptime}</span>
-                </div>
-                <div className="flex flex-col items-center text-center">
-                  <span className="text-4xl md:text-5xl font-extrabold text-foreground mb-1">{stats.supportedCountries}</span>
-                  <span className="text-xs text-muted-foreground font-semibold tracking-widest uppercase">{t.home.statsCountries}</span>
-                </div>
-                <div className="flex flex-col items-center text-center">
-                  <span className="text-4xl md:text-5xl font-extrabold text-foreground mb-1">{stats.merchantsOnboarded.toLocaleString()}+</span>
-                  <span className="text-xs text-muted-foreground font-semibold tracking-widest uppercase">{t.home.statsBusinesses}</span>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      {/* Feature highlight — inspired by Paxity "Garantissez..." section */}
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-4 md:px-8 text-center max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-5xl font-extrabold text-foreground mb-6 leading-tight tracking-tight">
-            {t.home.featuresTitle}
-          </h2>
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-            {t.home.featuresDesc}
-          </p>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="pb-24 bg-background">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[Zap, Globe, ShieldCheck, Code, CreditCard, ShieldCheck].map((Icon, i) => (
-              <div key={i} className="p-8 rounded-2xl bg-card border border-border hover:border-primary/40 hover:shadow-md transition-all group cursor-default">
-                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/20 transition-colors">
-                  <Icon className="w-5 h-5 text-primary" />
-                </div>
-                <h3 className="text-lg font-bold mb-2 text-foreground">{t.home.features[i].title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{t.home.features[i].desc}</p>
-              </div>
+    <section className="py-24 bg-[#F5F4EE]">
+      <div className="max-w-6xl mx-auto px-6 md:px-10">
+        <h2 className="text-3xl md:text-5xl font-extrabold text-[#1a1a1a] mb-14 leading-tight tracking-tight">
+          Produits Prêts à l'Emploi
+        </h2>
+        <div className="grid lg:grid-cols-2 gap-10 items-start">
+          {/* Left: nav list */}
+          <div className="space-y-1">
+            {PRODUCTS.map((prod, i) => (
+              <button
+                key={i}
+                onClick={() => setActive(i)}
+                className={`w-full text-left px-5 py-4 rounded-xl font-bold text-lg transition-all ${
+                  active === i
+                    ? "bg-[#1a1a1a] text-white shadow-lg"
+                    : "text-[#1a1a1a] hover:bg-white/60"
+                }`}
+              >
+                {prod.label}
+              </button>
             ))}
           </div>
+          {/* Right: product card */}
+          <div className="lg:sticky lg:top-24">
+            <div className={`rounded-3xl ${p.color} p-8 min-h-[280px] flex flex-col justify-between shadow-xl`}>
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-6">
+                  <div className="w-5 h-5 rounded bg-white/60" />
+                </div>
+                <h3 className={`text-2xl md:text-3xl font-extrabold mb-4 ${p.color === "bg-[#A8E63D]" ? "text-[#1a1a1a]" : "text-white"}`}>
+                  {p.title}
+                </h3>
+                <p className={`text-base leading-relaxed ${p.color === "bg-[#A8E63D]" ? "text-[#1a1a1a]/70" : "text-white/70"}`}>
+                  {p.desc}
+                </p>
+              </div>
+              <div className="mt-8">
+                <Link href="/signup">
+                  <button className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                    p.color === "bg-[#A8E63D]"
+                      ? "bg-[#1a1a1a] text-white hover:bg-[#1a1a1a]/80"
+                      : "bg-white text-[#1a1a1a] hover:bg-white/90"
+                  }`}>
+                    Commencer <ArrowRight className="w-4 h-4" />
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Dark stack section ──────────────────────────────────────────────────── */
+function StackSection() {
+  return (
+    <section className="py-28 bg-[#0D0C18] relative overflow-hidden">
+      {/* Subtle grid */}
+      <div className="absolute inset-0 opacity-5" style={{
+        backgroundImage: "linear-gradient(rgba(168,230,61,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(168,230,61,0.3) 1px, transparent 1px)",
+        backgroundSize: "40px 40px"
+      }} />
+      <div className="max-w-6xl mx-auto px-6 md:px-10 relative">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-6">
+            Une stack moderne<br />pour les entreprises modernes
+          </h2>
+          <p className="text-lg text-white/50 max-w-2xl mx-auto">
+            DrimPay fournit des APIs comme GraphQL et des SDKs qui vous permettent de vous concentrer sur vos expériences clients et produits sans soucis de plomberie.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            {
+              icon: "⚡",
+              title: "GraphQL API",
+              desc: "Nos APIs GraphQL, REST et SDKs vous permettent de construire des interfaces, d'automatiser avec des workflows et de tirer parti de bibliothèques partenaires pour accélérer votre time-to-market.",
+              badge: "GraphQL",
+              code: `query GetBalance {\n  wallet(id: "w_xyz") {\n    balance\n    currency\n    status\n  }\n}`,
+            },
+            {
+              icon: "🔔",
+              title: "Notifications & Webhooks",
+              desc: "Synchronisez votre plateforme avec les événements DrimPay en temps réel grâce à nos webhooks et notifications automatiques.",
+              badge: "Webhooks",
+              code: `{\n  "event": "payment.success",\n  "amount": 45000,\n  "currency": "XOF",\n  "status": "completed"\n}`,
+            },
+            {
+              icon: "📊",
+              title: "Dashboard No-Code",
+              desc: "Le Dashboard DrimPay vous permet de gérer vos finances, transactions et clients sans écrire une seule ligne de code.",
+              badge: "No-Code",
+              code: `Dashboard · Analytiques\nTransactions · Wallets\nPaiements · API Keys\nKYB · Équipe`,
+            },
+          ].map((item, i) => (
+            <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-[#A8E63D]/30 transition-colors group">
+              <div className="text-3xl mb-4">{item.icon}</div>
+              <div className="inline-block px-2 py-0.5 rounded bg-[#A8E63D]/15 text-[#A8E63D] text-[10px] font-bold tracking-wider mb-4">
+                {item.badge}
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+              <p className="text-sm text-white/50 leading-relaxed mb-5">{item.desc}</p>
+              <div className="bg-black/40 rounded-xl p-3 font-mono text-[11px] text-[#A8E63D]/80 leading-relaxed whitespace-pre">
+                {item.code}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Main Home Component ─────────────────────────────────────────────────── */
+export default function Home() {
+  return (
+    <div className="flex flex-col min-h-screen bg-[#F5F4EE] font-sans">
+
+      {/* ── HERO ───────────────────────────────────────────────────────────── */}
+      <section className="pt-28 pb-0 overflow-hidden bg-[#F5F4EE]">
+        <div className="max-w-6xl mx-auto px-6 md:px-10">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            {/* Left */}
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#A8E63D]/15 border border-[#A8E63D]/30 mb-6">
+                <span className="flex h-2 w-2 rounded-full bg-[#A8E63D] animate-pulse" />
+                <span className="text-xs font-semibold text-[#4a7a1a] tracking-wide">API v2.0 maintenant disponible</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#1a1a1a] leading-[1.05] tracking-tight mb-6">
+                La Plateforme de Paiement la Plus Moderne pour l'Afrique
+              </h1>
+              <p className="text-base md:text-lg text-gray-500 leading-relaxed mb-8 max-w-lg">
+                Tout ce dont vous avez besoin pour lancer votre produit fintech : mobile money, cartes virtuelles, mass payout et wallets. En production en jours, pas en mois.
+              </p>
+              <div className="flex flex-wrap gap-3 mb-10">
+                <Link href="/signup">
+                  <button className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1a1a1a] text-white font-semibold text-sm hover:bg-[#1a1a1a]/85 transition-all shadow-md">
+                    Voir en Action <ArrowRight className="w-4 h-4" />
+                  </button>
+                </Link>
+                <Link href="/docs">
+                  <button className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-[#E0DDD5] text-[#1a1a1a] font-semibold text-sm hover:shadow-md transition-all">
+                    API Playground <ChevronRight className="w-4 h-4" />
+                  </button>
+                </Link>
+              </div>
+              {/* Partner logos strip */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="text-xs text-gray-400 font-medium">Confiance des opérateurs :</span>
+                {["🟠 Orange", "🌊 Wave", "📱 MTN", "✈️ Airtel"].map((op, i) => (
+                  <span key={i} className="text-sm font-bold text-gray-500 bg-white px-3 py-1.5 rounded-lg border border-[#E0DDD5] shadow-sm">
+                    {op}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {/* Right: product mockup */}
+            <div className="relative">
+              <ProductMockup />
+            </div>
+          </div>
+        </div>
+        {/* Bottom wave divider */}
+        <div className="h-12 bg-gradient-to-b from-[#F5F4EE] to-[#ECEAE2] mt-16" />
       </section>
 
-      {/* Code Integration */}
-      <section className="py-24 bg-card/40 border-y border-border">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+      {/* ── BETTER WAY ────────────────────────────────────────────────────── */}
+      <section className="py-24 bg-[#ECEAE2]">
+        <div className="max-w-6xl mx-auto px-6 md:px-10">
+          <div className="grid lg:grid-cols-2 gap-16 items-start">
+            {/* Left text */}
             <div>
-              <h2 className="text-3xl md:text-4xl font-extrabold mb-5 text-foreground tracking-tight leading-tight">{t.home.integrationTitle}</h2>
-              <p className="text-lg text-muted-foreground mb-8 leading-relaxed">{t.home.integrationDesc}</p>
-              <ul className="space-y-4">
-                {t.home.integrationFeatures.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-muted-foreground">
-                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm leading-relaxed">{feature}</span>
-                  </li>
-                ))}
-              </ul>
+              <h2 className="text-4xl md:text-5xl font-extrabold text-[#1a1a1a] leading-tight tracking-tight mb-6">
+                Une meilleure façon<br />de lancer un<br />produit de paiement
+              </h2>
+              <Link href="/how-it-works">
+                <button className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1a1a1a] text-white font-semibold text-sm hover:bg-[#1a1a1a]/85 transition-all shadow-md mt-2">
+                  En savoir plus <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
             </div>
-            <div className="rounded-2xl overflow-hidden border border-border bg-[#0d1117] shadow-2xl">
-              <div className="flex items-center px-4 py-3 bg-[#161b22] border-b border-[#30363d]">
-                <div className="flex gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
-                  <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
-                  <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
-                </div>
-                <div className="mx-auto text-xs text-[#8b949e] font-mono">create-payment.ts</div>
-              </div>
-              <div className="p-6 overflow-x-auto">
-                <pre className="text-sm font-mono text-[#c9d1d9] leading-relaxed">
-                  <span className="text-[#ff7b72]">import</span> {'{'} DrimPay {'}'} <span className="text-[#ff7b72]">from</span> <span className="text-[#a5d6ff]">'drimpay-node'</span>;<br /><br />
-                  <span className="text-[#ff7b72]">const</span> drimpay = <span className="text-[#ff7b72]">new</span> <span className="text-[#d2a8ff]">DrimPay</span>(<span className="text-[#79c0ff]">process.env.DRIMPAY_SECRET_KEY</span>);<br /><br />
-                  <span className="text-[#ff7b72]">const</span> charge = <span className="text-[#ff7b72]">await</span> drimpay.charges.<span className="text-[#d2a8ff]">create</span>({'{'}<br />
-                  {'  '}<span className="text-[#79c0ff]">amount</span>: <span className="text-[#a5d6ff]">5000</span>,<br />
-                  {'  '}<span className="text-[#79c0ff]">currency</span>: <span className="text-[#a5d6ff]">'XOF'</span>,<br />
-                  {'  '}<span className="text-[#79c0ff]">method</span>: <span className="text-[#a5d6ff]">'mobile_money'</span>,<br />
-                  {'  '}<span className="text-[#79c0ff]">customer</span>: {'{'}<br />
-                  {'    '}<span className="text-[#79c0ff]">phone_number</span>: <span className="text-[#a5d6ff]">'+2250102030405'</span><br />
-                  {'  }'},<br />
-                  {'  '}<span className="text-[#79c0ff]">reference</span>: <span className="text-[#a5d6ff]">'txn_123456789'</span><br />
-                  {'}'});<br /><br />
-                  <span className="text-[#8b949e]">{t.home.codeComment}</span><br />
-                  console.<span className="text-[#d2a8ff]">log</span>(charge.status); <span className="text-[#8b949e]">// 'pending'</span>
-                </pre>
+            {/* Right: feature mini-cards grid */}
+            <div>
+              <p className="text-base text-gray-500 leading-relaxed mb-8">
+                DrimPay regroupe les intégrations aux opérateurs mobiles, la conformité et votre expérience client en un seul endroit. De la mise en service à la croissance, DrimPay vous permet de vous concentrer sur la construction de produits remarquables.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <FeatureSmallCard icon="💳" title="Cartes virtuelles" desc="Émettez des cartes virtuelles Visa liées à vos wallets pour les paiements en ligne." />
+                <FeatureSmallCard icon="📡" title="Webhooks temps réel" desc="Soyez notifié à chaque événement de paiement instantanément." />
+                <FeatureSmallCard icon="🏦" title="Multi-devises" desc="Gérez des soldes en XOF, XAF, NGN, GHS et plus encore." />
+                <FeatureSmallCard icon="🔐" title="KYB automatisé" desc="Vérification d'identité d'entreprise sans friction grâce à notre pipeline automatisé." />
+                <FeatureSmallCard icon="📊" title="Analytiques avancées" desc="Tableaux de bord en temps réel pour suivre vos transactions et performances." />
+                <FeatureSmallCard icon="🛡️" title="Sécurité bancaire" desc="Chiffrement de bout en bout et conformité aux standards PCI-DSS." />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-28 bg-foreground relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full border border-background/30" />
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 rounded-full border border-background/20" />
-        </div>
-        <div className="container mx-auto px-4 md:px-8 text-center relative">
-          <h2 className="text-4xl md:text-6xl font-extrabold text-background mb-6 tracking-tight leading-tight">{t.home.ctaTitle}</h2>
-          <p className="text-lg md:text-xl text-background/60 max-w-2xl mx-auto mb-10">{t.home.ctaDesc}</p>
-          <Link href="/signup">
-            <Button size="lg" className="h-14 px-10 text-lg font-bold bg-primary text-black hover:bg-primary/90 hover:scale-105 transition-all rounded-xl shadow-lg shadow-primary/20">
-              {t.home.ctaBtn} <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </Link>
+      {/* ── MAKE IT YOUR OWN ──────────────────────────────────────────────── */}
+      <section className="py-24 bg-[#F5F4EE]">
+        <div className="max-w-5xl mx-auto px-6 md:px-10 text-center">
+          <h2 className="text-4xl md:text-6xl font-extrabold text-[#1a1a1a] leading-tight tracking-tight mb-4">
+            Faites-en le Vôtre
+          </h2>
+          <p className="text-base md:text-lg text-gray-500 max-w-xl mx-auto mb-14 leading-relaxed">
+            Mettez votre marque entre les mains de vos clients. DrimPay vous permet de gérer la conception de chaque expérience de paiement — votre marque, vos couleurs, votre identité. Construisez votre marque de façon cohérente.
+          </p>
+          {/* Card mockup stack */}
+          <div className="relative flex items-center justify-center h-56 mb-6">
+            <div className="absolute" style={{ transform: "rotate(-8deg) translateX(-80px) translateY(10px)" }}>
+              <CardMockup color="bg-[#5B5EF5]" label="Business Premium" />
+            </div>
+            <div className="absolute" style={{ transform: "rotate(6deg) translateX(80px) translateY(10px)" }}>
+              <CardMockup color="bg-[#1a6b4a]" label="Carte Enterprise" />
+            </div>
+            <div className="relative z-10" style={{ transform: "translateY(-10px)" }}>
+              <CardMockup color="bg-[#A8E63D]" label="Carte Standard" />
+            </div>
+          </div>
+          {/* Hand emoji / indicator */}
+          <div className="inline-flex items-center gap-2 bg-white border border-[#E5E3DC] rounded-full px-4 py-2 shadow-sm">
+            <span className="text-lg">✋</span>
+            <span className="text-xs font-semibold text-gray-600">Marque blanche disponible</span>
+          </div>
+          <div className="mt-8">
+            <Link href="/signup">
+              <button className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#1a1a1a] text-white font-semibold text-sm hover:bg-[#1a1a1a]/85 transition-all shadow-md">
+                Personnaliser votre expérience <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
         </div>
       </section>
+
+      {/* ── PRODUCTS (tabbed) ─────────────────────────────────────────────── */}
+      <ProductsSection />
+
+      {/* ── MODERN STACK (dark) ───────────────────────────────────────────── */}
+      <StackSection />
+
+      {/* ── TWO CTA CARDS ─────────────────────────────────────────────────── */}
+      <section className="py-24 bg-[#F5F4EE]">
+        <div className="max-w-6xl mx-auto px-6 md:px-10">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Card 1 */}
+            <div className="bg-white rounded-3xl border border-[#E5E3DC] p-8 hover:shadow-lg transition-shadow group">
+              <div className="w-12 h-12 rounded-2xl bg-[#A8E63D] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <span className="text-2xl">🚀</span>
+              </div>
+              <h3 className="text-2xl font-extrabold text-[#1a1a1a] mb-3">Planifiez votre Lancement</h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                Notre équipe d'experts est là pour vous accompagner à chaque étape — de l'intégration à la mise en production. Planifiez un appel dès aujourd'hui.
+              </p>
+              <Link href="/contact">
+                <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1a1a1a] text-white font-semibold text-sm hover:bg-[#1a1a1a]/85 transition-all">
+                  Planifier un appel <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </div>
+            {/* Card 2 */}
+            <div className="bg-[#0D0C18] rounded-3xl border border-white/10 p-8 hover:shadow-lg transition-shadow group">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <span className="text-2xl">🔄</span>
+              </div>
+              <h3 className="text-2xl font-extrabold text-white mb-3">Migrer vers DrimPay</h3>
+              <p className="text-sm text-white/50 leading-relaxed mb-6">
+                Vous utilisez déjà un autre prestataire ? Notre équipe migration prend en charge l'intégralité du transfert : données, configurations et documentation.
+              </p>
+              <Link href="/contact">
+                <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#A8E63D] text-[#1a1a1a] font-semibold text-sm hover:bg-[#A8E63D]/90 transition-all">
+                  Démarrer la migration <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── BLOG / READ THE LATEST ────────────────────────────────────────── */}
+      <section className="py-24 bg-[#ECEAE2]">
+        <div className="max-w-6xl mx-auto px-6 md:px-10">
+          <div className="flex items-end justify-between mb-10">
+            <h2 className="text-3xl md:text-5xl font-extrabold text-[#1a1a1a] leading-tight tracking-tight">
+              Lire les Dernières Nouvelles
+            </h2>
+            <Link href="/blog">
+              <button className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#E0DDD5] bg-white text-[#1a1a1a] font-semibold text-sm hover:shadow-md transition-all">
+                Voir tout <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <BlogCard
+              tag="Produit"
+              title="DrimPay lance les cartes virtuelles pour les entreprises en Afrique de l'Ouest"
+              date="7 mai 2026"
+              color="bg-[#5B5EF5]"
+            />
+            <BlogCard
+              tag="Intégration"
+              title="Comment intégrer Orange Money en moins de 30 minutes avec DrimPay"
+              date="2 mai 2026"
+              color="bg-[#FF6B35]"
+            />
+            <BlogCard
+              tag="Croissance"
+              title="DrimPay traite désormais 10 milliards XOF par mois en transactions"
+              date="28 avril 2026"
+              color="bg-[#A8E63D]"
+            />
+            <BlogCard
+              tag="Guide"
+              title="Comprendre le KYB automatisé et la conformité fintech en Afrique"
+              date="21 avril 2026"
+              color="bg-[#0D0C18]"
+            />
+          </div>
+          <div className="mt-6 md:hidden">
+            <Link href="/blog">
+              <button className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-[#E0DDD5] bg-white text-[#1a1a1a] font-semibold text-sm">
+                Voir tout <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TICKER ────────────────────────────────────────────────────────── */}
+      <Ticker />
+
+      {/* ── TICKER CSS (injected inline) ──────────────────────────────────── */}
+      <style>{`
+        @keyframes ticker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-ticker {
+          animation: ticker 28s linear infinite;
+          width: max-content;
+        }
+        .ticker-track:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
     </div>
   );
 }
