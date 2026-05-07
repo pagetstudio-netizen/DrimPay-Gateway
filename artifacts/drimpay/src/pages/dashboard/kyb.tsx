@@ -452,29 +452,38 @@ export default function Kyb() {
   };
 
   const handleStep1Next = form1.handleSubmit(async (values) => {
+    if (submitting) return;
     setError("");
+    setSubmitting(true);
     try {
       await saveStep(1, values);
       setStep(2);
     } catch (e: any) { setError(e.message); }
+    finally { setSubmitting(false); }
   });
 
   const handleStep2Next = form2.handleSubmit(async (values) => {
+    if (submitting) return;
     setError("");
     if (!step2RequiredDocs) { setError("Veuillez téléverser tous les documents obligatoires du représentant légal."); return; }
+    setSubmitting(true);
     try {
       await saveStep(2, values);
       setStep(3);
     } catch (e: any) { setError(e.message); }
+    finally { setSubmitting(false); }
   });
 
   const handleStep3Next = async () => {
+    if (submitting) return;
     setError("");
     if (!step3RequiredDocs) { setError("Veuillez téléverser tous les documents obligatoires."); return; }
+    setSubmitting(true);
     try {
       await saveStep(3, {});
       setStep(4);
     } catch (e: any) { setError(e.message); }
+    finally { setSubmitting(false); }
   };
 
   const handleFinalSubmit = form4.handleSubmit(async (values) => {
@@ -747,8 +756,8 @@ export default function Kyb() {
                         </div>
                       </div>
                       <div className="flex justify-end">
-                        <Button type="submit" className="text-black gap-2">
-                          Suivant <ChevronRight className="w-4 h-4" />
+                        <Button type="submit" className="text-black gap-2" disabled={submitting}>
+                          {submitting ? "Enregistrement…" : <><span>Suivant</span> <ChevronRight className="w-4 h-4" /></>}
                         </Button>
                       </div>
                     </form>
@@ -898,11 +907,11 @@ export default function Kyb() {
                       </div>
 
                       <div className="flex justify-between">
-                        <Button type="button" variant="outline" onClick={() => setStep(1)} className="gap-2">
+                        <Button type="button" variant="outline" onClick={() => setStep(1)} className="gap-2" disabled={submitting}>
                           <ChevronLeft className="w-4 h-4" /> Retour
                         </Button>
-                        <Button type="submit" className="text-black gap-2">
-                          Suivant <ChevronRight className="w-4 h-4" />
+                        <Button type="submit" className="text-black gap-2" disabled={submitting}>
+                          {submitting ? "Enregistrement…" : <><span>Suivant</span> <ChevronRight className="w-4 h-4" /></>}
                         </Button>
                       </div>
                     </form>
@@ -950,8 +959,8 @@ export default function Kyb() {
                     <Button type="button" variant="outline" onClick={() => setStep(2)} className="gap-2">
                       <ChevronLeft className="w-4 h-4" /> Retour
                     </Button>
-                    <Button type="button" onClick={handleStep3Next} className="text-black gap-2" disabled={!step3RequiredDocs}>
-                      Suivant <ChevronRight className="w-4 h-4" />
+                    <Button type="button" onClick={handleStep3Next} className="text-black gap-2" disabled={!step3RequiredDocs || submitting}>
+                      {submitting ? "Enregistrement…" : <><span>Suivant</span> <ChevronRight className="w-4 h-4" /></>}
                     </Button>
                   </div>
                 </motion.div>

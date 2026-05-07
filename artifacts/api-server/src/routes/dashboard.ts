@@ -592,6 +592,26 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
       updateValues = parsed.data;
     } else if (stepNum === 3) {
       updateValues = {};
+      // Extract uploaded file names from multipart files
+      const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+      const step3DocKeys = [
+        "documentRccm", "documentCertificate", "documentProofAddress",
+        "documentBankStatement", "documentStatuts", "documentLicense",
+      ];
+      step3DocKeys.forEach((key) => {
+        const file = files?.[key]?.[0];
+        if (file) updateValues[key] = file.originalname;
+      });
+      // Also capture any step-2 identity docs that arrive in the same multipart
+      const step2DocKeys = ["documentIdFront", "documentIdBack", "documentSelfie"];
+      step2DocKeys.forEach((key) => {
+        const file = files?.[key]?.[0];
+        if (file) updateValues[key] = file.originalname;
+      });
+      if (Object.keys(updateValues).length === 0) {
+        res.status(400).json({ error: "Aucun document reçu. Veuillez téléverser les documents obligatoires." });
+        return;
+      }
     } else if (stepNum === 4) {
       const schema = z.object({
         contractEmail: z.string().email(),
