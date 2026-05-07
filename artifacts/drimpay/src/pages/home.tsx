@@ -378,25 +378,27 @@ export default function Home() {
                 </Link>
               </div>
             </div>
-            <div className="bg-white rounded-3xl border border-[#e5e3dc] overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
-              {/* Operator network image */}
-              <div className="relative bg-[#F8F6F1] flex items-center justify-center overflow-hidden" style={{ minHeight: "220px" }}>
-                <img
-                  src="/operators-network.png"
-                  alt="Réseau d'opérateurs DrimPay"
-                  className="w-full object-contain"
-                  style={{ maxHeight: "220px" }}
-                />
+            <div className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col" style={{ background: "#C8E6D4" }}>
+              {/* Dashboard mockup area — mint green bg, screenshot inside */}
+              <div className="relative flex items-end justify-center overflow-hidden px-6 pt-8" style={{ minHeight: "260px" }}>
+                {/* Floating dashboard screenshot */}
+                <div className="w-full rounded-t-xl overflow-hidden shadow-2xl border border-white/40" style={{ maxWidth: "420px" }}>
+                  <img
+                    src="/dashboard-card.jpg"
+                    alt="DrimPay Dashboard"
+                    className="w-full block"
+                  />
+                </div>
               </div>
               {/* Text content */}
-              <div className="p-8 flex flex-col flex-1">
-                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Connectez tous vos opérateurs</h3>
-                <p className="text-sm text-[#0f0f0f]/55 leading-relaxed mb-6 flex-1">
-                  Intégrez Wave, Orange Money, MTN, Airtel, Moov, TMoney et plus encore grâce à une seule API unifiée.
+              <div className="p-8 flex flex-col flex-1" style={{ background: "#C8E6D4" }}>
+                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Gérez tout depuis un seul tableau de bord</h3>
+                <p className="text-sm text-[#0f0f0f]/60 leading-relaxed mb-6 flex-1">
+                  Transactions, wallets, cartes, paiements et analytiques — tout accessible en un coup d'œil, sans code.
                 </p>
-                <Link href="/integrations">
-                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#B5F03C] text-[#0f0f0f] font-semibold text-sm hover:bg-[#B5F03C]/90 transition-all">
-                    Voir les intégrations <ArrowRight className="w-4 h-4" />
+                <Link href="/signup">
+                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
+                    Essayer le Dashboard <ArrowRight className="w-4 h-4" />
                   </button>
                 </Link>
               </div>
