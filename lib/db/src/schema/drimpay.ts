@@ -10,7 +10,7 @@ export const incidentStatusEnum = pgEnum("incident_status", ["investigating", "i
 export const incidentSeverityEnum = pgEnum("incident_severity", ["minor", "major", "critical"]);
 export const kybStatusEnum = pgEnum("kyb_status", ["pending", "submitted", "under_review", "approved", "rejected"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["payin", "payout"]);
-export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "success", "failed", "processing"]);
+export const transactionStatusEnum = pgEnum("transaction_status", ["queued", "pending", "processing", "success", "failed", "reversed", "cancelled", "expired"]);
 export const apiKeyStatusEnum = pgEnum("api_key_status", ["active", "revoked"]);
 export const apiKeyEnvEnum = pgEnum("api_key_env", ["sandbox", "live"]);
 
@@ -119,6 +119,10 @@ export const transactionsTable = pgTable("transactions", {
   webhookLastStatusCode: integer("webhook_last_status_code"),
   webhookLastBody: text("webhook_last_body"),
   webhookLastSentAt: timestamp("webhook_last_sent_at"),
+  webhookSignatureKey: text("webhook_signature_key"),
+  webhookRetryCount: integer("webhook_retry_count").notNull().default(0),
+  webhookNextRetryAt: timestamp("webhook_next_retry_at"),
+  expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

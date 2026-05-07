@@ -9,6 +9,7 @@ import partnersRouter from "./partners";
 import countriesRouter from "./countries";
 import authRouter from "./auth";
 import dashboardRouter from "./dashboard";
+import v2payinRouter from "./v2payin";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(statusRouter);
 router.use(partnersRouter);
 router.use(countriesRouter);
 router.use(dashboardRouter);
+router.use(v2payinRouter);
 
 export default router;
