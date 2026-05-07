@@ -2,10 +2,14 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
-  ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown,
-  AlertCircle, Clock, XCircle, ChevronRight, CheckCircle2,
+  Wallet, AlertCircle, Clock, XCircle, ChevronRight, CheckCircle2,
   RefreshCw
 } from "lucide-react";
+
+import statIcon1 from "@assets/téléchargement_(53)_1778164936855.png";
+import statIcon2 from "@assets/téléchargement_(55)_1778164936799.png";
+import statIcon3 from "@assets/téléchargement_(54)_1778164936832.png";
+import statIcon4 from "@assets/téléchargement_(56)_1778164936734.png";
 import { DashboardLayout } from "./layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -129,10 +133,10 @@ export default function DashboardOverview() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
-            { label: "Total Reçu", value: fmt(totalPayin, "XOF"), icon: ArrowDownLeft, color: "text-green-500", bg: "bg-green-500/10", sub: "Pay-in cumulés" },
-            { label: "Total Envoyé", value: fmt(totalPayout, "XOF"), icon: ArrowUpRight, color: "text-blue-500", bg: "bg-blue-500/10", sub: "Pay-out cumulés" },
-            { label: "Frais Totaux", value: fmt(totalFees, "XOF"), icon: TrendingDown, color: "text-orange-500", bg: "bg-orange-500/10", sub: "3% par transaction" },
-            { label: "Transactions", value: totalTx.toLocaleString(), icon: TrendingUp, color: "text-purple-500", bg: "bg-purple-500/10", sub: "Toutes opérations" },
+            { label: "Total Reçu", value: fmt(totalPayin, "XOF"), img: statIcon1, sub: "Pay-in cumulés" },
+            { label: "Total Envoyé", value: fmt(totalPayout, "XOF"), img: statIcon2, sub: "Pay-out cumulés" },
+            { label: "Frais Totaux", value: fmt(totalFees, "XOF"), img: statIcon3, sub: "3% par transaction" },
+            { label: "Transactions", value: totalTx.toLocaleString(), img: statIcon4, sub: "Toutes opérations" },
           ].map((stat, i) => (
             <motion.div
               key={i}
@@ -143,9 +147,7 @@ export default function DashboardOverview() {
             >
               <div className="flex items-start justify-between mb-4">
                 <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
-                <div className={`w-8 h-8 rounded-lg ${stat.bg} flex items-center justify-center`}>
-                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                </div>
+                <img src={stat.img} alt={stat.label} className="w-8 h-8 object-contain" />
               </div>
               {loading ? (
                 <div className="h-7 w-24 bg-muted rounded animate-pulse mb-1" />
