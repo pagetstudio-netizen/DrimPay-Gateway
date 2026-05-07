@@ -343,44 +343,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── BLOG ─────────────────────────────────────────────────────── */}
-      <section className="py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-6 md:px-10">
-          <div className="flex items-end justify-between mb-10">
-            <h2 className="text-3xl md:text-5xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight">
-              Lire les Dernières Nouvelles
-            </h2>
-            <Link href="/blog">
-              <button className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#e0ddd5] bg-[#F5F0E8] text-[#0f0f0f] font-semibold text-sm hover:shadow-md transition-all">
-                Voir tout <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              { tag: "Produit",     title: "DrimPay lance les cartes virtuelles pour les entreprises en Afrique de l'Ouest", date: "7 mai 2026",    bg: "bg-[#5B5EF5]" },
-              { tag: "Intégration", title: "Comment intégrer Orange Money en moins de 30 minutes avec DrimPay",               date: "2 mai 2026",    bg: "bg-[#FF6B35]" },
-              { tag: "Croissance",  title: "DrimPay traite désormais 10 milliards XOF par mois en transactions",              date: "28 avril 2026", bg: "bg-[#B5F03C]" },
-              { tag: "Guide",       title: "Comprendre le KYB automatisé et la conformité fintech en Afrique",                date: "21 avril 2026", bg: "bg-[#0d0c18]" },
-            ].map((card, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-[#e5e3dc] overflow-hidden hover:shadow-md transition-shadow group cursor-pointer">
-                <div className={`h-32 ${card.bg} flex items-center justify-center`}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-white/30" />
-                    <span className="text-white font-bold text-sm">DrimPay</span>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <span className="text-[10px] font-semibold text-[#3a7a00] uppercase tracking-wider bg-[#B5F03C]/20 px-2 py-0.5 rounded-full">{card.tag}</span>
-                  <h4 className="font-bold text-sm text-[#0f0f0f] mt-2 mb-2 leading-snug group-hover:opacity-70 transition-opacity">{card.title}</h4>
-                  <p className="text-[10px] text-gray-400">{card.date}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── TICKER ───────────────────────────────────────────────────── */}
       <Ticker />
     </div>
