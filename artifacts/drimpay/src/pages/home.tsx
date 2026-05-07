@@ -122,44 +122,6 @@ function ProductsSection() {
   );
 }
 
-/* ══════════════════════════════════════════════════════════════════════════ */
-/*  DARK STACK SECTION                                                        */
-/* ══════════════════════════════════════════════════════════════════════════ */
-function StackSection() {
-  return (
-    <section className="py-28 bg-[#0d0c18] relative overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.04]" style={{
-        backgroundImage: "linear-gradient(rgba(181,240,60,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(181,240,60,0.6) 1px, transparent 1px)",
-        backgroundSize: "40px 40px",
-      }} />
-      <div className="max-w-6xl mx-auto px-6 md:px-10 relative">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-6">
-            Une stack moderne<br />pour les entreprises modernes
-          </h2>
-          <p className="text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
-            DrimPay fournit des APIs et SDKs qui vous permettent de vous concentrer sur vos expériences clients sans soucis d'infrastructure.
-          </p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { icon: "⚡", badge: "GraphQL API", title: "GraphQL API", desc: "Nos APIs GraphQL, REST et SDKs vous permettent de construire des interfaces et d'automatiser des workflows pour accélérer votre time-to-market.", code: `query GetBalance {\n  wallet(id: "w_xyz") {\n    balance\n    currency\n  }\n}` },
-            { icon: "🔔", badge: "Webhooks", title: "Notifications & Webhooks", desc: "Synchronisez votre plateforme avec les événements DrimPay en temps réel grâce à nos webhooks et notifications automatiques.", code: `{\n  "event": "payment.success",\n  "amount": 45000,\n  "currency": "XOF"\n}` },
-            { icon: "📊", badge: "No-Code", title: "Dashboard No-Code", desc: "Le Dashboard DrimPay vous permet de gérer vos finances, transactions et clients sans écrire une seule ligne de code.", code: `Dashboard · Analytiques\nTransactions · Wallets\nPaiements · API Keys\nKYB · Équipe` },
-          ].map((item, i) => (
-            <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-[#B5F03C]/40 transition-colors">
-              <div className="text-3xl mb-4">{item.icon}</div>
-              <div className="inline-block px-2 py-0.5 rounded-full bg-[#B5F03C]/15 text-[#B5F03C] text-[10px] font-bold tracking-wider mb-4">{item.badge}</div>
-              <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
-              <p className="text-sm text-white/50 leading-relaxed mb-5">{item.desc}</p>
-              <div className="bg-black/40 rounded-xl p-3 font-mono text-[11px] text-[#B5F03C]/80 leading-relaxed whitespace-pre">{item.code}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 /*  MAIN PAGE                                                                 */
@@ -348,9 +310,6 @@ export default function Home() {
       {/* ── PRODUCTS ─────────────────────────────────────────────────── */}
       <ProductsSection />
 
-      {/* ── STACK ────────────────────────────────────────────────────── */}
-      <StackSection />
-
       {/* ── TWO CTA CARDS ────────────────────────────────────────────── */}
       <section className="py-24 bg-[#F5F0E8]">
         <div className="max-w-6xl mx-auto px-6 md:px-10">
@@ -390,27 +349,28 @@ export default function Home() {
                 </Link>
               </div>
             </div>
-            <div className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col" style={{ background: "#C8E6D4" }}>
-              {/* Dashboard mockup area — mint green bg, screenshot inside */}
-              <div className="relative flex items-end justify-center overflow-hidden px-6 pt-8" style={{ minHeight: "260px" }}>
-                {/* Floating dashboard screenshot */}
-                <div className="w-full rounded-t-xl overflow-hidden shadow-2xl border border-white/40" style={{ maxWidth: "420px" }}>
-                  <img
-                    src="/dashboard-card.jpg"
-                    alt="DrimPay Dashboard"
-                    className="w-full block"
-                  />
-                </div>
+            <div className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col" style={{ background: "#F0EDE6" }}>
+              {/* DrimPay network image */}
+              <div className="relative flex items-center justify-center overflow-hidden px-6 pt-8" style={{ minHeight: "260px", background: "#F0EDE6" }}>
+                <img
+                  src="/drimpay-network.png"
+                  alt="DrimPay Services"
+                  className="w-full object-contain"
+                  style={{ maxWidth: "340px", maxHeight: "240px" }}
+                />
               </div>
               {/* Text content */}
-              <div className="p-8 flex flex-col flex-1" style={{ background: "#C8E6D4" }}>
-                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Gérez tout depuis un seul tableau de bord</h3>
+              <div className="p-8 flex flex-col flex-1" style={{ background: "#F0EDE6" }}>
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#B5F03C]/30 text-[#3a7a00] text-xs font-semibold mb-4 w-fit">
+                  Tous les produits
+                </div>
+                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Une plateforme, toutes vos solutions</h3>
                 <p className="text-sm text-[#0f0f0f]/60 leading-relaxed mb-6 flex-1">
-                  Transactions, wallets, cartes, paiements et analytiques — tout accessible en un coup d'œil, sans code.
+                  API de Paiement, Mass Payments, Payment Link et Cartes Virtuelles — tout connecté sur une seule infrastructure fiable.
                 </p>
                 <Link href="/signup">
                   <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
-                    Essayer le Dashboard <ArrowRight className="w-4 h-4" />
+                    Démarrer gratuitement <ArrowRight className="w-4 h-4" />
                   </button>
                 </Link>
               </div>
