@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Key, ArrowDownLeft, ArrowUpRight,
-  CreditCard, Radio, Users, Menu, X, ChevronRight, Bell, History
+  CreditCard, Radio, Users, Menu, X, ChevronRight, Bell, History, Link2, SendHorizonal
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -23,13 +23,15 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "/dashboard",              label: "Vue d'ensemble",   icon: LayoutDashboard },
-  { href: "/dashboard/wallets",      label: "Wallets",          img: walletImg },
-  { href: "/dashboard/payments",     label: "Payment History",  icon: History },
-  { href: "/dashboard/reversement",  label: "Reversement",      img: reversImg },
-  { href: "/dashboard/api-keys",     label: "Clés API",         icon: Key },
-  { href: "/dashboard/kyb",          label: "Vérification KYB", img: kybImg },
-  { href: "/dashboard/settings",     label: "Paramètres",       img: settingsImg },
+  { href: "/dashboard",                    label: "Vue d'ensemble",      icon: LayoutDashboard },
+  { href: "/dashboard/wallets",            label: "Wallets",              img: walletImg },
+  { href: "/dashboard/payments",           label: "Historique",           icon: History },
+  { href: "/dashboard/payment-links",      label: "Liens de Paiement",    icon: Link2 },
+  { href: "/dashboard/mass-payout",        label: "Paiement de Masse",    icon: SendHorizonal },
+  { href: "/dashboard/reversement",        label: "Reversement",          img: reversImg },
+  { href: "/dashboard/api-keys",           label: "Clés API",             icon: Key },
+  { href: "/dashboard/kyb",                label: "Vérification KYB",     img: kybImg },
+  { href: "/dashboard/settings",           label: "Paramètres",           img: settingsImg },
 ];
 
 const apiItems: NavItem[] = [

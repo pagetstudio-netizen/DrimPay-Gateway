@@ -8,6 +8,8 @@ import {
   kybSubmissionsTable,
   usersTable,
   reversementsTable,
+  paymentLinksTable,
+  massPayoutJobsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -666,6 +668,287 @@ router.patch("/dashboard/settings/password", requireAuth, async (req, res) => {
   const newHash = await bcrypt.hash(result.data.newPassword, 12);
   await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, userId));
   res.json({ success: true });
+});
+
+// ─── Payment Links ───────────────────────────────────────────────────────────
+
+const createPaymentLinkSchema = z.object({
+  title: z.string().min(1).max(120),
+  description: z.string().optional(),
+  countryCode: z.string().length(2),
+  operator: z.string().min(1),
+  currency: z.string().length(3),
+  fixedAmount: z.boolean().default(true),
+  amount: z.number().positive().optional(),
+  maxUses: z.number().int().positive().optional(),
+  expiresInDays: z.number().int().positive().optional(),
+});
+
+router.get("/dashboard/payment-links", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const links = await db
+    .select()
+    .from(paymentLinksTable)
+    .where(eq(paymentLinksTable.userId, userId))
+    .orderBy(desc(paymentLinksTable.createdAt));
+  res.json(links);
+});
+
+router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
+  const parsed = createPaymentLinkSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+    return;
+  }
+  const userId = req.session.userId!;
+  const { title, description, countryCode, operator, currency, fixedAmount, amount, maxUses, expiresInDays } = parsed.data;
+
+  const token = crypto.randomBytes(16).toString("hex");
+  const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86400_000) : undefined;
+
+  const [link] = await db
+    .insert(paymentLinksTable)
+    .values({
+      userId,
+      token,
+      title,
+      description,
+      countryCode,
+      operator,
+      currency,
+      fixedAmount,
+      amount: amount ? String(amount) : null,
+      maxUses,
+      expiresAt,
+    })
+    .returning();
+
+  res.status(201).json({ link });
+});
+
+router.patch("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const id = parseInt(req.params.id);
+  const { status } = req.body as { status: string };
+  const [link] = await db
+    .select()
+    .from(paymentLinksTable)
+    .where(and(eq(paymentLinksTable.id, id), eq(paymentLinksTable.userId, userId)));
+  if (!link) { res.status(404).json({ error: "Lien introuvable" }); return; }
+  await db.update(paymentLinksTable).set({ status: status as any }).where(eq(paymentLinksTable.id, id));
+  res.json({ ok: true });
+});
+
+router.delete("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const id = parseInt(req.params.id);
+  await db.delete(paymentLinksTable).where(and(eq(paymentLinksTable.id, id), eq(paymentLinksTable.userId, userId)));
+  res.json({ ok: true });
+});
+
+// ─── Public: Pay via link ────────────────────────────────────────────────────
+
+router.get("/pay/:token", async (req, res) => {
+  const { token } = req.params;
+  const [link] = await db
+    .select({
+      id: paymentLinksTable.id,
+      title: paymentLinksTable.title,
+      description: paymentLinksTable.description,
+      amount: paymentLinksTable.amount,
+      currency: paymentLinksTable.currency,
+      countryCode: paymentLinksTable.countryCode,
+      operator: paymentLinksTable.operator,
+      fixedAmount: paymentLinksTable.fixedAmount,
+      maxUses: paymentLinksTable.maxUses,
+      uses: paymentLinksTable.uses,
+      status: paymentLinksTable.status,
+      expiresAt: paymentLinksTable.expiresAt,
+      userId: paymentLinksTable.userId,
+    })
+    .from(paymentLinksTable)
+    .where(eq(paymentLinksTable.token, token));
+
+  if (!link) { res.status(404).json({ error: "Lien introuvable" }); return; }
+
+  if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+    await db.update(paymentLinksTable).set({ status: "expired" }).where(eq(paymentLinksTable.id, link.id));
+    res.status(410).json({ error: "Ce lien de paiement a expiré." }); return;
+  }
+  if (link.status !== "active") {
+    res.status(410).json({ error: `Lien ${link.status === "expired" ? "expiré" : "désactivé"}.` }); return;
+  }
+  if (link.maxUses && link.uses >= link.maxUses) {
+    res.status(410).json({ error: "Ce lien a atteint son nombre maximum d'utilisations." }); return;
+  }
+
+  const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, link.userId));
+  res.json({ ...link, merchantName: merchant?.companyName ?? "Marchand" });
+});
+
+router.post("/pay/:token", async (req, res) => {
+  const { token } = req.params;
+  const { phone, amount: reqAmount } = req.body as { phone: string; amount: number };
+
+  if (!phone || !reqAmount || reqAmount <= 0) {
+    res.status(400).json({ error: "Téléphone et montant requis." }); return;
+  }
+
+  const [link] = await db.select().from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
+  if (!link || link.status !== "active") {
+    res.status(410).json({ error: "Lien invalide ou inactif." }); return;
+  }
+  if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+    res.status(410).json({ error: "Lien expiré." }); return;
+  }
+  if (link.maxUses && link.uses >= link.maxUses) {
+    res.status(410).json({ error: "Nombre d'utilisations maximum atteint." }); return;
+  }
+
+  const amount = link.fixedAmount && link.amount ? parseFloat(String(link.amount)) : reqAmount;
+  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const netAmount = Math.round((amount - fee) * 100) / 100;
+  const reference = `LNK-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+  let [wallet] = await db
+    .select()
+    .from(walletsTable)
+    .where(and(eq(walletsTable.userId, link.userId), eq(walletsTable.countryCode, link.countryCode)));
+
+  if (!wallet) {
+    [wallet] = await db
+      .insert(walletsTable)
+      .values({ userId: link.userId, countryCode: link.countryCode, currency: link.currency })
+      .returning();
+  }
+
+  await db.insert(transactionsTable).values({
+    userId: link.userId,
+    walletId: wallet.id,
+    reference,
+    type: "payin",
+    status: "success",
+    amount: String(amount),
+    fee: String(fee),
+    netAmount: String(netAmount),
+    currency: link.currency,
+    countryCode: link.countryCode,
+    operator: link.operator,
+    phone,
+    description: `Payment link: ${link.title}`,
+  });
+
+  await db.update(walletsTable)
+    .set({ balance: sql`${walletsTable.balance} + ${netAmount}` })
+    .where(eq(walletsTable.id, wallet.id));
+
+  await db.update(paymentLinksTable)
+    .set({ uses: sql`${paymentLinksTable.uses} + 1` })
+    .where(eq(paymentLinksTable.id, link.id));
+
+  res.status(201).json({ reference, amount, fee, netAmount, currency: link.currency });
+});
+
+// ─── Mass Payout ─────────────────────────────────────────────────────────────
+
+const massPayoutSchema = z.object({
+  description: z.string().optional(),
+  recipients: z.array(z.object({
+    phone: z.string().min(8),
+    amount: z.number().positive(),
+    countryCode: z.string().length(2),
+    operator: z.string().min(1),
+    note: z.string().optional(),
+  })).min(1).max(500),
+});
+
+router.get("/dashboard/mass-payout", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const jobs = await db
+    .select()
+    .from(massPayoutJobsTable)
+    .where(eq(massPayoutJobsTable.userId, userId))
+    .orderBy(desc(massPayoutJobsTable.createdAt))
+    .limit(50);
+  res.json(jobs);
+});
+
+router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
+  const parsed = massPayoutSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+    return;
+  }
+
+  const userId = req.session.userId!;
+  const { description, recipients } = parsed.data;
+
+  const totalAmount = recipients.reduce((s, r) => s + r.amount, 0);
+  const reference = `MASS-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+  const currency = COUNTRIES.find(c => c.code === recipients[0].countryCode)?.currency ?? "XOF";
+
+  const [job] = await db.insert(massPayoutJobsTable).values({
+    userId,
+    reference,
+    status: "processing",
+    totalCount: recipients.length,
+    totalAmount: String(totalAmount),
+    currency,
+    description,
+  }).returning();
+
+  let successCount = 0;
+  let failedCount = 0;
+
+  for (const r of recipients) {
+    try {
+      const countryCurrency = COUNTRIES.find(c => c.code === r.countryCode)?.currency ?? "XOF";
+      const fee = Math.round(r.amount * FEE_RATE * 100) / 100;
+      const txRef = `MASS-OUT-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+
+      let [wallet] = await db.select().from(walletsTable)
+        .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, r.countryCode)));
+
+      if (!wallet) { failedCount++; continue; }
+
+      const balance = parseFloat(String(wallet.balance));
+      if (balance < r.amount + fee) { failedCount++; continue; }
+
+      await db.insert(transactionsTable).values({
+        userId,
+        walletId: wallet.id,
+        reference: txRef,
+        type: "payout",
+        status: "success",
+        amount: String(r.amount),
+        fee: String(fee),
+        netAmount: String(r.amount),
+        currency: countryCurrency,
+        countryCode: r.countryCode,
+        operator: r.operator,
+        phone: r.phone,
+        description: r.note ?? description ?? `Mass payout: ${reference}`,
+      });
+
+      await db.update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} - ${r.amount + fee}` })
+        .where(eq(walletsTable.id, wallet.id));
+
+      successCount++;
+    } catch {
+      failedCount++;
+    }
+  }
+
+  await db.update(massPayoutJobsTable).set({
+    status: failedCount === recipients.length ? "failed" : "completed",
+    successCount,
+    failedCount,
+    completedAt: new Date(),
+  }).where(eq(massPayoutJobsTable.id, job.id));
+
+  res.status(201).json({ job: { ...job, successCount, failedCount } });
 });
 
 export default router;

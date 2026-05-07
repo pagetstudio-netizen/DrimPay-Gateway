@@ -273,6 +273,28 @@ export const operatorsTable = pgTable("operators", {
   active: boolean("active").notNull().default(true),
 });
 
+export const paymentLinkStatusEnum = pgEnum("payment_link_status", ["active", "inactive", "expired"]);
+
+export const paymentLinksTable = pgTable("payment_links", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  token: text("token").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description"),
+  amount: numeric("amount", { precision: 18, scale: 2 }),
+  currency: text("currency").notNull(),
+  countryCode: text("country_code").notNull(),
+  operator: text("operator").notNull(),
+  fixedAmount: boolean("fixed_amount").notNull().default(true),
+  maxUses: integer("max_uses"),
+  uses: integer("uses").notNull().default(0),
+  status: paymentLinkStatusEnum("status").notNull().default("active"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type PaymentLink = typeof paymentLinksTable.$inferSelect;
+
 export const insertBlogArticleSchema = createInsertSchema(blogArticlesTable).omit({ id: true });
 export const insertJobSchema = createInsertSchema(jobsTable).omit({ id: true });
 export const insertContactSchema = createInsertSchema(contactSubmissionsTable).omit({ id: true });

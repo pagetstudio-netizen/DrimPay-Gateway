@@ -46,6 +46,9 @@ import DocPayout from "@/pages/dashboard/docs/payout";
 import DocVirtualCards from "@/pages/dashboard/docs/virtual-cards";
 import DocCredits from "@/pages/dashboard/docs/credits";
 import DocMassPayout from "@/pages/dashboard/docs/mass-payout";
+import DashboardPaymentLinks from "@/pages/dashboard/payment-links";
+import DashboardMassPayout from "@/pages/dashboard/mass-payout";
+import PayPage from "@/pages/pay";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -186,6 +189,8 @@ function DashboardSwitch() {
       <Route path="/dashboard/docs/virtual-cards" component={DocVirtualCards} />
       <Route path="/dashboard/docs/credits" component={DocCredits} />
       <Route path="/dashboard/docs/mass-payout" component={DocMassPayout} />
+      <Route path="/dashboard/payment-links" component={DashboardPaymentLinks} />
+      <Route path="/dashboard/mass-payout" component={DashboardMassPayout} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -202,6 +207,12 @@ function Router() {
 
   if (isDashboardPath(location)) {
     return <DashboardSwitch />;
+  }
+
+  // Payment link public page — standalone, no layout wrapper
+  const payMatch = location.match(/^\/(fr|en)\/pay\/(.+)/);
+  if (payMatch) {
+    return <PayPage />;
   }
 
   if (location.startsWith("/fr") || location.startsWith("/en")) {
