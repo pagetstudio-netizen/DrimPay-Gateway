@@ -14,6 +14,9 @@ import {
 import { eq, and, desc, sum, count, sql } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import multer from "multer";
+
+const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -436,7 +439,17 @@ router.get("/dashboard/kyb", requireAuth, async (req, res) => {
   res.json(kyb ?? { status: "pending" });
 });
 
-router.post("/dashboard/kyb", requireAuth, async (req, res) => {
+router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
+  { name: "documentIdFront", maxCount: 1 },
+  { name: "documentIdBack", maxCount: 1 },
+  { name: "documentSelfie", maxCount: 1 },
+  { name: "documentRccm", maxCount: 1 },
+  { name: "documentCertificate", maxCount: 1 },
+  { name: "documentProofAddress", maxCount: 1 },
+  { name: "documentBankStatement", maxCount: 1 },
+  { name: "documentStatuts", maxCount: 1 },
+  { name: "documentLicense", maxCount: 1 },
+]), async (req, res) => {
   const userId = req.session.userId!;
 
   const existing = await db

@@ -330,6 +330,31 @@ function SignatureCanvas({ onSignature }: { onSignature: (data: string) => void 
   );
 }
 
+// ── localStorage helpers (7-day TTL) ──────────────────────────────────────────
+const LS_KEY = "drimpay_kyb_draft";
+const LS_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
+function lsLoad(): { step1: Partial<Step1Data>; step2: Partial<Step2Data>; step4: Partial<Pick<Step4Data,"contractEmail">>; step: number } | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj.expiry || Date.now() > obj.expiry) { localStorage.removeItem(LS_KEY); return null; }
+    return obj.data ?? null;
+  } catch { return null; }
+}
+
+function lsSave(data: { step1: Partial<Step1Data>; step2: Partial<Step2Data>; step4: Partial<Pick<Step4Data,"contractEmail">>; step: number }) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ expiry: Date.now() + LS_TTL, data }));
+  } catch {}
+}
+
+function lsClear() {
+  try { localStorage.removeItem(LS_KEY); } catch {}
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 export default function Kyb() {
   const [kyb, setKyb] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -351,9 +376,26 @@ export default function Kyb() {
     documentLicense: null,
   });
 
-  const form1 = useForm<Step1Data>({ resolver: zodResolver(step1Schema), defaultValues: { companyLegalName: "", tradeName: "", registrationNumber: "", taxNumber: "", incorporationCountry: "", city: "", businessAddress: "", businessType: "", foundingDate: "", website: "", businessDescription: "" } });
-  const form2 = useForm<Step2Data>({ resolver: zodResolver(step2Schema), defaultValues: { legalRepName: "", legalRepDob: "", legalRepNationality: "", legalRepPhone: "", legalRepEmail: "", legalRepPosition: "", legalRepIdType: "", legalRepIdNumber: "", legalRepIdExpiry: "" } });
-  const form4 = useForm<Step4Data>({ resolver: zodResolver(step4Schema), defaultValues: { contractEmail: "", check1: false, check2: false, check3: false, check4: false, check5: false } });
+  // Load draft from localStorage immediately (before server response)
+  const draft = lsLoad();
+
+  const form1 = useForm<Step1Data>({ resolver: zodResolver(step1Schema), defaultValues: { companyLegalName: "", tradeName: "", registrationNumber: "", taxNumber: "", incorporationCountry: "", city: "", businessAddress: "", businessType: "", foundingDate: "", website: "", businessDescription: "", ...draft?.step1 } });
+  const form2 = useForm<Step2Data>({ resolver: zodResolver(step2Schema), defaultValues: { legalRepName: "", legalRepDob: "", legalRepNationality: "", legalRepPhone: "", legalRepEmail: "", legalRepPosition: "", legalRepIdType: "", legalRepIdNumber: "", legalRepIdExpiry: "", ...draft?.step2 } });
+  const form4 = useForm<Step4Data>({ resolver: zodResolver(step4Schema), defaultValues: { contractEmail: draft?.step4?.contractEmail ?? "", check1: false, check2: false, check3: false, check4: false, check5: false } });
+
+  // Restore step from draft
+  useEffect(() => {
+    if (draft?.step && draft.step > 1) setStep(draft.step);
+  }, []);
+
+  // Auto-save to localStorage on every form value change
+  const watchAll1 = form1.watch();
+  const watchAll2 = form2.watch();
+  const watchEmail4 = form4.watch("contractEmail");
+
+  useEffect(() => {
+    lsSave({ step1: form1.getValues(), step2: form2.getValues(), step4: { contractEmail: form4.getValues("contractEmail") }, step });
+  }, [watchAll1, watchAll2, watchEmail4, step]);
 
   useEffect(() => {
     fetch("/api/dashboard/kyb", { credentials: "include" })
@@ -361,6 +403,7 @@ export default function Kyb() {
       .then((d) => {
         if (d) {
           setKyb(d);
+          // Server data always wins over draft if fields are present
           if (d.companyLegalName) {
             form1.reset({ companyLegalName: d.companyLegalName ?? "", tradeName: d.tradeName ?? "", registrationNumber: d.registrationNumber ?? "", taxNumber: d.taxNumber ?? "", incorporationCountry: d.incorporationCountry ?? "", city: d.city ?? "", businessAddress: d.businessAddress ?? "", businessType: d.businessType ?? "", foundingDate: d.foundingDate ?? "", website: d.website ?? "", businessDescription: d.businessDescription ?? "" });
           }
@@ -403,7 +446,7 @@ export default function Kyb() {
     });
     let d: any = {};
     try { d = await res.json(); } catch {}
-    if (!res.ok) throw new Error(d.error ?? "Erreur");
+    if (!res.ok) throw new Error(d.error ?? d.details ? JSON.stringify(d.details) : "Erreur serveur");
     setKyb(d);
     return d;
   };
@@ -444,6 +487,7 @@ export default function Kyb() {
         contractAccepted: "true",
         signatureData,
       });
+      lsClear(); // Draft fulfilled — clear local storage
       setContractSent(true);
     } catch (e: any) { setError(e.message); }
     setSubmitting(false);
