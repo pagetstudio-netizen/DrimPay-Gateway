@@ -54,10 +54,7 @@ export function Layout({ children }: { children: ReactNode }) {
       >
         <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-sm bg-primary flex items-center justify-center transform group-hover:scale-105 transition-transform">
-              <span className="text-primary-foreground font-bold text-xl leading-none">D</span>
-            </div>
-            <span className="font-bold text-xl tracking-tight">DrimPay</span>
+            <img src="/logo.png" alt="DrimPay" className="h-9 w-auto object-contain transform group-hover:scale-105 transition-transform" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -113,10 +110,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-16">
             <div className="lg:col-span-2">
               <Link href="/" className="flex items-center gap-2 mb-6">
-                <div className="w-6 h-6 rounded-sm bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm leading-none">D</span>
-                </div>
-                <span className="font-bold text-lg tracking-tight">DrimPay</span>
+                <img src="/logo.png" alt="DrimPay" className="h-8 w-auto object-contain" />
               </Link>
               <p className="text-muted-foreground max-w-sm mb-8 leading-relaxed">{t.footer.desc}</p>
               <div className="flex items-center gap-4">

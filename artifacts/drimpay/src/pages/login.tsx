@@ -59,10 +59,7 @@ export default function Login() {
     <div className="min-h-screen flex" style={{ backgroundColor: "#F8F6F1" }}>
       <div className="hidden lg:flex lg:w-[45%] flex-col justify-between p-12" style={{ backgroundColor: "#0f0f0f" }}>
         <Link href="/">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xl" style={{ backgroundColor: "#B5F03C", color: "#0f0f0f" }}>D</div>
-            <span className="font-bold text-2xl tracking-tight text-white">DrimPay</span>
-          </div>
+          <img src="/logo.png" alt="DrimPay" className="h-10 w-auto object-contain" />
         </Link>
 
         <div>
@@ -89,8 +86,7 @@ export default function Login() {
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-16">
         <div className="w-full max-w-md mx-auto lg:mx-0">
           <Link href="/" className="lg:hidden flex items-center gap-2.5 mb-10">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-lg" style={{ backgroundColor: "#B5F03C", color: "#0f0f0f" }}>D</div>
-            <span className="font-bold text-xl tracking-tight text-gray-900">DrimPay</span>
+            <img src="/logo-round.png" alt="DrimPay" className="h-9 w-auto object-contain" />
           </Link>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Connectez-vous</h1>

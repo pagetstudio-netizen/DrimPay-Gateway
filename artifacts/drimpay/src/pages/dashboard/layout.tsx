@@ -71,9 +71,7 @@ function SidebarNav({ onNavigate, location }: { onNavigate: () => void; location
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-        <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center shrink-0">
-          <span className="text-black font-bold text-base leading-none">D</span>
-        </div>
+        <img src="/logo-round.png" alt="DrimPay" className="h-8 w-8 object-contain rounded-full shrink-0" />
         <span className="font-bold text-gray-900 text-lg tracking-tight">DrimPay</span>
         <span className="ml-auto text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full tracking-wide">MARCHAND</span>
       </div>
