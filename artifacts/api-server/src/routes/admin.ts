@@ -37,86 +37,155 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const [totalMerchants] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "user"));
-  const [kybApproved] = await db.select({ count: count() }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "approved"));
-  const [kybPending] = await db.select({ count: count() }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "submitted"));
-
-  const txToday = await db.select({
-    type: transactionsTable.type,
-    total: sum(transactionsTable.amount),
-    fees: sum(transactionsTable.fee),
-    cnt: count(),
-  }).from(transactionsTable)
-    .where(and(gte(transactionsTable.createdAt, today), lt(transactionsTable.createdAt, tomorrow)))
-    .groupBy(transactionsTable.type);
-
-  const txAll = await db.select({
-    type: transactionsTable.type,
-    status: transactionsTable.status,
-    total: sum(transactionsTable.amount),
-    fees: sum(transactionsTable.fee),
-    cnt: count(),
-  }).from(transactionsTable).groupBy(transactionsTable.type, transactionsTable.status);
-
-  const [activeApiKeys] = await db.select({ count: count() }).from(apiKeysTable).where(eq(apiKeysTable.status, "active"));
-  const [activeWallets] = await db.select({ count: count() }).from(walletsTable).where(eq(walletsTable.active, true));
-  const [totalLinks] = await db.select({ count: count() }).from(paymentLinksTable);
-
-  const recentTx = await db.select({
-    id: transactionsTable.id,
-    reference: transactionsTable.reference,
-    type: transactionsTable.type,
-    status: transactionsTable.status,
-    amount: transactionsTable.amount,
-    fee: transactionsTable.fee,
-    currency: transactionsTable.currency,
-    countryCode: transactionsTable.countryCode,
-    operator: transactionsTable.operator,
-    phone: transactionsTable.phone,
-    createdAt: transactionsTable.createdAt,
-    userId: transactionsTable.userId,
-  }).from(transactionsTable)
-    .orderBy(desc(transactionsTable.createdAt))
-    .limit(10);
+  // Run all independent queries in parallel
+  const [
+    [totalMerchants],
+    [totalUsers],
+    [kybApproved],
+    [kybPending],
+    [kybUnderReview],
+    [activeApiKeys],
+    [totalApiKeys],
+    [activeWallets],
+    [totalWallets],
+    [totalLinks],
+    [activeLinks],
+    soldePlateforme,
+    txToday,
+    txAll,
+    bigTxAlerts,
+    recentTx,
+    domainesRaw,
+  ] = await Promise.all([
+    db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "user")),
+    db.select({ count: count() }).from(usersTable),
+    db.select({ count: count() }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "approved")),
+    db.select({ count: count() }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "submitted")),
+    db.select({ count: count() }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "under_review")),
+    db.select({ count: count() }).from(apiKeysTable).where(eq(apiKeysTable.status, "active")),
+    db.select({ count: count() }).from(apiKeysTable),
+    db.select({ count: count() }).from(walletsTable).where(eq(walletsTable.active, true)),
+    db.select({ count: count() }).from(walletsTable),
+    db.select({ count: count() }).from(paymentLinksTable),
+    db.select({ count: count() }).from(paymentLinksTable).where(eq(paymentLinksTable.status, "active")),
+    db.select({ total: sum(walletsTable.balance) }).from(walletsTable),
+    db.select({
+      type: transactionsTable.type,
+      total: sum(transactionsTable.amount),
+      fees: sum(transactionsTable.fee),
+      cnt: count(),
+    }).from(transactionsTable)
+      .where(and(gte(transactionsTable.createdAt, today), lt(transactionsTable.createdAt, tomorrow)))
+      .groupBy(transactionsTable.type),
+    db.select({
+      type: transactionsTable.type,
+      status: transactionsTable.status,
+      mode: transactionsTable.mode,
+      total: sum(transactionsTable.amount),
+      fees: sum(transactionsTable.fee),
+      cnt: count(),
+    }).from(transactionsTable).groupBy(transactionsTable.type, transactionsTable.status, transactionsTable.mode),
+    db.select().from(transactionsTable)
+      .where(sql`${transactionsTable.amount}::numeric > 60000`)
+      .orderBy(desc(transactionsTable.createdAt)).limit(5),
+    db.select({
+      id: transactionsTable.id,
+      reference: transactionsTable.reference,
+      type: transactionsTable.type,
+      status: transactionsTable.status,
+      amount: transactionsTable.amount,
+      fee: transactionsTable.fee,
+      currency: transactionsTable.currency,
+      countryCode: transactionsTable.countryCode,
+      operator: transactionsTable.operator,
+      phone: transactionsTable.phone,
+      createdAt: transactionsTable.createdAt,
+      userId: transactionsTable.userId,
+    }).from(transactionsTable).orderBy(desc(transactionsTable.createdAt)).limit(10),
+    db.selectDistinct({ domain: transactionsTable.webhookUrl })
+      .from(transactionsTable)
+      .where(sql`${transactionsTable.webhookUrl} IS NOT NULL AND ${transactionsTable.webhookUrl} != ''`),
+  ]);
 
   const merchantIds = [...new Set(recentTx.map(t => t.userId))];
   const merchants = merchantIds.length > 0
     ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email })
         .from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(merchantIds.join(","))}]::int[])`)
     : [];
-
   const merchantMap = Object.fromEntries(merchants.map(m => [m.id, m]));
 
+  // Aggregations
   const payinStats = txToday.find(t => t.type === "payin");
   const payoutStats = txToday.find(t => t.type === "payout");
-  const allSuccess = txAll.filter(t => t.status === "success");
-  const allTotal = txAll;
+  const feesToday = txToday.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
 
+  const allSuccess = txAll.filter(t => t.status === "success");
   const totalSuccessCount = allSuccess.reduce((a, t) => a + Number(t.cnt), 0);
-  const totalTxCount = allTotal.reduce((a, t) => a + Number(t.cnt), 0);
+  const totalTxCount = txAll.reduce((a, t) => a + Number(t.cnt), 0);
   const successRate = totalTxCount > 0 ? Math.round((totalSuccessCount / totalTxCount) * 100) : 0;
 
   const totalFeesAll = txAll.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
   const totalPayinVol = txAll.filter(t => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
   const totalPayoutVol = txAll.filter(t => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const totalTxVolume = totalPayinVol + totalPayoutVol;
 
-  const bigTxAlerts = await db.select().from(transactionsTable)
-    .where(sql`${transactionsTable.amount}::numeric > 60000`)
-    .orderBy(desc(transactionsTable.createdAt)).limit(5);
+  // Live mode (API) vs sandbox
+  const liveTx = txAll.filter(t => t.mode === "live");
+  const sandboxTx = txAll.filter(t => t.mode === "sandbox");
+  const livePayinVol = liveTx.filter(t => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const livePayoutVol = liveTx.filter(t => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const liveFees = liveTx.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
+  const liveCount = liveTx.reduce((a, t) => a + Number(t.cnt), 0);
+  const sandboxCount = sandboxTx.reduce((a, t) => a + Number(t.cnt), 0);
+
+  // Domains using the API (extracted from webhook URLs)
+  const domains = domainesRaw
+    .map(r => { try { return new URL(r.domain ?? "").hostname; } catch { return null; } })
+    .filter((d): d is string => !!d);
+  const uniqueDomains = [...new Set(domains)];
+
+  const platformBalance = parseFloat(String(soldePlateforme[0]?.total ?? 0));
 
   res.json({
+    // Users
     totalMerchants: Number(totalMerchants.count),
+    totalUsers: Number(totalUsers.count),
     kybApproved: Number(kybApproved.count),
     kybPending: Number(kybPending.count),
+    kybUnderReview: Number(kybUnderReview.count),
+    // Wallets
+    soldePlateforme: platformBalance,
+    activeWallets: Number(activeWallets.count),
+    totalWallets: Number(totalWallets.count),
+    // Transactions today
     payinToday: { count: Number(payinStats?.cnt ?? 0), volume: parseFloat(String(payinStats?.total ?? 0)) },
     payoutToday: { count: Number(payoutStats?.cnt ?? 0), volume: parseFloat(String(payoutStats?.total ?? 0)) },
+    commissionsAujourdhui: feesToday,
+    // Transactions all-time
     totalPayinVolume: totalPayinVol,
     totalPayoutVolume: totalPayoutVol,
-    activeApiKeys: Number(activeApiKeys.count),
-    activeWallets: Number(activeWallets.count),
-    totalPaymentLinks: Number(totalLinks.count),
+    totalTxVolume,
+    totalTxCount,
+    totalSuccessCount,
     successRate,
+    // Commissions
     totalFees: totalFeesAll,
+    feesLive: liveFees,
+    // Live vs sandbox
+    livePayinVolume: livePayinVol,
+    livePayoutVolume: livePayoutVol,
+    liveCount,
+    sandboxCount,
+    // API Keys
+    activeApiKeys: Number(activeApiKeys.count),
+    totalApiKeys: Number(totalApiKeys.count),
+    // Payment Links
+    totalPaymentLinks: Number(totalLinks.count),
+    activePaymentLinks: Number(activeLinks.count),
+    // Sites using the API
+    domainesAPI: uniqueDomains,
+    domainesCount: uniqueDomains.length,
+    // Alerts
     recentTransactions: recentTx.map(t => ({ ...t, merchant: merchantMap[t.userId] ?? null })),
     bigTxAlerts,
   });

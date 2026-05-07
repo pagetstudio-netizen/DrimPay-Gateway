@@ -2,34 +2,41 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Users, ArrowDownLeft, ArrowUpRight, Wallet2, KeyRound, Link2,
-  TrendingUp, Percent, RefreshCw, AlertTriangle, CheckCircle2, Clock, XCircle,
+  TrendingUp, Percent, RefreshCw, AlertTriangle, CheckCircle2,
+  Clock, XCircle, ShieldCheck, Globe2, BadgePercent, Banknote,
+  Activity, Calendar,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 function fmt(n: number, currency = "XOF") {
   return `${Math.round(n).toLocaleString("fr-FR")} ${currency}`;
 }
+function fmtNum(n: number) {
+  return n.toLocaleString("fr-FR");
+}
 
-function StatCard({ icon: Icon, label, value, sub, color, delay = 0 }: {
+function StatCard({
+  icon: Icon, label, value, sub, color, delay = 0,
+}: {
   icon: React.ComponentType<{ className?: string }>;
   label: string; value: string | number; sub?: string;
   color: string; delay?: number;
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, type: "spring", stiffness: 300, damping: 25 }}
-      className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow"
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, type: "spring", stiffness: 300, damping: 28 }}
+      className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-          <Icon className="w-5 h-5 text-white" />
-        </div>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+        <Icon className="w-5 h-5 text-white" />
       </div>
-      <p className="text-2xl font-bold text-gray-900 leading-tight">{value}</p>
-      <p className="text-sm font-medium text-gray-500 mt-0.5">{label}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      <div className="min-w-0">
+        <p className="text-xl font-bold text-gray-900 leading-tight truncate">{value}</p>
+        <p className="text-xs font-semibold text-gray-500 mt-0.5 truncate">{label}</p>
+        {sub && <p className="text-[11px] text-gray-400 truncate">{sub}</p>}
+      </div>
     </motion.div>
   );
 }
@@ -38,16 +45,18 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   const fetchAll = async () => {
     setLoading(true);
     try {
       const [s, c] = await Promise.all([
-        fetch("/api/admin/stats", { credentials: "include" }).then(r => r.json()),
-        fetch("/api/admin/chart-data", { credentials: "include" }).then(r => r.json()),
+        fetch("/api/admin/stats", { credentials: "include" }).then(r => r.ok ? r.json() : null),
+        fetch("/api/admin/chart-data", { credentials: "include" }).then(r => r.ok ? r.json() : []),
       ]);
-      setStats(s);
-      setChartData(c);
+      if (s) setStats(s);
+      if (Array.isArray(c)) setChartData(c);
+      setLastRefresh(new Date());
     } catch {}
     setLoading(false);
   };
@@ -55,39 +64,115 @@ export default function AdminDashboard() {
   useEffect(() => { fetchAll(); }, []);
 
   const statCards = stats ? [
-    { icon: Users, label: "Total Marchands", value: stats.totalMerchants, sub: `${stats.kybApproved} KYB approuvés`, color: "bg-blue-500", delay: 0 },
-    { icon: ArrowDownLeft, label: "Pay-in Aujourd'hui", value: fmt(stats.payinToday?.volume ?? 0), sub: `${stats.payinToday?.count ?? 0} transactions`, color: "bg-emerald-500", delay: 0.05 },
-    { icon: ArrowUpRight, label: "Pay-out Aujourd'hui", value: fmt(stats.payoutToday?.volume ?? 0), sub: `${stats.payoutToday?.count ?? 0} transactions`, color: "bg-orange-500", delay: 0.1 },
-    { icon: TrendingUp, label: "Volume Pay-in Total", value: fmt(stats.totalPayinVolume), sub: "Toutes périodes", color: "bg-purple-500", delay: 0.15 },
-    { icon: Wallet2, label: "Wallets Actifs", value: stats.activeWallets, sub: "Tous pays confondus", color: "bg-teal-500", delay: 0.2 },
-    { icon: KeyRound, label: "APIs Actives", value: stats.activeApiKeys, sub: "Clés sandbox + live", color: "bg-indigo-500", delay: 0.25 },
-    { icon: Percent, label: "Taux Succès", value: `${stats.successRate}%`, sub: "Toutes transactions", color: stats.successRate > 80 ? "bg-green-500" : "bg-red-500", delay: 0.3 },
-    { icon: Link2, label: "Revenus Frais (3%)", value: fmt(stats.totalFees), sub: "Commissions totales", color: "bg-amber-500", delay: 0.35 },
+    {
+      icon: Banknote, label: "Solde Plateforme",
+      value: fmt(stats.soldePlateforme ?? 0),
+      sub: `${fmtNum(stats.totalWallets ?? 0)} wallets · ${fmtNum(stats.activeWallets ?? 0)} actifs`,
+      color: "bg-emerald-500", delay: 0,
+    },
+    {
+      icon: Users, label: "Marchands",
+      value: fmtNum(stats.totalMerchants ?? 0),
+      sub: `${fmtNum(stats.kybApproved ?? 0)} KYB vérifiés`,
+      color: "bg-blue-500", delay: 0.03,
+    },
+    {
+      icon: Activity, label: "Total Transactions",
+      value: fmt(stats.totalTxVolume ?? 0),
+      sub: `${fmtNum(stats.totalTxCount ?? 0)} transactions · ${stats.successRate ?? 0}% succès`,
+      color: "bg-violet-500", delay: 0.06,
+    },
+    {
+      icon: ArrowDownLeft, label: "Total Dépôts",
+      value: fmt(stats.totalPayinVolume ?? 0),
+      sub: `Montant total pay-in`,
+      color: "bg-teal-500", delay: 0.09,
+    },
+    {
+      icon: ArrowUpRight, label: "Total Retraits",
+      value: fmt(stats.totalPayoutVolume ?? 0),
+      sub: `Montant total pay-out`,
+      color: "bg-orange-500", delay: 0.12,
+    },
+    {
+      icon: TrendingUp, label: "Pay-in Aujourd'hui",
+      value: fmt(stats.payinToday?.volume ?? 0),
+      sub: `${fmtNum(stats.payinToday?.count ?? 0)} transactions`,
+      color: "bg-emerald-400", delay: 0.15,
+    },
+    {
+      icon: ArrowUpRight, label: "Pay-out Aujourd'hui",
+      value: fmt(stats.payoutToday?.volume ?? 0),
+      sub: `${fmtNum(stats.payoutToday?.count ?? 0)} transactions`,
+      color: "bg-amber-500", delay: 0.18,
+    },
+    {
+      icon: Calendar, label: "Commissions du jour",
+      value: fmt(stats.commissionsAujourdhui ?? 0),
+      sub: `Aujourd'hui`,
+      color: "bg-pink-500", delay: 0.21,
+    },
+    {
+      icon: BadgePercent, label: "Commissions Totales",
+      value: fmt(stats.totalFees ?? 0),
+      sub: `Toutes périodes confondues`,
+      color: "bg-purple-500", delay: 0.24,
+    },
+    {
+      icon: Globe2, label: "Paiements Live",
+      value: fmt((stats.livePayinVolume ?? 0) + (stats.livePayoutVolume ?? 0)),
+      sub: `${fmtNum(stats.liveCount ?? 0)} complétés · ${fmtNum(stats.sandboxCount ?? 0)} sandbox`,
+      color: "bg-indigo-500", delay: 0.27,
+    },
+    {
+      icon: KeyRound, label: "Clés API",
+      value: fmtNum(stats.totalApiKeys ?? 0),
+      sub: `${fmtNum(stats.activeApiKeys ?? 0)} actives`,
+      color: "bg-slate-500", delay: 0.30,
+    },
+    {
+      icon: Link2, label: "Liens de paiement",
+      value: fmtNum(stats.totalPaymentLinks ?? 0),
+      sub: `${fmtNum(stats.activePaymentLinks ?? 0)} actifs`,
+      color: "bg-cyan-500", delay: 0.33,
+    },
+    {
+      icon: ShieldCheck, label: "KYC en attente",
+      value: fmtNum((stats.kybPending ?? 0) + (stats.kybUnderReview ?? 0)),
+      sub: `${fmtNum(stats.kybPending ?? 0)} soumis · ${fmtNum(stats.kybUnderReview ?? 0)} en révision`,
+      color: (stats.kybPending ?? 0) + (stats.kybUnderReview ?? 0) > 0 ? "bg-amber-500" : "bg-green-500",
+      delay: 0.36,
+    },
+    {
+      icon: Percent, label: "Taux de succès",
+      value: `${stats.successRate ?? 0}%`,
+      sub: `${fmtNum(stats.totalSuccessCount ?? 0)} / ${fmtNum(stats.totalTxCount ?? 0)} transactions`,
+      color: (stats.successRate ?? 0) >= 80 ? "bg-green-500" : (stats.successRate ?? 0) >= 60 ? "bg-yellow-500" : "bg-red-500",
+      delay: 0.39,
+    },
   ] : [];
 
   return (
-    <AdminLayout title="Dashboard">
+    <AdminLayout>
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Tableau de bord administrateur</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Vue d'ensemble de la plateforme DrimPay</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Vue d'ensemble de la plateforme DrimPay
+              {lastRefresh && (
+                <span className="ml-2 text-gray-400">· Dernière réactualisation : {lastRefresh.toLocaleString("fr-FR")}</span>
+              )}
+            </p>
           </div>
-          <button onClick={fetchAll} disabled={loading} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Actualiser
+          <button onClick={fetchAll} disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 shadow-sm">
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Réinitialiser les montants
           </button>
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => <div key={i} className="h-32 bg-white rounded-2xl animate-pulse border border-gray-100" />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {statCards.map((card) => <StatCard key={card.label} {...card} />)}
-          </div>
-        )}
-
+        {/* Alertes */}
         {stats?.kybPending > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
@@ -98,18 +183,29 @@ export default function AdminDashboard() {
             </p>
           </motion.div>
         )}
-
         {stats?.bigTxAlerts?.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm text-red-800 font-semibold">Alertes — Transactions élevées (&gt;60 000 XOF)</p>
-              <p className="text-xs text-red-600 mt-0.5">{stats.bigTxAlerts.length} transaction(s) à surveiller.</p>
-            </div>
+            className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+            <p className="text-sm text-red-800 font-medium">
+              <strong>{stats.bigTxAlerts.length}</strong> transaction(s) élevées (&gt;60 000 XOF) à surveiller.
+              <a href="/admin/transactions" className="ml-2 text-red-600 underline hover:text-red-800">Voir →</a>
+            </p>
           </motion.div>
         )}
 
+        {/* Stats grid */}
+        {loading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {[...Array(14)].map((_, i) => <div key={i} className="h-20 bg-white rounded-2xl animate-pulse border border-gray-100" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {statCards.map((card) => <StatCard key={card.label} {...card} />)}
+          </div>
+        )}
+
+        {/* Charts + recent */}
         <div className="grid lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
             <h2 className="font-semibold text-gray-900 mb-4">Volume transactions (30 derniers jours)</h2>
@@ -144,7 +240,9 @@ export default function AdminDashboard() {
                 return (
                   <div key={tx.id} className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isPayin ? "bg-emerald-50" : "bg-orange-50"}`}>
-                      {isPayin ? <ArrowDownLeft className="w-4 h-4 text-emerald-600" /> : <ArrowUpRight className="w-4 h-4 text-orange-600" />}
+                      {isPayin
+                        ? <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
+                        : <ArrowUpRight className="w-4 h-4 text-orange-600" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-900 truncate">{tx.merchant?.companyName ?? `User #${tx.userId}`}</p>
@@ -155,7 +253,11 @@ export default function AdminDashboard() {
                         {isPayin ? "+" : "-"}{fmt(parseFloat(tx.amount), tx.currency)}
                       </p>
                       <div className="flex items-center justify-end gap-1 mt-0.5">
-                        {isSuccess ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : tx.status === "pending" ? <Clock className="w-3 h-3 text-yellow-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                        {isSuccess
+                          ? <CheckCircle2 className="w-3 h-3 text-green-500" />
+                          : tx.status === "pending"
+                            ? <Clock className="w-3 h-3 text-yellow-500" />
+                            : <XCircle className="w-3 h-3 text-red-500" />}
                         <span className="text-[10px] text-gray-400 capitalize">{tx.status}</span>
                       </div>
                     </div>
@@ -167,6 +269,31 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Sites utilisant l'API */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Globe2 className="w-4 h-4 text-gray-400" />
+            <h2 className="font-semibold text-gray-900">Sites utilisant l'API</h2>
+            <span className="text-xs text-gray-400 ml-1">
+              Domaines détectés faisant des requêtes vers l'API DrimPay
+              {stats?.domainesCount > 0 && ` (${stats.domainesCount} domaine${stats.domainesCount > 1 ? "s" : ""} identifié${stats.domainesCount > 1 ? "s" : ""})`}
+            </span>
+          </div>
+          {stats?.domainesAPI?.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {stats.domainesAPI.map((d: string) => (
+                <span key={d} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-medium rounded-lg">
+                  <Globe2 className="w-3 h-3" /> {d}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">
+              Aucun site intégré détecté pour l'instant. Les domaines seront affichés lorsque des requêtes API seront effectuées.
+            </p>
+          )}
         </div>
       </div>
     </AdminLayout>
