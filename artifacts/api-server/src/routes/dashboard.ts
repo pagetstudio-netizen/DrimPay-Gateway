@@ -509,13 +509,18 @@ router.post("/dashboard/api-keys/regenerate", requireAuth, async (req, res) => {
 });
 
 router.get("/dashboard/kyb", requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
-  const [kyb] = await db
-    .select()
-    .from(kybSubmissionsTable)
-    .where(eq(kybSubmissionsTable.userId, userId));
+  try {
+    const userId = req.session.userId!;
+    const [kyb] = await db
+      .select()
+      .from(kybSubmissionsTable)
+      .where(eq(kybSubmissionsTable.userId, userId));
 
-  res.json(kyb ?? { status: "pending" });
+    res.json(kyb ?? { status: "pending" });
+  } catch (err: any) {
+    console.error("[KYB GET error]", err);
+    res.status(500).json({ error: "Erreur serveur", details: err?.message ?? String(err) });
+  }
 });
 
 router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
@@ -529,100 +534,105 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
   { name: "documentStatuts", maxCount: 1 },
   { name: "documentLicense", maxCount: 1 },
 ]), async (req, res) => {
-  const userId = req.session.userId!;
+  try {
+    const userId = req.session.userId!;
 
-  const existing = await db
-    .select()
-    .from(kybSubmissionsTable)
-    .where(eq(kybSubmissionsTable.userId, userId));
+    const existing = await db
+      .select()
+      .from(kybSubmissionsTable)
+      .where(eq(kybSubmissionsTable.userId, userId));
 
-  if (existing.length > 0 && ["submitted", "under_review", "approved"].includes(existing[0].status)) {
-    res.status(409).json({ error: "A KYB submission is already in progress or approved." });
-    return;
-  }
-
-  const body = req.body as Record<string, string>;
-  const stepNum = parseInt(body.step ?? "1");
-
-  let updateValues: Record<string, any> = {};
-
-  if (stepNum === 1) {
-    const schema = z.object({
-      companyLegalName: z.string().min(2),
-      tradeName: z.string().optional(),
-      registrationNumber: z.string().min(1),
-      taxNumber: z.string().min(1),
-      incorporationCountry: z.string().min(2),
-      city: z.string().min(2),
-      businessAddress: z.string().min(5),
-      businessType: z.string().min(1),
-      foundingDate: z.string().optional(),
-      website: z.string().url().optional().or(z.literal("")).optional(),
-      businessDescription: z.string().min(20),
-    });
-    const parsed = schema.safeParse(body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    if (existing.length > 0 && ["submitted", "under_review", "approved"].includes(existing[0].status)) {
+      res.status(409).json({ error: "A KYB submission is already in progress or approved." });
       return;
     }
-    updateValues = parsed.data;
-  } else if (stepNum === 2) {
-    const schema = z.object({
-      legalRepName: z.string().min(2),
-      legalRepDob: z.string().optional(),
-      legalRepNationality: z.string().min(2),
-      legalRepPhone: z.string().min(8),
-      legalRepEmail: z.string().email(),
-      legalRepPosition: z.string().min(1),
-      legalRepIdType: z.string().min(1),
-      legalRepIdNumber: z.string().min(1),
-      legalRepIdExpiry: z.string().optional(),
-    });
-    const parsed = schema.safeParse(body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
-      return;
-    }
-    updateValues = parsed.data;
-  } else if (stepNum === 3) {
-    updateValues = {};
-  } else if (stepNum === 4) {
-    const schema = z.object({
-      contractEmail: z.string().email(),
-      contractAccepted: z.string().optional(),
-    });
-    const parsed = schema.safeParse(body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
-      return;
-    }
-    updateValues = {
-      contractEmail: parsed.data.contractEmail,
-      contractAccepted: parsed.data.contractAccepted === "true",
-      contractVersion: "2.1",
-      contractSignedAt: new Date(),
-      contractIp: req.ip ?? null,
-      contractUserAgent: req.headers["user-agent"] ?? null,
-      status: "submitted" as const,
-      submittedAt: new Date(),
-    };
-  }
 
-  let kyb;
-  if (existing.length > 0) {
-    [kyb] = await db
-      .update(kybSubmissionsTable)
-      .set(updateValues)
-      .where(eq(kybSubmissionsTable.userId, userId))
-      .returning();
-  } else {
-    [kyb] = await db
-      .insert(kybSubmissionsTable)
-      .values({ userId, ...updateValues })
-      .returning();
-  }
+    const body = req.body as Record<string, string>;
+    const stepNum = parseInt(body.step ?? "1");
 
-  res.status(201).json(kyb);
+    let updateValues: Record<string, any> = {};
+
+    if (stepNum === 1) {
+      const schema = z.object({
+        companyLegalName: z.string().min(2),
+        tradeName: z.string().optional(),
+        registrationNumber: z.string().min(1),
+        taxNumber: z.string().min(1),
+        incorporationCountry: z.string().min(2),
+        city: z.string().min(2),
+        businessAddress: z.string().min(5),
+        businessType: z.string().min(1),
+        foundingDate: z.string().optional(),
+        website: z.string().url().optional().or(z.literal("")).optional(),
+        businessDescription: z.string().min(20),
+      });
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+        return;
+      }
+      updateValues = parsed.data;
+    } else if (stepNum === 2) {
+      const schema = z.object({
+        legalRepName: z.string().min(2),
+        legalRepDob: z.string().optional(),
+        legalRepNationality: z.string().min(2),
+        legalRepPhone: z.string().min(8),
+        legalRepEmail: z.string().email(),
+        legalRepPosition: z.string().min(1),
+        legalRepIdType: z.string().min(1),
+        legalRepIdNumber: z.string().min(1),
+        legalRepIdExpiry: z.string().optional(),
+      });
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+        return;
+      }
+      updateValues = parsed.data;
+    } else if (stepNum === 3) {
+      updateValues = {};
+    } else if (stepNum === 4) {
+      const schema = z.object({
+        contractEmail: z.string().email(),
+        contractAccepted: z.string().optional(),
+      });
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+        return;
+      }
+      updateValues = {
+        contractEmail: parsed.data.contractEmail,
+        contractAccepted: parsed.data.contractAccepted === "true",
+        contractVersion: "2.1",
+        contractSignedAt: new Date(),
+        contractIp: req.ip ?? null,
+        contractUserAgent: req.headers["user-agent"] ?? null,
+        status: "submitted" as const,
+        submittedAt: new Date(),
+      };
+    }
+
+    let kyb;
+    if (existing.length > 0) {
+      [kyb] = await db
+        .update(kybSubmissionsTable)
+        .set(updateValues)
+        .where(eq(kybSubmissionsTable.userId, userId))
+        .returning();
+    } else {
+      [kyb] = await db
+        .insert(kybSubmissionsTable)
+        .values({ userId, ...updateValues })
+        .returning();
+    }
+
+    res.status(201).json(kyb);
+  } catch (err: any) {
+    console.error("[KYB POST error]", err);
+    res.status(500).json({ error: "Erreur serveur lors de la soumission KYB", details: err?.message ?? String(err) });
+  }
 });
 
 const reversementSchema = z.object({
