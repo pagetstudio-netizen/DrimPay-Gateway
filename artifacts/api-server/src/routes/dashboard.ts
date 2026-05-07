@@ -429,6 +429,85 @@ router.delete("/dashboard/api-keys/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── In-memory code store for API key regeneration (TTL: 10 min) ──────────────
+const apiKeyRegenCodes = new Map<string, { code: string; exp: number }>();
+
+router.post("/dashboard/api-keys/send-code", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const env = req.body?.env as string;
+  if (!["sandbox", "live"].includes(env)) {
+    res.status(400).json({ error: "env must be sandbox or live" });
+    return;
+  }
+
+  const [user] = await db
+    .select({ email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const storeKey = `${userId}:${env}`;
+  apiKeyRegenCodes.set(storeKey, { code, exp: Date.now() + 10 * 60 * 1000 });
+
+  // In production replace this with a real email provider
+  console.log(`[DrimPay] API key regen code for ${user.email} (${env}): ${code}`);
+
+  const masked = user.email.replace(/(.{2}).+(@.+)/, "$1***$2");
+  res.json({ ok: true, email: masked });
+});
+
+router.post("/dashboard/api-keys/regenerate", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const { env, code } = req.body as { env: string; code: string };
+
+  if (!["sandbox", "live"].includes(env) || !code) {
+    res.status(400).json({ error: "Paramètres invalides" });
+    return;
+  }
+
+  const storeKey = `${userId}:${env}`;
+  const stored = apiKeyRegenCodes.get(storeKey);
+
+  if (!stored || Date.now() > stored.exp) {
+    res.status(400).json({ error: "Code expiré. Veuillez en demander un nouveau." });
+    return;
+  }
+  if (stored.code !== String(code).trim()) {
+    res.status(400).json({ error: "Code incorrect." });
+    return;
+  }
+
+  apiKeyRegenCodes.delete(storeKey);
+
+  // Revoke all existing active keys for this env
+  await db
+    .update(apiKeysTable)
+    .set({ status: "revoked" })
+    .where(and(eq(apiKeysTable.userId, userId), eq(apiKeysTable.env, env as any)));
+
+  // Generate new unique key
+  const rawKey = `dp_${env === "sandbox" ? "test" : "live"}_${crypto.randomBytes(24).toString("hex")}`;
+  const prefix = rawKey.substring(0, env === "sandbox" ? 12 : 11);
+  const keyHash = await bcrypt.hash(rawKey, 10);
+  const name = env === "sandbox" ? "Clé Sandbox" : "Clé Live";
+
+  const [key] = await db
+    .insert(apiKeysTable)
+    .values({ userId, name, keyHash, prefix, env: env as any })
+    .returning({
+      id: apiKeysTable.id,
+      name: apiKeysTable.name,
+      prefix: apiKeysTable.prefix,
+      env: apiKeysTable.env,
+      status: apiKeysTable.status,
+      createdAt: apiKeysTable.createdAt,
+    });
+
+  res.status(201).json({ ...key, rawKey });
+});
+
 router.get("/dashboard/kyb", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const [kyb] = await db

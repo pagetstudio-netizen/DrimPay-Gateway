@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, Key, ArrowDownLeft, ArrowUpRight,
+  LayoutDashboard, ArrowDownLeft, ArrowUpRight,
   CreditCard, Radio, Users, Menu, X, ChevronRight, Bell, History, Link2, SendHorizonal
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -29,7 +29,6 @@ const navItems: NavItem[] = [
   { href: "/dashboard/payment-links",      label: "Liens de Paiement",    icon: Link2 },
   { href: "/dashboard/mass-payout",        label: "Paiement de Masse",    icon: SendHorizonal },
   { href: "/dashboard/reversement",        label: "Reversement",          img: reversImg },
-  { href: "/dashboard/api-keys",           label: "Clés API",             icon: Key },
   { href: "/dashboard/kyb",                label: "Vérification KYB",     img: kybImg },
   { href: "/dashboard/settings",           label: "Paramètres",           img: settingsImg },
 ];
