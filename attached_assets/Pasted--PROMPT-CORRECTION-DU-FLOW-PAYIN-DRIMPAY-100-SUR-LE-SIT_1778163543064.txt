@@ -1,0 +1,263 @@
+🧠 PROMPT — CORRECTION DU FLOW PAYIN DRIMPAY (100% SUR LE SITE DU MARCHAND)
+
+Tu es un architecte fintech senior spécialisé dans les infrastructures de paiement type Stripe, Flutterwave, Paystack et CinetPay.
+
+Tu dois corriger et améliorer le système Pay-in actuel de DrimPay afin que tout le processus de paiement fonctionne directement sur le site ou l’application du marchand sans aucune redirection vers une page externe DrimPay.
+
+Le système doit être sécurisé, scalable, moderne et prêt pour production réelle.
+
+---
+
+🎯 OBJECTIF
+
+Permettre aux marchands de :
+
+- collecter des paiements Mobile Money directement depuis leur site
+- garder leurs utilisateurs sur leur propre interface
+- recevoir les confirmations en temps réel
+- utiliser webhooks + polling sécurisé
+- éviter les doubles paiements
+- avoir une expérience fluide type fintech moderne
+
+---
+
+🌍 FLOW COMPLET DU PAIEMENT
+
+1. Le client est sur le site du marchand
+2. Le client entre :
+   - numéro téléphone
+   - opérateur
+3. Le backend marchand appelle DrimPay API
+4. DrimPay envoie le prompt Mobile Money
+5. Le client confirme sur son téléphone
+6. DrimPay traite le paiement
+7. DrimPay envoie webhook au marchand
+8. Le marchand met à jour la commande automatiquement
+
+Aucune redirection vers une page externe DrimPay.
+
+---
+
+🔐 ARCHITECTURE SÉCURISÉE OBLIGATOIRE
+
+Le frontend du marchand NE DOIT JAMAIS appeler directement DrimPay avec une clé secrète.
+
+Architecture obligatoire :
+
+Client Frontend
+↓
+Backend Marchand
+↓
+API DrimPay
+
+Les clés :
+
+dp_live_sk_
+dp_sandbox_sk_
+
+doivent rester uniquement côté serveur.
+
+---
+
+🔥 CORRECTIONS À AJOUTER
+
+---
+
+1. AJOUTER expires_at
+
+Toutes les transactions doivent expirer automatiquement.
+
+Exemple réponse API :
+
+{
+  "reference": "TG-XXXX",
+  "status": "pending",
+  "expires_at": "2026-05-06T08:35:00.000Z"
+}
+
+Durée expiration configurable :
+
+- 2 min
+- 5 min
+- 10 min
+
+Après expiration :
+
+status = failed
+reason = expired
+
+---
+
+2. AJOUTER POLLING FRONTEND
+
+Le marchand doit pouvoir vérifier automatiquement le statut toutes les 3 à 5 secondes.
+
+Exemple :
+
+setInterval(async () => {
+  const res = await fetch("/api/check-payment");
+}, 5000);
+
+Créer endpoint :
+
+GET /v2/payin/{reference}
+
+Retourner :
+
+- pending
+- processing
+- success
+- failed
+- expired
+
+---
+
+3. AJOUTER STATUS COMPLETS
+
+Utiliser :
+
+queued
+pending
+processing
+success
+failed
+reversed
+cancelled
+expired
+
+---
+
+4. AJOUTER WEBHOOKS SÉCURISÉS
+
+Tous les webhooks doivent contenir :
+
+X-DrimPay-Signature
+X-DrimPay-Timestamp
+
+Utiliser :
+
+- HMAC SHA256
+- protection replay attack
+
+Le marchand doit vérifier la signature avant traitement.
+
+---
+
+5. AJOUTER IDPOTENCY COMPLÈTE
+
+Utiliser :
+
+order_id
+
+Si une requête est renvoyée avec le même order_id :
+
+- ne jamais recréer une transaction
+- retourner la transaction originale
+
+---
+
+6. AJOUTER RETRY AUTOMATIQUE
+
+Si webhook échoue :
+
+- retry automatique 3 fois
+- exponential backoff
+
+Exemple :
+
+- 2 sec
+- 4 sec
+- 8 sec
+
+---
+
+7. AJOUTER RATE LIMITING
+
+Limiter :
+
+100 req/min/API key
+
+Retour :
+
+{
+  "error": "RATE_LIMITED"
+}
+
+---
+
+8. AJOUTER WALLET GEO-ISOLATION
+
+Le système doit empêcher :
+
+- cross-country payouts
+- retraits depuis mauvais wallet
+
+Exemple :
+
+- fonds TG → retrait TG uniquement
+
+---
+
+9. AJOUTER DASHBOARD API LOGS
+
+Dans dashboard marchand afficher :
+
+- requêtes API
+- erreurs
+- webhooks
+- retries
+- temps réponse
+- historique paiements
+
+---
+
+10. AJOUTER SANDBOX COMPLET
+
+Créer environnement séparé :
+
+Sandbox :
+
+https://sandbox.drimpay.africa
+
+Live :
+
+https://api.drimpay.africa
+
+Sandbox doit :
+
+- utiliser faux wallets
+- faux paiements
+- faux webhooks
+- faux soldes
+
+---
+
+📦 ENDPOINTS FINAUX
+
+Créer :
+
+POST /v2/payin/initiate
+GET /v2/payin/{reference}
+POST /v2/payin/webhook
+POST /v2/payin/{reference}/resend-webhook
+GET /v2/payin/transactions
+
+---
+
+🎨 UX FRONTEND MARCHAND
+
+Le marchand doit pouvoir afficher :
+
+Status| Message
+queued| Paiement en attente
+pending| Confirmez le paiement sur votre téléphone
+processing| Paiement en cours
+success| Paiement confirmé
+failed| Paiement échoué
+expired| Paiement expiré
+
+---
+
+🚀 OBJECTIF FINAL
+
+Créer une infrastructure de paiement Mobile Money professionnelle où toute l’expérience utilisateur reste sur le site du marchand, avec sécurité fintech, webhooks fiables et expérience temps réel moderne.

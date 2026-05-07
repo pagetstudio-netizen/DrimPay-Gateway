@@ -1,0 +1,406 @@
+🧠 PROMPT COMPLET — PAGE KYB DRIMPAY EN 4 ÉTAPES AVEC SIGNATURE CONTRAT
+
+Tu es un développeur senior fintech expert en onboarding entreprise type Stripe, PayPal, Flutterwave et Wise.
+
+Tu dois créer la page complète KYB (Know Your Business) de DrimPay avec un système moderne, sécurisé, responsive et professionnel.
+
+L’objectif est de permettre aux entreprises de soumettre leurs informations, leurs documents légaux et signer électroniquement le contrat DrimPay avant activation du compte en mode production.
+
+---
+
+🎯 OBJECTIF DU KYB
+
+Le KYB est obligatoire avant :
+
+- activation API Payin
+- activation API Payout
+- accès wallets
+- cartes virtuelles
+- paiements de masse
+- airtime API
+- passage en production
+
+---
+
+🧭 STRUCTURE DU KYB EN 4 ÉTAPES
+
+Créer un système multi-step avec :
+
+- barre de progression
+- sauvegarde automatique
+- validation temps réel
+- responsive mobile
+- dark mode
+- upload sécurisé
+- animations modernes
+
+---
+
+🥇 ÉTAPE 1 — INFORMATIONS ENTREPRISE
+
+Titre :
+
+Informations de l’entreprise
+
+Champs obligatoires :
+
+- Nom légal entreprise
+- Nom commercial
+- Numéro RCCM / registre commerce
+- Numéro fiscal
+- Pays d’enregistrement
+- Ville
+- Adresse complète
+- Type entreprise
+- Date création
+- Site web
+- Description activité
+
+Types entreprise :
+
+- SARL
+- SAS
+- Entreprise individuelle
+- Startup
+- ONG
+- Autre
+
+Fonctions :
+
+- auto-save
+- validation temps réel
+- sélection pays avec drapeaux
+
+---
+
+🥈 ÉTAPE 2 — REPRÉSENTANT LÉGAL
+
+Titre :
+
+Représentant légal
+
+Champs :
+
+- Nom complet
+- Date naissance
+- Nationalité
+- Téléphone
+- Email professionnel
+- Poste dans entreprise
+- Type document identité
+- Numéro document
+- Date expiration
+
+Documents obligatoires :
+
+- Pièce identité recto
+- Pièce identité verso
+- Selfie avec document
+
+Fonctions upload :
+
+- drag & drop
+- aperçu image
+- compression automatique
+- validation JPG PNG PDF
+
+---
+
+🥉 ÉTAPE 3 — DOCUMENTS ENTREPRISE
+
+Titre :
+
+Documents entreprise
+
+Documents obligatoires :
+
+- RCCM / registre commerce
+- Certificat entreprise
+- Preuve adresse entreprise
+- Relevé bancaire entreprise
+
+Documents optionnels :
+
+- Statuts société
+- Licence activité
+
+Fonctions :
+
+- upload multiple
+- aperçu PDF/image
+- taille max 10MB
+- scan antivirus
+- progression upload
+
+---
+
+🏁 ÉTAPE 4 — CONTRAT & SIGNATURE ÉLECTRONIQUE
+
+Titre :
+
+Signature du contrat DrimPay
+
+Cette étape est obligatoire avant activation production.
+
+Le marchand doit lire les politiques DrimPay avant signature.
+
+Afficher un grand bloc lisible contenant :
+
+---
+
+🛡️ POLITIQUE AML — LUTTE CONTRE LE BLANCHIMENT D’ARGENT
+
+DrimPay applique une politique stricte contre :
+
+- blanchiment d’argent
+- financement terrorisme
+- fraude financière
+- transactions illégales
+- faux paiements
+- usurpation identité
+- activités criminelles
+
+Toute activité suspecte peut entraîner :
+
+- suspension immédiate du compte
+- blocage wallets
+- signalement autorités
+- résiliation définitive du compte
+
+---
+
+⚖️ RESPONSABILITÉ DU MARCHAND
+
+Le marchand reconnaît être responsable :
+
+- des transactions effectuées via son compte
+- de la conformité de son activité
+- de ses employés et intégrations
+- de la sécurité de ses API Keys
+- des paiements reçus et envoyés
+
+Le marchand s’engage à ne pas utiliser DrimPay pour :
+
+- escroqueries
+- faux investissements
+- jeux illégaux
+- blanchiment
+- activités interdites
+
+---
+
+🌍 POLITIQUE DES WALLETS GÉOGRAPHIQUES
+
+DrimPay utilise des wallets séparés par pays.
+
+Exemple :
+
+- argent reçu au Togo → retrait uniquement au Togo
+- argent reçu au Sénégal → retrait uniquement au Sénégal
+
+Les transferts cross-country non autorisés sont interdits.
+
+---
+
+🔐 POLITIQUE API & SÉCURITÉ
+
+Le marchand est responsable :
+
+- de la sécurité de ses API keys
+- des accès administrateurs
+- des webhooks
+- des intégrations tierces
+
+Toute fuite de clé API doit être signalée immédiatement.
+
+---
+
+✅ CASES À COCHER OBLIGATOIRES
+
+Afficher :
+
+☐ Je confirme avoir lu et accepté les Conditions d’utilisation DrimPay
+
+☐ Je comprends que DrimPay applique une politique stricte AML/KYB
+
+☐ Je confirme être responsable des transactions effectuées via mon compte
+
+☐ Je m’engage à respecter les lois financières applicables
+
+☐ Je comprends que toute activité frauduleuse entraînera une suspension immédiate
+
+Impossible de continuer tant que toutes les cases ne sont pas cochées.
+
+---
+
+📧 EMAIL PROFESSIONNEL POUR LE CONTRAT
+
+Ajouter section :
+
+Adresse email professionnelle
+
+Champ obligatoire :
+
+- professional_email
+
+Description :
+
+“Le contrat officiel DrimPay sera envoyé à cette adresse pour signature électronique.”
+
+Validation :
+
+- email valide obligatoire
+- emails temporaires interdits
+- sauvegarde automatique
+
+---
+
+✉️ ENVOI DU CONTRAT PAR EMAIL
+
+Quand le marchand clique sur :
+
+“Recevoir le contrat”
+
+Le système doit :
+
+1. Générer le contrat PDF
+2. Ajouter :
+   - nom entreprise
+   - numéro registre
+   - date
+   - ID marchand
+3. Envoyer le contrat par email
+4. Ajouter un bouton :
+   - Signer le contrat
+
+---
+
+🖊️ SIGNATURE ÉLECTRONIQUE
+
+Le marchand ouvre le lien sécurisé reçu par email.
+
+Il doit :
+
+- lire le contrat complet
+- signer électroniquement
+- confirmer son identité
+
+Fonctionnalités :
+
+- canvas signature
+- signature tactile mobile
+- horodatage
+- adresse IP
+- navigateur utilisé
+- device fingerprint
+
+---
+
+🔄 RETOUR AUTOMATIQUE SUR DRIMPAY
+
+Après signature :
+
+Le système :
+
+1. récupère automatiquement le contrat signé
+2. l’ajoute au dashboard admin
+3. change le statut :
+
+- Contract Signed
+- Pending Production Review
+
+---
+
+🧑‍💼 DASHBOARD ADMIN — GESTION CONTRATS
+
+Créer un système admin permettant :
+
+- créer contrat officiel
+- modifier contrat
+- mettre à jour contrat
+- publier nouvelle version
+- voir tous les contrats signés
+- télécharger PDF signé
+- approuver/rejeter marchand
+
+---
+
+📦 VERSIONNING CONTRAT
+
+Chaque contrat doit contenir :
+
+- version
+- date publication
+- date signature
+- historique versions
+
+Exemple :
+
+DrimPay Merchant Agreement v2.1
+
+---
+
+🚀 ACTIVATION PRODUCTION
+
+Quand :
+
+- KYB = Approved
+- Contrat = Signed
+- Admin = Approved
+
+Alors automatiquement :
+
+✅ API live activées
+✅ Wallets activés
+✅ Payin/Payout live activés
+✅ Clés live générées
+✅ Compte production activé
+
+---
+
+🎨 DESIGN UI/UX
+
+Style :
+
+- Stripe Connect
+- Flutterwave Business
+- PayPal Enterprise
+
+Interface :
+
+- stepper animé
+- cards modernes
+- responsive mobile
+- dark mode
+- animations fluides
+- viewer contrat élégant
+
+---
+
+🔐 SÉCURITÉ
+
+- lien signature unique
+- expiration lien 24h
+- JWT sécurisé
+- audit logs complets
+- stockage PDF sécurisé
+- chiffrement documents sensibles
+
+---
+
+⚙️ ENDPOINTS BACKEND
+
+Créer :
+
+POST /kyb/start
+POST /kyb/upload
+POST /kyb/send-contract
+POST /kyb/sign
+GET /kyb/status
+POST /kyb/submit
+
+---
+
+🎯 OBJECTIF FINAL
+
+Créer un système KYB professionnel de niveau fintech internationale avec onboarding entreprise, signature électronique et activation production sécurisée.
