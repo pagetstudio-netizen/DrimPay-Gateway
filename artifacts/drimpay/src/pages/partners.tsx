@@ -4,24 +4,19 @@ import { Link } from "wouter";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const typeLabel: Record<string, string> = {
-  "mobile-money": "Mobile Money",
-  "bank": "Bank",
-  "fintech": "Fintech",
-  "aggregator": "Aggregator",
-};
+import { useT } from "@/lib/i18n";
 
 export default function Partners() {
   const { data: partners, isLoading } = useListPartners();
+  const t = useT();
 
   return (
     <div className="pt-24 pb-20">
       <div className="container mx-auto px-4 md:px-8">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border mb-6 text-xs font-medium">Partner Network</div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">Powered by the best.</h1>
-          <p className="text-xl text-muted-foreground leading-relaxed">DrimPay integrates with the leading mobile money operators, banks, and fintech platforms across West and Central Africa to give you maximum reach and reliability.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border mb-6 text-xs font-medium">{t.partners.badge}</div>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">{t.partners.title}</h1>
+          <p className="text-xl text-muted-foreground leading-relaxed">{t.partners.desc}</p>
         </motion.div>
 
         {isLoading ? (
@@ -38,7 +33,9 @@ export default function Partners() {
                   <div>
                     <h3 className="font-bold text-lg mb-1">{partner.name}</h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground">{typeLabel[partner.type] ?? partner.type}</span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground">
+                        {t.partners.types[partner.type as keyof typeof t.partners.types] ?? partner.type}
+                      </span>
                       <span className="text-xs text-muted-foreground">{partner.country}</span>
                     </div>
                   </div>
@@ -55,9 +52,9 @@ export default function Partners() {
         )}
 
         <div className="text-center rounded-2xl bg-primary/10 border border-primary/20 p-10">
-          <h2 className="text-2xl font-bold mb-4">Become a DrimPay partner</h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">Are you a mobile money operator, bank, or fintech platform? Join our partner ecosystem and expand your reach across Africa.</p>
-          <Link href="/contact"><Button size="lg" className="text-primary-foreground font-semibold">Apply to Partner <ArrowRight className="ml-2 w-4 h-4" /></Button></Link>
+          <h2 className="text-2xl font-bold mb-4">{t.partners.becomeTitle}</h2>
+          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">{t.partners.becomeDesc}</p>
+          <Link href="/contact"><Button size="lg" className="text-primary-foreground font-semibold">{t.partners.becomeBtn} <ArrowRight className="ml-2 w-4 h-4" /></Button></Link>
         </div>
       </div>
     </div>

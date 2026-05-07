@@ -4,16 +4,19 @@ import { useListBlogArticles } from "@workspace/api-client-react";
 import { ArrowRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT, useLang } from "@/lib/i18n";
 
 export default function News() {
   const { data, isLoading } = useListBlogArticles({ category: "DrimPay News", limit: 12 });
+  const t = useT();
+  const lang = useLang();
 
   return (
     <div className="pt-24 pb-20">
       <div className="container mx-auto px-4 md:px-8">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">News & Updates</h1>
-          <p className="text-xl text-muted-foreground">Official announcements, new features, maintenance windows, and company news from the DrimPay team.</p>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{t.news.title}</h1>
+          <p className="text-xl text-muted-foreground">{t.news.desc}</p>
         </motion.div>
 
         {isLoading ? (
@@ -22,8 +25,8 @@ export default function News() {
           </div>
         ) : (data?.articles ?? []).length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-muted-foreground mb-6">No news articles yet. Check back soon.</p>
-            <Link href="/blog"><Button variant="outline">Read our Blog <ArrowRight className="ml-2 w-4 h-4" /></Button></Link>
+            <p className="text-muted-foreground mb-6">{t.news.noArticles}</p>
+            <Link href="/blog"><Button variant="outline">{t.news.readBlog} <ArrowRight className="ml-2 w-4 h-4" /></Button></Link>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-8">
@@ -32,13 +35,13 @@ export default function News() {
                 className="p-8 rounded-2xl border border-border bg-card hover:border-primary/40 transition-colors"
                 data-testid={`news-card-${article.id}`}>
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">News</span>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />{new Date(article.publishedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">{t.news.newsTag}</span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />{new Date(article.publishedAt).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
                 </div>
                 <h2 className="font-bold text-xl mb-3 leading-tight">{article.title}</h2>
                 <p className="text-muted-foreground text-sm leading-relaxed mb-6 line-clamp-3">{article.excerpt}</p>
                 <Link href={`/blog/${article.slug}`}>
-                  <Button variant="ghost" size="sm" className="text-primary -ml-3">Read More <ArrowRight className="ml-1 w-3 h-3" /></Button>
+                  <Button variant="ghost" size="sm" className="text-primary -ml-3">{t.news.readMore} <ArrowRight className="ml-1 w-3 h-3" /></Button>
                 </Link>
               </motion.div>
             ))}

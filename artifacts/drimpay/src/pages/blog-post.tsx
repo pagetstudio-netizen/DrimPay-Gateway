@@ -4,11 +4,14 @@ import { useGetBlogArticle, getGetBlogArticleQueryKey } from "@workspace/api-cli
 import { ArrowLeft, Clock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT, useLang } from "@/lib/i18n";
 
 export default function BlogPost({ params }: { params: { slug: string } }) {
   const { data: article, isLoading } = useGetBlogArticle(params.slug, {
     query: { enabled: !!params.slug, queryKey: getGetBlogArticleQueryKey(params.slug) },
   });
+  const t = useT();
+  const lang = useLang();
 
   if (isLoading) {
     return (
@@ -27,8 +30,8 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
   if (!article) {
     return (
       <div className="pt-24 pb-20 text-center">
-        <h1 className="text-3xl font-bold mb-4">Article not found</h1>
-        <Link href="/blog"><Button variant="outline">Back to Blog</Button></Link>
+        <h1 className="text-3xl font-bold mb-4">{t.blog.notFound}</h1>
+        <Link href="/blog"><Button variant="outline">{t.blog.backToBlog}</Button></Link>
       </div>
     );
   }
@@ -39,13 +42,13 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <Link href="/blog">
             <Button variant="ghost" className="mb-8 text-muted-foreground -ml-3" data-testid="back-to-blog">
-              <ArrowLeft className="mr-2 w-4 h-4" /> Back to Blog
+              <ArrowLeft className="mr-2 w-4 h-4" /> {t.blog.backToBlog}
             </Button>
           </Link>
 
           <div className="flex items-center gap-3 mb-6">
             <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-primary/10 text-primary">{article.category}</span>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />{article.readingTimeMinutes} min read</span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />{article.readingTimeMinutes} {t.blog.minRead}</span>
           </div>
 
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-6 leading-tight">{article.title}</h1>
@@ -56,7 +59,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
             </div>
             <div>
               <p className="font-semibold text-sm">{article.author}</p>
-              <p className="text-xs text-muted-foreground">{article.authorTitle} · {new Date(article.publishedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+              <p className="text-xs text-muted-foreground">{article.authorTitle} · {new Date(article.publishedAt).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
             </div>
           </div>
 
@@ -73,7 +76,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
           )}
 
           <div className="mt-12 pt-8 border-t border-border">
-            <Link href="/blog"><Button variant="outline">More Articles <ArrowLeft className="ml-2 w-4 h-4 rotate-180" /></Button></Link>
+            <Link href="/blog"><Button variant="outline">{t.blog.moreArticles} <ArrowLeft className="ml-2 w-4 h-4 rotate-180" /></Button></Link>
           </div>
         </motion.div>
       </div>

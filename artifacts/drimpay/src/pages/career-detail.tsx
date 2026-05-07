@@ -4,12 +4,14 @@ import { useGetJob, getGetJobQueryKey } from "@workspace/api-client-react";
 import { ArrowLeft, MapPin, Briefcase, Globe, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT } from "@/lib/i18n";
 
 export default function CareerDetail({ params }: { params: { id: string } }) {
   const id = parseInt(params.id);
   const { data: job, isLoading } = useGetJob(id, {
     query: { enabled: !isNaN(id), queryKey: getGetJobQueryKey(id) },
   });
+  const t = useT();
 
   if (isLoading) {
     return (
@@ -27,8 +29,8 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
   if (!job) {
     return (
       <div className="pt-24 pb-20 text-center">
-        <h1 className="text-3xl font-bold mb-4">Position not found</h1>
-        <Link href="/careers"><Button variant="outline">View All Positions</Button></Link>
+        <h1 className="text-3xl font-bold mb-4">{t.careerDetail.notFound}</h1>
+        <Link href="/careers"><Button variant="outline">{t.careerDetail.viewAllPositions}</Button></Link>
       </div>
     );
   }
@@ -39,13 +41,13 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <Link href="/careers">
             <Button variant="ghost" className="mb-8 text-muted-foreground -ml-3" data-testid="back-to-careers">
-              <ArrowLeft className="mr-2 w-4 h-4" /> All Positions
+              <ArrowLeft className="mr-2 w-4 h-4" /> {t.careerDetail.allPositions}
             </Button>
           </Link>
 
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{job.department}</span>
-            {job.remote && <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 font-medium">Remote</span>}
+            {job.remote && <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 font-medium">{t.careerDetail.remote}</span>}
             <span className="text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground">{job.type}</span>
           </div>
 
@@ -54,16 +56,16 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
           <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-10 pb-8 border-b border-border">
             <span className="flex items-center gap-2"><MapPin className="w-4 h-4" />{job.location}</span>
             <span className="flex items-center gap-2"><Briefcase className="w-4 h-4" />{job.type}</span>
-            {job.remote && <span className="flex items-center gap-2"><Globe className="w-4 h-4" />Remote eligible</span>}
+            {job.remote && <span className="flex items-center gap-2"><Globe className="w-4 h-4" />{t.careerDetail.remoteEligible}</span>}
           </div>
 
           <div className="mb-10">
-            <h2 className="text-xl font-bold mb-4">About this role</h2>
+            <h2 className="text-xl font-bold mb-4">{t.careerDetail.aboutRole}</h2>
             <p className="text-muted-foreground leading-relaxed">{job.description}</p>
           </div>
 
           <div className="mb-10">
-            <h2 className="text-xl font-bold mb-6">Responsibilities</h2>
+            <h2 className="text-xl font-bold mb-6">{t.careerDetail.responsibilities}</h2>
             <ul className="space-y-3">
               {(job.responsibilities ?? []).map((r, i) => (
                 <li key={i} className="flex items-start gap-3">
@@ -75,7 +77,7 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
           </div>
 
           <div className="mb-12">
-            <h2 className="text-xl font-bold mb-6">Requirements</h2>
+            <h2 className="text-xl font-bold mb-6">{t.careerDetail.requirements}</h2>
             <ul className="space-y-3">
               {(job.requirements ?? []).map((r, i) => (
                 <li key={i} className="flex items-start gap-3">
@@ -87,10 +89,10 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
           </div>
 
           <div className="rounded-2xl bg-primary/10 border border-primary/20 p-8">
-            <h2 className="text-xl font-bold mb-3">Apply for this position</h2>
-            <p className="text-muted-foreground mb-6 text-sm">Send us your resume and a brief cover letter explaining why you are excited about building payments infrastructure for Africa.</p>
+            <h2 className="text-xl font-bold mb-3">{t.careerDetail.applyTitle}</h2>
+            <p className="text-muted-foreground mb-6 text-sm">{t.careerDetail.applyDesc}</p>
             <a href={`mailto:careers@drimpay.io?subject=Application: ${job.title}`} data-testid="apply-button">
-              <Button size="lg" className="text-primary-foreground font-semibold">Apply Now</Button>
+              <Button size="lg" className="text-primary-foreground font-semibold">{t.careerDetail.applyBtn}</Button>
             </a>
           </div>
         </motion.div>

@@ -1,8 +1,13 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowDownLeft, ArrowUpRight, ArrowRight, BookOpen, Shield, Zap, Globe } from "lucide-react";
+import { useT } from "@/lib/i18n";
+
+const commonIcons = [Shield, Globe, Zap, BookOpen];
 
 export default function Docs() {
+  const t = useT();
+
   return (
     <div className="min-h-screen pt-32 pb-24 px-4">
       <div className="container mx-auto max-w-4xl">
@@ -12,12 +17,10 @@ export default function Docs() {
           transition={{ duration: 0.5 }}
         >
           <div className="mb-3 flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Documentation</span>
+            <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t.docs.badge}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">API Reference</h1>
-          <p className="text-xl text-muted-foreground mb-14 max-w-2xl leading-relaxed">
-            Everything you need to integrate DrimPay into your product. Choose the API you want to explore.
-          </p>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">{t.docs.title}</h1>
+          <p className="text-xl text-muted-foreground mb-14 max-w-2xl leading-relaxed">{t.docs.desc}</p>
 
           <div className="grid md:grid-cols-2 gap-6 mb-16">
             <Link href="/docs/payin">
@@ -31,12 +34,10 @@ export default function Docs() {
                   <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5">
                     <ArrowDownLeft className="w-6 h-6 text-blue-400" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-2">Pay-in API</h2>
-                  <p className="text-muted-foreground mb-6 leading-relaxed">
-                    Collect Mobile Money payments from customers across West & Central Africa. One endpoint, all operators.
-                  </p>
+                  <h2 className="text-2xl font-bold mb-2">{t.docs.payinTitle}</h2>
+                  <p className="text-muted-foreground mb-6 leading-relaxed">{t.docs.payinDesc}</p>
                   <ul className="space-y-2 mb-6">
-                    {["Initiate payment requests", "Real-time webhook notifications", "Sandbox & live environments", "4 code languages supported"].map((f) => (
+                    {t.docs.payinFeatures.map((f) => (
                       <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
                         {f}
@@ -44,7 +45,7 @@ export default function Docs() {
                     ))}
                   </ul>
                   <div className="flex items-center gap-2 text-sm font-semibold text-blue-400 group-hover:gap-3 transition-all">
-                    Read Pay-in Docs <ArrowRight className="w-4 h-4" />
+                    {t.docs.payinLink} <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
               </motion.div>
@@ -61,12 +62,10 @@ export default function Docs() {
                   <div className="w-12 h-12 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-5">
                     <ArrowUpRight className="w-6 h-6 text-orange-400" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-2">Pay-out API</h2>
-                  <p className="text-muted-foreground mb-6 leading-relaxed">
-                    Disburse funds to any Mobile Money account instantly. Pay suppliers, employees, or agents at scale.
-                  </p>
+                  <h2 className="text-2xl font-bold mb-2">{t.docs.payoutTitle}</h2>
+                  <p className="text-muted-foreground mb-6 leading-relaxed">{t.docs.payoutDesc}</p>
                   <ul className="space-y-2 mb-6">
-                    {["Single & mass disbursements", "Up to 50,000 recipients per batch", "Geo-isolated wallet system", "Idempotent & safe requests"].map((f) => (
+                    {t.docs.payoutFeatures.map((f) => (
                       <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
                         {f}
@@ -74,7 +73,7 @@ export default function Docs() {
                     ))}
                   </ul>
                   <div className="flex items-center gap-2 text-sm font-semibold text-orange-400 group-hover:gap-3 transition-all">
-                    Read Pay-out Docs <ArrowRight className="w-4 h-4" />
+                    {t.docs.payoutLink} <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
               </motion.div>
@@ -82,20 +81,18 @@ export default function Docs() {
           </div>
 
           <div className="border-t border-border pt-12">
-            <h3 className="text-lg font-semibold mb-6">Common across all APIs</h3>
+            <h3 className="text-lg font-semibold mb-6">{t.docs.commonTitle}</h3>
             <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { icon: Shield, title: "Authentication", desc: "Bearer token via secret key" },
-                { icon: Globe, title: "7+ countries", desc: "Togo, Bénin, Cameroun, Sénégal…" },
-                { icon: Zap, title: "Webhooks", desc: "Signed real-time event notifications" },
-                { icon: BookOpen, title: "Sandbox", desc: "Full test environment included" },
-              ].map(({ icon: Icon, title, desc }) => (
-                <div key={title} className="p-5 rounded-xl border border-border bg-card/50">
-                  <Icon className="w-5 h-5 text-primary mb-3" />
-                  <p className="font-semibold text-sm mb-1">{title}</p>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
-                </div>
-              ))}
+              {t.docs.common.map(({ title, desc }, i) => {
+                const Icon = commonIcons[i];
+                return (
+                  <div key={title} className="p-5 rounded-xl border border-border bg-card/50">
+                    <Icon className="w-5 h-5 text-primary mb-3" />
+                    <p className="font-semibold text-sm mb-1">{title}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </motion.div>
