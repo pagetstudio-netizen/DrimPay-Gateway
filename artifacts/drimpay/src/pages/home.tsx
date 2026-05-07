@@ -367,17 +367,28 @@ export default function Home() {
                 </button>
               </Link>
             </div>
-            <div className="bg-[#0d0c18] rounded-3xl border border-white/10 p-8 hover:shadow-lg transition-shadow group">
-              <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">🔄</div>
-              <h3 className="text-2xl font-extrabold text-white mb-3">Migrer vers DrimPay</h3>
-              <p className="text-sm text-white/50 leading-relaxed mb-6">
-                Vous utilisez déjà un autre prestataire ? Notre équipe migration prend en charge l'intégralité du transfert.
-              </p>
-              <Link href="/contact">
-                <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#B5F03C] text-[#0f0f0f] font-semibold text-sm hover:bg-[#B5F03C]/90 transition-all">
-                  Démarrer la migration <ArrowRight className="w-4 h-4" />
-                </button>
-              </Link>
+            <div className="bg-white rounded-3xl border border-[#e5e3dc] overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
+              {/* Operator network image */}
+              <div className="relative bg-[#F8F6F1] flex items-center justify-center overflow-hidden" style={{ minHeight: "220px" }}>
+                <img
+                  src="/operators-network.png"
+                  alt="Réseau d'opérateurs DrimPay"
+                  className="w-full object-contain"
+                  style={{ maxHeight: "220px" }}
+                />
+              </div>
+              {/* Text content */}
+              <div className="p-8 flex flex-col flex-1">
+                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Connectez tous vos opérateurs</h3>
+                <p className="text-sm text-[#0f0f0f]/55 leading-relaxed mb-6 flex-1">
+                  Intégrez Wave, Orange Money, MTN, Airtel, Moov, TMoney et plus encore grâce à une seule API unifiée.
+                </p>
+                <Link href="/integrations">
+                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#B5F03C] text-[#0f0f0f] font-semibold text-sm hover:bg-[#B5F03C]/90 transition-all">
+                    Voir les intégrations <ArrowRight className="w-4 h-4" />
+                  </button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
