@@ -355,17 +355,28 @@ export default function Home() {
       <section className="py-24 bg-[#F5F0E8]">
         <div className="max-w-6xl mx-auto px-6 md:px-10">
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-3xl border border-[#e5e3dc] p-8 hover:shadow-lg transition-shadow group">
-              <div className="w-14 h-14 rounded-2xl bg-[#B5F03C] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">🚀</div>
-              <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Planifiez votre Lancement</h3>
-              <p className="text-sm text-[#0f0f0f]/55 leading-relaxed mb-6">
-                Notre équipe d'experts vous accompagne à chaque étape — de l'intégration à la mise en production.
-              </p>
-              <Link href="/contact">
-                <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
-                  Planifier un appel <ArrowRight className="w-4 h-4" />
-                </button>
-              </Link>
+            <div className="bg-[#F8F6F1] rounded-3xl border border-[#e5e3dc] overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
+              {/* Features image — concentric circles + lime pills */}
+              <div className="flex items-center justify-center bg-[#F8F6F1] overflow-hidden" style={{ minHeight: "240px" }}>
+                <img
+                  src="/drimpay-features.png"
+                  alt="Fonctionnalités DrimPay"
+                  className="w-full object-contain"
+                  style={{ maxHeight: "240px" }}
+                />
+              </div>
+              {/* Text content */}
+              <div className="p-8 flex flex-col flex-1">
+                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3">Tout ce dont vous avez besoin</h3>
+                <p className="text-sm text-[#0f0f0f]/55 leading-relaxed mb-6 flex-1">
+                  API de paiement, Mass Payments, Payment Link et Virtual Card — une seule plateforme pour tous vos besoins financiers.
+                </p>
+                <Link href="/signup">
+                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
+                    Démarrer gratuitement <ArrowRight className="w-4 h-4" />
+                  </button>
+                </Link>
+              </div>
             </div>
             <div className="bg-white rounded-3xl border border-[#e5e3dc] overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
               {/* Operator network image */}
