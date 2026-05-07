@@ -12,28 +12,11 @@ const GRID_SVG = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox=
 /* ══════════════════════════════════════════════════════════════════════════ */
 function DesktopMockup() {
   return (
-    <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden border border-[#E0DDD6] shadow-2xl">
-      {/* Browser chrome */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-[#F2F0EA] border-b border-[#E0DDD6]">
-        <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-          <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-          <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
-        </div>
-        <div className="flex-1 mx-4 bg-white rounded-md px-3 py-1 text-xs text-gray-400 font-mono border border-[#E0DDD6] max-w-xs select-none">
-          drimpay.africa/dashboard
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-[#27C93F]" />
-          <span className="text-[10px] text-gray-400 font-medium">Live</span>
-        </div>
-      </div>
-      {/* Dashboard screenshot */}
+    <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl">
       <img
         src="/dashboard-hero.jpg"
         alt="DrimPay Dashboard"
         className="w-full block"
-        style={{ display: "block" }}
       />
     </div>
   );
