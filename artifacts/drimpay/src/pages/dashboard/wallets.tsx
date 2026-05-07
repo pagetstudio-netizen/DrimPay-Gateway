@@ -4,6 +4,7 @@ import { Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, Info } from "lucide-re
 import { DashboardLayout } from "./layout";
 import { Link } from "wouter";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ProductionGate } from "@/components/ui/production-gate";
 
 const COUNTRY_MAP: Record<string, { name: string; flag: string; currency: string; operators: string[] }> = {
   TG: { name: "Togo", flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Togo", "Flooz"] },
@@ -33,6 +34,7 @@ export default function Wallets() {
 
   return (
     <DashboardLayout>
+      <ProductionGate>
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Wallets par pays</h1>
@@ -152,6 +154,7 @@ export default function Wallets() {
           </div>
         </div>
       </div>
+      </ProductionGate>
     </DashboardLayout>
   );
 }

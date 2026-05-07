@@ -35,6 +35,15 @@ const COUNTRIES = [
 
 const FEE_RATE = 0.03;
 
+router.get("/dashboard/status", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const [kyb] = await db
+    .select({ status: kybSubmissionsTable.status })
+    .from(kybSubmissionsTable)
+    .where(eq(kybSubmissionsTable.userId, userId));
+  res.json({ kybStatus: kyb?.status ?? "pending" });
+});
+
 router.get("/dashboard/overview", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
 

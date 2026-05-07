@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Banknote, CheckCircle2, Clock, XCircle, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ProductionGate } from "@/components/ui/production-gate";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -116,6 +117,7 @@ export default function DashboardReversement() {
 
   return (
     <DashboardLayout>
+      <ProductionGate>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="mb-8">
           <h1 className="text-2xl font-bold">Reversement</h1>
@@ -325,6 +327,7 @@ export default function DashboardReversement() {
           </div>
         </div>
       </motion.div>
+      </ProductionGate>
     </DashboardLayout>
   );
 }

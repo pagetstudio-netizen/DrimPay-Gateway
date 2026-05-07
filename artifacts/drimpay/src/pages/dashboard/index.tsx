@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown,
-  AlertCircle, CheckCircle2, Clock, XCircle, ChevronRight,
+  AlertCircle, Clock, XCircle, ChevronRight, CheckCircle2,
   RefreshCw
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
@@ -59,30 +59,56 @@ export default function DashboardOverview() {
   const totalTx = data?.txStats?.reduce((acc: number, s: any) => acc + parseInt(s.txCount ?? "0"), 0) ?? 0;
 
   const kybStatus = data?.kybStatus ?? "pending";
+  const isReview = kybStatus === "submitted" || kybStatus === "under_review";
 
   const kybBanner = kybStatus !== "approved" && (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
+      initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-4 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 mb-6"
+      className={`mb-6 rounded-2xl border p-5 flex flex-col sm:flex-row sm:items-center gap-4
+        ${isReview
+          ? "bg-yellow-50 border-yellow-200 dark:bg-yellow-500/5 dark:border-yellow-500/20"
+          : "bg-card border-border"
+        }`}
     >
-      <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0" />
-      <div className="flex-1">
-        <p className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">
-          {kybStatus === "submitted" || kybStatus === "under_review"
-            ? "Vérification KYB en cours"
-            : "Vérification KYB requise"}
-        </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {kybStatus === "submitted" || kybStatus === "under_review"
-            ? "Vos documents sont en cours de révision. Les paiements live seront activés après approbation."
-            : "Soumettez vos documents d'entreprise pour activer les paiements live."}
-        </p>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+        ${isReview ? "bg-yellow-500/15" : "bg-primary/10"}`}>
+        {isReview
+          ? <Clock className="w-5 h-5 text-yellow-500" />
+          : <AlertCircle className="w-5 h-5 text-primary" />
+        }
       </div>
-      {kybStatus === "pending" && (
+
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold ${isReview ? "text-yellow-700 dark:text-yellow-400" : "text-foreground"}`}>
+          {isReview ? "Vérification en cours — votre dossier est entre nos mains" : "Activez votre compte Live"}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+          {isReview
+            ? "Nos équipes analysent vos documents. Vous recevrez un e-mail de confirmation dans 1 à 2 jours ouvrables."
+            : "Complétez la vérification KYB pour débloquer les wallets, les transferts et vos clés API live."}
+        </p>
+        {!isReview && (
+          <div className="flex items-center gap-4 mt-3">
+            {[
+              { label: "Documents entreprise", status: "todo" },
+              { label: "Vérification équipe", status: "todo" },
+              { label: "Compte Live activé", status: "todo" },
+            ].map(({ label }, i) => (
+              <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-border" />
+                {label}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {!isReview && (
         <Link href="/dashboard/kyb">
-          <Button size="sm" variant="outline" className="border-yellow-500/40 text-yellow-600 hover:bg-yellow-500/10 shrink-0">
-            Soumettre <ChevronRight className="w-3 h-3 ml-1" />
+          <Button size="sm" className="shrink-0 gap-1.5 h-9">
+            Démarrer la vérification
+            <ChevronRight className="w-3.5 h-3.5" />
           </Button>
         </Link>
       )}

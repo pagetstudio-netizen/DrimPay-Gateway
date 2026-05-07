@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Key, Plus, Trash2, Copy, Eye, EyeOff, CheckCircle2, AlertTriangle, Shield } from "lucide-react";
 import { DashboardLayout } from "./layout";
+import { ProductionGate } from "@/components/ui/production-gate";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -74,6 +75,7 @@ export default function ApiKeys() {
 
   return (
     <DashboardLayout>
+      <ProductionGate>
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Clés API</h1>
@@ -244,6 +246,7 @@ export default function ApiKeys() {
           </div>
         </DialogContent>
       </Dialog>
+      </ProductionGate>
     </DashboardLayout>
   );
 }
