@@ -90,7 +90,7 @@ export default function Signup() {
     setServerError("");
     const { error } = await signup({ companyName: values.companyName, email: values.email, password: values.password, country: values.country });
     if (error) { setServerError(error); setStatus("idle"); return; }
-    navigate("/dashboard");
+    window.location.assign("/dashboard");
   };
 
   const selectedPhoneEntry = COUNTRY_CODES.find(c => c.code === phoneCode) ?? COUNTRY_CODES[0];

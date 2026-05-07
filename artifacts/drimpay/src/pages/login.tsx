@@ -39,7 +39,7 @@ export default function Login() {
       setStatus("idle");
       return;
     }
-    navigate("/dashboard");
+    window.location.assign("/dashboard");
   };
 
   return (
