@@ -11,6 +11,27 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "DrimPay"
+
+[[workflows.workflow]]
+name = "DrimPay"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=22390 BASE_PATH=/ pnpm --filter @workspace/drimpay run dev"
+waitForPort = 22390
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true

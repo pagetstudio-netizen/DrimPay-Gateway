@@ -32,19 +32,25 @@ const COUNTRY_META: Record<string, Omit<CountryInfo, "code" | "operators">> = {
   NG: { name: "Nigeria",       flag: "🇳🇬", currency: "NGN" },
 };
 
-// Operator brand colors and abbreviations
-const OPERATOR_BRAND: Record<string, { bg: string; text: string; abbr: string; label: string }> = {
-  "TMoney":           { bg: "#E60026", text: "#fff",    abbr: "TM",  label: "T-Money" },
-  "Moov Money":       { bg: "#003087", text: "#fff",    abbr: "MV",  label: "Moov" },
-  "MTN Mobile Money": { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN MoMo" },
-  "MTN MoMo":         { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN MoMo" },
-  "MTN Ghana":        { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN Ghana" },
-  "MTN Nigeria":      { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN Nigeria" },
-  "MTN":              { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN" },
-  "Orange Money":     { bg: "#FF6600", text: "#fff",    abbr: "OM",  label: "Orange Money" },
-  "Wave":             { bg: "#1AC9FF", text: "#fff",    abbr: "WV",  label: "Wave" },
-  "Vodafone Ghana":   { bg: "#E60000", text: "#fff",    abbr: "VF",  label: "Vodafone" },
-  "Airtel Nigeria":   { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel" },
+// Operator brand metadata — logo images take priority; fallback uses bg/abbr
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const OPERATOR_BRAND: Record<string, { bg: string; text: string; abbr: string; label: string; logo?: string }> = {
+  "TMoney":           { bg: "#FFCC00", text: "#E60026", abbr: "TM",  label: "T-Money",      logo: `${BASE}/op-tmoney.png` },
+  "Moov Money":       { bg: "#F06400", text: "#fff",    abbr: "MV",  label: "Moov Money",   logo: `${BASE}/op-moov.png` },
+  "MTN Mobile Money": { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN MoMo",     logo: `${BASE}/op-mtn.png` },
+  "MTN MoMo":         { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN MoMo",     logo: `${BASE}/op-mtn.png` },
+  "MTN Ghana":        { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN Ghana",    logo: `${BASE}/op-mtn.png` },
+  "MTN Nigeria":      { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN Nigeria",  logo: `${BASE}/op-mtn.png` },
+  "MTN":              { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN",          logo: `${BASE}/op-mtn.png` },
+  "Orange Money":     { bg: "#1a1a1a", text: "#FF6600", abbr: "OM",  label: "Orange Money", logo: `${BASE}/op-orange-money.png` },
+  "Wave":             { bg: "#1AC9FF", text: "#fff",    abbr: "WV",  label: "Wave",         logo: `${BASE}/op-wave.png` },
+  "Wizall Money":     { bg: "#00BCD4", text: "#fff",    abbr: "WZ",  label: "Wizall Money", logo: `${BASE}/op-wizall.png` },
+  "Wizall":           { bg: "#00BCD4", text: "#fff",    abbr: "WZ",  label: "Wizall Money", logo: `${BASE}/op-wizall.png` },
+  "Vodacom":          { bg: "#E60000", text: "#fff",    abbr: "VC",  label: "Vodacom",      logo: `${BASE}/op-vodacom.png` },
+  "Vodafone Ghana":   { bg: "#E60000", text: "#fff",    abbr: "VF",  label: "Vodafone",     logo: `${BASE}/op-vodacom.png` },
+  "Airtel":           { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel",       logo: `${BASE}/op-airtel.png` },
+  "Airtel Nigeria":   { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel",       logo: `${BASE}/op-airtel.png` },
+  "Airtel Money":     { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel Money", logo: `${BASE}/op-airtel.png` },
 };
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -72,6 +78,7 @@ type Step = "country" | "operator" | "form" | "confirm" | "processing" | "succes
 function OperatorLogo({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
   const brand = OPERATOR_BRAND[name];
   const sizes = { sm: "w-10 h-10 text-xs", md: "w-14 h-14 text-sm", lg: "w-16 h-16 text-base" };
+
   if (!brand) {
     return (
       <div className={cn("rounded-2xl flex items-center justify-center font-bold bg-muted text-muted-foreground shrink-0", sizes[size])}>
@@ -79,6 +86,15 @@ function OperatorLogo({ name, size = "md" }: { name: string; size?: "sm" | "md" 
       </div>
     );
   }
+
+  if (brand.logo) {
+    return (
+      <div className={cn("rounded-2xl overflow-hidden shrink-0 shadow-sm bg-white flex items-center justify-center", sizes[size])}>
+        <img src={brand.logo} alt={brand.label} className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn("rounded-2xl flex items-center justify-center font-extrabold shrink-0 shadow-sm", sizes[size])}
