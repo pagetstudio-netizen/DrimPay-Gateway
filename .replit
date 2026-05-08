@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "DrimPay"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "API Server"
+
 [[workflows.workflow]]
 name = "DrimPay"
 author = "agent"
@@ -31,6 +35,18 @@ outputType = "webview"
 task = "shell.exec"
 args = "PORT=22390 BASE_PATH=/ pnpm --filter @workspace/drimpay run dev"
 waitForPort = 22390
+
+[[workflows.workflow]]
+name = "API Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8080 pnpm --filter @workspace/api-server run dev"
+waitForPort = 8080
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 stack = "PNPM_WORKSPACE"

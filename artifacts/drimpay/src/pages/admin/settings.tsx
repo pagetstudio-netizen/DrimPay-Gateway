@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Settings, Save, RefreshCw, AlertTriangle, CheckCircle2,
-  Send, Bot, Eye, EyeOff, Zap, Search,
+  Send, Bot, Eye, EyeOff, Zap, Search, Mail, MessageCircle,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,189 @@ const SETTINGS_GROUPS = [
     ],
   },
 ];
+
+function SmtpSection({ allValues }: { allValues: Record<string, string> }) {
+  const [host, setHost] = useState("");
+  const [port, setPort] = useState("587");
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+  const [from, setFrom] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+
+  useEffect(() => {
+    if (allValues["smtp_host"]) setHost(allValues["smtp_host"]);
+    if (allValues["smtp_port"]) setPort(allValues["smtp_port"]);
+    if (allValues["smtp_user"]) setUser(allValues["smtp_user"]);
+    if (allValues["smtp_pass"]) setPass(allValues["smtp_pass"]);
+    if (allValues["smtp_from"]) setFrom(allValues["smtp_from"]);
+  }, [allValues]);
+
+  const hasConfig = !!allValues["smtp_host"] && !!allValues["smtp_user"];
+
+  const save = async () => {
+    setSaving(true); setStatus(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/settings`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smtp_host: host, smtp_port: port, smtp_user: user, smtp_pass: pass, smtp_from: from }),
+      });
+      if (r.ok) setStatus({ type: "ok", msg: "Configuration SMTP sauvegardée !" });
+      else setStatus({ type: "err", msg: "Erreur lors de la sauvegarde" });
+    } catch { setStatus({ type: "err", msg: "Erreur réseau" }); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center">
+          <Mail className="w-5 h-5 text-orange-500" />
+        </div>
+        <div>
+          <h2 className="font-bold text-gray-900">Email SMTP</h2>
+          <p className="text-xs text-gray-400">Envoi automatique des contrats PDF aux marchands</p>
+        </div>
+        <div className={cn("ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold", hasConfig ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500")}>
+          <span className={cn("w-1.5 h-1.5 rounded-full", hasConfig ? "bg-green-500" : "bg-gray-400")} />
+          {hasConfig ? "Configuré" : "Non configuré"}
+        </div>
+      </div>
+
+      <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
+        <p className="text-xs font-semibold text-orange-800 mb-1">Utilisation :</p>
+        <p className="text-xs text-orange-700">Le contrat PDF signé est envoyé automatiquement à l'adresse email du marchand dès la soumission du KYB étape 4.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-semibold text-gray-700 block mb-1.5">Serveur SMTP (host)</label>
+          <input value={host} onChange={e => setHost(e.target.value)} placeholder="smtp.gmail.com" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400" />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-gray-700 block mb-1.5">Port</label>
+          <input value={port} onChange={e => setPort(e.target.value)} placeholder="587" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          <p className="text-xs text-gray-400 mt-1">587 (TLS) ou 465 (SSL)</p>
+        </div>
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Utilisateur SMTP (email)</label>
+        <input value={user} onChange={e => setUser(e.target.value)} placeholder="noreply@drimpay.africa" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400" />
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Mot de passe SMTP</label>
+        <div className="relative">
+          <input type={showPass ? "text" : "password"} value={pass} onChange={e => setPass(e.target.value)} placeholder="App password ou mot de passe SMTP" className="w-full px-3 py-2.5 pr-10 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          <button onClick={() => setShowPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">Pour Gmail, utilisez un "App Password" (Authentification à 2 facteurs requise)</p>
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Email expéditeur (from)</label>
+        <input value={from} onChange={e => setFrom(e.target.value)} placeholder="DrimPay <noreply@drimpay.africa>" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+      </div>
+
+      {status && (
+        <div className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium", status.type === "ok" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800")}>
+          {status.type === "ok" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+          {status.msg}
+        </div>
+      )}
+      <button onClick={save} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 shadow-sm">
+        <Save className="w-4 h-4" /> {saving ? "Enregistrement..." : "Enregistrer la config SMTP"}
+      </button>
+    </div>
+  );
+}
+
+function WhatsAppSection({ allValues }: { allValues: Record<string, string> }) {
+  const [instanceId, setInstanceId] = useState("");
+  const [token, setToken] = useState("");
+  const [adminNumber, setAdminNumber] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+
+  useEffect(() => {
+    if (allValues["whatsapp_instance_id"]) setInstanceId(allValues["whatsapp_instance_id"]);
+    if (allValues["whatsapp_token"]) setToken(allValues["whatsapp_token"]);
+    if (allValues["whatsapp_admin_number"]) setAdminNumber(allValues["whatsapp_admin_number"]);
+  }, [allValues]);
+
+  const hasConfig = !!allValues["whatsapp_instance_id"] && !!allValues["whatsapp_token"];
+
+  const save = async () => {
+    setSaving(true); setStatus(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/settings`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ whatsapp_instance_id: instanceId, whatsapp_token: token, whatsapp_admin_number: adminNumber }),
+      });
+      if (r.ok) setStatus({ type: "ok", msg: "Configuration WhatsApp sauvegardée !" });
+      else setStatus({ type: "err", msg: "Erreur lors de la sauvegarde" });
+    } catch { setStatus({ type: "err", msg: "Erreur réseau" }); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+          <MessageCircle className="w-5 h-5 text-green-600" />
+        </div>
+        <div>
+          <h2 className="font-bold text-gray-900">WhatsApp (UltraMsg)</h2>
+          <p className="text-xs text-gray-400">Notification DrimPay à chaque contrat signé</p>
+        </div>
+        <div className={cn("ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold", hasConfig ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500")}>
+          <span className={cn("w-1.5 h-1.5 rounded-full", hasConfig ? "bg-green-500" : "bg-gray-400")} />
+          {hasConfig ? "Configuré" : "Non configuré"}
+        </div>
+      </div>
+
+      <div className="bg-green-50 border border-green-100 rounded-xl p-4">
+        <p className="text-xs font-semibold text-green-800 mb-1">Fonctionnement :</p>
+        <p className="text-xs text-green-700">Quand un marchand signe le contrat (KYB étape 4), un message WhatsApp est envoyé automatiquement à votre numéro admin avec les détails du dossier.</p>
+        <p className="text-xs text-green-600 mt-2">Service : <a href="https://ultramsg.com" target="_blank" rel="noopener" className="underline">ultramsg.com</a> — API WhatsApp Business simple et abordable</p>
+      </div>
+
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Instance ID UltraMsg</label>
+        <input value={instanceId} onChange={e => setInstanceId(e.target.value)} placeholder="instance12345" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
+        <p className="text-xs text-gray-400 mt-1">Visible dans votre dashboard UltraMsg</p>
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Token UltraMsg</label>
+        <div className="relative">
+          <input type={showToken ? "text" : "password"} value={token} onChange={e => setToken(e.target.value)} placeholder="xxxxxxxxxxxxxxxxxxx" className="w-full px-3 py-2.5 pr-10 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <button onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Numéro admin DrimPay (WhatsApp)</label>
+        <input value={adminNumber} onChange={e => setAdminNumber(e.target.value)} placeholder="+237691234567" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
+        <p className="text-xs text-gray-400 mt-1">Format international avec indicatif pays (+237 pour Cameroun)</p>
+      </div>
+
+      {status && (
+        <div className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium", status.type === "ok" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800")}>
+          {status.type === "ok" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+          {status.msg}
+        </div>
+      )}
+      <button onClick={save} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 shadow-sm">
+        <Save className="w-4 h-4" /> {saving ? "Enregistrement..." : "Enregistrer la config WhatsApp"}
+      </button>
+    </div>
+  );
+}
 
 function TelegramSection({ allValues }: { allValues: Record<string, string> }) {
   const [token, setToken] = useState("");
@@ -309,10 +492,22 @@ export default function AdminSettings() {
               className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "telegram" ? "bg-blue-50 text-blue-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
               <Bot className="w-4 h-4" /> Telegram Bot
             </button>
+            <button onClick={() => setActiveGroup("smtp")}
+              className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "smtp" ? "bg-orange-50 text-orange-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
+              <Mail className="w-4 h-4" /> Email SMTP
+            </button>
+            <button onClick={() => setActiveGroup("whatsapp")}
+              className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "whatsapp" ? "bg-green-50 text-green-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
+              <MessageCircle className="w-4 h-4" /> WhatsApp
+            </button>
           </div>
 
           {activeGroup === "telegram" ? (
             <TelegramSection allValues={values} />
+          ) : activeGroup === "smtp" ? (
+            <SmtpSection allValues={values} />
+          ) : activeGroup === "whatsapp" ? (
+            <WhatsAppSection allValues={values} />
           ) : (
             <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="font-bold text-gray-900 mb-5">{currentGroup.title}</h2>

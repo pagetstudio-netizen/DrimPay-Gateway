@@ -19,6 +19,9 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import { notifyKybSubmitted, notifyReversement, notifyPayin } from "../lib/telegram";
+import { generateContractPdf } from "../lib/contract-pdf";
+import { sendContractEmail } from "../lib/mailer";
+import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import path from "path";
 import fs from "fs";
 
@@ -797,20 +800,62 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         .returning();
     }
 
-    // Telegram: notify KYB submitted (only on final step)
+    // Step 4 — PDF + Email + WhatsApp + Telegram
     if (stepNum === 4 && (kyb.status === "submitted")) {
       try {
         const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country })
           .from(usersTable).where(eq(usersTable.id, userId));
+
         if (user) {
+          // 1) Telegram
           notifyKybSubmitted({
             company: (kyb as any).companyLegalName ?? user.companyName,
             email: user.email,
             country: user.country,
             id: kyb.id,
           }).catch(() => {});
+
+          // 2) Generate contract PDF
+          const pdfBuf = await generateContractPdf({
+            companyLegalName: (kyb as any).companyLegalName ?? user.companyName,
+            tradeName: (kyb as any).tradeName ?? undefined,
+            businessType: (kyb as any).businessType ?? undefined,
+            incorporationCountry: (kyb as any).incorporationCountry ?? user.country,
+            city: (kyb as any).city ?? undefined,
+            businessAddress: (kyb as any).businessAddress ?? undefined,
+            registrationNumber: (kyb as any).registrationNumber ?? undefined,
+            taxNumber: (kyb as any).taxNumber ?? undefined,
+            foundingDate: (kyb as any).foundingDate ?? undefined,
+            legalRepName: (kyb as any).legalRepName ?? undefined,
+            legalRepPosition: (kyb as any).legalRepPosition ?? undefined,
+            legalRepNationality: (kyb as any).legalRepNationality ?? undefined,
+            contractEmail: (kyb as any).contractEmail ?? user.email,
+            contractSignedAt: (kyb as any).contractSignedAt ?? new Date(),
+            signatureDataUrl: (body as any).signatureData ?? undefined,
+          });
+
+          const contractTo = (kyb as any).contractEmail || user.email;
+          const merchantName = (kyb as any).legalRepName ?? user.companyName;
+
+          // 3) Send email with PDF attachment (fire-and-forget)
+          sendContractEmail({
+            to: contractTo,
+            merchantName,
+            pdfBuffer: pdfBuf,
+          }).catch((e) => console.error("[KYB] Email contrat error:", e));
+
+          // 4) WhatsApp notification to DrimPay team (fire-and-forget)
+          sendWhatsAppContractNotification({
+            merchantName,
+            companyName: (kyb as any).companyLegalName ?? user.companyName,
+            country: (kyb as any).incorporationCountry ?? user.country,
+            contractEmail: contractTo,
+            kybId: kyb.id,
+          }).catch((e) => console.error("[KYB] WhatsApp error:", e));
         }
-      } catch {}
+      } catch (e) {
+        console.error("[KYB] Post-submission notifications error:", e);
+      }
     }
 
     res.status(201).json(kyb);
