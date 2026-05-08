@@ -36,7 +36,8 @@ router.post("/auth/signup", async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const [user] = await db.insert(usersTable).values({ email, passwordHash, companyName, country }).returning();
+  const merchantCode = crypto.randomBytes(3).toString("hex");
+  const [user] = await db.insert(usersTable).values({ email, passwordHash, companyName, country, merchantCode }).returning();
 
   req.session.userId = user.id;
   req.session.role = user.role;
@@ -64,6 +65,7 @@ router.post("/auth/signup", async (req, res) => {
     companyName: user.companyName,
     country: user.country,
     role: user.role,
+    merchantCode: user.merchantCode,
   });
 });
 
@@ -97,6 +99,7 @@ router.post("/auth/login", async (req, res) => {
     companyName: user.companyName,
     country: user.country,
     role: user.role,
+    merchantCode: user.merchantCode,
   });
 });
 
@@ -124,6 +127,7 @@ router.get("/auth/me", async (req, res) => {
     companyName: user.companyName,
     country: user.country,
     role: user.role,
+    merchantCode: user.merchantCode,
   });
 });
 

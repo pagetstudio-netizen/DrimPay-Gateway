@@ -207,6 +207,16 @@ export default function DashboardProfile() {
                 <p className="text-xs font-bold text-center truncate w-full text-center">{user?.companyName ?? "—"}</p>
                 <p className="text-[10px] text-muted-foreground truncate w-full text-center">{user?.email ?? "—"}</p>
                 <span className="mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase">{user?.role ?? "user"}</span>
+                {(user as any)?.merchantCode && (
+                  <button
+                    onClick={() => navigator.clipboard.writeText((user as any).merchantCode)}
+                    title="Copier le code marchand"
+                    className="mt-2 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted hover:bg-muted/80 transition-colors group"
+                  >
+                    <span className="font-mono text-[11px] font-bold text-foreground tracking-widest">{(user as any).merchantCode}</span>
+                    <Copy className="w-2.5 h-2.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+                )}
               </div>
               <div className="h-px bg-border mx-1 mb-2" />
               {MENU_ITEMS.map(({ key, label, icon: Icon }) => (
@@ -242,6 +252,20 @@ export default function DashboardProfile() {
                   </div>
                 </div>
                 <div className="space-y-4">
+                  {(user as any)?.merchantCode && (
+                    <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/50 border border-border">
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Code marchand</p>
+                        <p className="font-mono text-sm font-bold tracking-widest">{(user as any).merchantCode}</p>
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard.writeText((user as any).merchantCode)}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors font-medium"
+                      >
+                        <Copy className="w-3 h-3" /> Copier
+                      </button>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Nom de l'entreprise</label>
                     <input className={inputCls} value={infoForm.companyName} onChange={e => setInfoForm(f => ({ ...f, companyName: e.target.value }))} placeholder="Ex: SARL MonEntreprise" />

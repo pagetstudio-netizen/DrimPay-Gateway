@@ -21,6 +21,7 @@ export const usersTable = pgTable("users", {
   companyName: text("company_name").notNull(),
   country: text("country").notNull().default("OTHER"),
   role: userRoleEnum("role").notNull().default("user"),
+  merchantCode: text("merchant_code").unique(),
   webhookUrl: text("webhook_url"),
   staticIp: text("static_ip"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

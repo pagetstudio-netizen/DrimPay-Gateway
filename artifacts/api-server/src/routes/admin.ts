@@ -233,7 +233,11 @@ router.get("/admin/merchants", requireAdmin, async (req: any, res: any) => {
   let users = await db.select().from(usersTable).orderBy(desc(usersTable.createdAt)).limit(limitNum).offset(offset);
   if (search) {
     const q = search.toLowerCase();
-    users = users.filter(u => u.email.toLowerCase().includes(q) || u.companyName.toLowerCase().includes(q));
+    users = users.filter(u =>
+      u.email.toLowerCase().includes(q) ||
+      u.companyName.toLowerCase().includes(q) ||
+      (u.merchantCode ?? "").toLowerCase().includes(q)
+    );
   }
 
   const [{ total }] = await db.select({ total: count() }).from(usersTable);

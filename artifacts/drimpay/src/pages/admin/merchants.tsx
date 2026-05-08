@@ -185,6 +185,21 @@ function MerchantPanel({
               ))}
             </div>
 
+            {merchant.merchantCode && (
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-0.5">Code marchand</p>
+                  <p className="font-mono text-sm font-bold text-emerald-900 tracking-widest">{merchant.merchantCode}</p>
+                </div>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(merchant.merchantCode); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-700 font-medium transition-colors"
+                >
+                  <Copy className="w-3 h-3" /> Copier
+                </button>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
@@ -432,7 +447,7 @@ export default function AdminMerchants() {
               <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
                 <Search className="w-4 h-4 text-gray-400 shrink-0" />
                 <input value={search} onChange={e => handleSearch(e.target.value)}
-                  placeholder="Rechercher par nom, email..."
+                  placeholder="Rechercher par nom, email, code..."
                   className="bg-transparent text-sm flex-1 outline-none text-gray-700 placeholder:text-gray-400" />
               </div>
               <button onClick={() => load()} className="p-2 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors">
@@ -454,7 +469,7 @@ export default function AdminMerchants() {
                     <tr className="border-b border-gray-100 bg-gray-50">
                       {(selected
                         ? ["Entreprise", "Pays", "KYB", "Volume"]
-                        : ["ID", "Entreprise", "Email", "Pays", "Wallets", "KYB", "Volume", "Inscription"]
+                        : ["ID", "Entreprise", "Email", "Code", "Pays", "Wallets", "KYB", "Volume", "Inscription"]
                       ).map(h => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
@@ -492,6 +507,13 @@ export default function AdminMerchants() {
                               <p className="text-xs text-gray-400">{m.role === "admin" ? "🛡 Admin" : "Marchand"}</p>
                             </td>
                             <td className="px-4 py-3 text-gray-600 text-xs">{m.email}</td>
+                            <td className="px-4 py-3">
+                              {m.merchantCode ? (
+                                <span className="font-mono text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-lg tracking-widest">{m.merchantCode}</span>
+                              ) : (
+                                <span className="text-gray-300 text-xs">—</span>
+                              )}
+                            </td>
                             <td className="px-4 py-3 text-xs font-semibold text-gray-700">{m.country}</td>
                             <td className="px-4 py-3 text-xs text-gray-600">{m.wallets?.length ?? 0} wallet(s)</td>
                             <td className="px-4 py-3">
