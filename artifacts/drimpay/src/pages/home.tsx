@@ -210,24 +210,12 @@ export default function Home() {
               <p className="text-base text-[#0f0f0f]/55 leading-relaxed mb-8">
                 DrimPay regroupe les intégrations aux opérateurs mobiles, la conformité et votre expérience client en un seul endroit. De la mise en service à la croissance, DrimPay vous permet de vous concentrer sur la construction de produits remarquables.
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { icon: "💳", title: "Cartes virtuelles",   desc: "Émettez des cartes Visa liées à vos wallets pour les paiements en ligne." },
-                  { icon: "📡", title: "Webhooks temps réel", desc: "Soyez notifié à chaque événement de paiement instantanément." },
-                  { icon: "🏦", title: "Multi-devises",       desc: "Gérez des soldes en XOF, XAF, NGN, GHS et plus encore." },
-                  { icon: "🔐", title: "KYB automatisé",      desc: "Vérification d'identité d'entreprise sans friction." },
-                  { icon: "📊", title: "Analytiques",         desc: "Tableaux de bord temps réel pour suivre vos performances." },
-                  { icon: "🛡️", title: "Sécurité bancaire",  desc: "Chiffrement de bout en bout et conformité PCI-DSS." },
-                ].map((f, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl border border-[#e5e3dc] p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="text-xl mb-2">{f.icon}</div>
-                    <h4 className="font-bold text-sm text-[#0f0f0f] mb-1">{f.title}</h4>
-                    <p className="text-xs text-[#0f0f0f]/50 leading-relaxed">{f.desc}</p>
-                  </div>
-                ))}
+              <div className="rounded-2xl overflow-hidden shadow-xl border border-[#e5e3dc]">
+                <img
+                  src="/dashboard-preview.jpg"
+                  alt="DrimPay Dashboard"
+                  className="w-full block"
+                />
               </div>
             </div>
           </div>
