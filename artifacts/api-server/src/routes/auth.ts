@@ -1,8 +1,9 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { z } from "zod";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db/schema";
+import { usersTable, apiKeysTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 
 const router = Router();
@@ -39,6 +40,23 @@ router.post("/auth/signup", async (req, res) => {
 
   req.session.userId = user.id;
   req.session.role = user.role;
+
+  // Auto-generate sandbox API key on signup
+  try {
+    const rawKey = `dp_test_${crypto.randomBytes(24).toString("hex")}`;
+    const prefix = rawKey.substring(0, 12);
+    const keyHash = await bcrypt.hash(rawKey, 10);
+    await db.insert(apiKeysTable).values({
+      userId: user.id,
+      name: "Clé Sandbox",
+      keyHash,
+      prefix,
+      env: "sandbox",
+    });
+    console.log(`[DrimPay] Sandbox API key auto-generated for new user: ${email}`);
+  } catch (e) {
+    console.error("[DrimPay] Failed to auto-generate sandbox key at signup:", e);
+  }
 
   res.status(201).json({
     id: user.id,

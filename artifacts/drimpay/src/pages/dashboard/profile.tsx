@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { DashboardLayout } from "./layout";
 import { useAuth } from "@/lib/auth";
 import {
-  User, Mail, Building2, Shield, Camera, CheckCircle2, AlertCircle,
+  User, Building2, Shield, Camera, CheckCircle2, AlertCircle,
   Loader2, Key, Eye, EyeOff, Copy, RefreshCw, AlertTriangle, Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import userImg from "@assets/20260125_232710_1771507041579-BmqaXdG3_1778105456352.png";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type Status = "idle" | "loading" | "success" | "error";
-type RegenStep = "confirm" | "code" | "done";
 
 const inputCls = cn(
   "w-full h-11 rounded-xl border border-border bg-muted/20 px-4 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all",
@@ -86,93 +84,6 @@ function ApiKeyCard({ env, keyData, onRegen }: { env: "sandbox" | "live"; keyDat
   );
 }
 
-function RegenModal({ open, env, userEmail, onClose, onDone }: {
-  open: boolean; env: "sandbox" | "live" | null; userEmail: string; onClose: () => void; onDone: (key: any) => void;
-}) {
-  const [step, setStep] = useState<RegenStep>("confirm");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [maskedEmail, setMaskedEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [newKey, setNewKey] = useState<string>("");
-  const [copied, setCopied] = useState(false);
-  const isLive = env === "live";
-  const reset = () => { setStep("confirm"); setError(""); setCode(""); setNewKey(""); setCopied(false); setLoading(false); };
-  const handleClose = () => { reset(); onClose(); };
-  const sendCode = async () => {
-    setLoading(true); setError("");
-    try {
-      const r = await fetch(`${BASE}/api/dashboard/api-keys/send-code`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ env }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "Erreur");
-      setMaskedEmail(d.email ?? userEmail); setStep("code");
-    } catch (e: any) { setError(e.message); }
-    setLoading(false);
-  };
-  const confirmRegen = async () => {
-    if (code.trim().length !== 6) { setError("Entrez le code à 6 chiffres."); return; }
-    setLoading(true); setError("");
-    try {
-      const r = await fetch(`${BASE}/api/dashboard/api-keys/regenerate`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ env, code: code.trim() }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "Erreur");
-      setNewKey(d.rawKey); onDone(d); setStep("done");
-    } catch (e: any) { setError(e.message); }
-    setLoading(false);
-  };
-  const copyKey = () => { navigator.clipboard.writeText(newKey); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-  if (!env) return null;
-  return (
-    <Dialog open={open} onOpenChange={v => { if (!v) handleClose(); }}>
-      <DialogContent className="max-w-md">
-        {step === "confirm" && (<>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><RefreshCw className="w-5 h-5 text-primary" />{isLive ? "Régénérer la clé Live" : "Régénérer la clé Sandbox"}</DialogTitle>
-            <DialogDescription>Un code de vérification à 6 chiffres sera envoyé à votre adresse email pour confirmer cette action.</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 mb-2">
-            <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">{isLive ? "La clé live actuelle sera immédiatement révoquée. Toutes vos intégrations en production cesseront de fonctionner jusqu'à la mise à jour." : "La clé sandbox actuelle sera révoquée. Mettez à jour vos environnements de test."}</p>
-          </div>
-          {error && <p className="text-sm text-red-500 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{error}</p>}
-          <div className="flex gap-3 mt-1">
-            <Button className="flex-1 text-black" onClick={sendCode} disabled={loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}Envoyer le code</Button>
-            <Button variant="outline" className="flex-1" onClick={handleClose}>Annuler</Button>
-          </div>
-        </>)}
-        {step === "code" && (<>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Shield className="w-5 h-5 text-primary" />Vérification par email</DialogTitle>
-            <DialogDescription>Entrez le code à 6 chiffres envoyé à <strong>{maskedEmail}</strong>. Valide 10 minutes.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 mt-2">
-            <input className={cn(inputCls, "text-center text-2xl font-mono tracking-widest")} placeholder="— — — — — —" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} autoFocus />
-            {error && <p className="text-sm text-red-500 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{error}</p>}
-            <div className="flex gap-3">
-              <Button className="flex-1 text-black" onClick={confirmRegen} disabled={loading || code.length !== 6}>{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}Confirmer</Button>
-              <Button variant="outline" onClick={() => { setStep("confirm"); setError(""); setCode(""); }}>Renvoyer</Button>
-            </div>
-          </div>
-        </>)}
-        {step === "done" && (<>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-500" />Clé {isLive ? "Live" : "Sandbox"} régénérée !</DialogTitle>
-            <DialogDescription>Copiez cette clé maintenant. Elle ne sera plus jamais affichée en clair.</DialogDescription>
-          </DialogHeader>
-          <div className="bg-muted rounded-lg p-4 font-mono text-xs break-all select-all border border-border">{newKey}</div>
-          <div className="flex gap-3">
-            <Button className="flex-1 text-black" onClick={copyKey}>{copied ? <><CheckCircle2 className="w-4 h-4 mr-2" />Copié</> : <><Copy className="w-4 h-4 mr-2" />Copier la clé</>}</Button>
-            <Button variant="outline" onClick={handleClose}>Fermer</Button>
-          </div>
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
-            <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">Cette clé ne sera plus affichée après fermeture. Stockez-la dans un gestionnaire de secrets.</p>
-          </div>
-        </>)}
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 const MENU_ITEMS = [
   { key: "profil", label: "Mon Profil", icon: Building2 },
@@ -183,7 +94,8 @@ const MENU_ITEMS = [
 
 export default function DashboardProfile() {
   const { user } = useAuth();
-  const [activeSection, setActiveSection] = useState("profil");
+  const [, navigate] = useLocation();
+  const [activeSection, setActiveSection] = useState("api");
 
   const [infoForm, setInfoForm] = useState({ companyName: user?.companyName ?? "", email: user?.email ?? "", country: user?.country ?? "" });
   const [infoStatus, setInfoStatus] = useState<Status>("idle");
@@ -195,8 +107,6 @@ export default function DashboardProfile() {
 
   const [sandboxKey, setSandboxKey] = useState<any>(null);
   const [liveKey, setLiveKey] = useState<any>(null);
-  const [regenEnv, setRegenEnv] = useState<"sandbox" | "live" | null>(null);
-  const [regenOpen, setRegenOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${BASE}/api/dashboard/api-keys`, { credentials: "include" })
@@ -230,8 +140,9 @@ export default function DashboardProfile() {
     } catch (e: any) { setPwError(e.message); setPwStatus("error"); }
   };
 
-  const openRegen = (env: "sandbox" | "live") => { setRegenEnv(env); setRegenOpen(true); };
-  const handleRegenDone = (key: any) => { if (key.env === "sandbox") setSandboxKey(key); else setLiveKey(key); };
+  const openRegen = (env: "sandbox" | "live") => {
+    navigate(`/dashboard/verify-code?env=${env}`);
+  };
 
   const countryLabel = (code: string) => {
     const map: Record<string, string> = { TG: "🇹🇬 Togo", BJ: "🇧🇯 Bénin", CM: "🇨🇲 Cameroun", SN: "🇸🇳 Sénégal", CI: "🇨🇮 Côte d'Ivoire", ML: "🇲🇱 Mali", BF: "🇧🇫 Burkina Faso" };
@@ -432,7 +343,6 @@ export default function DashboardProfile() {
         </div>
       </div>
 
-      <RegenModal open={regenOpen} env={regenEnv} userEmail={user?.email ?? ""} onClose={() => setRegenOpen(false)} onDone={handleRegenDone} />
     </DashboardLayout>
   );
 }
