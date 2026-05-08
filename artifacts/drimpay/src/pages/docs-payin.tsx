@@ -789,8 +789,8 @@ def drimpay_webhook():
                   <tbody className="divide-y divide-border/40">
                     <ParamRow name="amount" type="number" required desc="Amount in the smallest currency unit (e.g. 5000 = 5 000 XOF)" />
                     <ParamRow name="currency" type="string" required desc="ISO 4217 code: XOF (TG, BJ, BF, ML, SN, CI) or XAF (CM)" />
-                    <ParamRow name="country_code" type="string" required desc="ISO 3166-1 alpha-2 country code: TG, BJ, CM, SN, CI, ML, BF" />
-                    <ParamRow name="operator" type="string" required desc="Operator slug: tmoney, moov, mtn, orange, wave, flooz" />
+                    <ParamRow name="country_code" type="string" required desc="ISO 3166-1 alpha-2 country code: TG, BJ, CM, SN, CI, ML, BF — and NG, CD for Airtel/Vodacom" />
+                    <ParamRow name="operator" type="string" required desc="Operator slug: tmoney, moov, mtn, orange, wave, wizall, vodacom, airtel" />
                     <ParamRow name="phone" type="string" required desc="Customer's Mobile Money phone in E.164 format (+22890000000)" />
                     <ParamRow name="order_id" type="string" required desc="Your unique order ID for idempotency — max 128 chars" />
                     <ParamRow name="webhook_url" type="string" desc="HTTPS URL to receive payment status notifications (recommended)" />
@@ -1119,10 +1119,13 @@ X-DrimPay-Event: payin.success`} />
                   </tr></thead>
                   <tbody>
                     {[
-                      ["🇹🇬 Togo (TG)", "TG wallet (XOF)", "TG operators only"],
-                      ["🇧🇯 Bénin (BJ)", "BJ wallet (XOF)", "BJ operators only"],
-                      ["🇨🇲 Cameroun (CM)", "CM wallet (XAF)", "CM operators only"],
-                      ["🇨🇮 Côte d'Ivoire (CI)", "CI wallet (XOF)", "CI operators only"],
+                      ["🇹🇬 Togo (TG)", "TG wallet (XOF)", "TMoney, Moov Money"],
+                      ["🇧🇯 Bénin (BJ)", "BJ wallet (XOF)", "MTN MoMo, Moov Money"],
+                      ["🇨🇲 Cameroun (CM)", "CM wallet (XAF)", "MTN MoMo, Orange Money"],
+                      ["🇧🇫 Burkina Faso (BF)", "BF wallet (XOF)", "Orange Money, Moov Money"],
+                      ["🇲🇱 Mali (ML)", "ML wallet (XOF)", "Orange Money, Moov Money"],
+                      ["🇸🇳 Sénégal (SN)", "SN wallet (XOF)", "Wave, Orange Money, Wizall"],
+                      ["🇨🇮 Côte d'Ivoire (CI)", "CI wallet (XOF)", "MTN MoMo, Orange Money, Wave"],
                     ].map(([country, wallet, withdraw]) => (
                       <tr key={country} className="border-b border-border/50 last:border-0">
                         <td className="px-4 py-3 font-medium">{country}</td>

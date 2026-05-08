@@ -1042,7 +1042,15 @@ export default function Kyb() {
                             </h4>
                             <p className="text-muted-foreground mb-3">DrimPay utilise un système de wallets isolés par pays. Cette politique est fondamentale :</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                              {[["Togo 🇹🇬", "Retrait uniquement au Togo"], ["Sénégal 🇸🇳", "Retrait uniquement au Sénégal"], ["Cameroun 🇨🇲", "Retrait uniquement au Cameroun"], ["Côte d'Ivoire 🇨🇮", "Retrait uniquement en CI"]].map(([c, r]) => (
+                              {[
+                                ["Togo 🇹🇬", "TMoney · Moov Money"],
+                                ["Bénin 🇧🇯", "MTN MoMo · Moov Money"],
+                                ["Cameroun 🇨🇲", "MTN MoMo · Orange Money"],
+                                ["Burkina Faso 🇧🇫", "Orange Money · Moov Money"],
+                                ["Mali 🇲🇱", "Orange Money · Moov Money"],
+                                ["Sénégal 🇸🇳", "Wave · Orange Money · Wizall"],
+                                ["Côte d'Ivoire 🇨🇮", "MTN MoMo · Orange Money · Wave"],
+                              ].map(([c, r]) => (
                                 <div key={c} className="p-2.5 rounded-lg bg-muted/50 text-xs">
                                   <p className="font-medium">{c}</p>
                                   <p className="text-muted-foreground">{r}</p>

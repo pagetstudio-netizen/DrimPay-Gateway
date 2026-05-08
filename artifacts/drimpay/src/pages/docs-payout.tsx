@@ -504,8 +504,8 @@ COMMIT;`} />
                   <tbody className="divide-y divide-border/40">
                     <ParamRow name="amount" type="number" required desc="Gross amount to send (fee will be added on top)" />
                     <ParamRow name="currency" type="string" required desc="ISO 4217 currency code: XOF, XAF" />
-                    <ParamRow name="country_code" type="string" required desc="Destination country code: TG, BJ, CM, SN, CI, ML, BF" />
-                    <ParamRow name="operator" type="string" required desc="Mobile Money operator slug: tmoney, moov, mtn, orange, wave, flooz" />
+                    <ParamRow name="country_code" type="string" required desc="Destination country code: TG, BJ, CM, SN, CI, ML, BF — and NG, CD for Airtel/Vodacom" />
+                    <ParamRow name="operator" type="string" required desc="Mobile Money operator slug: tmoney, moov, mtn, orange, wave, wizall, vodacom, airtel" />
                     <ParamRow name="phone" type="string" required desc="Recipient's Mobile Money phone number in E.164 format" />
                     <ParamRow name="order_id" type="string" required desc="Your unique payout ID for idempotency (max 128 chars)" />
                     <ParamRow name="webhook_url" type="string" required desc="HTTPS URL for payout status notifications" />
