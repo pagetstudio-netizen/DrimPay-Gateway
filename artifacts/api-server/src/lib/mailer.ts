@@ -130,3 +130,67 @@ export async function sendContractEmail(opts: {
     return { ok: false, error: e?.message ?? String(e) };
   }
 }
+
+export async function sendBroadcastEmail(opts: {
+  to: string;
+  merchantName: string;
+  subject: string;
+  htmlBody: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const cfg = await getSmtpConfig();
+  if (!cfg) return { ok: false, error: "SMTP non configuré" };
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.port === 465,
+      auth: { user: cfg.user, pass: cfg.pass },
+    });
+
+    await transporter.sendMail({
+      from: `"DrimPay" <${cfg.from}>`,
+      to: opts.to,
+      subject: opts.subject,
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#1a7a3c;padding:28px 40px;">
+            <span style="font-size:24px;font-weight:bold;color:#ffffff;">DrimPay</span>
+            <span style="font-size:13px;color:#c5ff4a;margin-left:10px;">Services de paiement</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
+              Bonjour <strong>${opts.merchantName}</strong>,
+            </p>
+            ${opts.htmlBody}
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
+            <p style="margin:0;font-size:12px;color:#999;text-align:center;">
+              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06<br>
+              Cet email est destiné uniquement au destinataire.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+    });
+
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}

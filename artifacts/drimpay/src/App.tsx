@@ -65,6 +65,7 @@ import AdminKybContracts from "@/pages/admin/kyb-contracts";
 import AdminBlacklist from "@/pages/admin/blacklist";
 import AdminLogs from "@/pages/admin/logs";
 import AdminNotifications from "@/pages/admin/notifications";
+import AdminBroadcast from "@/pages/admin/broadcast";
 import DashboardNotifications from "@/pages/dashboard/notifications";
 import DashboardVerifyCode from "@/pages/dashboard/verify-code";
 import AdminSettings from "@/pages/admin/settings";
@@ -219,6 +220,7 @@ function AdminSwitch() {
       <Route path="/admin/kyb-contracts" component={AdminKybContracts} />
       <Route path="/admin/blacklist" component={AdminBlacklist} />
       <Route path="/admin/logs" component={AdminLogs} />
+      <Route path="/admin/broadcast" component={AdminBroadcast} />
       <Route path="/admin/notifications" component={AdminNotifications} />
       <Route path="/admin/settings" component={AdminSettings} />
       <Route component={AdminDashboard} />

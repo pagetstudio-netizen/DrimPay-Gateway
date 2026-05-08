@@ -17,6 +17,7 @@ import {
   testConnection, detectChatId, invalidateTelegramCache,
 } from "../lib/telegram";
 import { generateContractPdf } from "../lib/contract-pdf";
+import { sendBroadcastEmail } from "../lib/mailer";
 
 const router = Router();
 
@@ -1134,6 +1135,74 @@ router.patch("/admin/attempts/:id/note", requireAdmin, async (req: any, res: any
     .returning();
   if (!updated) { res.status(404).json({ error: "Tentative introuvable." }); return; }
   res.json({ ok: true });
+});
+
+// ─── BROADCAST EMAIL ──────────────────────────────────────────────────────────
+router.get("/admin/broadcast/recipients", requireAdmin, async (req: any, res: any) => {
+  const { filter = "all" } = req.query as Record<string, string>;
+  let users = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country, createdAt: usersTable.createdAt })
+    .from(usersTable).where(eq(usersTable.role, "user")).orderBy(usersTable.companyName);
+  if (filter === "kyb_approved") {
+    const kybs = await db.select({ userId: kybSubmissionsTable.userId }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "approved"));
+    const ids = new Set(kybs.map(k => k.userId));
+    users = users.filter(u => ids.has(u.id));
+  } else if (filter === "kyb_pending") {
+    const kybs = await db.select({ userId: kybSubmissionsTable.userId }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "pending"));
+    const ids = new Set(kybs.map(k => k.userId));
+    users = users.filter(u => ids.has(u.id));
+  } else if (filter === "no_kyb") {
+    const kybs = await db.select({ userId: kybSubmissionsTable.userId }).from(kybSubmissionsTable);
+    const ids = new Set(kybs.map(k => k.userId));
+    users = users.filter(u => !ids.has(u.id));
+  }
+  res.json({ recipients: users, total: users.length });
+});
+
+router.post("/admin/broadcast", requireAdmin, async (req: any, res: any) => {
+  const { subject, body, filter = "all" } = req.body as { subject?: string; body?: string; filter?: string };
+  if (!subject?.trim() || !body?.trim()) {
+    res.status(400).json({ error: "Sujet et message requis." });
+    return;
+  }
+
+  let users = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName })
+    .from(usersTable).where(eq(usersTable.role, "user"));
+
+  if (filter === "kyb_approved") {
+    const kybs = await db.select({ userId: kybSubmissionsTable.userId }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "approved"));
+    const ids = new Set(kybs.map(k => k.userId));
+    users = users.filter(u => ids.has(u.id));
+  } else if (filter === "kyb_pending") {
+    const kybs = await db.select({ userId: kybSubmissionsTable.userId }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.status, "pending"));
+    const ids = new Set(kybs.map(k => k.userId));
+    users = users.filter(u => ids.has(u.id));
+  } else if (filter === "no_kyb") {
+    const kybs = await db.select({ userId: kybSubmissionsTable.userId }).from(kybSubmissionsTable);
+    const ids = new Set(kybs.map(k => k.userId));
+    users = users.filter(u => !ids.has(u.id));
+  }
+
+  if (users.length === 0) {
+    res.json({ ok: true, sent: 0, failed: 0, errors: [] });
+    return;
+  }
+
+  const htmlBody = body.replace(/\n/g, "<br>");
+  let sent = 0; let failed = 0; const errors: string[] = [];
+
+  for (const u of users) {
+    const result = await sendBroadcastEmail({
+      to: u.email,
+      merchantName: u.companyName,
+      subject: subject.trim(),
+      htmlBody,
+    });
+    if (result.ok) sent++;
+    else { failed++; errors.push(`${u.email}: ${result.error}`); }
+  }
+
+  await logAdminAction(req.session.userId, "BROADCAST_EMAIL", "users", undefined, JSON.stringify({ subject, filter, sent, failed }), req.ip);
+  res.json({ ok: true, sent, failed, errors });
 });
 
 router.post("/admin/telegram/save", requireAdmin, async (req: any, res: any) => {
