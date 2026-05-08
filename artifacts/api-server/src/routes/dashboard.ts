@@ -768,7 +768,14 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
         return;
       }
-      updateValues = parsed.data;
+      updateValues = { ...parsed.data };
+      // Save identity document file paths (sent alongside step 2 text fields)
+      const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+      const idDocKeys = ["documentIdFront", "documentIdBack", "documentSelfie"];
+      idDocKeys.forEach((key) => {
+        const file = files?.[key]?.[0];
+        if (file) updateValues[key] = file.path;
+      });
     } else if (stepNum === 3) {
       updateValues = {};
       // Extract uploaded file names from multipart files
