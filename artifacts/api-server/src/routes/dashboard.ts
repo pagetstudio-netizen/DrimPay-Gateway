@@ -79,11 +79,58 @@ router.get("/dashboard/overview", requireAuth, async (req, res) => {
     .where(eq(kybSubmissionsTable.userId, userId))
     .limit(1);
 
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+  thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+  const dailyVolumeRows = await db
+    .select({
+      day: sql<string>`DATE(${transactionsTable.createdAt})`,
+      type: transactionsTable.type,
+      total: sum(transactionsTable.amount),
+      txCount: count(),
+    })
+    .from(transactionsTable)
+    .where(
+      and(
+        eq(transactionsTable.userId, userId),
+        eq(transactionsTable.status, "success"),
+        sql`${transactionsTable.createdAt} >= ${thirtyDaysAgo.toISOString()}`
+      )
+    )
+    .groupBy(sql`DATE(${transactionsTable.createdAt})`, transactionsTable.type)
+    .orderBy(sql`DATE(${transactionsTable.createdAt})`);
+
+  const dailyMap: Record<string, { payin: number; payout: number; count: number }> = {};
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(thirtyDaysAgo);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().split("T")[0];
+    dailyMap[key] = { payin: 0, payout: 0, count: 0 };
+  }
+  for (const row of dailyVolumeRows) {
+    const key = row.day;
+    if (!dailyMap[key]) dailyMap[key] = { payin: 0, payout: 0, count: 0 };
+    if (row.type === "payin") dailyMap[key].payin = parseFloat(row.total ?? "0");
+    if (row.type === "payout") dailyMap[key].payout = parseFloat(row.total ?? "0");
+    dailyMap[key].count += parseInt(String(row.txCount ?? 0));
+  }
+  const volumeChart = Object.entries(dailyMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, v]) => ({
+      date,
+      label: new Date(date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+      payin: v.payin,
+      payout: v.payout,
+      count: v.count,
+    }));
+
   res.json({
     wallets,
     txStats,
     recentTransactions: recentTx,
     kybStatus: kyb[0]?.status ?? "pending",
+    volumeChart,
   });
 });
 
