@@ -45,10 +45,12 @@ function fmtFull(n: string | number, currency = "XOF") {
   return `${parseFloat(String(n || 0)).toLocaleString("fr-FR")} ${currency}`;
 }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 function StatCard({
-  label, value, sub, icon: Icon, color, trend, trendLabel, loading, delay = 0,
+  label, value, sub, icon: Icon, imgSrc, color, trend, trendLabel, loading, delay = 0,
 }: {
-  label: string; value: string; sub: string; icon: any;
+  label: string; value: string; sub: string; icon?: any; imgSrc?: string;
   color: string; trend?: "up" | "down" | "neutral"; trendLabel?: string;
   loading?: boolean; delay?: number;
 }) {
@@ -65,12 +67,15 @@ function StatCard({
       <div className={`absolute top-0 left-0 right-0 h-1 ${color}`} />
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color} bg-opacity-10`}
-            style={{ background: `color-mix(in srgb, currentColor 10%, transparent)` }}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center`}
-              style={{ background: "rgba(0,0,0,0.04)" }}>
-              <Icon className="w-4.5 h-4.5 opacity-80" style={{ width: 18, height: 18 }} />
-            </div>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
+            {imgSrc ? (
+              <img src={`${BASE}${imgSrc}`} alt={label} className="w-10 h-10 object-cover rounded-xl" />
+            ) : Icon ? (
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center`}
+                style={{ background: "rgba(0,0,0,0.06)" }}>
+                <Icon className="w-4.5 h-4.5 opacity-80" style={{ width: 18, height: 18 }} />
+              </div>
+            ) : null}
           </div>
           {trendLabel && (
             <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg ${trendColor}`}>
@@ -157,7 +162,7 @@ export default function DashboardOverview() {
       label: "Total Reçu",
       value: fmt(totalPayin),
       sub: fmtFull(totalPayin) + " XOF",
-      icon: ArrowDownRight,
+      imgSrc: "/stat-payin.png",
       color: "bg-emerald-500",
       trend: "up" as const,
       trendLabel: "Pay-in",
@@ -166,7 +171,7 @@ export default function DashboardOverview() {
       label: "Total Envoyé",
       value: fmt(totalPayout),
       sub: fmtFull(totalPayout) + " XOF",
-      icon: ArrowUpRight,
+      imgSrc: "/stat-payout.png",
       color: "bg-blue-500",
       trend: "neutral" as const,
       trendLabel: "Pay-out",
@@ -175,7 +180,7 @@ export default function DashboardOverview() {
       label: "Frais Totaux",
       value: fmt(totalFees),
       sub: "Commission plateforme",
-      icon: BarChart3,
+      imgSrc: "/stat-fees.png",
       color: "bg-violet-500",
       trend: "neutral" as const,
       trendLabel: "3%/tx",
@@ -184,7 +189,7 @@ export default function DashboardOverview() {
       label: "Transactions",
       value: totalTx.toLocaleString("fr-FR"),
       sub: `${successRate}% taux de succès`,
-      icon: Activity,
+      imgSrc: "/stat-transactions.png",
       color: "bg-amber-500",
       trend: successRate >= 90 ? "up" as const : successRate < 70 ? "down" as const : "neutral" as const,
       trendLabel: `${successRate}%`,
