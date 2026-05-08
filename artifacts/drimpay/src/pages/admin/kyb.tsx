@@ -109,21 +109,25 @@ function KybDetailModal({ kyb, onClose, onRefresh }: { kyb: any; onClose: () => 
   const [rejReason, setRejReason] = useState(kyb.rejectionReason ?? "");
   const [loading, setLoading] = useState(false);
   const [action, setAction] = useState<"approve" | "reject" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const approve = async () => {
-    setLoading(true);
-    await fetch(`${BASE}/api/admin/kyb/${kyb.id}/approve`, { method: "PUT", credentials: "include" });
-    onRefresh(); onClose();
+    setLoading(true); setActionError(null);
+    const r = await fetch(`${BASE}/api/admin/kyb/${kyb.id}/approve`, { method: "PUT", credentials: "include" });
+    if (r.ok) { setActionSuccess("Dossier approuvé — un email a été envoyé au marchand."); setTimeout(() => { onRefresh(); onClose(); }, 1800); }
+    else { setActionError("Erreur lors de l'approbation."); setLoading(false); }
   };
   const reject = async () => {
-    if (!rejReason.trim()) { alert("Veuillez saisir une raison de rejet."); return; }
-    setLoading(true);
-    await fetch(`${BASE}/api/admin/kyb/${kyb.id}/reject`, {
+    if (!rejReason.trim()) { setActionError("La raison du rejet est obligatoire avant de confirmer."); return; }
+    setLoading(true); setActionError(null);
+    const r = await fetch(`${BASE}/api/admin/kyb/${kyb.id}/reject`, {
       method: "PUT", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason: rejReason }),
     });
-    onRefresh(); onClose();
+    if (r.ok) { setActionSuccess("Dossier rejeté — le marchand a été notifié par email avec la raison."); setTimeout(() => { onRefresh(); onClose(); }, 1800); }
+    else { const d = await r.json(); setActionError(d.error ?? "Erreur lors du rejet."); setLoading(false); }
   };
   const markReview = async () => {
     await fetch(`${BASE}/api/admin/kyb/${kyb.id}/review`, { method: "PUT", credentials: "include" });
@@ -271,28 +275,62 @@ function KybDetailModal({ kyb, onClose, onRefresh }: { kyb: any; onClose: () => 
           <div className="bg-gray-50 rounded-xl p-4 space-y-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Actions administratives</p>
 
+            {actionSuccess && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                <p className="text-sm font-medium text-green-800">{actionSuccess}</p>
+              </div>
+            )}
+
+            {actionError && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                <p className="text-sm font-medium text-red-700">{actionError}</p>
+              </div>
+            )}
+
             {action === "reject" && (
               <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-2">Raison du rejet *</label>
-                <textarea value={rejReason} onChange={e => setRejReason(e.target.value)} rows={3}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Expliquez clairement la raison du rejet..." />
+                <label className="text-sm font-semibold text-gray-700 block mb-1.5">
+                  Raison du rejet <span className="text-red-500">*</span>
+                  <span className="ml-1 text-xs font-normal text-gray-400">— sera envoyée au marchand par email</span>
+                </label>
+                <textarea
+                  value={rejReason}
+                  onChange={e => { setRejReason(e.target.value); setActionError(null); }}
+                  rows={4}
+                  className={cn(
+                    "w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 resize-none transition-colors",
+                    !rejReason.trim() && actionError ? "border-red-400 focus:ring-red-400 bg-red-50" : "border-gray-200 focus:ring-red-400"
+                  )}
+                  placeholder="Ex : Les documents fournis sont illisibles. Merci de soumettre des photos nettes de votre pièce d'identité et de votre RCCM..."
+                />
+                <p className="text-xs text-gray-400 mt-1">Soyez précis et bienveillant — ce texte sera reproduit mot pour mot dans l'email envoyé au marchand.</p>
+              </div>
+            )}
+
+            {action === "approve" && (
+              <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-green-800">
+                  Confirmez l'approbation du dossier. Le marchand recevra un email lui indiquant que son compte est activé en production.
+                </p>
               </div>
             )}
 
             <div className="flex flex-wrap gap-3">
               {kyb.status !== "approved" && (
-                <button onClick={action === "approve" ? approve : () => setAction("approve")} disabled={loading}
+                <button onClick={action === "approve" ? approve : () => { setAction("approve"); setActionError(null); }} disabled={loading}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
                   <CheckCircle2 className="w-4 h-4" />
-                  {action === "approve" ? "Confirmer l'approbation" : "Approuver le dossier"}
+                  {action === "approve" ? (loading ? "Approbation…" : "Confirmer l'approbation") : "Approuver le dossier"}
                 </button>
               )}
               {kyb.status !== "rejected" && (
-                <button onClick={action === "reject" ? reject : () => setAction("reject")} disabled={loading}
+                <button onClick={action === "reject" ? reject : () => { setAction("reject"); setActionError(null); }} disabled={loading}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors">
                   <XCircle className="w-4 h-4" />
-                  {action === "reject" ? "Confirmer le rejet" : "Rejeter le dossier"}
+                  {action === "reject" ? (loading ? "Rejet en cours…" : "Confirmer le rejet") : "Rejeter le dossier"}
                 </button>
               )}
               {kyb.status !== "under_review" && (
@@ -301,8 +339,8 @@ function KybDetailModal({ kyb, onClose, onRefresh }: { kyb: any; onClose: () => 
                   <Clock className="w-4 h-4" /> Mettre en révision
                 </button>
               )}
-              {action && (
-                <button onClick={() => setAction(null)}
+              {action && !actionSuccess && (
+                <button onClick={() => { setAction(null); setActionError(null); }}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-100 transition-colors">
                   <X className="w-4 h-4" /> Annuler
                 </button>

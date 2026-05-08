@@ -131,6 +131,169 @@ export async function sendContractEmail(opts: {
   }
 }
 
+export async function sendKybApprovedEmail(opts: {
+  to: string;
+  companyName: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const cfg = await getSmtpConfig();
+  if (!cfg) return { ok: false, error: "SMTP non configuré" };
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: cfg.host, port: cfg.port, secure: cfg.port === 465,
+      auth: { user: cfg.user, pass: cfg.pass },
+    });
+
+    await transporter.sendMail({
+      from: `"DrimPay" <${cfg.from}>`,
+      to: opts.to,
+      subject: "✅ Votre dossier KYB a été approuvé — Bienvenue en production !",
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#1a7a3c;padding:28px 40px;">
+            <span style="font-size:24px;font-weight:bold;color:#ffffff;">DrimPay</span>
+            <span style="font-size:13px;color:#c5ff4a;margin-left:10px;">Services de paiement</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            <div style="text-align:center;margin-bottom:28px;">
+              <div style="display:inline-block;background:#dcfce7;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">✅</div>
+            </div>
+            <h2 style="color:#111;margin:0 0 16px;text-align:center;">Dossier KYB approuvé !</h2>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
+              Bonjour <strong>${opts.companyName}</strong>,
+            </p>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+              Excellente nouvelle ! Notre équipe de conformité a examiné votre dossier KYB et l'a <strong style="color:#16a34a;">validé avec succès</strong>. Votre compte est maintenant pleinement activé.
+            </p>
+            <div style="background:#f0faf4;border:1px solid #86efac;border-radius:10px;padding:20px 24px;margin:0 0 24px;">
+              <p style="margin:0 0 10px;font-size:14px;font-weight:bold;color:#15803d;">Ce que vous pouvez faire maintenant :</p>
+              <p style="margin:0;font-size:13px;color:#166534;line-height:2;">
+                🔑 Générer vos clés API de production<br>
+                💳 Accepter des paiements Mobile Money en production<br>
+                📊 Suivre vos transactions en temps réel sur le tableau de bord<br>
+                🌍 Encaisser dans les 7 pays supportés par DrimPay
+              </p>
+            </div>
+            <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
+              Des questions ? Contactez notre équipe : <a href="mailto:support@drimpay.africa" style="color:#1a7a3c;">support@drimpay.africa</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
+            <p style="margin:0;font-size:12px;color:#999;text-align:center;">
+              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+    });
+
+    console.log(`[Mailer] Email approbation KYB envoyé à ${opts.to}`);
+    return { ok: true };
+  } catch (e: any) {
+    console.error("[Mailer] Erreur email approbation KYB:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
+export async function sendKybRejectedEmail(opts: {
+  to: string;
+  companyName: string;
+  reason: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const cfg = await getSmtpConfig();
+  if (!cfg) return { ok: false, error: "SMTP non configuré" };
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: cfg.host, port: cfg.port, secure: cfg.port === 465,
+      auth: { user: cfg.user, pass: cfg.pass },
+    });
+
+    await transporter.sendMail({
+      from: `"DrimPay" <${cfg.from}>`,
+      to: opts.to,
+      subject: "❌ Dossier KYB — Des corrections sont nécessaires",
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#1a7a3c;padding:28px 40px;">
+            <span style="font-size:24px;font-weight:bold;color:#ffffff;">DrimPay</span>
+            <span style="font-size:13px;color:#c5ff4a;margin-left:10px;">Services de paiement</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            <div style="text-align:center;margin-bottom:28px;">
+              <div style="display:inline-block;background:#fee2e2;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">❌</div>
+            </div>
+            <h2 style="color:#111;margin:0 0 16px;text-align:center;">Des corrections sont nécessaires</h2>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
+              Bonjour <strong>${opts.companyName}</strong>,
+            </p>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+              Après examen de votre dossier KYB, notre équipe de conformité a identifié des points nécessitant votre attention avant de pouvoir valider votre compte.
+            </p>
+            <div style="background:#fff1f2;border-left:4px solid #ef4444;border-radius:4px;padding:18px 22px;margin:0 0 24px;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:bold;color:#b91c1c;">Motif du refus :</p>
+              <p style="margin:0;font-size:14px;color:#7f1d1d;line-height:1.7;white-space:pre-wrap;">${opts.reason}</p>
+            </div>
+            <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:16px 20px;margin:0 0 24px;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:bold;color:#92400e;">Comment procéder :</p>
+              <p style="margin:0;font-size:13px;color:#78350f;line-height:1.8;">
+                1. Connectez-vous à votre tableau de bord DrimPay<br>
+                2. Rendez-vous dans la section <strong>KYB / Vérification</strong><br>
+                3. Corrigez les informations ou remplacez les documents concernés<br>
+                4. Soumettez à nouveau votre dossier pour révision
+              </p>
+            </div>
+            <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
+              Besoin d'aide ? Contactez notre équipe KYB : <a href="mailto:support@drimpay.africa" style="color:#1a7a3c;">support@drimpay.africa</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
+            <p style="margin:0;font-size:12px;color:#999;text-align:center;">
+              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+    });
+
+    console.log(`[Mailer] Email rejet KYB envoyé à ${opts.to}`);
+    return { ok: true };
+  } catch (e: any) {
+    console.error("[Mailer] Erreur email rejet KYB:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
 export async function sendWelcomeEmail(opts: {
   to: string;
   companyName: string;

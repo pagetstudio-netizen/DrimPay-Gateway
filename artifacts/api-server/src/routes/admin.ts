@@ -17,7 +17,7 @@ import {
   testConnection, detectChatId, invalidateTelegramCache,
 } from "../lib/telegram";
 import { generateContractPdf } from "../lib/contract-pdf";
-import { sendBroadcastEmail } from "../lib/mailer";
+import { sendBroadcastEmail, sendKybApprovedEmail, sendKybRejectedEmail } from "../lib/mailer";
 
 const router = Router();
 
@@ -466,14 +466,25 @@ router.put("/admin/kyb/:id/approve", requireAdmin, async (req: any, res: any) =>
   await db.update(kybSubmissionsTable).set({ status: "approved", reviewedAt: new Date() }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "APPROVE_KYB", "kyb", String(id), undefined, req.ip);
 
-  // Telegram notification
   try {
     const [kyb] = await db.select({
       company: kybSubmissionsTable.companyLegalName,
-      email: kybSubmissionsTable.contractEmail,
+      contractEmail: kybSubmissionsTable.contractEmail,
+      userId: kybSubmissionsTable.userId,
     }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.id, id));
     const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
-    if (kyb) notifyKybDecision({ company: kyb.company ?? "?", email: kyb.email ?? "?", decision: "approved", adminEmail: admin?.email ?? "?" }).catch(() => {});
+
+    if (kyb) {
+      // Telegram
+      notifyKybDecision({ company: kyb.company ?? "?", email: kyb.contractEmail ?? "?", decision: "approved", adminEmail: admin?.email ?? "?" }).catch(() => {});
+
+      // Email au marchand
+      const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName })
+        .from(usersTable).where(eq(usersTable.id, kyb.userId));
+      if (user) {
+        sendKybApprovedEmail({ to: user.email, companyName: kyb.company ?? user.companyName }).catch(() => {});
+      }
+    }
   } catch {}
 
   res.json({ ok: true });
@@ -482,17 +493,32 @@ router.put("/admin/kyb/:id/approve", requireAdmin, async (req: any, res: any) =>
 router.put("/admin/kyb/:id/reject", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { reason } = req.body;
-  await db.update(kybSubmissionsTable).set({ status: "rejected", rejectionReason: reason, reviewedAt: new Date() }).where(eq(kybSubmissionsTable.id, id));
+  if (!reason?.trim()) {
+    res.status(400).json({ error: "La raison du rejet est obligatoire." });
+    return;
+  }
+  await db.update(kybSubmissionsTable).set({ status: "rejected", rejectionReason: reason.trim(), reviewedAt: new Date() }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "REJECT_KYB", "kyb", String(id), reason, req.ip);
 
-  // Telegram notification
   try {
     const [kyb] = await db.select({
       company: kybSubmissionsTable.companyLegalName,
-      email: kybSubmissionsTable.contractEmail,
+      contractEmail: kybSubmissionsTable.contractEmail,
+      userId: kybSubmissionsTable.userId,
     }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.id, id));
     const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
-    if (kyb) notifyKybDecision({ company: kyb.company ?? "?", email: kyb.email ?? "?", decision: "rejected", reason, adminEmail: admin?.email ?? "?" }).catch(() => {});
+
+    if (kyb) {
+      // Telegram
+      notifyKybDecision({ company: kyb.company ?? "?", email: kyb.contractEmail ?? "?", decision: "rejected", reason, adminEmail: admin?.email ?? "?" }).catch(() => {});
+
+      // Email au marchand avec la raison
+      const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName })
+        .from(usersTable).where(eq(usersTable.id, kyb.userId));
+      if (user) {
+        sendKybRejectedEmail({ to: user.email, companyName: kyb.company ?? user.companyName, reason: reason.trim() }).catch(() => {});
+      }
+    }
   } catch {}
 
   res.json({ ok: true });
