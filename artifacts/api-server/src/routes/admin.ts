@@ -635,31 +635,86 @@ router.delete("/admin/operator-aggregators/:id", requireAdmin, async (req: any, 
 // ─── OPERATORS ────────────────────────────────────────────────────────────────
 router.get("/admin/operators", requireAdmin, async (_req: any, res: any) => {
   const ops = await db.select().from(operatorsTable).orderBy(operatorsTable.countryCode, operatorsTable.name);
-  res.json(ops);
+  const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.priority);
+  const aggs = await db.select().from(aggregatorsTable).where(eq(aggregatorsTable.active, true)).orderBy(aggregatorsTable.name);
+  res.json({ operators: ops, operatorAggregators: opAggs, aggregators: aggs });
 });
 
 router.post("/admin/operators", requireAdmin, async (req: any, res: any) => {
-  const { countryCode, name, type } = req.body;
+  const { countryCode, name, type, aggregatorCode, dailyLimit } = req.body;
   if (!countryCode || !name || !type) { res.status(400).json({ error: "Missing fields" }); return; }
   const [op] = await db.insert(operatorsTable).values({ countryCode, name, type }).returning();
+  if (aggregatorCode) {
+    await db.insert(operatorAggregatorsTable).values({
+      countryCode, operatorName: name, operatorType: type,
+      aggregatorCode, dailyLimit: dailyLimit ?? "1000000", priority: 1,
+    });
+  }
   await logAdminAction(req.session.userId, "CREATE_OPERATOR", "operator", String(op.id), `${countryCode}/${name}`, req.ip);
   res.status(201).json(op);
 });
 
 router.put("/admin/operators/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
-  const { name, type, active } = req.body;
+  const { name, type, active, aggregatorCode, dailyLimit, blockDeposits, blockWithdrawals, blockApi, blockPaymentLinks, maintenanceMode } = req.body;
+  const [existing] = await db.select().from(operatorsTable).where(eq(operatorsTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Operator not found" }); return; }
   const data: any = {};
   if (name !== undefined) data.name = name;
   if (type !== undefined) data.type = type;
   if (active !== undefined) data.active = active;
   await db.update(operatorsTable).set(data).where(eq(operatorsTable.id, id));
+  const newName = name ?? existing.name;
+  const newType = type ?? existing.type;
+  if (aggregatorCode !== undefined || dailyLimit !== undefined || blockDeposits !== undefined || blockWithdrawals !== undefined || blockApi !== undefined || blockPaymentLinks !== undefined || maintenanceMode !== undefined) {
+    const [existingAgg] = await db.select().from(operatorAggregatorsTable)
+      .where(and(eq(operatorAggregatorsTable.countryCode, existing.countryCode), eq(operatorAggregatorsTable.operatorName, existing.name)));
+    const aggData: any = { updatedAt: new Date() };
+    if (aggregatorCode !== undefined) aggData.aggregatorCode = aggregatorCode;
+    if (dailyLimit !== undefined) aggData.dailyLimit = String(dailyLimit);
+    if (active !== undefined) aggData.active = active;
+    if (blockDeposits !== undefined) aggData.blockDeposits = blockDeposits;
+    if (blockWithdrawals !== undefined) aggData.blockWithdrawals = blockWithdrawals;
+    if (blockApi !== undefined) aggData.blockApi = blockApi;
+    if (blockPaymentLinks !== undefined) aggData.blockPaymentLinks = blockPaymentLinks;
+    if (maintenanceMode !== undefined) aggData.maintenanceMode = maintenanceMode;
+    if (existingAgg) {
+      if (name && name !== existing.name) aggData.operatorName = newName;
+      if (type && type !== existing.type) aggData.operatorType = newType;
+      await db.update(operatorAggregatorsTable).set(aggData).where(eq(operatorAggregatorsTable.id, existingAgg.id));
+    } else if (aggregatorCode) {
+      await db.insert(operatorAggregatorsTable).values({
+        countryCode: existing.countryCode, operatorName: newName, operatorType: newType,
+        aggregatorCode, dailyLimit: dailyLimit ?? "1000000", priority: 1,
+        active: active ?? true,
+        blockDeposits: blockDeposits ?? false, blockWithdrawals: blockWithdrawals ?? false,
+        blockApi: blockApi ?? false, blockPaymentLinks: blockPaymentLinks ?? false,
+        maintenanceMode: maintenanceMode ?? false,
+      });
+    }
+  }
   await logAdminAction(req.session.userId, "UPDATE_OPERATOR", "operator", String(id), JSON.stringify(data), req.ip);
+  res.json({ ok: true });
+});
+
+router.post("/admin/operators/country-toggle", requireAdmin, async (req: any, res: any) => {
+  const { countryCode, active } = req.body;
+  if (!countryCode || active === undefined) { res.status(400).json({ error: "Missing fields" }); return; }
+  await db.update(operatorsTable).set({ active }).where(eq(operatorsTable.countryCode, countryCode));
+  await db.update(operatorAggregatorsTable).set({ active, updatedAt: new Date() }).where(eq(operatorAggregatorsTable.countryCode, countryCode));
+  await logAdminAction(req.session.userId, active ? "BULK_ACTIVATE" : "BULK_DEACTIVATE", "operator", countryCode, `All operators in ${countryCode}`, req.ip);
   res.json({ ok: true });
 });
 
 router.delete("/admin/operators/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
+  const [existing] = await db.select().from(operatorsTable).where(eq(operatorsTable.id, id));
+  if (existing) {
+    await db.delete(operatorAggregatorsTable).where(and(
+      eq(operatorAggregatorsTable.countryCode, existing.countryCode),
+      eq(operatorAggregatorsTable.operatorName, existing.name),
+    ));
+  }
   await db.delete(operatorsTable).where(eq(operatorsTable.id, id));
   await logAdminAction(req.session.userId, "DELETE_OPERATOR", "operator", String(id), undefined, req.ip);
   res.json({ ok: true });
