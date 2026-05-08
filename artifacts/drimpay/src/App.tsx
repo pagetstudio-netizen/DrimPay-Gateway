@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { ModeProvider } from "@/lib/mode-context";
 import { LangProvider, type Lang } from "@/lib/i18n";
 import { useEffect } from "react";
 
@@ -240,6 +241,7 @@ function DashboardSwitch() {
   }
 
   return (
+    <ModeProvider>
     <Switch>
       <Route path="/dashboard" component={DashboardOverview} />
       <Route path="/dashboard/wallets" component={DashboardWallets} />
@@ -260,6 +262,7 @@ function DashboardSwitch() {
       <Route path="/dashboard/verify-code" component={DashboardVerifyCode} />
       <Route component={NotFound} />
     </Switch>
+    </ModeProvider>
   );
 }
 

@@ -30,6 +30,23 @@ function requireAuth(req: any, res: any, next: any) {
   next();
 }
 
+// ── Live / Sandbox mode ───────────────────────────────────────────────────────
+
+router.get("/dashboard/mode", requireAuth, (req, res) => {
+  if (!req.session.mode) req.session.mode = "sandbox";
+  res.json({ mode: req.session.mode });
+});
+
+router.post("/dashboard/mode", requireAuth, (req, res) => {
+  const { mode } = req.body as { mode?: string };
+  if (mode !== "sandbox" && mode !== "live") {
+    res.status(400).json({ error: "Mode invalide. Valeurs acceptées : sandbox, live." });
+    return;
+  }
+  req.session.mode = mode;
+  res.json({ mode });
+});
+
 // ── Operator availability check ───────────────────────────────────────────────
 type BlockKind = "deposits" | "withdrawals" | "api" | "paymentLinks";
 
@@ -793,6 +810,7 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
     return;
   }
   const userId = req.session.userId!;
+  const currentMode = req.session.mode ?? "sandbox";
   const { countryCode, operator, phone, amount, note } = parsed.data;
 
   const countryMeta = COUNTRIES.find((c) => c.code === countryCode);
@@ -811,20 +829,23 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
     return;
   }
 
-  const balance = parseFloat(wallet.balance as string);
-  if (amount > balance) {
-    res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
-    return;
-  }
-
   const fee = +(amount * FEE_RATE).toFixed(2);
   const net = +(amount - fee).toFixed(2);
 
-  const newBalance = +(balance - amount).toFixed(2);
-  await db
-    .update(walletsTable)
-    .set({ balance: String(newBalance) })
-    .where(eq(walletsTable.id, wallet.id));
+  if (currentMode === "live") {
+    // Live mode: check balance and deduct
+    const balance = parseFloat(wallet.balance as string);
+    if (amount > balance) {
+      res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
+      return;
+    }
+    const newBalance = +(balance - amount).toFixed(2);
+    await db
+      .update(walletsTable)
+      .set({ balance: String(newBalance) })
+      .where(eq(walletsTable.id, wallet.id));
+  }
+  // Sandbox mode: record the reversement but do NOT deduct from wallet
 
   const [reversement] = await db
     .insert(reversementsTable)
@@ -838,12 +859,12 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
       amount: String(amount),
       fee: String(fee),
       net: String(net),
-      note: note ?? null,
-      status: "pending",
+      note: currentMode === "sandbox" ? `[SANDBOX] ${note ?? ""}`.trim() : (note ?? null),
+      status: currentMode === "sandbox" ? "completed" : "pending",
     })
     .returning();
 
-  res.status(201).json(reversement);
+  res.status(201).json({ ...reversement, _sandbox: currentMode === "sandbox" });
 });
 
 // ─── Settings ───────────────────────────────────────────────────────────────
@@ -1226,11 +1247,11 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   }
 
   const userId = req.session.userId!;
+  const currentMode = req.session.mode ?? "sandbox";
   const { description, recipients } = parsed.data;
 
   const totalAmount = recipients.reduce((s, r) => s + r.amount, 0);
   const reference = `MASS-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
-
   const currency = COUNTRIES.find(c => c.code === recipients[0].countryCode)?.currency ?? "XOF";
 
   const [job] = await db.insert(massPayoutJobsTable).values({
@@ -1240,7 +1261,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
     totalCount: recipients.length,
     totalAmount: String(totalAmount),
     currency,
-    description,
+    description: currentMode === "sandbox" ? `[SANDBOX] ${description ?? ""}`.trim() : description,
   }).returning();
 
   let successCount = 0;
@@ -1255,30 +1276,57 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
       let [wallet] = await db.select().from(walletsTable)
         .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, r.countryCode)));
 
-      if (!wallet) { failedCount++; continue; }
+      if (currentMode === "live") {
+        // Live mode: need wallet + sufficient balance
+        if (!wallet) { failedCount++; continue; }
+        const balance = parseFloat(String(wallet.balance));
+        if (balance < r.amount + fee) { failedCount++; continue; }
 
-      const balance = parseFloat(String(wallet.balance));
-      if (balance < r.amount + fee) { failedCount++; continue; }
+        await db.insert(transactionsTable).values({
+          userId,
+          walletId: wallet.id,
+          reference: txRef,
+          type: "payout",
+          status: "success",
+          amount: String(r.amount),
+          fee: String(fee),
+          netAmount: String(r.amount),
+          currency: countryCurrency,
+          countryCode: r.countryCode,
+          operator: r.operator,
+          phone: r.phone,
+          description: r.note ?? description ?? `Mass payout: ${reference}`,
+          mode: "live",
+        });
 
-      await db.insert(transactionsTable).values({
-        userId,
-        walletId: wallet.id,
-        reference: txRef,
-        type: "payout",
-        status: "success",
-        amount: String(r.amount),
-        fee: String(fee),
-        netAmount: String(r.amount),
-        currency: countryCurrency,
-        countryCode: r.countryCode,
-        operator: r.operator,
-        phone: r.phone,
-        description: r.note ?? description ?? `Mass payout: ${reference}`,
-      });
+        await db.update(walletsTable)
+          .set({ balance: sql`${walletsTable.balance} - ${r.amount + fee}` })
+          .where(eq(walletsTable.id, wallet.id));
+      } else {
+        // Sandbox mode: auto-create a sandbox wallet if needed, simulate without real deductions
+        if (!wallet) {
+          [wallet] = await db.insert(walletsTable)
+            .values({ userId, countryCode: r.countryCode, currency: countryCurrency })
+            .returning();
+        }
 
-      await db.update(walletsTable)
-        .set({ balance: sql`${walletsTable.balance} - ${r.amount + fee}` })
-        .where(eq(walletsTable.id, wallet.id));
+        await db.insert(transactionsTable).values({
+          userId,
+          walletId: wallet.id,
+          reference: txRef,
+          type: "payout",
+          status: "success",
+          amount: String(r.amount),
+          fee: String(fee),
+          netAmount: String(r.amount),
+          currency: countryCurrency,
+          countryCode: r.countryCode,
+          operator: r.operator,
+          phone: r.phone,
+          description: `[SANDBOX] ${r.note ?? description ?? `Mass payout: ${reference}`}`,
+          mode: "sandbox",
+        });
+      }
 
       successCount++;
     } catch {
@@ -1293,7 +1341,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
     completedAt: new Date(),
   }).where(eq(massPayoutJobsTable.id, job.id));
 
-  res.status(201).json({ job: { ...job, successCount, failedCount } });
+  res.status(201).json({ job: { ...job, successCount, failedCount }, _sandbox: currentMode === "sandbox" });
 });
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────

@@ -121,6 +121,9 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
+  // Default to sandbox until merchant explicitly switches to live
+  if (!req.session.mode) req.session.mode = "sandbox";
+
   res.json({
     id: user.id,
     email: user.email,
@@ -128,6 +131,7 @@ router.get("/auth/me", async (req, res) => {
     country: user.country,
     role: user.role,
     merchantCode: user.merchantCode,
+    mode: req.session.mode,
   });
 });
 

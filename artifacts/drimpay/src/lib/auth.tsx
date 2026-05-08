@@ -6,6 +6,7 @@ export type User = {
   companyName: string;
   country: string;
   role: "admin" | "user";
+  mode?: "sandbox" | "live";
 };
 
 type AuthState = {

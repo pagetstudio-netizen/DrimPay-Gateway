@@ -3,9 +3,11 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight,
-  CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal
+  CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal,
+  FlaskConical, Zap, AlertTriangle
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useMode } from "@/lib/mode-context";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/ui/notification-bell";
 
@@ -61,8 +63,134 @@ function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
   return null;
 }
 
+function ModeSwitcher() {
+  const { mode, setMode } = useMode();
+  const [confirming, setConfirming] = useState(false);
+  const [pending, setPending] = useState<"live" | "sandbox" | null>(null);
+
+  const handleClick = (target: "live" | "sandbox") => {
+    if (target === mode) return;
+    if (target === "live") {
+      setPending("live");
+      setConfirming(true);
+    } else {
+      setPending("sandbox");
+      setConfirming(true);
+    }
+  };
+
+  const confirm = async () => {
+    if (pending) await setMode(pending);
+    setConfirming(false);
+    setPending(null);
+  };
+
+  const cancel = () => {
+    setConfirming(false);
+    setPending(null);
+  };
+
+  return (
+    <>
+      <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
+        <button
+          onClick={() => handleClick("sandbox")}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+            mode === "sandbox"
+              ? "bg-amber-400 text-amber-900 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          )}
+        >
+          <FlaskConical className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Sandbox</span>
+        </button>
+        <button
+          onClick={() => handleClick("live")}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+            mode === "live"
+              ? "bg-emerald-500 text-white shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          )}
+        >
+          <Zap className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Live</span>
+        </button>
+      </div>
+
+      {/* Confirmation dialog */}
+      <AnimatePresence>
+        {confirming && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={cancel}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              transition={{ type: "spring", stiffness: 340, damping: 28 }}
+              className="relative bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
+            >
+              <div className={cn(
+                "w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4",
+                pending === "live" ? "bg-emerald-100" : "bg-amber-100"
+              )}>
+                {pending === "live"
+                  ? <Zap className="w-6 h-6 text-emerald-600" />
+                  : <FlaskConical className="w-6 h-6 text-amber-600" />
+                }
+              </div>
+              <h3 className="text-base font-bold text-gray-900 text-center mb-2">
+                Passer en mode {pending === "live" ? "Live" : "Sandbox"} ?
+              </h3>
+              <p className="text-sm text-gray-500 text-center leading-relaxed mb-5">
+                {pending === "live"
+                  ? "En mode Live, les paiements et payouts sont réels. L'argent sera réellement débité et crédité."
+                  : "En mode Sandbox, toutes les transactions sont simulées. Aucun argent réel ne sera traité."
+                }
+              </p>
+              {pending === "live" && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-800">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                  <span>Assurez-vous que votre intégration est prête avant de passer en production.</span>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={cancel}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={confirm}
+                  className={cn(
+                    "flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors",
+                    pending === "live"
+                      ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                      : "bg-amber-400 hover:bg-amber-500 text-amber-900"
+                  )}
+                >
+                  Confirmer
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 function SidebarNav({ onNavigate, location }: { onNavigate: () => void; location: string }) {
   const { user, logout } = useAuth();
+  const { mode } = useMode();
 
   const handleLogout = async () => {
     await logout();
@@ -74,7 +202,14 @@ function SidebarNav({ onNavigate, location }: { onNavigate: () => void; location
       <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
         <img src="/logo-round.png" alt="DrimPay" className="h-8 w-8 object-contain rounded-full shrink-0" />
         <span className="font-bold text-gray-900 text-lg tracking-tight">DrimPay</span>
-        <span className="ml-auto text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full tracking-wide">MARCHAND</span>
+        <span className={cn(
+          "ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide",
+          mode === "live"
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-amber-100 text-amber-700"
+        )}>
+          {mode === "live" ? "● LIVE" : "● SANDBOX"}
+        </span>
       </div>
 
       <div className="px-4 py-3 border-b border-gray-100">
@@ -153,6 +288,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
   const { user } = useAuth();
+  const { mode } = useMode();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -198,7 +334,27 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="flex items-center gap-4 px-6 py-4 border-b border-border bg-background/80 backdrop-blur-sm shrink-0">
+        {/* Sandbox banner */}
+        <AnimatePresence>
+          {mode === "sandbox" && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden shrink-0"
+            >
+              <div className="flex items-center justify-center gap-2 bg-amber-400 px-4 py-2">
+                <FlaskConical className="w-3.5 h-3.5 text-amber-900" />
+                <span className="text-xs font-bold text-amber-900 tracking-wide">
+                  MODE SANDBOX — Aucun argent réel ne sera traité. Toutes les transactions sont simulées.
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <header className="flex items-center gap-3 px-6 py-4 border-b border-border bg-background/80 backdrop-blur-sm shrink-0">
           <button
             className="lg:hidden text-muted-foreground hover:text-foreground"
             onClick={() => setSidebarOpen(true)}
@@ -206,6 +362,10 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex-1" />
+
+          {/* Live / Sandbox toggle */}
+          <ModeSwitcher />
+
           <Link href="/dashboard/notifications">
             <button className="transition-transform hover:scale-105 active:scale-95">
               <NotificationBell unreadCount={unreadCount} />
