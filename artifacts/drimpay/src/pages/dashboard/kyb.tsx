@@ -430,23 +430,26 @@ export default function Kyb() {
   const statusInfo = kybStatusConfig[status] ?? kybStatusConfig.pending;
   const isEditable = status === "pending" || status === "rejected";
 
-  const saveStep = async (stepNum: number, data: Record<string, any>) => {
+  const saveStep = async (stepNum: number, data: Record<string, any>, fileKeys?: string[]) => {
     const formData = new FormData();
     formData.append("step", String(stepNum));
     Object.entries(data).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== "") formData.append(k, String(v));
     });
-    Object.entries(uploadedFiles).forEach(([k, f]) => {
+    const keysToUpload = fileKeys ?? Object.keys(uploadedFiles);
+    keysToUpload.forEach((k) => {
+      const f = uploadedFiles[k];
       if (f) formData.append(k, f);
     });
-    const res = await fetch("/api/dashboard/kyb", {
+    const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const res = await fetch(`${BASE}/api/dashboard/kyb`, {
       method: "POST",
       credentials: "include",
       body: formData,
     });
     let d: any = {};
     try { d = await res.json(); } catch {}
-    if (!res.ok) throw new Error(d.error ?? d.details ? JSON.stringify(d.details) : "Erreur serveur");
+    if (!res.ok) throw new Error(d.error ?? (d.details ? JSON.stringify(d.details) : "Erreur serveur"));
     setKyb(d);
     return d;
   };
@@ -468,7 +471,7 @@ export default function Kyb() {
     if (!step2RequiredDocs) { setError("Veuillez téléverser tous les documents obligatoires du représentant légal."); return; }
     setSubmitting(true);
     try {
-      await saveStep(2, values);
+      await saveStep(2, values, STEP2_DOCS.map(d => d.key));
       setStep(3);
     } catch (e: any) { setError(e.message); }
     finally { setSubmitting(false); }
@@ -477,10 +480,13 @@ export default function Kyb() {
   const handleStep3Next = async () => {
     if (submitting) return;
     setError("");
-    if (!step3RequiredDocs) { setError("Veuillez téléverser tous les documents obligatoires."); return; }
+    if (!step3RequiredDocs) {
+      setError("Veuillez téléverser les 4 documents obligatoires avant de continuer.");
+      return;
+    }
     setSubmitting(true);
     try {
-      await saveStep(3, {});
+      await saveStep(3, {}, STEP3_DOCS.map(d => d.key));
       setStep(4);
     } catch (e: any) { setError(e.message); }
     finally { setSubmitting(false); }
@@ -955,13 +961,21 @@ export default function Kyb() {
                     )}
                   </div>
 
-                  <div className="flex justify-between">
-                    <Button type="button" variant="outline" onClick={() => setStep(2)} className="gap-2">
-                      <ChevronLeft className="w-4 h-4" /> Retour
-                    </Button>
-                    <Button type="button" onClick={handleStep3Next} className="text-black gap-2" disabled={!step3RequiredDocs || submitting}>
-                      {submitting ? "Enregistrement…" : <><span>Suivant</span> <ChevronRight className="w-4 h-4" /></>}
-                    </Button>
+                  <div className="space-y-3">
+                    {!step3RequiredDocs && (
+                      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 text-sm">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>Vous devez téléverser les <strong>4 documents obligatoires</strong> avant de passer à l'étape suivante.</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <Button type="button" variant="outline" onClick={() => setStep(2)} className="gap-2">
+                        <ChevronLeft className="w-4 h-4" /> Retour
+                      </Button>
+                      <Button type="button" onClick={handleStep3Next} className="text-black gap-2" disabled={submitting}>
+                        {submitting ? "Enregistrement…" : <><span>Suivant</span> <ChevronRight className="w-4 h-4" /></>}
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               )}
