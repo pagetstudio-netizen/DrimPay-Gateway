@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, SlidersHorizontal, Plus, Copy, Check, Trash2, ExternalLink, X,
   CheckCircle2, Clock, XCircle, ChevronDown, ChevronUp, Mail,
-  Link2, Share2, EyeOff, MoreVertical
+  Link2, Share2, EyeOff, MoreVertical, Globe, MapPin, Building2, Hash, Flag
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { Input } from "@/components/ui/input";
@@ -74,57 +74,70 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+  // Fixed amount — one per currency zone
   const [fixedAmount, setFixedAmount] = useState(false);
-  const [amount, setAmount] = useState("");
+  const [amountXOF, setAmountXOF] = useState("");
+  const [amountXAF, setAmountXAF] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [confirmMsg, setConfirmMsg] = useState("");
+  // Redirect after payment
   const [redirectAfterPayment, setRedirectAfterPayment] = useState(false);
+  const [redirectUrl, setRedirectUrl] = useState("");
+  // Billing address
   const [collectBilling, setCollectBilling] = useState(false);
+  const [billingLine1, setBillingLine1] = useState("");
+  const [billingCity, setBillingCity] = useState("");
+  const [billingPostal, setBillingPostal] = useState("");
+  const [billingCountry, setBillingCountry] = useState("");
+  // Share button
   const [displayShare, setDisplayShare] = useState(true);
+  // Payment limit
   const [paymentLimit, setPaymentLimit] = useState(false);
   const [maxUses, setMaxUses] = useState("");
-  const [emails, setEmails] = useState([""]);
+  // Notification email
+  const [notifEmail, setNotifEmail] = useState("");
+
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const allSelected = selectedCodes.length === COUNTRIES.length;
-
-  const toggleCountry = (code: string) => {
-    setSelectedCodes(prev =>
-      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
-    );
-  };
-
-  const toggleAll = () => {
+  const toggleCountry = (code: string) =>
+    setSelectedCodes(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
+  const toggleAll = () =>
     setSelectedCodes(allSelected ? [] : COUNTRIES.map(c => c.code));
-  };
 
-  const addEmail = () => setEmails(e => [...e, ""]);
-  const setEmail = (i: number, v: string) => setEmails(e => e.map((x, j) => j === i ? v : x));
-  const removeEmail = (i: number) => setEmails(e => e.filter((_, j) => j !== i));
-
-  // Determine which currencies are covered by the selection
   const selectedCountries = COUNTRIES.filter(c => selectedCodes.includes(c.code));
   const currencies = [...new Set(selectedCountries.map(c => c.currency))];
-  const firstCurrency = selectedCountries[0]?.currency ?? "XOF";
+  const hasXOF = currencies.includes("XOF");
+  const hasXAF = currencies.includes("XAF");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedCodes.length === 0) { setError("Veuillez sélectionner au moins un pays."); return; }
     if (!title.trim()) { setError("Le titre est requis."); return; }
+    if (redirectAfterPayment && !redirectUrl.trim()) { setError("Veuillez saisir l'URL de redirection."); return; }
     setError("");
     setLoading(true);
     try {
-      const body = {
+      // Use first available amount for backward compat (API stores single amount)
+      const primaryAmount = fixedAmount
+        ? parseFloat(hasXOF ? amountXOF : amountXAF) || undefined
+        : undefined;
+      const body: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim() || undefined,
         countryCodes: selectedCodes,
         fixedAmount,
-        amount: fixedAmount && amount ? parseFloat(amount) : undefined,
+        amount: primaryAmount,
         maxUses: paymentLimit && maxUses ? parseInt(maxUses) : undefined,
+        redirectUrl: redirectAfterPayment ? redirectUrl.trim() : undefined,
+        collectBilling,
+        displayShare,
+        notifEmail: notifEmail.trim() || undefined,
+        confirmMsg: confirmMsg.trim() || undefined,
       };
       const r = await fetch(`${BASE}/api/dashboard/payment-links`, {
         method: "POST",
@@ -160,6 +173,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 
         <form onSubmit={submit} className="overflow-y-auto flex-1">
           <div className="px-6 py-5 space-y-5">
+
             {/* Icon */}
             <div className="flex justify-center">
               <div className="w-20 h-20 rounded-full bg-muted/60 flex items-center justify-center">
@@ -167,39 +181,27 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               </div>
             </div>
 
-            {/* Title */}
+            {/* ── Titre ── */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">
-                Titre <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={title} onChange={e => setTitle(e.target.value)}
-                placeholder="ex : Billets Liverpool, Facture #001..."
-                className="bg-muted/30 border-border"
-              />
+              <label className="text-sm font-medium">Titre <span className="text-red-500">*</span></label>
+              <Input value={title} onChange={e => setTitle(e.target.value)}
+                placeholder="ex : Billets Liverpool, Facture #001…"
+                className="bg-muted/30 border-border" />
             </div>
 
-            {/* Countries multi-select */}
+            {/* ── Pays de collecte ── */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">
-                  Pays de collecte <span className="text-red-500">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={toggleAll}
+                <label className="text-sm font-medium">Pays de collecte <span className="text-red-500">*</span></label>
+                <button type="button" onClick={toggleAll}
                   className={cn(
                     "flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all",
                     allSelected
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-muted/40 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {allSelected ? (
-                    <><CheckCircle2 className="w-3.5 h-3.5" /> Tout désélectionner</>
-                  ) : (
-                    <><CheckCircle2 className="w-3.5 h-3.5" /> Tout sélectionner</>
-                  )}
+                  )}>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {allSelected ? "Tout désélectionner" : "Tout sélectionner"}
                 </button>
               </div>
 
@@ -207,17 +209,13 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
                 {COUNTRIES.map(country => {
                   const active = selectedCodes.includes(country.code);
                   return (
-                    <button
-                      key={country.code}
-                      type="button"
-                      onClick={() => toggleCountry(country.code)}
+                    <button key={country.code} type="button" onClick={() => toggleCountry(country.code)}
                       className={cn(
                         "relative flex flex-col items-center gap-1 px-2 py-3 rounded-xl border-2 transition-all text-center",
                         active
                           ? "border-primary bg-primary/10 text-foreground"
                           : "border-border bg-muted/20 text-muted-foreground hover:border-primary/40 hover:bg-muted/40"
-                      )}
-                    >
+                      )}>
                       {active && (
                         <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
                           <Check className="w-2.5 h-2.5 text-primary-foreground" />
@@ -232,52 +230,66 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               </div>
 
               {selectedCodes.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-xs text-muted-foreground bg-muted/30 rounded-xl px-3 py-2 border border-border"
-                >
-                  <span className="font-semibold text-foreground">{selectedCodes.length} pays sélectionné{selectedCodes.length > 1 ? "s" : ""}</span>
-                  {" · "}
-                  Devises : {currencies.join(", ")}
-                  {" · "}
-                  Le payeur choisira son pays et son opérateur au moment du paiement.
+                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-muted-foreground bg-muted/30 rounded-xl px-3 py-2 border border-border">
+                  <span className="font-semibold text-foreground">
+                    {selectedCodes.length} pays sélectionné{selectedCodes.length > 1 ? "s" : ""}
+                  </span>
+                  {" · "}Devises : {currencies.join(", ")}
+                  {" · "}Le payeur choisira son pays et opérateur au moment du paiement.
                 </motion.div>
               )}
             </div>
 
-            {/* Fixed Amount toggle */}
+            {/* ── Montant fixe ── */}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Montant fixe</span>
+              <div>
+                <span className="text-sm font-medium">Montant fixe</span>
+                <p className="text-xs text-muted-foreground mt-0.5">Désactivé = le payeur saisit le montant librement</p>
+              </div>
               <Toggle checked={fixedAmount} onChange={setFixedAmount} />
             </div>
 
-            {fixedAmount && selectedCodes.length > 0 && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  Montant
-                  {currencies.length > 1 && (
-                    <span className="ml-1.5 text-xs text-amber-500 font-normal">
-                      (affiché dans la devise du pays choisi par le payeur)
-                    </span>
+            <AnimatePresence>
+              {fixedAmount && selectedCodes.length > 0 && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
+                  {/* XOF amount */}
+                  {hasXOF && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Montant en XOF</label>
+                      <div className="relative">
+                        <Input type="number" min="1" step="1" value={amountXOF}
+                          onChange={e => setAmountXOF(e.target.value)}
+                          placeholder="ex : 5 000" className="pr-16 bg-muted/30 border-border"
+                          required={fixedAmount && hasXOF} />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-bold">XOF</span>
+                      </div>
+                    </div>
                   )}
-                  {currencies.length === 1 && (
-                    <span className="ml-1.5 text-xs text-muted-foreground font-normal">({firstCurrency})</span>
+                  {/* XAF amount */}
+                  {hasXAF && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Montant en XAF</label>
+                      <div className="relative">
+                        <Input type="number" min="1" step="1" value={amountXAF}
+                          onChange={e => setAmountXAF(e.target.value)}
+                          placeholder="ex : 5 000" className="pr-16 bg-muted/30 border-border"
+                          required={fixedAmount && hasXAF} />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-bold">XAF</span>
+                      </div>
+                    </div>
                   )}
-                </label>
-                <div className="relative">
-                  <Input
-                    type="number" min="1" step="1" value={amount} onChange={e => setAmount(e.target.value)}
-                    placeholder="5000" className="pr-16 bg-muted/30 border-border" required={fixedAmount}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">
-                    {currencies.length === 1 ? firstCurrency : "MULTI"}
-                  </span>
-                </div>
-              </motion.div>
-            )}
+                  {currencies.some(c => c !== "XOF" && c !== "XAF") && (
+                    <p className="text-xs text-amber-500">
+                      Note : Ghana (GHS) et Nigeria (NGN) utiliseront la conversion automatique.
+                    </p>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Image upload */}
+            {/* ── Image de la page ── */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">
                 Image de la page de paiement
@@ -292,7 +304,8 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
                   {imageFile ? imageFile.name : "Aucun fichier choisi"}
                 </span>
                 {imageFile && (
-                  <button type="button" onClick={() => setImageFile(null)} className="text-muted-foreground hover:text-red-400 transition-colors ml-auto">
+                  <button type="button" onClick={() => setImageFile(null)}
+                    className="text-muted-foreground hover:text-red-400 transition-colors ml-auto">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -301,98 +314,172 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
                 onChange={e => setImageFile(e.target.files?.[0] ?? null)} />
             </div>
 
-            {/* Description */}
+            {/* ── Description ── */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Description (optionnel)</label>
-              <Textarea
-                value={description} onChange={e => setDescription(e.target.value)}
-                placeholder="ex : Meilleures places, rangée VIP..."
-                rows={3} className="bg-muted/30 border-border resize-none"
-              />
+              <Textarea value={description} onChange={e => setDescription(e.target.value)}
+                placeholder="ex : Meilleures places, rangée VIP…"
+                rows={3} className="bg-muted/30 border-border resize-none" />
             </div>
 
-            {/* Advanced Settings */}
+            {/* ── Email de notification ── */}
+            <div className="space-y-2 rounded-2xl border border-border bg-muted/20 px-4 py-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold">Email de notification</p>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Recevez une notification par email à chaque paiement reçu via ce lien.
+              </p>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  value={notifEmail}
+                  onChange={e => setNotifEmail(e.target.value)}
+                  placeholder="votre@email.com"
+                  className="pl-9 bg-background border-border"
+                />
+              </div>
+            </div>
+
+            {/* ── Paramètres avancés ── */}
             <div className="rounded-xl border border-border overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(v => !v)}
-                className="flex items-center justify-between w-full px-4 py-3.5 bg-muted/30 hover:bg-muted/50 transition-colors"
-              >
+              <button type="button" onClick={() => setShowAdvanced(v => !v)}
+                className="flex items-center justify-between w-full px-4 py-3.5 bg-muted/30 hover:bg-muted/50 transition-colors">
                 <span className="text-sm font-semibold">Paramètres avancés</span>
-                {showAdvanced ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                {showAdvanced
+                  ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                  : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </button>
               <AnimatePresence>
                 {showAdvanced && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 pb-4 pt-2 space-y-4 border-t border-border">
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                    <div className="px-4 pb-5 pt-3 space-y-5 border-t border-border">
+
+                      {/* Message de confirmation */}
                       <div className="space-y-1.5">
-                        <label className="text-sm text-muted-foreground">Message de confirmation de paiement</label>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Message de confirmation de paiement
+                        </label>
                         <Input value={confirmMsg} onChange={e => setConfirmMsg(e.target.value)}
-                          placeholder="ex : Paiement réussi" className="bg-muted/30 border-border" />
+                          placeholder="ex : Merci pour votre paiement !" className="bg-muted/30 border-border" />
                       </div>
 
-                      {[
-                        { label: "Redirection après paiement vers un site web", value: redirectAfterPayment, set: setRedirectAfterPayment },
-                        { label: "Collecter l'adresse de facturation", value: collectBilling, set: setCollectBilling },
-                        { label: "Afficher le bouton de partage", value: displayShare, set: setDisplayShare },
-                      ].map(({ label, value, set }) => (
-                        <div key={label} className="flex items-start justify-between gap-3">
-                          <span className="text-sm text-muted-foreground leading-snug">{label}</span>
-                          <Toggle checked={value} onChange={set} />
+                      {/* ── Redirection après paiement ── */}
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">Redirection après paiement</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                              Redirigez le client vers votre site après le paiement
+                            </p>
+                          </div>
+                          <Toggle checked={redirectAfterPayment} onChange={v => { setRedirectAfterPayment(v); if (!v) setRedirectUrl(""); }} />
                         </div>
-                      ))}
-
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-sm text-muted-foreground leading-snug">
-                          Limite de paiement — Nombre maximum d'utilisations
-                        </span>
-                        <Toggle checked={paymentLimit} onChange={setPaymentLimit} />
+                        <AnimatePresence>
+                          {redirectAfterPayment && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                              <div className="relative">
+                                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                  type="url"
+                                  value={redirectUrl}
+                                  onChange={e => setRedirectUrl(e.target.value)}
+                                  placeholder="https://monsite.com/merci"
+                                  className="pl-9 bg-muted/30 border-border"
+                                  required={redirectAfterPayment}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                URL vers laquelle le client sera redirigé après confirmation du paiement.
+                              </p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      {paymentLimit && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
-                          <Input type="number" min="1" value={maxUses} onChange={e => setMaxUses(e.target.value)}
-                            placeholder="ex : 100" className="bg-muted/30 border-border" />
-                        </motion.div>
-                      )}
+
+                      {/* ── Collecte adresse de facturation ── */}
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">Collecter l'adresse de facturation</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                              Demande l'adresse complète du payeur
+                            </p>
+                          </div>
+                          <Toggle checked={collectBilling} onChange={v => { setCollectBilling(v); }} />
+                        </div>
+                        <AnimatePresence>
+                          {collectBilling && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }} className="overflow-hidden space-y-2">
+                              <div className="p-3 rounded-xl bg-muted/30 border border-border space-y-2">
+                                <p className="text-xs text-muted-foreground font-medium mb-2">Champs à collecter :</p>
+                                {[
+                                  { icon: <MapPin className="w-3.5 h-3.5" />, label: "Adresse (ligne 1)", val: billingLine1, set: setBillingLine1, ph: "123 Rue des Acacias" },
+                                  { icon: <Building2 className="w-3.5 h-3.5" />, label: "Ville", val: billingCity, set: setBillingCity, ph: "Abidjan" },
+                                  { icon: <Hash className="w-3.5 h-3.5" />, label: "Code postal", val: billingPostal, set: setBillingPostal, ph: "01 BP 1234" },
+                                  { icon: <Flag className="w-3.5 h-3.5" />, label: "Pays", val: billingCountry, set: setBillingCountry, ph: "Côte d'Ivoire" },
+                                ].map(({ icon, label, val, set, ph }) => (
+                                  <div key={label} className="space-y-1">
+                                    <label className="text-xs text-muted-foreground">{label}</label>
+                                    <div className="relative">
+                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</span>
+                                      <Input value={val} onChange={e => set(e.target.value)}
+                                        placeholder={ph} className="pl-8 h-9 text-sm bg-background border-border" />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Ces champs seront affichés et requis sur la page de paiement pour le payeur.
+                              </p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* ── Bouton de partage ── */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium">Afficher le bouton de partage</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                            Permet au payeur de partager le lien avec d'autres personnes
+                          </p>
+                        </div>
+                        <Toggle checked={displayShare} onChange={setDisplayShare} />
+                      </div>
+
+                      {/* ── Limite de paiement ── */}
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">Limite d'utilisations</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                              Nombre maximum de paiements autorisés
+                            </p>
+                          </div>
+                          <Toggle checked={paymentLimit} onChange={setPaymentLimit} />
+                        </div>
+                        <AnimatePresence>
+                          {paymentLimit && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                              <Input type="number" min="1" value={maxUses}
+                                onChange={e => setMaxUses(e.target.value)}
+                                placeholder="ex : 100" className="bg-muted/30 border-border" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
-
-            {/* Notification Emails */}
-            <div className="space-y-3">
-              <p className="text-sm font-semibold">Emails de notification</p>
-              {emails.map((email, i) => (
-                <div key={i} className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Email {i + 1}</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        type="email" value={email} onChange={e => setEmail(i, e.target.value)}
-                        placeholder="nom@email.com" className="pl-9 bg-muted/30 border-border"
-                      />
-                    </div>
-                    {emails.length > 1 && (
-                      <button type="button" onClick={() => removeEmail(i)}
-                        className="p-2 text-muted-foreground hover:text-red-400 transition-colors">
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <button type="button" onClick={addEmail}
-                className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium transition-colors">
-                <Plus className="w-3.5 h-3.5" /> Ajouter un email supplémentaire
-              </button>
             </div>
 
             {error && (
@@ -404,11 +491,8 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 
           {/* Save button */}
           <div className="px-6 pb-6 shrink-0">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 rounded-2xl bg-foreground text-background font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full py-4 rounded-2xl bg-foreground text-background font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50">
               {loading ? "Enregistrement…" : "Enregistrer"}
             </button>
           </div>
