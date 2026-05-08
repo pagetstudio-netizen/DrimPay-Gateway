@@ -538,6 +538,7 @@ router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
       id: apiKeysTable.id,
       name: apiKeysTable.name,
       prefix: apiKeysTable.prefix,
+      rawKey: apiKeysTable.rawKey,
       env: apiKeysTable.env,
       status: apiKeysTable.status,
       lastUsedAt: apiKeysTable.lastUsedAt,
@@ -571,17 +572,18 @@ router.post("/dashboard/api-keys", requireAuth, async (req, res) => {
 
   const [key] = await db
     .insert(apiKeysTable)
-    .values({ userId, name, keyHash, prefix, env })
+    .values({ userId, name, keyHash, rawKey, prefix, env })
     .returning({
       id: apiKeysTable.id,
       name: apiKeysTable.name,
       prefix: apiKeysTable.prefix,
+      rawKey: apiKeysTable.rawKey,
       env: apiKeysTable.env,
       status: apiKeysTable.status,
       createdAt: apiKeysTable.createdAt,
     });
 
-  res.status(201).json({ ...key, rawKey, warning: "Save this key now. It will not be shown again." });
+  res.status(201).json({ ...key, warning: "Store this key securely." });
 });
 
 router.delete("/dashboard/api-keys/:id", requireAuth, async (req, res) => {

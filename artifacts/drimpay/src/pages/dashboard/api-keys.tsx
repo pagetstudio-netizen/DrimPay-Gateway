@@ -27,6 +27,15 @@ export default function ApiKeys() {
   const [newKeyDialog, setNewKeyDialog] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [revealedIds, setRevealedIds] = useState<Set<number>>(new Set());
+
+  const toggleReveal = (id: number) => {
+    setRevealedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -55,7 +64,7 @@ export default function ApiKeys() {
     const data = await res.json();
     setCreating(false);
     if (!res.ok) return;
-    setNewKey(data.rawKey);
+    setNewKey(data.rawKey ?? null);
     setNewKeyDialog(true);
     form.reset();
     fetchKeys();
@@ -87,8 +96,7 @@ export default function ApiKeys() {
           <div>
             <p className="text-sm font-semibold">Sécurité des clés API</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Les clés ne sont affichées qu'une seule fois lors de leur création. Stockez-les dans un gestionnaire de secrets sécurisé.
-              Ne partagez jamais vos clés live dans votre code source.
+              Vous pouvez afficher et copier vos clés à tout moment depuis cette page. Ne partagez jamais vos clés live dans votre code source — utilisez des variables d'environnement.
             </p>
           </div>
         </div>
@@ -173,16 +181,33 @@ export default function ApiKeys() {
                             <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-500/15 text-red-600">RÉVOQUÉ</span>
                           )}
                         </div>
-                        <p className="font-mono text-xs text-muted-foreground select-none">{key.prefix}••••••••••••••••••••••••</p>
+                        <p className="font-mono text-xs text-muted-foreground break-all">
+                          {revealedIds.has(key.id) && key.rawKey ? key.rawKey : `${key.prefix}••••••••••••••••••••••••`}
+                        </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
                           Créée le {new Date(key.createdAt).toLocaleDateString("fr-FR")}
                           {key.lastUsedAt && ` · Dernière utilisation ${new Date(key.lastUsedAt).toLocaleDateString("fr-FR")}`}
                         </p>
-                        <p className="text-[10px] text-amber-500/80 mt-0.5">
-                          Clé complète non récupérable — copiez-la à la création
-                        </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {key.rawKey && (
+                          <button
+                            onClick={() => toggleReveal(key.id)}
+                            title={revealedIds.has(key.id) ? "Masquer" : "Afficher la clé"}
+                            className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
+                          >
+                            {revealedIds.has(key.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        )}
+                        {key.rawKey && (
+                          <button
+                            onClick={() => copy(key.rawKey, `key-${key.id}`)}
+                            title="Copier la clé"
+                            className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
+                          >
+                            {copiedId === `key-${key.id}` ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        )}
                         {key.status === "active" && (
                           <button
                             onClick={() => setDeleteId(key.id)}

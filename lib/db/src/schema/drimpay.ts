@@ -137,6 +137,7 @@ export const apiKeysTable = pgTable("api_keys", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   name: text("name").notNull(),
   keyHash: text("key_hash").notNull(),
+  rawKey: text("raw_key"),
   prefix: text("prefix").notNull(),
   env: apiKeyEnvEnum("env").notNull().default("sandbox"),
   status: apiKeyStatusEnum("status").notNull().default("active"),
