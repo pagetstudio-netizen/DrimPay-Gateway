@@ -149,7 +149,7 @@ export default function PaymentLinksCreate() {
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error || "Erreur lors de la création"); return; }
-      toast({ title: "Lien créé avec succès", description: "Votre lien de paiement est prêt à partager." });
+      toast({ title: "Lien créé avec succès" });
       navigate("/dashboard/payment-links");
     } catch { setError("Erreur réseau. Veuillez réessayer."); }
     finally { setLoading(false); }

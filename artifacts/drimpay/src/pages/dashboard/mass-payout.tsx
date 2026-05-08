@@ -324,7 +324,7 @@ export default function MassPayout() {
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error || "Erreur lors de l'envoi."); setSubmitting(false); return; }
-      toast({ title: "Paiement de masse lancé !", description: `Réf : ${data.job?.reference}` });
+      toast({ title: "Paiements envoyés avec succès" });
       setRecipients([newRecipient()]);
       setDescription("");
       setShowErrors(false);

@@ -15,13 +15,8 @@ export function Toaster() {
           {/* Icon dot */}
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${variant === "destructive" ? "bg-red-300" : "bg-[#B5F03C]"}`} />
 
-          {/* Text — title + optional description inline */}
-          <span className="text-sm font-semibold whitespace-nowrap">
-            {title}
-            {description && (
-              <span className="font-normal opacity-60 ml-1.5">{description}</span>
-            )}
-          </span>
+          {/* Text */}
+          <span className="text-xs font-semibold whitespace-nowrap">{title}</span>
 
           {action}
         </Toast>
