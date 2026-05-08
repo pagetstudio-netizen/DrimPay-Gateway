@@ -247,8 +247,8 @@ export default function PayPage() {
   const currentCountryData = link?.countries.find(c => c.code === selectedCountry);
   const currency           = currentCountryData?.currency ?? link?.currency ?? "XOF";
   const displayAmount      = parseFloat(amount || "0");
-  const fee                = Math.round(displayAmount * 0.03 * 100) / 100;
-  const total              = displayAmount + fee;
+  const platformFee        = Math.round(displayAmount * 0.03 * 100) / 100;
+  const merchantNet        = Math.round((displayAmount - platformFee) * 100) / 100;
   const operatorLabel      = OPERATOR_BRAND[selectedOperator]?.label ?? selectedOperator;
   const countryMeta        = COUNTRY_META[selectedCountry];
   const stepNum            = STEP_NUMS[step];
@@ -621,8 +621,6 @@ export default function PayPage() {
                       { label: "Numéro",         value: phone },
                       ...(name  ? [{ label: "Nom",   value: name }]  : []),
                       ...(email ? [{ label: "Email", value: email }] : []),
-                      { label: "Montant",        value: `${displayAmount.toLocaleString("fr-FR")} ${currency}` },
-                      { label: "Frais (3%)",     value: `${fee.toLocaleString("fr-FR")} ${currency}` },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex justify-between px-4 py-2.5 text-sm">
                         <span className="text-gray-500">{label}</span>
@@ -630,10 +628,13 @@ export default function PayPage() {
                       </div>
                     ))}
                     <div className="flex justify-between px-4 py-3 bg-gray-50">
-                      <span className="font-bold text-gray-900">Total débité</span>
-                      <span className="font-extrabold text-gray-900">{total.toLocaleString("fr-FR")} {currency}</span>
+                      <span className="font-bold text-gray-900">Vous payez</span>
+                      <span className="font-extrabold text-gray-900">{displayAmount.toLocaleString("fr-FR")} {currency}</span>
                     </div>
                   </div>
+                  <p className="text-xs text-gray-400 text-center mb-4">
+                    Les frais de service sont pris en charge par le marchand.
+                  </p>
 
                   <p className="text-xs text-gray-500 text-center bg-gray-50 rounded-lg px-4 py-3 mb-4">
                     📱 Vous recevrez une notification sur votre téléphone pour valider le paiement.
