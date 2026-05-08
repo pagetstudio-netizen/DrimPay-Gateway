@@ -25,7 +25,7 @@ export default function ApiKeys() {
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [newKeyDialog, setNewKeyDialog] = useState(false);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const form = useForm<FormData>({
@@ -67,7 +67,7 @@ export default function ApiKeys() {
     fetchKeys();
   };
 
-  const copy = (text: string, id: number) => {
+  const copy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -173,20 +173,29 @@ export default function ApiKeys() {
                             <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-500/15 text-red-600">RÉVOQUÉ</span>
                           )}
                         </div>
-                        <p className="font-mono text-xs text-muted-foreground">{key.prefix}••••••••••••••••</p>
+                        <p className="font-mono text-xs text-muted-foreground select-none">{key.prefix}••••••••••••••••••••••••</p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
                           Créée le {new Date(key.createdAt).toLocaleDateString("fr-FR")}
                           {key.lastUsedAt && ` · Dernière utilisation ${new Date(key.lastUsedAt).toLocaleDateString("fr-FR")}`}
                         </p>
                       </div>
-                      {key.status === "active" && (
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => setDeleteId(key.id)}
-                          className="text-muted-foreground hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
+                          onClick={() => copy(key.prefix, `prefix-${key.id}`)}
+                          title="Copier le préfixe"
+                          className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {copiedId === `prefix-${key.id}` ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                         </button>
-                      )}
+                        {key.status === "active" && (
+                          <button
+                            onClick={() => setDeleteId(key.id)}
+                            className="text-muted-foreground hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -213,9 +222,9 @@ export default function ApiKeys() {
           <div className="flex gap-3">
             <Button
               className="flex-1 text-primary-foreground"
-              onClick={() => { if (newKey) copy(newKey, -1); }}
+              onClick={() => { if (newKey) copy(newKey, "dialog"); }}
             >
-              {copiedId === -1 ? <><CheckCircle2 className="w-4 h-4 mr-2" />Copié</> : <><Copy className="w-4 h-4 mr-2" />Copier la clé</>}
+              {copiedId === "dialog" ? <><CheckCircle2 className="w-4 h-4 mr-2" />Copié</> : <><Copy className="w-4 h-4 mr-2" />Copier la clé</>}
             </Button>
             <Button variant="outline" onClick={() => { setNewKeyDialog(false); setNewKey(null); }}>
               Fermer
