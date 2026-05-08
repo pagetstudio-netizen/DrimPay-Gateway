@@ -545,7 +545,7 @@ router.get("/admin/kyb/:id/document/:field", requireAdmin, async (req: any, res:
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 router.get("/admin/transactions", requireAdmin, async (req: any, res: any) => {
-  const { type, status, countryCode, operator, search, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const { type, status, countryCode, operator, search, mode, page = "1", limit = "20" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
   const offset = (pageNum - 1) * limitNum;
@@ -555,6 +555,7 @@ router.get("/admin/transactions", requireAdmin, async (req: any, res: any) => {
   if (status && status !== "all") conditions.push(eq(transactionsTable.status, status as any));
   if (countryCode && countryCode !== "all") conditions.push(eq(transactionsTable.countryCode, countryCode));
   if (operator && operator !== "all") conditions.push(eq(transactionsTable.operator, operator));
+  if (mode && mode !== "all") conditions.push(eq(transactionsTable.mode, mode as any));
 
   const where = conditions.length ? and(...conditions) : undefined;
 

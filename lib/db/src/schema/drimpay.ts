@@ -123,6 +123,7 @@ export const transactionsTable = pgTable("transactions", {
   webhookSignatureKey: text("webhook_signature_key"),
   webhookRetryCount: integer("webhook_retry_count").notNull().default(0),
   webhookNextRetryAt: timestamp("webhook_next_retry_at"),
+  requestPayload: text("request_payload"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

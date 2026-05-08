@@ -310,6 +310,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       webhookSignatureKey: signatureKey,
       mode: mode as any,
       expiresAt,
+      requestPayload: JSON.stringify(req.body),
     })
     .returning();
 
