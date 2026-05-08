@@ -66,7 +66,7 @@ router.post("/dashboard/mode", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Mode invalide. Valeurs acceptées : sandbox, live." });
     return;
   }
-  if (mode === "live") {
+  if (mode === "live" && req.session.role !== "admin") {
     const userId = req.session.userId!;
     const [kyb] = await db
       .select({ status: kybSubmissionsTable.status })

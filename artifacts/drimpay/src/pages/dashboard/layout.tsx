@@ -65,10 +65,13 @@ function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
 
 function ModeSwitcher() {
   const { mode, setMode } = useMode();
+  const { user } = useAuth();
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState<"live" | "sandbox" | null>(null);
   const [kybBlocked, setKybBlocked] = useState(false);
   const [switching, setSwitching] = useState(false);
+
+  const isAdmin = user?.role === "admin";
 
   const handleClick = (target: "live" | "sandbox") => {
     if (target === mode) return;
@@ -81,7 +84,7 @@ function ModeSwitcher() {
     setSwitching(true);
     const result = await setMode(pending);
     setSwitching(false);
-    if (result.error === "KYB_NOT_APPROVED") {
+    if (result.error === "KYB_NOT_APPROVED" && !isAdmin) {
       setConfirming(false);
       setKybBlocked(true);
       return;
