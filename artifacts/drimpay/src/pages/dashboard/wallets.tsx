@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, Info,
-  X, CheckCircle2, Loader2, Phone, Banknote
+  X, CheckCircle2, Loader2, Phone, Banknote, ChevronDown
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { Link, useLocation } from "wouter";
@@ -27,26 +27,39 @@ function fmt(n: string | number, currency: string) {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${currency}`;
 }
 
+const COUNTRIES_LIST = Object.entries(COUNTRY_MAP).map(([code, v]) => ({ code, ...v }));
+
 // ── Pay-in modal ──────────────────────────────────────────────────────────────
 interface PayinModalProps {
   wallet: any;
   onClose: () => void;
-  onSuccess: (newBalance: number) => void;
+  onSuccess: (walletId: number, newBalance: number) => void;
 }
 
 function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
-  const c = COUNTRY_MAP[wallet.countryCode] ?? { name: wallet.countryCode, flag: "🌍", currency: wallet.currency, operators: [] };
+  const [countryCode, setCountryCode] = useState<string>(wallet.countryCode);
+  const c = COUNTRY_MAP[countryCode] ?? { name: countryCode, flag: "🌍", currency: "XOF", operators: [] };
+
   const [operator, setOperator] = useState(c.operators[0] ?? "");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [successNet, setSuccessNet] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const feeRate = 0.03;
   const amountNum = parseFloat(amount) || 0;
   const fee = +(amountNum * feeRate).toFixed(2);
   const net = +(amountNum - fee).toFixed(2);
+
+  // Reset operator when country changes
+  const handleCountryChange = (code: string) => {
+    setCountryCode(code);
+    const ops = COUNTRY_MAP[code]?.operators ?? [];
+    setOperator(ops[0] ?? "");
+    setErrorMsg("");
+  };
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -65,7 +78,7 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
         body: JSON.stringify({
           amount: amountNum,
           currency: c.currency,
-          countryCode: wallet.countryCode,
+          countryCode,
           operator,
           phone: phone.trim(),
           description: "Réapprovisionnement wallet",
@@ -73,9 +86,9 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
       });
       const data = await r.json();
       if (!r.ok) { setErrorMsg(data.error ?? "Erreur"); setStatus("error"); return; }
+      setSuccessNet(+(data.netAmount ?? net));
       setStatus("success");
-      const currentBalance = parseFloat(String(wallet.balance)) || 0;
-      onSuccess(+(currentBalance + data.netAmount).toFixed(2));
+      onSuccess(data.walletId ?? wallet.id, data.newBalance ?? 0);
     } catch {
       setErrorMsg("Erreur réseau, veuillez réessayer.");
       setStatus("error");
@@ -99,10 +112,8 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
               <ArrowDownLeft className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="font-semibold text-sm">Réapprovisionner le wallet</p>
-              <p className="text-xs text-muted-foreground">
-                {c.flag} {c.name} · {c.currency}
-              </p>
+              <p className="font-semibold text-sm">Réapprovisionner un wallet</p>
+              <p className="text-xs text-muted-foreground">Choisissez le pays et l'opérateur</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
@@ -118,7 +129,7 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
             <div>
               <p className="font-semibold text-lg">Pay-in réussi !</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {fmt(net, c.currency)} ont été crédités sur votre wallet {c.name}.
+                {fmt(successNet, c.currency)} crédités sur votre wallet {c.flag} {c.name}.
               </p>
             </div>
             <button
@@ -130,10 +141,30 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
           </div>
         ) : (
           <form onSubmit={submit} className="px-6 py-5 space-y-4">
+
+            {/* Country selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Pays</label>
+              <div className="relative">
+                <select
+                  value={countryCode}
+                  onChange={e => handleCountryChange(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-border bg-muted/30 pl-4 pr-10 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
+                >
+                  {COUNTRIES_LIST.map(({ code, flag, name, currency }) => (
+                    <option key={code} value={code}>
+                      {flag} {name} — {currency}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              </div>
+            </div>
+
             {/* Operator */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Opérateur</label>
-              <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Opérateur</label>
+              <div className={cn("grid gap-2", c.operators.length > 2 ? "grid-cols-2" : "grid-cols-2")}>
                 {c.operators.map(op => (
                   <button
                     key={op}
@@ -154,7 +185,7 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
 
             {/* Phone */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Numéro Mobile Money</label>
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Numéro Mobile Money</label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -170,7 +201,7 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
 
             {/* Amount */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Montant</label>
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Montant</label>
               <div className="relative">
                 <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -222,7 +253,7 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
               className="w-full py-3.5 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {status === "loading" && <Loader2 className="w-4 h-4 animate-spin" />}
-              {status === "loading" ? "Traitement…" : "Confirmer le pay-in"}
+              {status === "loading" ? "Traitement…" : `Confirmer le pay-in — ${c.flag} ${c.name}`}
             </button>
           </form>
         )}
@@ -247,8 +278,14 @@ export default function Wallets() {
   }, []);
 
   const handlePayinSuccess = (walletId: number, newBalance: number) => {
-    setWallets(prev => prev.map(w => w.id === walletId ? { ...w, balance: String(newBalance) } : w));
-    // keep modal open to show success screen — it calls onClose itself
+    // Reload wallets from server to reflect new/updated wallet balance
+    fetch(`${BASE}/api/dashboard/wallets`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setWallets(Array.isArray(d) ? d : []))
+      .catch(() => {
+        // fallback: update inline if known wallet
+        setWallets(prev => prev.map(w => w.id === walletId ? { ...w, balance: String(newBalance) } : w));
+      });
   };
 
   return (
@@ -386,8 +423,8 @@ export default function Wallets() {
           <PayinModal
             wallet={payinWallet}
             onClose={() => setPayinWallet(null)}
-            onSuccess={(newBalance) => {
-              handlePayinSuccess(payinWallet.id, newBalance);
+            onSuccess={(walletId, newBalance) => {
+              handlePayinSuccess(walletId, newBalance);
             }}
           />
         )}

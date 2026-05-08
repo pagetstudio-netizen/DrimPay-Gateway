@@ -449,7 +449,8 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
     .set({ balance: sql`${walletsTable.balance} + ${netAmount}` })
     .where(eq(walletsTable.id, wallet.id));
 
-  res.status(201).json({ transaction: tx, fee, netAmount, feeRate: "3%" });
+  const [updatedWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, wallet.id));
+  res.status(201).json({ transaction: tx, fee, netAmount, feeRate: "3%", walletId: wallet.id, newBalance: parseFloat(String(updatedWallet?.balance ?? 0)) });
 });
 
 const payoutSchema = z.object({
