@@ -117,7 +117,7 @@ export default function Signup() {
     <div className="min-h-screen flex" style={{ backgroundColor: "#F8F6F1" }}>
       <div className="hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between p-12 shrink-0" style={{ backgroundColor: "#0f0f0f" }}>
         <Link href="/">
-          <img src="/logo-drimpay.png" alt="DrimPay" className="h-10 w-auto object-contain" style={{ filter: "brightness(0) invert(1)" }} />
+          <img src="/logo-drimpay.png" alt="DrimPay" className="h-10 w-auto object-contain bg-white rounded-lg px-3 py-1.5" />
         </Link>
 
         <div>
