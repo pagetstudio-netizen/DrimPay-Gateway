@@ -1510,6 +1510,43 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const currentMode = req.session.mode ?? "sandbox";
   const { description, recipients } = parsed.data;
 
+  // ── 1. Aggregate total needed (amount + fee) per country ──────────────────
+  const totalsPerCountry: Record<string, number> = {};
+  for (const r of recipients) {
+    const fee = Math.round(r.amount * FEE_RATE * 100) / 100;
+    totalsPerCountry[r.countryCode] = (totalsPerCountry[r.countryCode] ?? 0) + r.amount + fee;
+  }
+
+  // ── 2. Upfront balance check — block before creating job ──────────────────
+  const walletCache: Record<string, typeof walletsTable.$inferSelect> = {};
+  const insufficientCountries: { countryCode: string; available: number; required: number; currency: string }[] = [];
+
+  for (const [countryCode, required] of Object.entries(totalsPerCountry)) {
+    const [wallet] = await db.select().from(walletsTable)
+      .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, countryCode), eq(walletsTable.mode, currentMode)));
+
+    const available = wallet ? parseFloat(String(wallet.balance)) : 0;
+    const countryCurrency = COUNTRIES.find(c => c.code === countryCode)?.currency ?? "XOF";
+
+    if (!wallet || available < required) {
+      insufficientCountries.push({ countryCode, available, required, currency: countryCurrency });
+    } else {
+      walletCache[countryCode] = wallet;
+    }
+  }
+
+  if (insufficientCountries.length > 0) {
+    const first = insufficientCountries[0];
+    const country = COUNTRIES.find(c => c.code === first.countryCode);
+    res.status(400).json({
+      error: `Vous n'avez pas de fonds suffisants pour effectuer cette transaction. Solde disponible : ${first.available.toLocaleString("fr-FR")} ${first.currency}, montant requis : ${Math.ceil(first.required).toLocaleString("fr-FR")} ${first.currency}${country ? ` (${country.name})` : ""}.`,
+      code: "INSUFFICIENT_FUNDS",
+      details: insufficientCountries,
+    });
+    return;
+  }
+
+  // ── 3. Create the job ─────────────────────────────────────────────────────
   const totalAmount = recipients.reduce((s, r) => s + r.amount, 0);
   const reference = `MASS-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
   const currency = COUNTRIES.find(c => c.code === recipients[0].countryCode)?.currency ?? "XOF";
@@ -1525,6 +1562,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
     mode: currentMode,
   }).returning();
 
+  // ── 4. Process recipients — deduct balance in both sandbox and live ────────
   let successCount = 0;
   let failedCount = 0;
 
@@ -1532,62 +1570,37 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
     try {
       const countryCurrency = COUNTRIES.find(c => c.code === r.countryCode)?.currency ?? "XOF";
       const fee = Math.round(r.amount * FEE_RATE * 100) / 100;
+      const totalDebit = r.amount + fee;
       const txRef = `MASS-OUT-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 
-      let [wallet] = await db.select().from(walletsTable)
-        .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, r.countryCode), eq(walletsTable.mode, currentMode)));
+      const wallet = walletCache[r.countryCode];
+      if (!wallet) { failedCount++; continue; }
 
-      if (currentMode === "live") {
-        // Live mode: need wallet + sufficient balance
-        if (!wallet) { failedCount++; continue; }
-        const balance = parseFloat(String(wallet.balance));
-        if (balance < r.amount + fee) { failedCount++; continue; }
+      const currentBalance = parseFloat(String(
+        (await db.select().from(walletsTable).where(eq(walletsTable.id, wallet.id)))[0]?.balance ?? "0"
+      ));
+      if (currentBalance < totalDebit) { failedCount++; continue; }
 
-        await db.insert(transactionsTable).values({
-          userId,
-          walletId: wallet.id,
-          reference: txRef,
-          type: "payout",
-          status: "success",
-          amount: String(r.amount),
-          fee: String(fee),
-          netAmount: String(r.amount),
-          currency: countryCurrency,
-          countryCode: r.countryCode,
-          operator: r.operator,
-          phone: r.phone,
-          description: r.note ?? description ?? `Mass payout: ${reference}`,
-          mode: "live",
-        });
+      await db.insert(transactionsTable).values({
+        userId,
+        walletId: wallet.id,
+        reference: txRef,
+        type: "payout",
+        status: "success",
+        amount: String(r.amount),
+        fee: String(fee),
+        netAmount: String(r.amount),
+        currency: countryCurrency,
+        countryCode: r.countryCode,
+        operator: r.operator,
+        phone: r.phone,
+        description: r.note ?? description ?? `Mass payout: ${reference}`,
+        mode: currentMode,
+      });
 
-        await db.update(walletsTable)
-          .set({ balance: sql`${walletsTable.balance} - ${r.amount + fee}` })
-          .where(eq(walletsTable.id, wallet.id));
-      } else {
-        // Sandbox mode: auto-create a sandbox wallet if needed, simulate without real deductions
-        if (!wallet) {
-          [wallet] = await db.insert(walletsTable)
-            .values({ userId, countryCode: r.countryCode, currency: countryCurrency, mode: "sandbox" })
-            .returning();
-        }
-
-        await db.insert(transactionsTable).values({
-          userId,
-          walletId: wallet.id,
-          reference: txRef,
-          type: "payout",
-          status: "success",
-          amount: String(r.amount),
-          fee: String(fee),
-          netAmount: String(r.amount),
-          currency: countryCurrency,
-          countryCode: r.countryCode,
-          operator: r.operator,
-          phone: r.phone,
-          description: r.note ?? description ?? `Mass payout: ${reference}`,
-          mode: "sandbox",
-        });
-      }
+      await db.update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
+        .where(eq(walletsTable.id, wallet.id));
 
       successCount++;
     } catch {
