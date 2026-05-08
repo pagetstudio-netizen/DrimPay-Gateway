@@ -62,6 +62,7 @@ import AdminPaymentLinks from "@/pages/admin/payment-links";
 import AdminKybContracts from "@/pages/admin/kyb-contracts";
 import AdminLogs from "@/pages/admin/logs";
 import AdminNotifications from "@/pages/admin/notifications";
+import DashboardNotifications from "@/pages/dashboard/notifications";
 import AdminSettings from "@/pages/admin/settings";
 
 const queryClient = new QueryClient({
@@ -254,6 +255,7 @@ function DashboardSwitch() {
       <Route path="/dashboard/docs/mass-payout" component={DocMassPayout} />
       <Route path="/dashboard/payment-links" component={DashboardPaymentLinks} />
       <Route path="/dashboard/mass-payout" component={DashboardMassPayout} />
+      <Route path="/dashboard/notifications" component={DashboardNotifications} />
       <Route component={NotFound} />
     </Switch>
   );

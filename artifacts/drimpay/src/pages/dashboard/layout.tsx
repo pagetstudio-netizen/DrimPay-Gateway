@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -146,10 +146,20 @@ function SidebarNav({ onNavigate, location }: { onNavigate: () => void; location
   );
 }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
   const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/dashboard/notifications`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setUnreadCount(d.unreadCount ?? 0))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -195,9 +205,16 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex-1" />
-          <button className="relative text-muted-foreground hover:text-foreground transition-colors">
-            <Bell className="w-5 h-5" />
-          </button>
+          <Link href="/dashboard/notifications">
+            <button className="relative text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-xl hover:bg-muted">
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+          </Link>
           <Link href="/dashboard/profile">
             <button className="flex items-center gap-2 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors px-3 py-1.5">
               <div className="w-6 h-6 rounded-full overflow-hidden">

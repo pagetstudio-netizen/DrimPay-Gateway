@@ -1120,4 +1120,168 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   res.status(201).json({ job: { ...job, successCount, failedCount } });
 });
 
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+router.get("/dashboard/notifications", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [recentTxRows, kybRows, walletRows] = await Promise.all([
+    db.select().from(transactionsTable)
+      .where(and(eq(transactionsTable.userId, userId), sql`${transactionsTable.createdAt} >= ${sevenDaysAgo.toISOString()}`))
+      .orderBy(desc(transactionsTable.createdAt))
+      .limit(50),
+    db.select().from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, userId)).limit(1),
+    db.select().from(walletsTable).where(eq(walletsTable.userId, userId)),
+  ]);
+
+  const notifs: any[] = [];
+  let idCtr = 1;
+
+  const relTime = (d: Date | string) => {
+    const diff = Date.now() - new Date(d).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `Il y a ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `Il y a ${hrs}h`;
+    return `Il y a ${Math.floor(hrs / 24)}j`;
+  };
+
+  const failedTx = recentTxRows.filter(t => t.status === "failed");
+  const successTx = recentTxRows.filter(t => t.status === "success");
+  const pendingTx = recentTxRows.filter(t => t.status === "pending");
+
+  for (const tx of failedTx.slice(0, 3)) {
+    notifs.push({
+      id: idCtr++,
+      type: "error",
+      category: "transaction",
+      title: `Transaction échouée — ${tx.type === "payin" ? "Pay-in" : "Pay-out"}`,
+      body: `Transaction ${tx.reference} de ${parseFloat(String(tx.amount)).toLocaleString("fr-FR")} ${tx.currency} a échoué sur ${tx.countryCode}.`,
+      time: relTime(tx.createdAt),
+      read: false,
+      href: "/dashboard/payments",
+      createdAt: tx.createdAt,
+    });
+  }
+
+  if (successTx.length > 0) {
+    const latest = successTx[0];
+    notifs.push({
+      id: idCtr++,
+      type: "success",
+      category: "transaction",
+      title: `Paiement réussi — ${latest.type === "payin" ? "Pay-in" : "Pay-out"}`,
+      body: `${parseFloat(String(latest.amount)).toLocaleString("fr-FR")} ${latest.currency} reçu via ${latest.countryCode}. Réf: ${latest.reference}.`,
+      time: relTime(latest.createdAt),
+      read: successTx.length <= 1,
+      href: "/dashboard/payments",
+      createdAt: latest.createdAt,
+    });
+  }
+
+  if (successTx.length >= 5) {
+    const totalVol = successTx.reduce((s, t) => s + parseFloat(String(t.amount)), 0);
+    notifs.push({
+      id: idCtr++,
+      type: "info",
+      category: "activite",
+      title: `${successTx.length} transactions réussies cette semaine`,
+      body: `Volume total de ${totalVol.toLocaleString("fr-FR")} XOF traité avec succès ces 7 derniers jours.`,
+      time: "Cette semaine",
+      read: true,
+      href: "/dashboard/payments",
+      createdAt: sevenDaysAgo,
+    });
+  }
+
+  if (pendingTx.length > 0) {
+    notifs.push({
+      id: idCtr++,
+      type: "warning",
+      category: "transaction",
+      title: `${pendingTx.length} transaction(s) en attente`,
+      body: `${pendingTx.length} transaction(s) sont en cours de traitement sur votre compte.`,
+      time: relTime(pendingTx[0].createdAt),
+      read: false,
+      href: "/dashboard/payments",
+      createdAt: pendingTx[0].createdAt,
+    });
+  }
+
+  const kyb = kybRows[0];
+  if (kyb) {
+    if (kyb.status === "approved") {
+      notifs.push({
+        id: idCtr++,
+        type: "success",
+        category: "kyb",
+        title: "Vérification KYB approuvée",
+        body: "Votre dossier KYB a été approuvé. Votre compte Live est maintenant actif.",
+        time: kyb.updatedAt ? relTime(kyb.updatedAt) : "Récemment",
+        read: true,
+        href: "/dashboard/kyb",
+        createdAt: kyb.updatedAt ?? kyb.createdAt,
+      });
+    } else if (kyb.status === "submitted" || kyb.status === "under_review") {
+      notifs.push({
+        id: idCtr++,
+        type: "warning",
+        category: "kyb",
+        title: "KYB en cours d'examen",
+        body: "Votre dossier KYB est entre les mains de notre équipe. Traitement sous 1 à 2 jours ouvrables.",
+        time: kyb.updatedAt ? relTime(kyb.updatedAt) : "Récemment",
+        read: false,
+        href: "/dashboard/kyb",
+        createdAt: kyb.updatedAt ?? kyb.createdAt,
+      });
+    } else if (kyb.status === "rejected") {
+      notifs.push({
+        id: idCtr++,
+        type: "error",
+        category: "kyb",
+        title: "KYB refusé — Action requise",
+        body: "Votre dossier KYB a été refusé. Veuillez soumettre à nouveau avec les documents corrects.",
+        time: kyb.updatedAt ? relTime(kyb.updatedAt) : "Récemment",
+        read: false,
+        href: "/dashboard/kyb",
+        createdAt: kyb.updatedAt ?? kyb.createdAt,
+      });
+    } else {
+      notifs.push({
+        id: idCtr++,
+        type: "info",
+        category: "kyb",
+        title: "Vérification KYB requise",
+        body: "Complétez votre vérification KYB pour débloquer toutes les fonctionnalités de votre compte.",
+        time: "Aujourd'hui",
+        read: false,
+        href: "/dashboard/kyb",
+        createdAt: new Date(),
+      });
+    }
+  }
+
+  const lowBalanceWallets = walletRows.filter(w => parseFloat(String(w.balance)) < 1000 && parseFloat(String(w.balance)) > 0);
+  for (const w of lowBalanceWallets.slice(0, 2)) {
+    notifs.push({
+      id: idCtr++,
+      type: "warning",
+      category: "wallet",
+      title: `Solde faible — Wallet ${w.countryCode}`,
+      body: `Votre wallet ${w.countryCode} affiche un solde de ${parseFloat(String(w.balance)).toLocaleString("fr-FR")} ${w.currency}.`,
+      time: "Aujourd'hui",
+      read: false,
+      href: "/dashboard/wallets",
+      createdAt: new Date(),
+    });
+  }
+
+  notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const unreadCount = notifs.filter(n => !n.read).length;
+  res.json({ notifications: notifs, unreadCount });
+});
+
 export default router;
