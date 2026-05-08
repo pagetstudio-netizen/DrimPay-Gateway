@@ -6,6 +6,7 @@ import { db } from "@workspace/db";
 import { usersTable, apiKeysTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { notifyNewUser, notifyAdminLogin } from "../lib/telegram";
+import { sendWelcomeEmail } from "../lib/mailer";
 
 const router = Router();
 
@@ -62,6 +63,9 @@ router.post("/auth/signup", async (req, res) => {
 
   // Telegram: notify new merchant
   notifyNewUser(user.email, user.companyName, user.country).catch(() => {});
+
+  // Email: welcome message (fire-and-forget)
+  sendWelcomeEmail({ to: user.email, companyName: user.companyName }).catch(() => {});
 
   res.status(201).json({
     id: user.id,

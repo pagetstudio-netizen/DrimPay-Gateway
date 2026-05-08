@@ -21,7 +21,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import { notifyKybSubmitted, notifyReversement, notifyPayin } from "../lib/telegram";
 import { generateContractPdf } from "../lib/contract-pdf";
-import { sendContractEmail } from "../lib/mailer";
+import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import path from "path";
 import fs from "fs";
@@ -844,6 +844,12 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
             merchantName,
             pdfBuffer: pdfBuf,
           }).catch((e) => console.error("[KYB] Email contrat error:", e));
+
+          // 3b) Send KYB processing confirmation email to merchant (fire-and-forget)
+          sendKybProcessingEmail({
+            to: user.email,
+            companyName: (kyb as any).companyLegalName ?? user.companyName,
+          }).catch((e) => console.error("[KYB] Email traitement error:", e));
 
           // 4) WhatsApp notification to DrimPay team (fire-and-forget)
           sendWhatsAppContractNotification({
