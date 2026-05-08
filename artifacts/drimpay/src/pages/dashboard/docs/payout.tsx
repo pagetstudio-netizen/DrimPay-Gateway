@@ -287,6 +287,44 @@ total_debit  = 25 750 XOF  // Montant prélevé sur votre wallet
 beneficiary  = 25 000 XOF  // Montant reçu par le bénéficiaire`} lang="text" />
           </div>
         </section>
+
+        <section className="mb-10">
+          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Pays et opérateurs supportés</h2>
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="grid grid-cols-4 gap-0 px-4 py-2.5 bg-muted/40 border-b border-border text-xs font-semibold text-muted-foreground">
+              <span>Pays</span>
+              <span>Code</span>
+              <span>Opérateurs supportés</span>
+              <span>Remarques</span>
+            </div>
+            {[
+              { flag: "🇹🇬", name: "Togo",          code: "TG", currency: "XOF", operators: ["TMoney", "Moov Money"],                      note: "Mobile Money principal" },
+              { flag: "🇧🇯", name: "Bénin",         code: "BJ", currency: "XOF", operators: ["MTN Mobile Money", "Moov Money"],            note: "Forte adoption mobile" },
+              { flag: "🇨🇲", name: "Cameroun",      code: "CM", currency: "XAF", operators: ["MTN MoMo", "Orange Money"],                  note: "Pays siège DrimPay" },
+              { flag: "🇧🇫", name: "Burkina Faso",  code: "BF", currency: "XOF", operators: ["Orange Money", "Moov Money"],                note: "Paiement mobile dominant" },
+              { flag: "🇲🇱", name: "Mali",          code: "ML", currency: "XOF", operators: ["Orange Money", "Moov Money"],                note: "Zone UEMOA" },
+              { flag: "🇸🇳", name: "Sénégal",       code: "SN", currency: "XOF", operators: ["Orange Money", "Wave"],                      note: "Forte utilisation fintech" },
+              { flag: "🇨🇮", name: "Côte d'Ivoire", code: "CI", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"], note: "Marché très actif" },
+            ].map((c) => (
+              <div key={c.code} className="grid grid-cols-4 gap-0 px-4 py-3 border-b border-border last:border-0 items-center hover:bg-muted/20 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{c.flag}</span>
+                  <span className="text-sm font-medium">{c.name}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono text-primary">{c.code}</code>
+                  <span className="text-xs text-muted-foreground">{c.currency}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {c.operators.map(op => (
+                    <span key={op} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{op}</span>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{c.note}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </DashboardLayout>
   );

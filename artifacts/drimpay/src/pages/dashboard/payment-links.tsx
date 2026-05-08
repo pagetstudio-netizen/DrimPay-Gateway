@@ -15,13 +15,13 @@ import { useToast } from "@/hooks/use-toast";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const CURRENCIES: { label: string; value: string; country: string; countryCode: string; flag: string; operators: string[] }[] = [
-  { label: "XOF — Togo",          value: "XOF-TG", country: "Togo",         countryCode: "TG", flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Togo", "Flooz"] } as any,
-  { label: "XOF — Bénin",         value: "XOF-BJ", country: "Bénin",        countryCode: "BJ", flag: "🇧🇯", currency: "XOF", operators: ["MTN Bénin", "Moov Bénin"] } as any,
-  { label: "XAF — Cameroun",      value: "XAF-CM", country: "Cameroun",     countryCode: "CM", flag: "🇨🇲", currency: "XAF", operators: ["MTN CM", "Orange CM"] } as any,
-  { label: "XOF — Burkina Faso",  value: "XOF-BF", country: "Burkina Faso", countryCode: "BF", flag: "🇧🇫", currency: "XOF", operators: ["Orange BF", "Moov BF"] } as any,
-  { label: "XOF — Mali",          value: "XOF-ML", country: "Mali",         countryCode: "ML", flag: "🇲🇱", currency: "XOF", operators: ["Orange Mali", "Moov Mali"] } as any,
-  { label: "XOF — Sénégal",       value: "XOF-SN", country: "Sénégal",      countryCode: "SN", flag: "🇸🇳", currency: "XOF", operators: ["Orange SN", "Free SN", "Wave"] } as any,
-  { label: "XOF — Côte d'Ivoire", value: "XOF-CI", country: "Côte d'Ivoire",countryCode: "CI", flag: "🇨🇮", currency: "XOF", operators: ["MTN CI", "Orange CI", "Moov Africa CI"] } as any,
+  { label: "XOF — Togo",          value: "XOF-TG", country: "Togo",         countryCode: "TG", flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] } as any,
+  { label: "XOF — Bénin",         value: "XOF-BJ", country: "Bénin",        countryCode: "BJ", flag: "🇧🇯", currency: "XOF", operators: ["MTN Mobile Money", "Moov Money"] } as any,
+  { label: "XAF — Cameroun",      value: "XAF-CM", country: "Cameroun",     countryCode: "CM", flag: "🇨🇲", currency: "XAF", operators: ["MTN MoMo", "Orange Money"] } as any,
+  { label: "XOF — Burkina Faso",  value: "XOF-BF", country: "Burkina Faso", countryCode: "BF", flag: "🇧🇫", currency: "XOF", operators: ["Orange Money", "Moov Money"] } as any,
+  { label: "XOF — Mali",          value: "XOF-ML", country: "Mali",         countryCode: "ML", flag: "🇲🇱", currency: "XOF", operators: ["Orange Money", "Moov Money"] } as any,
+  { label: "XOF — Sénégal",       value: "XOF-SN", country: "Sénégal",      countryCode: "SN", flag: "🇸🇳", currency: "XOF", operators: ["Orange Money", "Wave"] } as any,
+  { label: "XOF — Côte d'Ivoire", value: "XOF-CI", country: "Côte d'Ivoire",countryCode: "CI", flag: "🇨🇮", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"] } as any,
   { label: "GHS — Ghana",         value: "GHS-GH", country: "Ghana",        countryCode: "GH", flag: "🇬🇭", currency: "GHS", operators: ["MTN Ghana", "Vodafone Ghana"] } as any,
   { label: "NGN — Nigeria",       value: "NGN-NG", country: "Nigeria",      countryCode: "NG", flag: "🇳🇬", currency: "NGN", operators: ["MTN Nigeria", "Airtel Nigeria"] } as any,
 ];
