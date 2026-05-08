@@ -1,31 +1,32 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe2, RefreshCw, Plus, Edit2, Trash2, X, Search, ChevronDown, Toggle } from "lucide-react";
+import { Globe2, RefreshCw, Plus, Edit2, Trash2, X, Search, ChevronDown } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 const COUNTRIES = [
-  { code: "BJ", name: "Bénin", flag: "🇧🇯" },
-  { code: "BF", name: "Burkina Faso", flag: "🇧🇫" },
-  { code: "CM", name: "Cameroun", flag: "🇨🇲" },
-  { code: "CD", name: "RD Congo", flag: "🇨🇩" },
-  { code: "CG", name: "Congo", flag: "🇨🇬" },
-  { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮" },
-  { code: "GA", name: "Gabon", flag: "🇬🇦" },
-  { code: "GM", name: "Gambie", flag: "🇬🇲" },
-  { code: "GH", name: "Ghana", flag: "🇬🇭" },
-  { code: "GN", name: "Guinée", flag: "🇬🇳" },
-  { code: "GW", name: "Guinée-Bissau", flag: "🇬🇼" },
-  { code: "KE", name: "Kenya", flag: "🇰🇪" },
-  { code: "ML", name: "Mali", flag: "🇲🇱" },
-  { code: "MR", name: "Mauritanie", flag: "🇲🇷" },
-  { code: "NE", name: "Niger", flag: "🇳🇪" },
-  { code: "NG", name: "Nigeria", flag: "🇳🇬" },
-  { code: "RW", name: "Rwanda", flag: "🇷🇼" },
-  { code: "SN", name: "Sénégal", flag: "🇸🇳" },
-  { code: "TG", name: "Togo", flag: "🇹🇬" },
-  { code: "TZ", name: "Tanzanie", flag: "🇹🇿" },
-  { code: "UG", name: "Ouganda", flag: "🇺🇬" },
+  // 7 DrimPay active markets (pinned first)
+  { code: "TG", name: "Togo",          flag: "🇹🇬", active: true, note: "Mobile Money principal" },
+  { code: "BJ", name: "Bénin",         flag: "🇧🇯", active: true, note: "Forte adoption mobile" },
+  { code: "CM", name: "Cameroun",      flag: "🇨🇲", active: true, note: "Pays siège DrimPay" },
+  { code: "BF", name: "Burkina Faso",  flag: "🇧🇫", active: true, note: "Paiement mobile dominant" },
+  { code: "ML", name: "Mali",          flag: "🇲🇱", active: true, note: "Zone UEMOA" },
+  { code: "SN", name: "Sénégal",       flag: "🇸🇳", active: true, note: "Forte utilisation fintech" },
+  { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", active: true, note: "Marché très actif" },
+  // Other countries (expansion)
+  { code: "CD", name: "RD Congo",       flag: "🇨🇩", active: false, note: "" },
+  { code: "CG", name: "Congo",          flag: "🇨🇬", active: false, note: "" },
+  { code: "GA", name: "Gabon",          flag: "🇬🇦", active: false, note: "" },
+  { code: "GH", name: "Ghana",          flag: "🇬🇭", active: false, note: "" },
+  { code: "GN", name: "Guinée",         flag: "🇬🇳", active: false, note: "" },
+  { code: "KE", name: "Kenya",          flag: "🇰🇪", active: false, note: "" },
+  { code: "NG", name: "Nigeria",        flag: "🇳🇬", active: false, note: "" },
+  { code: "RW", name: "Rwanda",         flag: "🇷🇼", active: false, note: "" },
+  { code: "SL", name: "Sierra Leone",   flag: "🇸🇱", active: false, note: "" },
+  { code: "TZ", name: "Tanzanie",       flag: "🇹🇿", active: false, note: "" },
+  { code: "UG", name: "Ouganda",        flag: "🇺🇬", active: false, note: "" },
 ];
 
 const AGG_COLORS: Record<string, string> = {
@@ -76,7 +77,7 @@ function EditOperatorModal({
 
   const save = async () => {
     setSaving(true);
-    await fetch(`/api/admin/operators/${op.id}`, {
+    await fetch(`${BASE}/api/admin/operators/${op.id}`, {
       method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
@@ -183,7 +184,7 @@ function AddOperatorModal({ aggregators, onClose, onAdd }: { aggregators: Aggreg
   const save = async () => {
     if (!form.name.trim()) { alert("Nom requis"); return; }
     setSaving(true);
-    await fetch("/api/admin/operators", {
+    await fetch(`${BASE}/api/admin/operators`, {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
     });
     onAdd(); onClose();
@@ -259,7 +260,7 @@ export default function AdminOperators() {
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch("/api/admin/operators", { credentials: "include" });
+    const r = await fetch(`${BASE}/api/admin/operators`, { credentials: "include" });
     const d = await r.json();
     setOperators(d?.operators ?? []);
     setOpAggs(d?.operatorAggregators ?? []);
@@ -271,13 +272,13 @@ export default function AdminOperators() {
 
   const deleteOp = async (id: number) => {
     if (!confirm("Supprimer cet opérateur ?")) return;
-    await fetch(`/api/admin/operators/${id}`, { method: "DELETE", credentials: "include" });
+    await fetch(`${BASE}/api/admin/operators/${id}`, { method: "DELETE", credentials: "include" });
     setOperators(ops => ops.filter(o => o.id !== id));
   };
 
   const countryToggle = async (countryCode: string, active: boolean) => {
     setToggling(countryCode);
-    await fetch("/api/admin/operators/country-toggle", {
+    await fetch(`${BASE}/api/admin/operators/country-toggle`, {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ countryCode, active }),
     });
