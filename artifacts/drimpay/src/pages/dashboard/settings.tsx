@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "./layout";
-import { Webhook, Lock, Wifi, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Save } from "lucide-react";
+import { Webhook, Lock, Wifi, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Save, Monitor, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -126,9 +126,41 @@ export default function DashboardSettings() {
     setTimeout(() => setPwStatus("idle"), 3000);
   };
 
+  const [bannerDismissed, setBannerDismissed] = useState(
+    () => localStorage.getItem("settings-desktop-banner") === "1"
+  );
+  const dismissBanner = () => {
+    setBannerDismissed(true);
+    localStorage.setItem("settings-desktop-banner", "1");
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-5">
+
+        {!bannerDismissed && (
+          <div className="relative flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 pr-10">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Monitor className="w-4.5 h-4.5 text-primary" style={{ width: 18, height: 18 }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground leading-tight">
+                Meilleure expérience sur ordinateur
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                Cette page contient de nombreuses configurations. Nous vous recommandons de l'utiliser depuis un <span className="font-medium text-foreground">ordinateur ou une tablette</span> pour une navigation optimale.
+              </p>
+            </div>
+            <button
+              onClick={dismissBanner}
+              className="absolute top-3 right-3 w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         <div>
           <h1 className="text-2xl font-bold">Paramètres</h1>
           <p className="text-muted-foreground text-sm mt-1">Configurez votre compte et vos intégrations.</p>
