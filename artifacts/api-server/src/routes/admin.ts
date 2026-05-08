@@ -9,6 +9,8 @@ import {
 import { eq, and, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import path from "path";
+import fs from "fs";
 
 const router = Router();
 
@@ -472,6 +474,46 @@ router.put("/admin/kyb/:id/review", requireAdmin, async (req: any, res: any) => 
   await db.update(kybSubmissionsTable).set({ status: "under_review" }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "REVIEW_KYB", "kyb", String(id), undefined, req.ip);
   res.json({ ok: true });
+});
+
+const ALLOWED_DOC_FIELDS = [
+  "documentIdFront", "documentIdBack", "documentSelfie",
+  "documentRccm", "documentCertificate", "documentProofAddress",
+  "documentBankStatement", "documentStatuts", "documentLicense", "documentId",
+];
+
+router.get("/admin/kyb/:id/document/:field", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  const { field } = req.params;
+
+  if (!ALLOWED_DOC_FIELDS.includes(field)) {
+    res.status(400).json({ error: "Champ document invalide" });
+    return;
+  }
+
+  const [kyb] = await db.select().from(kybSubmissionsTable).where(eq(kybSubmissionsTable.id, id));
+  if (!kyb) { res.status(404).json({ error: "Dossier KYB introuvable" }); return; }
+
+  const filePath: string | null = (kyb as any)[field] ?? null;
+  if (!filePath) { res.status(404).json({ error: "Document non soumis" }); return; }
+
+  const resolvedPath = path.resolve(filePath);
+  const uploadsRoot = path.resolve(process.cwd(), "uploads");
+
+  if (!resolvedPath.startsWith(uploadsRoot)) {
+    res.status(403).json({ error: "Accès refusé" });
+    return;
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
+    res.status(404).json({ error: "Fichier introuvable sur le serveur" });
+    return;
+  }
+
+  const disposition = req.query.download === "1" ? "attachment" : "inline";
+  const basename = path.basename(resolvedPath);
+  res.setHeader("Content-Disposition", `${disposition}; filename="${basename}"`);
+  res.sendFile(resolvedPath);
 });
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────

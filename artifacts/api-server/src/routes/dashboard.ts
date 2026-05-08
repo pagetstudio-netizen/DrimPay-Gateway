@@ -17,8 +17,26 @@ import { eq, and, desc, sum, count, sql } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
+import path from "path";
+import fs from "fs";
 
-const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const KYB_UPLOADS_DIR = path.join(process.cwd(), "uploads", "kyb");
+if (!fs.existsSync(KYB_UPLOADS_DIR)) fs.mkdirSync(KYB_UPLOADS_DIR, { recursive: true });
+
+const kybStorage = multer.diskStorage({
+  destination: (req: any, _file, cb) => {
+    const userId = req.session?.userId ?? "unknown";
+    const dir = path.join(KYB_UPLOADS_DIR, String(userId));
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${file.fieldname}_${Date.now()}${ext}`);
+  },
+});
+
+const kybUpload = multer({ storage: kybStorage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -729,13 +747,13 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
       ];
       step3DocKeys.forEach((key) => {
         const file = files?.[key]?.[0];
-        if (file) updateValues[key] = file.originalname;
+        if (file) updateValues[key] = file.path;
       });
       // Also capture any step-2 identity docs that arrive in the same multipart
       const step2DocKeys = ["documentIdFront", "documentIdBack", "documentSelfie"];
       step2DocKeys.forEach((key) => {
         const file = files?.[key]?.[0];
-        if (file) updateValues[key] = file.originalname;
+        if (file) updateValues[key] = file.path;
       });
       if (Object.keys(updateValues).length === 0) {
         res.status(400).json({ error: "Aucun document reçu. Veuillez téléverser les documents obligatoires." });
