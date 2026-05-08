@@ -7,7 +7,7 @@ import {
   Building2, Mail, Globe2, BadgeCheck, Copy,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
-import { cn } from "@/lib/utils";
+import { cn, shortId } from "@/lib/utils";
 
 const KYB_COLORS: Record<string, string> = {
   approved: "bg-green-100 text-green-700",
@@ -171,7 +171,7 @@ function MerchantPanel({
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3 bg-gray-50 rounded-xl p-4 text-xs">
               {[
-                ["ID", `#${merchant.id}`],
+                ["ID", shortId(merchant.id)],
                 ["Rôle", promotedRole === "admin" ? "🛡 Administrateur" : "Marchand"],
                 ["KYB", KYB_LABELS[merchant.kybStatus] ?? merchant.kybStatus],
                 ["Volume", `${fmt(merchant.totalVolume)} XOF`],
@@ -501,7 +501,7 @@ export default function AdminMerchants() {
                           </>
                         ) : (
                           <>
-                            <td className="px-4 py-3 text-xs font-mono text-gray-400">#{m.id}</td>
+                            <td className="px-4 py-3 text-xs font-mono text-gray-400">{shortId(m.id)}</td>
                             <td className="px-4 py-3">
                               <p className="font-semibold text-gray-900">{m.companyName}</p>
                               <p className="text-xs text-gray-400">{m.role === "admin" ? "🛡 Admin" : "Marchand"}</p>

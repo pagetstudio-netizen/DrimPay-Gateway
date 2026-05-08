@@ -6,7 +6,7 @@ import {
   Filter, SortAsc, SortDesc, CalendarDays,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
-import { cn } from "@/lib/utils";
+import { cn, shortId } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   approved: "bg-green-100 text-green-700",
@@ -407,7 +407,7 @@ export default function AdminKyb() {
                       onClick={() => setSelected(k)}>
                       <td className="px-4 py-3 text-xs font-mono text-gray-400">#{k.id}</td>
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-gray-900 text-sm">{k.user?.companyName ?? `#${k.userId}`}</p>
+                        <p className="font-semibold text-gray-900 text-sm">{k.user?.companyName ?? shortId(k.userId)}</p>
                         {k.tradeName && <p className="text-xs text-gray-400">{k.tradeName}</p>}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600">

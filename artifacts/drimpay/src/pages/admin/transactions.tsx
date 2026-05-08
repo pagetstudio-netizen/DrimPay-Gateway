@@ -5,7 +5,7 @@ import {
   Download, ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle2, Clock, XCircle, Timer,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
-import { cn } from "@/lib/utils";
+import { cn, shortId } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   success: "bg-green-100 text-green-700",
@@ -72,7 +72,7 @@ function TxDetailModal({ tx, onClose }: { tx: any; onClose: () => void }) {
           <div className="grid grid-cols-2 gap-3">
             {[
               ["Référence", tx.reference],
-              ["Marchand", tx.merchant?.companyName ?? `#${tx.userId}`],
+              ["Marchand", tx.merchant?.companyName ?? shortId(tx.userId)],
               ["Email marchand", tx.merchant?.email ?? "—"],
               ["Pays", tx.countryCode],
               ["Opérateur", tx.operator],
@@ -203,7 +203,7 @@ export default function AdminTransactions() {
                     <tr key={tx.id} className={cn("border-b border-gray-50 hover:bg-gray-50 transition-colors", parseFloat(tx.amount) > 60000 && "bg-red-50/50 hover:bg-red-50")}>
                       <td className="px-4 py-3 font-mono text-xs text-gray-400">#{tx.id}</td>
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-gray-900 text-xs">{tx.merchant?.companyName ?? `#${tx.userId}`}</p>
+                        <p className="font-semibold text-gray-900 text-xs">{tx.merchant?.companyName ?? shortId(tx.userId)}</p>
                         <p className="text-[10px] text-gray-400">{tx.merchant?.email}</p>
                       </td>
                       <td className="px-4 py-3">

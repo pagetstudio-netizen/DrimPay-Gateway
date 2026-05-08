@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FileText, Search, RefreshCw, Eye, Download, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { AdminLayout } from "./layout";
-import { cn } from "@/lib/utils";
+import { cn, shortId } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 function ContractModal({ kyb, onClose }: { kyb: any; onClose: () => void }) {
@@ -9,7 +9,7 @@ function ContractModal({ kyb, onClose }: { kyb: any; onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Contrat — {kyb.user?.companyName ?? `#${kyb.userId}`}</h2>
+          <h2 className="text-lg font-bold text-gray-900">Contrat — {kyb.user?.companyName ?? shortId(kyb.userId)}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-6 space-y-4">
@@ -96,7 +96,7 @@ export default function AdminKybContracts() {
                   {contracts.map(k => (
                     <tr key={k.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-xs font-mono text-gray-400">#{k.id}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900 text-sm">{k.user?.companyName ?? `#${k.userId}`}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-900 text-sm">{k.user?.companyName ?? shortId(k.userId)}</td>
                       <td className="px-4 py-3 text-xs text-gray-600">{k.contractEmail ?? "—"}</td>
                       <td className="px-4 py-3 text-xs font-mono text-gray-600">{k.contractVersion ?? "—"}</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{k.contractSignedAt ? new Date(k.contractSignedAt).toLocaleString("fr-FR") : "—"}</td>

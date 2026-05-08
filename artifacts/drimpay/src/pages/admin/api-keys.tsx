@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { KeyRound, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, Shield, ShieldOff } from "lucide-react";
 import { AdminLayout } from "./layout";
-import { cn } from "@/lib/utils";
+import { cn, shortId } from "@/lib/utils";
 
 export default function AdminApiKeys() {
   const [keys, setKeys] = useState<any[]>([]);
@@ -91,7 +91,7 @@ export default function AdminApiKeys() {
                     <tr key={k.id} className={cn("border-b border-gray-50 hover:bg-gray-50 transition-colors", k.status === "revoked" && "opacity-60")}>
                       <td className="px-4 py-3 text-xs font-mono text-gray-400">#{k.id}</td>
                       <td className="px-4 py-3">
-                        <p className="text-xs font-semibold text-gray-900">{k.merchant?.companyName ?? `#${k.userId}`}</p>
+                        <p className="text-xs font-semibold text-gray-900">{k.merchant?.companyName ?? shortId(k.userId)}</p>
                         <p className="text-[10px] text-gray-400">{k.merchant?.email}</p>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-700 font-medium">{k.name}</td>

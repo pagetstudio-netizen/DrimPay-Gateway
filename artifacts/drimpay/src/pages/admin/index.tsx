@@ -7,6 +7,7 @@ import {
   Activity, Calendar,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
+import { shortId } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 function fmt(n: number, currency = "XOF") {
@@ -245,7 +246,7 @@ export default function AdminDashboard() {
                         : <ArrowUpRight className="w-4 h-4 text-orange-600" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-900 truncate">{tx.merchant?.companyName ?? `User #${tx.userId}`}</p>
+                      <p className="text-xs font-semibold text-gray-900 truncate">{tx.merchant?.companyName ?? shortId(tx.userId)}</p>
                       <p className="text-[11px] text-gray-400 truncate">{tx.operator} · {tx.countryCode}</p>
                     </div>
                     <div className="text-right shrink-0">

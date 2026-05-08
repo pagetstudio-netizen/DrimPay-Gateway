@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Wallet2, RefreshCw, ChevronDown, ChevronRight, Plus, Minus, X } from "lucide-react";
 import { AdminLayout } from "./layout";
-import { cn } from "@/lib/utils";
+import { cn, shortId } from "@/lib/utils";
 
 function fmt(n: number, cur = "XOF") {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${cur}`;
@@ -102,7 +102,7 @@ function CountrySection({ country, onRefresh }: { country: any; onRefresh: () =>
                     {country.wallets.map((w: any) => (
                       <tr key={w.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 text-xs font-mono text-gray-400">#{w.id}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900 text-xs">{w.merchant?.companyName ?? `#${w.userId}`}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900 text-xs">{w.merchant?.companyName ?? shortId(w.userId)}</td>
                         <td className="px-4 py-3 text-xs text-gray-500">{w.merchant?.email ?? "—"}</td>
                         <td className="px-4 py-3 font-bold text-emerald-600 text-xs">{fmt(parseFloat(w.balance), w.currency)}</td>
                         <td className="px-4 py-3 text-xs text-gray-500">{fmt(parseFloat(w.lockedBalance), w.currency)}</td>

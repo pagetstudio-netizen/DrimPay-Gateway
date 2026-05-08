@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link2, Search, RefreshCw, Trash2, Pause, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { AdminLayout } from "./layout";
-import { cn } from "@/lib/utils";
+import { cn, shortId } from "@/lib/utils";
 
 export default function AdminPaymentLinks() {
   const [links, setLinks] = useState<any[]>([]);
@@ -83,7 +83,7 @@ export default function AdminPaymentLinks() {
                     <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs text-gray-400">#{l.id}</td>
                       <td className="px-4 py-3">
-                        <p className="text-xs font-semibold text-gray-900">{l.merchant?.companyName ?? `#${l.userId}`}</p>
+                        <p className="text-xs font-semibold text-gray-900">{l.merchant?.companyName ?? shortId(l.userId)}</p>
                         <p className="text-[10px] text-gray-400">{l.merchant?.email}</p>
                       </td>
                       <td className="px-4 py-3">
