@@ -3,10 +3,11 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight,
-  CreditCard, Radio, Users, Menu, X, ChevronRight, Bell, History, Link2, SendHorizonal
+  CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/ui/notification-bell";
 
 import walletImg    from "@assets/10149443_1778149009900.png";
 import reversImg    from "@assets/6360759_(1)_1778149009839.png";
@@ -206,13 +207,8 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           </button>
           <div className="flex-1" />
           <Link href="/dashboard/notifications">
-            <button className="relative text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-xl hover:bg-muted">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
+            <button className="transition-transform hover:scale-105 active:scale-95">
+              <NotificationBell unreadCount={unreadCount} />
             </button>
           </Link>
           <Link href="/dashboard/profile">
