@@ -160,11 +160,8 @@ function PayHeader({ merchantName, title, description }: { merchantName: string;
 
 function Logo() {
   return (
-    <div className="flex items-center justify-center gap-2 mb-5">
-      <div className="w-9 h-9 rounded-xl bg-[#C5FF4A] flex items-center justify-center shadow-sm">
-        <span className="font-black text-[#111] text-base">D</span>
-      </div>
-      <span className="font-black text-xl text-gray-900 tracking-tight">DrimPay</span>
+    <div className="flex items-center justify-center mb-5">
+      <img src="/logo-drimpay.png" alt="DrimPay" className="h-9 w-auto object-contain" />
     </div>
   );
 }

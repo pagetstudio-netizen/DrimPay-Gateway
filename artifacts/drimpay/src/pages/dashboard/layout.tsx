@@ -200,8 +200,7 @@ function SidebarNav({ onNavigate, location }: { onNavigate: () => void; location
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-        <img src="/logo-round.png" alt="DrimPay" className="h-8 w-8 object-contain rounded-full shrink-0" />
-        <span className="font-bold text-gray-900 text-lg tracking-tight">DrimPay</span>
+        <img src="/logo-drimpay.png" alt="DrimPay" className="h-8 w-auto object-contain shrink-0" />
         <span className={cn(
           "ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide",
           mode === "live"

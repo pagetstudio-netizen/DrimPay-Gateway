@@ -41,12 +41,9 @@ function SidebarContent({ onNavigate, location }: { onNavigate: () => void; loca
   return (
     <div className="flex flex-col h-full bg-white border-r border-gray-100">
       <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-        <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-sm">D</span>
-        </div>
-        <div>
-          <p className="font-bold text-gray-900 text-sm leading-tight">DrimPay</p>
-          <p className="text-[10px] text-emerald-600 font-semibold tracking-wide uppercase">Administration</p>
+        <div className="flex flex-col">
+          <img src="/logo-drimpay.png" alt="DrimPay" className="h-7 w-auto object-contain" />
+          <p className="text-[10px] text-emerald-600 font-semibold tracking-wide uppercase mt-0.5">Administration</p>
         </div>
       </div>
 

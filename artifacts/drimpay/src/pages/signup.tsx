@@ -117,7 +117,7 @@ export default function Signup() {
     <div className="min-h-screen flex" style={{ backgroundColor: "#F8F6F1" }}>
       <div className="hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between p-12 shrink-0" style={{ backgroundColor: "#0f0f0f" }}>
         <Link href="/">
-          <img src="/logo.png" alt="DrimPay" className="h-10 w-auto object-contain" />
+          <img src="/logo-drimpay.png" alt="DrimPay" className="h-10 w-auto object-contain" style={{ filter: "brightness(0) invert(1)" }} />
         </Link>
 
         <div>
@@ -145,7 +145,7 @@ export default function Signup() {
       <div className="flex-1 flex flex-col justify-start lg:justify-center overflow-y-auto px-6 py-12 lg:px-12 xl:px-16">
         <div className="w-full max-w-lg mx-auto lg:mx-0">
           <Link href="/" className="lg:hidden flex items-center gap-2.5 mb-8">
-            <img src="/logo-round.png" alt="DrimPay" className="h-9 w-auto object-contain" />
+            <img src="/logo-drimpay.png" alt="DrimPay" className="h-9 w-auto object-contain" />
           </Link>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Créer un compte</h1>
