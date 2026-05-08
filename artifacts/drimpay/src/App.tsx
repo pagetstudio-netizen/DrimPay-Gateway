@@ -48,6 +48,7 @@ import DocVirtualCards from "@/pages/dashboard/docs/virtual-cards";
 import DocCredits from "@/pages/dashboard/docs/credits";
 import DocMassPayout from "@/pages/dashboard/docs/mass-payout";
 import DashboardPaymentLinks from "@/pages/dashboard/payment-links";
+import DashboardPaymentLinksCreate from "@/pages/dashboard/payment-links-create";
 import DashboardMassPayout from "@/pages/dashboard/mass-payout";
 import PayPage from "@/pages/pay";
 
@@ -259,6 +260,7 @@ function DashboardSwitch() {
       <Route path="/dashboard/docs/credits" component={DocCredits} />
       <Route path="/dashboard/docs/mass-payout" component={DocMassPayout} />
       <Route path="/dashboard/payment-links" component={DashboardPaymentLinks} />
+      <Route path="/dashboard/payment-links/create" component={DashboardPaymentLinksCreate} />
       <Route path="/dashboard/mass-payout" component={DashboardMassPayout} />
       <Route path="/dashboard/notifications" component={DashboardNotifications} />
       <Route path="/dashboard/verify-code" component={DashboardVerifyCode} />
