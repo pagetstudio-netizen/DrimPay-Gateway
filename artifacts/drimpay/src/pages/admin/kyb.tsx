@@ -252,6 +252,19 @@ function KybDetailModal({ kyb, onClose, onRefresh }: { kyb: any; onClose: () => 
               <InfoRow label="Adresse IP" value={kyb.contractIp} mono />
               <InfoRow label="Contrat accepté" value={kyb.contractAccepted ? "✅ Oui — accepté" : "❌ Non"} />
             </div>
+            {(kyb.contractAccepted || kyb.contractSignedAt) ? (
+              <div className="mt-4 pt-3 border-t border-gray-100">
+                <a
+                  href={`${BASE}/api/admin/kyb/${kyb.id}/contract`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                  <Download className="w-4 h-4" /> Télécharger le contrat PDF
+                </a>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-gray-400 italic">Aucun contrat signé — le marchand n'a pas complété l'étape de signature.</p>
+            )}
           </Section>
 
           {/* ── Actions ── */}

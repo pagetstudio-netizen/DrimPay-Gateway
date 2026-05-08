@@ -4,7 +4,15 @@ import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function downloadContract(kybId: number) {
+  window.open(`${BASE}/api/admin/kyb/${kybId}/contract`, "_blank");
+}
+
 function ContractModal({ kyb, onClose }: { kyb: any; onClose: () => void }) {
+  const hasSigned = !!(kyb.contractAccepted || kyb.contractSignedAt);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -28,9 +36,20 @@ function ContractModal({ kyb, onClose }: { kyb: any; onClose: () => void }) {
               </div>
             ))}
           </div>
+
+          {!hasSigned && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs">
+              <FileText className="w-4 h-4 shrink-0" />
+              Ce marchand n'a pas encore signé de contrat — aucun PDF disponible.
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Fermer</button>
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+            <button
+              onClick={() => downloadContract(kyb.id)}
+              disabled={!hasSigned}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
               <Download className="w-4 h-4" /> Télécharger PDF
             </button>
           </div>
@@ -108,8 +127,8 @@ export default function AdminKybContracts() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1.5">
-                          <button onClick={() => setSelected(k)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                          <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"><Download className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setSelected(k)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors" title="Voir les détails"><Eye className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => downloadContract(k.id)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors" title="Télécharger le contrat PDF"><Download className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>

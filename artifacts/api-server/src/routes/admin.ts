@@ -16,6 +16,7 @@ import {
   notifyKybDecision, notifyBlacklist,
   testConnection, detectChatId, invalidateTelegramCache,
 } from "../lib/telegram";
+import { generateContractPdf } from "../lib/contract-pdf";
 
 const router = Router();
 
@@ -541,6 +542,54 @@ router.get("/admin/kyb/:id/document/:field", requireAdmin, async (req: any, res:
   const basename = path.basename(resolvedPath);
   res.setHeader("Content-Disposition", `${disposition}; filename="${basename}"`);
   res.sendFile(resolvedPath);
+});
+
+// ─── CONTRACT PDF DOWNLOAD ────────────────────────────────────────────────────
+router.get("/admin/kyb/:id/contract", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
+
+  const [kyb] = await db
+    .select()
+    .from(kybSubmissionsTable)
+    .where(eq(kybSubmissionsTable.id, id));
+
+  if (!kyb) { res.status(404).json({ error: "Dossier KYB introuvable" }); return; }
+
+  if (!kyb.contractAccepted && !kyb.contractSignedAt) {
+    res.status(404).json({ error: "Ce marchand n'a pas encore signé de contrat." }); return;
+  }
+
+  try {
+    const pdfBuf = await generateContractPdf({
+      companyLegalName:     kyb.companyLegalName     ?? undefined,
+      tradeName:            kyb.tradeName             ?? undefined,
+      businessType:         kyb.businessType          ?? undefined,
+      incorporationCountry: kyb.incorporationCountry  ?? undefined,
+      city:                 kyb.city                  ?? undefined,
+      businessAddress:      kyb.businessAddress       ?? undefined,
+      registrationNumber:   kyb.registrationNumber    ?? undefined,
+      taxNumber:            kyb.taxNumber             ?? undefined,
+      foundingDate:         kyb.foundingDate           ?? undefined,
+      legalRepName:         kyb.legalRepName           ?? undefined,
+      legalRepPosition:     kyb.legalRepPosition       ?? undefined,
+      legalRepNationality:  kyb.legalRepNationality    ?? undefined,
+      contractEmail:        kyb.contractEmail          ?? undefined,
+      contractSignedAt:     kyb.contractSignedAt       ?? undefined,
+    });
+
+    const company = (kyb.companyLegalName ?? kyb.tradeName ?? `kyb-${id}`)
+      .replace(/[^a-zA-Z0-9\-_]/g, "_");
+    const filename = `contrat-drimpay-${company}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", pdfBuf.length);
+    res.send(pdfBuf);
+  } catch (err: any) {
+    console.error("[CONTRACT PDF]", err);
+    res.status(500).json({ error: "Erreur lors de la génération du PDF", details: err?.message });
+  }
 });
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
