@@ -234,10 +234,10 @@ function ModeSwitcher() {
                 >
                   Fermer
                 </button>
-                <Link href="/dashboard/kyb">
+                <Link href="/dashboard/kyb" className="flex-1">
                   <button
                     onClick={cancel}
-                    className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
+                    className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
                   >
                     Aller au KYB
                   </button>
