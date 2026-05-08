@@ -909,9 +909,10 @@ router.patch("/dashboard/settings/password", requireAuth, async (req, res) => {
 const createPaymentLinkSchema = z.object({
   title: z.string().min(1).max(120),
   description: z.string().optional(),
-  countryCode: z.string().length(2),
-  operator: z.string().min(1),
-  currency: z.string().length(3),
+  countryCodes: z.array(z.string().length(2)).min(1).optional(),
+  countryCode: z.string().optional(),
+  operator: z.string().optional(),
+  currency: z.string().length(3).optional(),
   fixedAmount: z.boolean().default(true),
   amount: z.number().positive().optional(),
   maxUses: z.number().int().positive().optional(),
@@ -935,7 +936,21 @@ router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
     return;
   }
   const userId = req.session.userId!;
-  const { title, description, countryCode, operator, currency, fixedAmount, amount, maxUses, expiresInDays } = parsed.data;
+  const { title, description, fixedAmount, amount, maxUses, expiresInDays } = parsed.data;
+
+  // Support both multi-country (countryCodes[]) and legacy single countryCode
+  const COUNTRY_CURRENCY: Record<string, string> = {
+    TG: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", SN: "XOF", CI: "XOF",
+    CM: "XAF", GH: "GHS", NG: "NGN",
+  };
+  const selectedCodes = parsed.data.countryCodes ?? (parsed.data.countryCode ? [parsed.data.countryCode] : []);
+  if (selectedCodes.length === 0) {
+    res.status(400).json({ error: "Au moins un pays doit être sélectionné." });
+    return;
+  }
+  const countryCodeStored = selectedCodes.join(",");
+  const operatorStored = parsed.data.operator ?? "all";
+  const currencyStored = parsed.data.currency ?? COUNTRY_CURRENCY[selectedCodes[0]] ?? "XOF";
 
   const token = crypto.randomBytes(16).toString("hex");
   const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86400_000) : undefined;
@@ -947,9 +962,9 @@ router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
       token,
       title,
       description,
-      countryCode,
-      operator,
-      currency,
+      countryCode: countryCodeStored,
+      operator: operatorStored,
+      currency: currencyStored,
       fixedAmount,
       amount: amount ? String(amount) : null,
       maxUses,
@@ -981,6 +996,24 @@ router.delete("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
 });
 
 // ─── Public: Pay via link ────────────────────────────────────────────────────
+
+// Country → operators mapping for the pay page
+const COUNTRY_OPERATORS: Record<string, { name: string; currency: string }[]> = {
+  TG: [{ name: "TMoney", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
+  BJ: [{ name: "MTN Mobile Money", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
+  CM: [{ name: "MTN MoMo", currency: "XAF" }, { name: "Orange Money", currency: "XAF" }],
+  BF: [{ name: "Orange Money", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
+  ML: [{ name: "Orange Money", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
+  SN: [{ name: "Orange Money", currency: "XOF" }, { name: "Wave", currency: "XOF" }],
+  CI: [{ name: "MTN", currency: "XOF" }, { name: "Orange Money", currency: "XOF" }, { name: "Wave", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
+  GH: [{ name: "MTN Ghana", currency: "GHS" }, { name: "Vodafone Ghana", currency: "GHS" }],
+  NG: [{ name: "MTN Nigeria", currency: "NGN" }, { name: "Airtel Nigeria", currency: "NGN" }],
+};
+
+const COUNTRY_CURRENCY: Record<string, string> = {
+  TG: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", SN: "XOF", CI: "XOF",
+  CM: "XAF", GH: "GHS", NG: "NGN",
+};
 
 router.get("/pay/:token", async (req, res) => {
   const { token } = req.params;
@@ -1018,7 +1051,28 @@ router.get("/pay/:token", async (req, res) => {
 
   const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, link.userId));
 
-  // Fetch operator status for the frontend to render appropriate screens
+  // Parse comma-separated country codes (multi-country support)
+  const isMultiCountry = link.operator === "all" || link.countryCode.includes(",");
+  const countryCodes = link.countryCode.split(",").map(c => c.trim()).filter(Boolean);
+
+  if (isMultiCountry) {
+    // Build countries list with their operators
+    const countries = countryCodes.map(code => ({
+      code,
+      currency: COUNTRY_CURRENCY[code] ?? link.currency,
+      operators: (COUNTRY_OPERATORS[code] ?? []).map(op => op.name),
+    }));
+
+    res.json({
+      ...link,
+      isMultiCountry: true,
+      countries,
+      merchantName: merchant?.companyName ?? "Marchand",
+    });
+    return;
+  }
+
+  // Legacy single-country: fetch operator status
   const [op] = await db
     .select()
     .from(operatorsTable)
@@ -1037,6 +1091,8 @@ router.get("/pay/:token", async (req, res) => {
 
   res.json({
     ...link,
+    isMultiCountry: false,
+    countries: [{ code: link.countryCode, currency: link.currency, operators: [link.operator] }],
     merchantName: merchant?.companyName ?? "Marchand",
     operatorActive,
     operatorMaintenance,
@@ -1045,7 +1101,9 @@ router.get("/pay/:token", async (req, res) => {
 
 router.post("/pay/:token", async (req, res) => {
   const { token } = req.params;
-  const { phone, amount: reqAmount } = req.body as { phone: string; amount: number };
+  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator } = req.body as {
+    phone: string; amount: number; countryCode?: string; operator?: string;
+  };
 
   if (!phone || !reqAmount || reqAmount <= 0) {
     res.status(400).json({ error: "Téléphone et montant requis." }); return;
@@ -1062,10 +1120,34 @@ router.post("/pay/:token", async (req, res) => {
     res.status(410).json({ error: "Nombre d'utilisations maximum atteint." }); return;
   }
 
-  // Check operator availability for payment links
-  const opCheck = await checkOperatorAvailable(link.countryCode, link.operator, "paymentLinks");
-  if (!opCheck.ok) {
-    res.status(opCheck.status).json({ error: opCheck.error }); return;
+  // For multi-country links, use payer's chosen country/operator; else use link's values
+  const isMultiCountry = link.operator === "all" || link.countryCode.includes(",");
+  const allowedCodes = link.countryCode.split(",").map(c => c.trim());
+
+  let effectiveCountry: string;
+  let effectiveOperator: string;
+  let effectiveCurrency: string;
+
+  if (isMultiCountry) {
+    if (!chosenCountry || !chosenOperator) {
+      res.status(400).json({ error: "Veuillez sélectionner un pays et un opérateur." }); return;
+    }
+    if (!allowedCodes.includes(chosenCountry)) {
+      res.status(400).json({ error: "Ce pays n'est pas disponible pour ce lien." }); return;
+    }
+    effectiveCountry = chosenCountry;
+    effectiveOperator = chosenOperator;
+    effectiveCurrency = COUNTRY_CURRENCY[chosenCountry] ?? link.currency;
+  } else {
+    effectiveCountry = link.countryCode;
+    effectiveOperator = link.operator;
+    effectiveCurrency = link.currency;
+
+    // Check operator availability for single-country links
+    const opCheck = await checkOperatorAvailable(effectiveCountry, effectiveOperator, "paymentLinks");
+    if (!opCheck.ok) {
+      res.status(opCheck.status).json({ error: opCheck.error }); return;
+    }
   }
 
   const amount = link.fixedAmount && link.amount ? parseFloat(String(link.amount)) : reqAmount;
@@ -1076,12 +1158,12 @@ router.post("/pay/:token", async (req, res) => {
   let [wallet] = await db
     .select()
     .from(walletsTable)
-    .where(and(eq(walletsTable.userId, link.userId), eq(walletsTable.countryCode, link.countryCode)));
+    .where(and(eq(walletsTable.userId, link.userId), eq(walletsTable.countryCode, effectiveCountry)));
 
   if (!wallet) {
     [wallet] = await db
       .insert(walletsTable)
-      .values({ userId: link.userId, countryCode: link.countryCode, currency: link.currency })
+      .values({ userId: link.userId, countryCode: effectiveCountry, currency: effectiveCurrency })
       .returning();
   }
 
@@ -1094,9 +1176,9 @@ router.post("/pay/:token", async (req, res) => {
     amount: String(amount),
     fee: String(fee),
     netAmount: String(netAmount),
-    currency: link.currency,
-    countryCode: link.countryCode,
-    operator: link.operator,
+    currency: effectiveCurrency,
+    countryCode: effectiveCountry,
+    operator: effectiveOperator,
     phone,
     description: `Payment link: ${link.title}`,
   });
@@ -1109,7 +1191,7 @@ router.post("/pay/:token", async (req, res) => {
     .set({ uses: sql`${paymentLinksTable.uses} + 1` })
     .where(eq(paymentLinksTable.id, link.id));
 
-  res.status(201).json({ reference, amount, fee, netAmount, currency: link.currency });
+  res.status(201).json({ reference, amount, fee, netAmount, currency: effectiveCurrency });
 });
 
 // ─── Mass Payout ─────────────────────────────────────────────────────────────

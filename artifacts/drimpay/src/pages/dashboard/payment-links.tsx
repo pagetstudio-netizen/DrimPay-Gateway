@@ -2,28 +2,27 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, SlidersHorizontal, Plus, Copy, Check, Trash2, ExternalLink, X,
-  CheckCircle2, Clock, XCircle, ChevronDown, ChevronUp, Mail, Upload,
-  Link2, Share2, Eye, EyeOff, QrCode, MoreVertical
+  CheckCircle2, Clock, XCircle, ChevronDown, ChevronUp, Mail,
+  Link2, Share2, EyeOff, MoreVertical
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const CURRENCIES: { label: string; value: string; country: string; countryCode: string; flag: string; operators: string[] }[] = [
-  { label: "XOF — Togo",          value: "XOF-TG", country: "Togo",         countryCode: "TG", flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] } as any,
-  { label: "XOF — Bénin",         value: "XOF-BJ", country: "Bénin",        countryCode: "BJ", flag: "🇧🇯", currency: "XOF", operators: ["MTN Mobile Money", "Moov Money"] } as any,
-  { label: "XAF — Cameroun",      value: "XAF-CM", country: "Cameroun",     countryCode: "CM", flag: "🇨🇲", currency: "XAF", operators: ["MTN MoMo", "Orange Money"] } as any,
-  { label: "XOF — Burkina Faso",  value: "XOF-BF", country: "Burkina Faso", countryCode: "BF", flag: "🇧🇫", currency: "XOF", operators: ["Orange Money", "Moov Money"] } as any,
-  { label: "XOF — Mali",          value: "XOF-ML", country: "Mali",         countryCode: "ML", flag: "🇲🇱", currency: "XOF", operators: ["Orange Money", "Moov Money"] } as any,
-  { label: "XOF — Sénégal",       value: "XOF-SN", country: "Sénégal",      countryCode: "SN", flag: "🇸🇳", currency: "XOF", operators: ["Orange Money", "Wave"] } as any,
-  { label: "XOF — Côte d'Ivoire", value: "XOF-CI", country: "Côte d'Ivoire",countryCode: "CI", flag: "🇨🇮", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"] } as any,
-  { label: "GHS — Ghana",         value: "GHS-GH", country: "Ghana",        countryCode: "GH", flag: "🇬🇭", currency: "GHS", operators: ["MTN Ghana", "Vodafone Ghana"] } as any,
-  { label: "NGN — Nigeria",       value: "NGN-NG", country: "Nigeria",      countryCode: "NG", flag: "🇳🇬", currency: "NGN", operators: ["MTN Nigeria", "Airtel Nigeria"] } as any,
+const COUNTRIES = [
+  { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] },
+  { code: "BJ", name: "Bénin",         flag: "🇧🇯", currency: "XOF", operators: ["MTN Mobile Money", "Moov Money"] },
+  { code: "CM", name: "Cameroun",      flag: "🇨🇲", currency: "XAF", operators: ["MTN MoMo", "Orange Money"] },
+  { code: "BF", name: "Burkina Faso",  flag: "🇧🇫", currency: "XOF", operators: ["Orange Money", "Moov Money"] },
+  { code: "ML", name: "Mali",          flag: "🇲🇱", currency: "XOF", operators: ["Orange Money", "Moov Money"] },
+  { code: "SN", name: "Sénégal",       flag: "🇸🇳", currency: "XOF", operators: ["Orange Money", "Wave"] },
+  { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"] },
+  { code: "GH", name: "Ghana",         flag: "🇬🇭", currency: "GHS", operators: ["MTN Ghana", "Vodafone Ghana"] },
+  { code: "NG", name: "Nigeria",       flag: "🇳🇬", currency: "NGN", operators: ["MTN Nigeria", "Airtel Nigeria"] },
 ];
 
 type PaymentLink = {
@@ -74,8 +73,7 @@ function StatusBadge({ status }: { status: string }) {
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (link: PaymentLink) => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [currencyKey, setCurrencyKey] = useState("");
-  const [operator, setOperator] = useState("");
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [fixedAmount, setFixedAmount] = useState(false);
   const [amount, setAmount] = useState("");
   const [title, setTitle] = useState("");
@@ -86,23 +84,36 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   const [redirectAfterPayment, setRedirectAfterPayment] = useState(false);
   const [collectBilling, setCollectBilling] = useState(false);
   const [displayShare, setDisplayShare] = useState(true);
-  const [multiCurrency, setMultiCurrency] = useState(false);
   const [paymentLimit, setPaymentLimit] = useState(false);
   const [maxUses, setMaxUses] = useState("");
   const [emails, setEmails] = useState([""]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const selected = CURRENCIES.find(c => c.value === currencyKey) as any;
+  const allSelected = selectedCodes.length === COUNTRIES.length;
+
+  const toggleCountry = (code: string) => {
+    setSelectedCodes(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    );
+  };
+
+  const toggleAll = () => {
+    setSelectedCodes(allSelected ? [] : COUNTRIES.map(c => c.code));
+  };
 
   const addEmail = () => setEmails(e => [...e, ""]);
   const setEmail = (i: number, v: string) => setEmails(e => e.map((x, j) => j === i ? v : x));
   const removeEmail = (i: number) => setEmails(e => e.filter((_, j) => j !== i));
 
+  // Determine which currencies are covered by the selection
+  const selectedCountries = COUNTRIES.filter(c => selectedCodes.includes(c.code));
+  const currencies = [...new Set(selectedCountries.map(c => c.currency))];
+  const firstCurrency = selectedCountries[0]?.currency ?? "XOF";
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currencyKey) { setError("Veuillez sélectionner une devise."); return; }
-    if (!operator) { setError("Veuillez sélectionner un opérateur."); return; }
+    if (selectedCodes.length === 0) { setError("Veuillez sélectionner au moins un pays."); return; }
     if (!title.trim()) { setError("Le titre est requis."); return; }
     setError("");
     setLoading(true);
@@ -110,9 +121,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
       const body = {
         title: title.trim(),
         description: description.trim() || undefined,
-        countryCode: selected.countryCode,
-        operator,
-        currency: selected.currency,
+        countryCodes: selectedCodes,
         fixedAmount,
         amount: fixedAmount && amount ? parseFloat(amount) : undefined,
         maxUses: paymentLimit && maxUses ? parseInt(maxUses) : undefined,
@@ -145,7 +154,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border shrink-0">
           <h2 className="text-base font-semibold">Ajouter un lien de paiement</h2>
           <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
-            <X className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} />
+            <X style={{ width: 18, height: 18 }} />
           </button>
         </div>
 
@@ -170,46 +179,72 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               />
             </div>
 
-            {/* Currency */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">
-                Devise <span className="text-red-500">*</span>
-              </label>
-              <Select value={currencyKey} onValueChange={v => { setCurrencyKey(v); setOperator(""); }}>
-                <SelectTrigger className="bg-muted/30 border-border">
-                  <SelectValue placeholder="Sélectionner une devise" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map(c => (
-                    <SelectItem key={c.value} value={c.value}>
-                      <span className="flex items-center gap-2">
-                        <span>{(c as any).flag}</span>
-                        <span>{c.label}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Operator (shown when currency selected) */}
-            {selected && (
-              <div className="space-y-1.5">
+            {/* Countries multi-select */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">
-                  Opérateur <span className="text-red-500">*</span>
+                  Pays de collecte <span className="text-red-500">*</span>
                 </label>
-                <Select value={operator} onValueChange={setOperator}>
-                  <SelectTrigger className="bg-muted/30 border-border">
-                    <SelectValue placeholder="Choisir un opérateur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(selected.operators as string[]).map(op => (
-                      <SelectItem key={op} value={op}>{op}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all",
+                    allSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted/40 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {allSelected ? (
+                    <><CheckCircle2 className="w-3.5 h-3.5" /> Tout désélectionner</>
+                  ) : (
+                    <><CheckCircle2 className="w-3.5 h-3.5" /> Tout sélectionner</>
+                  )}
+                </button>
               </div>
-            )}
+
+              <div className="grid grid-cols-3 gap-2">
+                {COUNTRIES.map(country => {
+                  const active = selectedCodes.includes(country.code);
+                  return (
+                    <button
+                      key={country.code}
+                      type="button"
+                      onClick={() => toggleCountry(country.code)}
+                      className={cn(
+                        "relative flex flex-col items-center gap-1 px-2 py-3 rounded-xl border-2 transition-all text-center",
+                        active
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border bg-muted/20 text-muted-foreground hover:border-primary/40 hover:bg-muted/40"
+                      )}
+                    >
+                      {active && (
+                        <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                        </div>
+                      )}
+                      <span className="text-2xl leading-none">{country.flag}</span>
+                      <span className="text-[11px] font-semibold leading-tight">{country.name}</span>
+                      <span className="text-[10px] opacity-60">{country.currency}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedCodes.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-muted-foreground bg-muted/30 rounded-xl px-3 py-2 border border-border"
+                >
+                  <span className="font-semibold text-foreground">{selectedCodes.length} pays sélectionné{selectedCodes.length > 1 ? "s" : ""}</span>
+                  {" · "}
+                  Devises : {currencies.join(", ")}
+                  {" · "}
+                  Le payeur choisira son pays et son opérateur au moment du paiement.
+                </motion.div>
+              )}
+            </div>
 
             {/* Fixed Amount toggle */}
             <div className="flex items-center justify-between">
@@ -217,15 +252,27 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               <Toggle checked={fixedAmount} onChange={setFixedAmount} />
             </div>
 
-            {fixedAmount && selected && (
+            {fixedAmount && selectedCodes.length > 0 && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-1.5">
-                <label className="text-sm font-medium">Montant ({(selected as any).currency})</label>
+                <label className="text-sm font-medium">
+                  Montant
+                  {currencies.length > 1 && (
+                    <span className="ml-1.5 text-xs text-amber-500 font-normal">
+                      (affiché dans la devise du pays choisi par le payeur)
+                    </span>
+                  )}
+                  {currencies.length === 1 && (
+                    <span className="ml-1.5 text-xs text-muted-foreground font-normal">({firstCurrency})</span>
+                  )}
+                </label>
                 <div className="relative">
                   <Input
                     type="number" min="1" step="1" value={amount} onChange={e => setAmount(e.target.value)}
-                    placeholder="5000" className="pr-12 bg-muted/30 border-border" required={fixedAmount}
+                    placeholder="5000" className="pr-16 bg-muted/30 border-border" required={fixedAmount}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">{(selected as any).currency}</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">
+                    {currencies.length === 1 ? firstCurrency : "MULTI"}
+                  </span>
                 </div>
               </motion.div>
             )}
@@ -234,7 +281,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">
                 Image de la page de paiement
-                <span className="ml-1 text-xs font-normal">(Optionnel — svg, jpeg, png, webp, gif, ico)</span>
+                <span className="ml-1 text-xs font-normal">(Optionnel)</span>
               </label>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => fileRef.current?.click()}
@@ -284,19 +331,16 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
                     className="overflow-hidden"
                   >
                     <div className="px-4 pb-4 pt-2 space-y-4 border-t border-border">
-                      {/* Confirmation message */}
                       <div className="space-y-1.5">
                         <label className="text-sm text-muted-foreground">Message de confirmation de paiement</label>
                         <Input value={confirmMsg} onChange={e => setConfirmMsg(e.target.value)}
                           placeholder="ex : Paiement réussi" className="bg-muted/30 border-border" />
                       </div>
 
-                      {/* Toggles */}
                       {[
                         { label: "Redirection après paiement vers un site web", value: redirectAfterPayment, set: setRedirectAfterPayment },
                         { label: "Collecter l'adresse de facturation", value: collectBilling, set: setCollectBilling },
                         { label: "Afficher le bouton de partage", value: displayShare, set: setDisplayShare },
-                        { label: "Autoriser le paiement en plusieurs devises", value: multiCurrency, set: setMultiCurrency },
                       ].map(({ label, value, set }) => (
                         <div key={label} className="flex items-start justify-between gap-3">
                           <span className="text-sm text-muted-foreground leading-snug">{label}</span>
@@ -304,10 +348,9 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
                         </div>
                       ))}
 
-                      {/* Payment Limit toggle */}
                       <div className="flex items-start justify-between gap-3">
                         <span className="text-sm text-muted-foreground leading-snug">
-                          Limite de paiement — Nombre maximum de fois que ce lien peut être utilisé
+                          Limite de paiement — Nombre maximum d'utilisations
                         </span>
                         <Toggle checked={paymentLimit} onChange={setPaymentLimit} />
                       </div>
@@ -410,7 +453,18 @@ function LinkCard({ link, payUrl, onDeactivate, onDelete }: {
                 ? `${parseFloat(link.amount).toLocaleString("fr-FR")} ${link.currency}`
                 : "Montant libre"}
             </span>
-            <span>{link.countryCode} · {link.operator}</span>
+            <span>
+              {link.operator === "all" || link.countryCode.includes(",")
+                ? (() => {
+                    const codes = link.countryCode.split(",").map(c => c.trim());
+                    const flags: Record<string, string> = { TG:"🇹🇬", BJ:"🇧🇯", CM:"🇨🇲", BF:"🇧🇫", ML:"🇲🇱", SN:"🇸🇳", CI:"🇨🇮", GH:"🇬🇭", NG:"🇳🇬" };
+                    return codes.length <= 4
+                      ? codes.map(c => flags[c] ?? c).join(" ")
+                      : `${codes.slice(0, 3).map(c => flags[c] ?? c).join(" ")} +${codes.length - 3}`;
+                  })()
+                : `${link.countryCode} · ${link.operator}`
+              }
+            </span>
             <span>{link.uses} utilisation{link.uses !== 1 ? "s" : ""}{link.maxUses ? ` / ${link.maxUses}` : ""}</span>
             <span>{new Date(link.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}</span>
           </div>
