@@ -5,7 +5,7 @@ export type Mode = "sandbox" | "live";
 type ModeState = {
   mode: Mode;
   loading: boolean;
-  setMode: (m: Mode) => Promise<void>;
+  setMode: (m: Mode) => Promise<{ error?: string }>;
 };
 
 const ModeContext = createContext<ModeState | null>(null);
@@ -24,14 +24,19 @@ export function ModeProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const setMode = useCallback(async (m: Mode) => {
+  const setMode = useCallback(async (m: Mode): Promise<{ error?: string }> => {
     const r = await fetch(`${BASE}/api/dashboard/mode`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: m }),
     });
-    if (r.ok) setModeState(m);
+    if (r.ok) {
+      setModeState(m);
+      return {};
+    }
+    const d = await r.json().catch(() => ({}));
+    return { error: (d as any).error ?? "Erreur" };
   }, []);
 
   return (

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight,
   CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal,
-  FlaskConical, Zap, AlertTriangle
+  FlaskConical, Zap, AlertTriangle, ShieldX
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
@@ -67,26 +67,32 @@ function ModeSwitcher() {
   const { mode, setMode } = useMode();
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState<"live" | "sandbox" | null>(null);
+  const [kybBlocked, setKybBlocked] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   const handleClick = (target: "live" | "sandbox") => {
     if (target === mode) return;
-    if (target === "live") {
-      setPending("live");
-      setConfirming(true);
-    } else {
-      setPending("sandbox");
-      setConfirming(true);
-    }
+    setPending(target);
+    setConfirming(true);
   };
 
   const confirm = async () => {
-    if (pending) await setMode(pending);
+    if (!pending) return;
+    setSwitching(true);
+    const result = await setMode(pending);
+    setSwitching(false);
+    if (result.error === "KYB_NOT_APPROVED") {
+      setConfirming(false);
+      setKybBlocked(true);
+      return;
+    }
     setConfirming(false);
     setPending(null);
   };
 
   const cancel = () => {
     setConfirming(false);
+    setKybBlocked(false);
     setPending(null);
   };
 
@@ -164,21 +170,75 @@ function ModeSwitcher() {
               <div className="flex gap-2">
                 <button
                   onClick={cancel}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  disabled={switching}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Annuler
                 </button>
                 <button
                   onClick={confirm}
+                  disabled={switching}
                   className={cn(
-                    "flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors",
+                    "flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-60",
                     pending === "live"
                       ? "bg-emerald-500 hover:bg-emerald-600 text-white"
                       : "bg-amber-400 hover:bg-amber-500 text-amber-900"
                   )}
                 >
-                  Confirmer
+                  {switching ? "..." : "Confirmer"}
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* KYB blocked dialog */}
+      <AnimatePresence>
+        {kybBlocked && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={cancel}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              transition={{ type: "spring", stiffness: 340, damping: 28 }}
+              className="relative bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <ShieldX className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-base font-bold text-gray-900 text-center mb-2">
+                Compte non approuvé
+              </h3>
+              <p className="text-sm text-gray-500 text-center leading-relaxed mb-5">
+                Le mode Live est réservé aux comptes dont le dossier KYB a été <strong className="text-gray-700">validé et approuvé</strong> par notre équipe.
+              </p>
+              <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mb-5 text-xs text-blue-800">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
+                <span>Complétez votre vérification KYB et attendez la validation (24–72h). Une fois approuvé, vous pourrez activer le mode Live.</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={cancel}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Fermer
+                </button>
+                <Link href="/dashboard/kyb">
+                  <button
+                    onClick={cancel}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
+                  >
+                    Aller au KYB
+                  </button>
+                </Link>
               </div>
             </motion.div>
           </div>

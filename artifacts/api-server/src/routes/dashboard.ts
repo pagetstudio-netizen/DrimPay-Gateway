@@ -60,11 +60,22 @@ router.get("/dashboard/mode", requireAuth, (req, res) => {
   res.json({ mode: req.session.mode });
 });
 
-router.post("/dashboard/mode", requireAuth, (req, res) => {
+router.post("/dashboard/mode", requireAuth, async (req, res) => {
   const { mode } = req.body as { mode?: string };
   if (mode !== "sandbox" && mode !== "live") {
     res.status(400).json({ error: "Mode invalide. Valeurs acceptées : sandbox, live." });
     return;
+  }
+  if (mode === "live") {
+    const userId = req.session.userId!;
+    const [kyb] = await db
+      .select({ status: kybSubmissionsTable.status })
+      .from(kybSubmissionsTable)
+      .where(eq(kybSubmissionsTable.userId, userId));
+    if (!kyb || kyb.status !== "approved") {
+      res.status(403).json({ error: "KYB_NOT_APPROVED" });
+      return;
+    }
   }
   req.session.mode = mode;
   res.json({ mode });
