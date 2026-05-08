@@ -10,6 +10,8 @@ import {
   reversementsTable,
   paymentLinksTable,
   massPayoutJobsTable,
+  operatorsTable,
+  operatorAggregatorsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -26,6 +28,55 @@ function requireAuth(req: any, res: any, next: any) {
     return;
   }
   next();
+}
+
+// ── Operator availability check ───────────────────────────────────────────────
+type BlockKind = "deposits" | "withdrawals" | "api" | "paymentLinks";
+
+async function checkOperatorAvailable(
+  countryCode: string,
+  operatorName: string,
+  blockKind: BlockKind,
+): Promise<{ ok: false; error: string; status: number } | { ok: true }> {
+  const [op] = await db
+    .select()
+    .from(operatorsTable)
+    .where(and(eq(operatorsTable.countryCode, countryCode), eq(operatorsTable.name, operatorName)));
+
+  if (!op || !op.active) {
+    return { ok: false, status: 503, error: "Opérateur indisponible pour le moment." };
+  }
+
+  const [opAgg] = await db
+    .select()
+    .from(operatorAggregatorsTable)
+    .where(and(
+      eq(operatorAggregatorsTable.countryCode, countryCode),
+      eq(operatorAggregatorsTable.operatorName, operatorName),
+    ));
+
+  if (opAgg) {
+    if (opAgg.maintenanceMode) {
+      return { ok: false, status: 503, error: "Cet opérateur est actuellement en maintenance. Veuillez réessayer plus tard." };
+    }
+    if (!opAgg.active) {
+      return { ok: false, status: 503, error: "Opérateur indisponible pour le moment." };
+    }
+    if (blockKind === "deposits" && opAgg.blockDeposits) {
+      return { ok: false, status: 503, error: "Les dépôts sont temporairement bloqués pour cet opérateur." };
+    }
+    if (blockKind === "withdrawals" && opAgg.blockWithdrawals) {
+      return { ok: false, status: 503, error: "Les retraits sont temporairement bloqués pour cet opérateur." };
+    }
+    if (blockKind === "api" && opAgg.blockApi) {
+      return { ok: false, status: 503, error: "Les paiements API sont temporairement bloqués pour cet opérateur." };
+    }
+    if (blockKind === "paymentLinks" && opAgg.blockPaymentLinks) {
+      return { ok: false, status: 503, error: "Les liens de paiement sont temporairement bloqués pour cet opérateur." };
+    }
+  }
+
+  return { ok: true };
 }
 
 const COUNTRIES = [
@@ -288,6 +339,13 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
 
+  // Check operator availability
+  const opCheck = await checkOperatorAvailable(countryCode, operator, "deposits");
+  if (!opCheck.ok) {
+    res.status(opCheck.status).json({ error: opCheck.error });
+    return;
+  }
+
   let [wallet] = await db
     .select()
     .from(walletsTable)
@@ -351,6 +409,13 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
 
   const userId = req.session.userId!;
   const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
+
+  // Check operator availability
+  const opCheck = await checkOperatorAvailable(countryCode, operator, "withdrawals");
+  if (!opCheck.ok) {
+    res.status(opCheck.status).json({ error: opCheck.error });
+    return;
+  }
 
   const [wallet] = await db
     .select()
@@ -952,7 +1017,30 @@ router.get("/pay/:token", async (req, res) => {
   }
 
   const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, link.userId));
-  res.json({ ...link, merchantName: merchant?.companyName ?? "Marchand" });
+
+  // Fetch operator status for the frontend to render appropriate screens
+  const [op] = await db
+    .select()
+    .from(operatorsTable)
+    .where(and(eq(operatorsTable.countryCode, link.countryCode), eq(operatorsTable.name, link.operator)));
+
+  const [opAgg] = await db
+    .select()
+    .from(operatorAggregatorsTable)
+    .where(and(
+      eq(operatorAggregatorsTable.countryCode, link.countryCode),
+      eq(operatorAggregatorsTable.operatorName, link.operator),
+    ));
+
+  const operatorActive = !!(op && op.active && (!opAgg || (opAgg.active && !opAgg.blockPaymentLinks)));
+  const operatorMaintenance = !!(op && op.active && opAgg?.maintenanceMode);
+
+  res.json({
+    ...link,
+    merchantName: merchant?.companyName ?? "Marchand",
+    operatorActive,
+    operatorMaintenance,
+  });
 });
 
 router.post("/pay/:token", async (req, res) => {
@@ -972,6 +1060,12 @@ router.post("/pay/:token", async (req, res) => {
   }
   if (link.maxUses && link.uses >= link.maxUses) {
     res.status(410).json({ error: "Nombre d'utilisations maximum atteint." }); return;
+  }
+
+  // Check operator availability for payment links
+  const opCheck = await checkOperatorAvailable(link.countryCode, link.operator, "paymentLinks");
+  if (!opCheck.ok) {
+    res.status(opCheck.status).json({ error: opCheck.error }); return;
   }
 
   const amount = link.fixedAmount && link.amount ? parseFloat(String(link.amount)) : reqAmount;

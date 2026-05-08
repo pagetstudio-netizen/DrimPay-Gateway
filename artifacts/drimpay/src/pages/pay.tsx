@@ -3,7 +3,7 @@ import { useRoute, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, CheckCircle2, XCircle, Clock, ArrowLeft,
-  Smartphone, AlertTriangle, Lock
+  Smartphone, AlertTriangle, Lock, WrenchIcon, BanIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ type LinkData = {
   fixedAmount: boolean;
   merchantName: string;
   status: "active" | "inactive" | "expired";
+  operatorActive?: boolean;
+  operatorMaintenance?: boolean;
 };
 
 type Step = "form" | "confirm" | "processing" | "success" | "error";
@@ -116,6 +118,102 @@ export default function PayPage() {
           <h1 className="text-xl font-bold mb-2">Lien {link?.status === "expired" ? "expiré" : "désactivé"}</h1>
           <p className="text-muted-foreground text-sm">Ce lien de paiement n'est plus disponible.</p>
         </div>
+      </div>
+    );
+  }
+
+  // Operator maintenance screen
+  if (link?.operatorMaintenance) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md text-center"
+        >
+          <div className="bg-card border border-border rounded-3xl shadow-xl p-10">
+            {/* Animated gears / wrench */}
+            <div className="w-24 h-24 rounded-full bg-amber-500/10 border-2 border-amber-400/30 flex items-center justify-center mx-auto mb-6 relative">
+              <WrenchIcon className="w-10 h-10 text-amber-400" />
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center">
+                <span className="text-black text-xs font-bold">!</span>
+              </span>
+            </div>
+
+            <div className="inline-flex items-center gap-2 mb-5">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+                <span className="text-black font-bold text-xs">D</span>
+              </div>
+              <span className="font-bold text-base tracking-tight">DrimPay</span>
+            </div>
+
+            <h1 className="text-2xl font-extrabold mb-3 text-foreground">
+              Maintenance en cours
+            </h1>
+            <p className="text-muted-foreground text-sm mb-2">
+              L'opérateur <span className="font-semibold text-foreground">{link.operator}</span>{" "}
+              {COUNTRY_FLAGS[link.countryCode]} est temporairement indisponible.
+            </p>
+            <p className="text-muted-foreground text-xs mb-8">
+              Nos équipes travaillent pour rétablir le service dans les meilleurs délais. Veuillez réessayer ultérieurement.
+            </p>
+
+            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3 mb-6">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+              <p className="text-xs text-amber-300 text-left">
+                Les paiements reprendront dès la fin de la maintenance.
+              </p>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Propulsé par{" "}
+              <span className="font-semibold text-foreground">DrimPay</span>{" "}
+              · Infrastructure de paiement sécurisée
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Operator unavailable screen (deactivated)
+  if (link && link.operatorActive === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md text-center"
+        >
+          <div className="bg-card border border-border rounded-3xl shadow-xl p-10">
+            <div className="w-24 h-24 rounded-full bg-red-500/10 border-2 border-red-400/30 flex items-center justify-center mx-auto mb-6">
+              <BanIcon className="w-10 h-10 text-red-400" />
+            </div>
+
+            <div className="inline-flex items-center gap-2 mb-5">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+                <span className="text-black font-bold text-xs">D</span>
+              </div>
+              <span className="font-bold text-base tracking-tight">DrimPay</span>
+            </div>
+
+            <h1 className="text-2xl font-extrabold mb-3 text-foreground">
+              Opérateur indisponible
+            </h1>
+            <p className="text-muted-foreground text-sm mb-8">
+              L'opérateur <span className="font-semibold text-foreground">{link.operator}</span>{" "}
+              {COUNTRY_FLAGS[link.countryCode]} n'est pas disponible pour le moment.
+              <br />
+              <span className="text-xs mt-1 block">Contactez le marchand pour un autre moyen de paiement.</span>
+            </p>
+
+            <p className="text-xs text-muted-foreground">
+              Propulsé par{" "}
+              <span className="font-semibold text-foreground">DrimPay</span>{" "}
+              · Infrastructure de paiement sécurisée
+            </p>
+          </div>
+        </motion.div>
       </div>
     );
   }
