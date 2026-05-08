@@ -18,6 +18,7 @@ import { eq, and, desc, sum, count, sql } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
+import { notifyKybSubmitted, notifyReversement, notifyPayin } from "../lib/telegram";
 import path from "path";
 import fs from "fs";
 
@@ -796,6 +797,22 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         .returning();
     }
 
+    // Telegram: notify KYB submitted (only on final step)
+    if (stepNum === 4 && (kyb.status === "submitted")) {
+      try {
+        const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country })
+          .from(usersTable).where(eq(usersTable.id, userId));
+        if (user) {
+          notifyKybSubmitted({
+            company: (kyb as any).companyLegalName ?? user.companyName,
+            email: user.email,
+            country: user.country,
+            id: kyb.id,
+          }).catch(() => {});
+        }
+      } catch {}
+    }
+
     res.status(201).json(kyb);
   } catch (err: any) {
     console.error("[KYB POST error]", err);
@@ -882,6 +899,20 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
       status: currentMode === "sandbox" ? "completed" : "pending",
     })
     .returning();
+
+  // Telegram: notify withdrawal request
+  try {
+    const [user] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+    notifyReversement({
+      company: user?.companyName ?? "?",
+      amount,
+      currency: countryMeta.currency,
+      operator,
+      phone,
+      country: countryCode,
+      mode: currentMode,
+    }).catch(() => {});
+  } catch {}
 
   res.status(201).json({ ...reversement, _sandbox: currentMode === "sandbox" });
 });
@@ -1241,6 +1272,25 @@ router.post("/pay/:token", async (req, res) => {
   await db.update(paymentLinksTable)
     .set({ uses: sql`${paymentLinksTable.uses} + 1` })
     .where(eq(paymentLinksTable.id, link.id));
+
+  // Telegram: notify payment received via link
+  try {
+    const [merchant] = await db.select({ companyName: usersTable.companyName })
+      .from(usersTable).where(eq(usersTable.id, link.userId));
+    notifyPayin({
+      company: merchant?.companyName ?? "?",
+      amount,
+      fee,
+      net: netAmount,
+      currency: effectiveCurrency,
+      operator: effectiveOperator,
+      phone,
+      country: effectiveCountry,
+      reference,
+      mode: "live",
+      source: "link",
+    }).catch(() => {});
+  } catch {}
 
   res.status(201).json({ reference, amount, fee, netAmount, currency: effectiveCurrency });
 });

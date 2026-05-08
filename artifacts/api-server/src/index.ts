@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { notifyStartup, startDailyReport, startPolling } from "./lib/telegram";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,11 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Telegram bot: startup notification + command polling + daily report
+  setTimeout(() => {
+    notifyStartup().catch(() => {});
+    startPolling();
+    startDailyReport();
+  }, 3_000);
 });

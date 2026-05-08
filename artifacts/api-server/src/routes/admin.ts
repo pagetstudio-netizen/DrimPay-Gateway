@@ -12,6 +12,10 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import path from "path";
 import fs from "fs";
+import {
+  notifyKybDecision, notifyBlacklist,
+  testConnection, detectChatId, invalidateTelegramCache,
+} from "../lib/telegram";
 
 const router = Router();
 
@@ -459,6 +463,17 @@ router.put("/admin/kyb/:id/approve", requireAdmin, async (req: any, res: any) =>
   const id = parseInt(req.params.id);
   await db.update(kybSubmissionsTable).set({ status: "approved", reviewedAt: new Date() }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "APPROVE_KYB", "kyb", String(id), undefined, req.ip);
+
+  // Telegram notification
+  try {
+    const [kyb] = await db.select({
+      company: kybSubmissionsTable.companyLegalName,
+      email: kybSubmissionsTable.contractEmail,
+    }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.id, id));
+    const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+    if (kyb) notifyKybDecision({ company: kyb.company ?? "?", email: kyb.email ?? "?", decision: "approved", adminEmail: admin?.email ?? "?" }).catch(() => {});
+  } catch {}
+
   res.json({ ok: true });
 });
 
@@ -467,6 +482,17 @@ router.put("/admin/kyb/:id/reject", requireAdmin, async (req: any, res: any) => 
   const { reason } = req.body;
   await db.update(kybSubmissionsTable).set({ status: "rejected", rejectionReason: reason, reviewedAt: new Date() }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "REJECT_KYB", "kyb", String(id), reason, req.ip);
+
+  // Telegram notification
+  try {
+    const [kyb] = await db.select({
+      company: kybSubmissionsTable.companyLegalName,
+      email: kybSubmissionsTable.contractEmail,
+    }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.id, id));
+    const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+    if (kyb) notifyKybDecision({ company: kyb.company ?? "?", email: kyb.email ?? "?", decision: "rejected", reason, adminEmail: admin?.email ?? "?" }).catch(() => {});
+  } catch {}
+
   res.json({ ok: true });
 });
 
@@ -947,6 +973,11 @@ router.post("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
       .values({ phone: normalized, reason: parsed.data.reason ?? null, blockedBy: req.session.userId })
       .returning();
     await logAdminAction(req.session.userId, "BLACKLIST_ADD", "blacklist", normalized, parsed.data.reason, req.ip);
+
+    // Telegram notification
+    const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+    notifyBlacklist("added", normalized, parsed.data.reason, admin?.email).catch(() => {});
+
     res.status(201).json(created);
   } catch (err: any) {
     if (err?.code === "23505") {
@@ -963,6 +994,42 @@ router.delete("/admin/blacklist/:id", requireAdmin, async (req: any, res: any) =
   if (!row) { res.status(404).json({ error: "Entrée introuvable" }); return; }
   await db.delete(blacklistedPhonesTable).where(eq(blacklistedPhonesTable.id, id));
   await logAdminAction(req.session.userId, "BLACKLIST_REMOVE", "blacklist", row.phone, undefined, req.ip);
+
+  // Telegram notification
+  const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  notifyBlacklist("removed", row.phone, undefined, admin?.email).catch(() => {});
+
+  res.json({ ok: true });
+});
+
+// ─── TELEGRAM CONFIG ───────────────────────────────────────────────────────────
+router.post("/admin/telegram/test", requireAdmin, async (req: any, res: any) => {
+  const { token, chatId } = req.body as { token: string; chatId: string };
+  if (!token || !chatId) {
+    res.status(400).json({ error: "token et chatId requis" }); return;
+  }
+  const result = await testConnection(token.trim(), chatId.trim());
+  res.json(result);
+});
+
+router.get("/admin/telegram/detect", requireAdmin, async (req: any, res: any) => {
+  const token = (req.query.token as string) ?? "";
+  if (!token) { res.status(400).json({ error: "token requis" }); return; }
+  const result = await detectChatId(token.trim());
+  res.json(result);
+});
+
+router.post("/admin/telegram/save", requireAdmin, async (req: any, res: any) => {
+  const { token, chatId } = req.body as { token?: string; chatId?: string };
+  const updates: Record<string, string> = {};
+  if (token !== undefined) updates["telegram_bot_token"] = token.trim();
+  if (chatId !== undefined) updates["telegram_chat_id"] = chatId.trim();
+  for (const [key, value] of Object.entries(updates)) {
+    await db.insert(adminSettingsTable).values({ key, value })
+      .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value, updatedAt: new Date() } });
+  }
+  invalidateTelegramCache();
+  await logAdminAction(req.session.userId, "UPDATE_TELEGRAM_CONFIG", "settings", undefined, undefined, req.ip);
   res.json({ ok: true });
 });
 

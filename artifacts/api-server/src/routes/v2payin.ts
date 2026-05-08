@@ -13,6 +13,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { getClapayClient, isClapayConfigured, ClapayError } from "../lib/clapay";
 import { getPayDunyaClient, isPayDunyaConfigured, PayDunyaError } from "../lib/paydunya";
+import { notifyPayin } from "../lib/telegram";
 
 const router = Router();
 
@@ -427,6 +428,25 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       }
     }
   }
+
+  // Telegram: notify payin initiated
+  try {
+    const [merchant] = await db.select({ companyName: usersTable.companyName })
+      .from(usersTable).where(eq(usersTable.id, userId));
+    notifyPayin({
+      company: merchant?.companyName ?? "?",
+      amount,
+      fee,
+      net: netAmount,
+      currency,
+      operator,
+      phone,
+      country: country_code,
+      reference,
+      mode,
+      source: "api",
+    }).catch(() => {});
+  } catch {}
 
   // ── SANDBOX mode: simulate async Mobile Money processing (auto-resolve after 3s) ──
   if (mode === "sandbox") {

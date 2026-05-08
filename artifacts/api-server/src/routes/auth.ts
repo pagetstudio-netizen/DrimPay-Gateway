@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@workspace/db";
 import { usersTable, apiKeysTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import { notifyNewUser, notifyAdminLogin } from "../lib/telegram";
 
 const router = Router();
 
@@ -59,6 +60,9 @@ router.post("/auth/signup", async (req, res) => {
     console.error("[DrimPay] Failed to auto-generate sandbox key at signup:", e);
   }
 
+  // Telegram: notify new merchant
+  notifyNewUser(user.email, user.companyName, user.country).catch(() => {});
+
   res.status(201).json({
     id: user.id,
     email: user.email,
@@ -92,6 +96,12 @@ router.post("/auth/login", async (req, res) => {
 
   req.session.userId = user.id;
   req.session.role = user.role;
+
+  // Telegram: notify admin login
+  if (user.role === "admin") {
+    const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "?";
+    notifyAdminLogin(user.email, ip).catch(() => {});
+  }
 
   res.json({
     id: user.id,

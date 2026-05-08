@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import { Settings, Save, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  Settings, Save, RefreshCw, AlertTriangle, CheckCircle2,
+  Send, Bot, Eye, EyeOff, Zap, Search,
+} from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const SETTINGS_GROUPS = [
   {
@@ -48,6 +53,189 @@ const SETTINGS_GROUPS = [
   },
 ];
 
+function TelegramSection({ allValues }: { allValues: Record<string, string> }) {
+  const [token, setToken] = useState("");
+  const [chatId, setChatId] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [status, setStatus] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+
+  useEffect(() => {
+    if (allValues["telegram_bot_token"]) setToken(allValues["telegram_bot_token"]);
+    if (allValues["telegram_chat_id"]) setChatId(allValues["telegram_chat_id"]);
+  }, [allValues]);
+
+  const hasConfig = !!allValues["telegram_bot_token"] && !!allValues["telegram_chat_id"];
+
+  const save = async () => {
+    setSaving(true);
+    setStatus(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/telegram/save`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, chatId }),
+      });
+      const d = await r.json();
+      if (d.ok) setStatus({ type: "ok", msg: "Configuration sauvegardée !" });
+      else setStatus({ type: "err", msg: d.error ?? "Erreur" });
+    } catch {
+      setStatus({ type: "err", msg: "Erreur réseau" });
+    }
+    setSaving(false);
+  };
+
+  const test = async () => {
+    if (!token || !chatId) { setStatus({ type: "err", msg: "Remplis le token et le Chat ID d'abord" }); return; }
+    setTesting(true);
+    setStatus(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/telegram/test`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, chatId }),
+      });
+      const d = await r.json();
+      if (d.ok) setStatus({ type: "ok", msg: "Message test envoyé dans le groupe ✅" });
+      else setStatus({ type: "err", msg: d.error ?? "Connexion échouée" });
+    } catch {
+      setStatus({ type: "err", msg: "Erreur réseau" });
+    }
+    setTesting(false);
+  };
+
+  const detect = async () => {
+    if (!token) { setStatus({ type: "err", msg: "Entre le token du bot d'abord" }); return; }
+    setDetecting(true);
+    setStatus(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/telegram/detect?token=${encodeURIComponent(token)}`, {
+        credentials: "include",
+      });
+      const d = await r.json();
+      if (d.ok && d.chatId) {
+        setChatId(d.chatId);
+        setStatus({ type: "ok", msg: `Groupe détecté : ${d.title ?? ""} (${d.chatId})` });
+      } else {
+        setStatus({ type: "err", msg: d.error ?? "Aucun groupe trouvé" });
+      }
+    } catch {
+      setStatus({ type: "err", msg: "Erreur réseau" });
+    }
+    setDetecting(false);
+  };
+
+  return (
+    <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+          <Bot className="w-5 h-5 text-blue-500" />
+        </div>
+        <div>
+          <h2 className="font-bold text-gray-900">Bot Telegram</h2>
+          <p className="text-xs text-gray-400">Notifications en temps réel dans votre groupe admin</p>
+        </div>
+        <div className={cn(
+          "ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold",
+          hasConfig ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+        )}>
+          <span className={cn("w-1.5 h-1.5 rounded-full", hasConfig ? "bg-green-500" : "bg-gray-400")} />
+          {hasConfig ? "Configuré" : "Non configuré"}
+        </div>
+      </div>
+
+      {/* Alert list */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+        <p className="text-xs font-semibold text-blue-800 mb-2">Alertes envoyées automatiquement :</p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-blue-700">
+          {["👤 Nouveaux marchands","💰 Paiements reçus (API & liens)","🚨 Gros montants (≥500 000 FCFA)","💸 Demandes de retrait","📋 KYB soumis / approuvés / rejetés","🔐 Connexions admin","🆘 Erreurs système critiques","📊 Rapport quotidien (minuit Lomé)"].map(a => (
+            <span key={a}>{a}</span>
+          ))}
+        </div>
+        <p className="text-xs text-blue-600 mt-2">Commandes bot: <code className="bg-blue-100 px-1 rounded">/stats</code> <code className="bg-blue-100 px-1 rounded">/ip</code> <code className="bg-blue-100 px-1 rounded">/help</code></p>
+      </div>
+
+      {/* Token */}
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Token du Bot</label>
+        <div className="relative">
+          <input
+            type={showToken ? "text" : "password"}
+            value={token}
+            onChange={e => setToken(e.target.value)}
+            placeholder="7123456789:AAF..."
+            className="w-full px-3 py-2.5 pr-10 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">Obtenu via @BotFather sur Telegram</p>
+      </div>
+
+      {/* Chat ID */}
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Chat ID du groupe admin</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={chatId}
+            onChange={e => setChatId(e.target.value)}
+            placeholder="-1001234567890"
+            className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={detect}
+            disabled={detecting || !token}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 whitespace-nowrap"
+          >
+            <Search className="w-4 h-4" />
+            {detecting ? "Détection..." : "Détecter"}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          Pour détecter automatiquement : ajoutez le bot dans le groupe, envoyez un message, puis cliquez "Détecter".
+        </p>
+      </div>
+
+      {/* Status */}
+      {status && (
+        <div className={cn(
+          "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium",
+          status.type === "ok" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800"
+        )}>
+          {status.type === "ok" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+          {status.msg}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-1">
+        <button
+          onClick={save}
+          disabled={saving || (!token && !chatId)}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 shadow-sm"
+        >
+          <Save className="w-4 h-4" />
+          {saving ? "Enregistrement..." : "Enregistrer"}
+        </button>
+        <button
+          onClick={test}
+          disabled={testing || !token || !chatId}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          <Send className="w-4 h-4" />
+          {testing ? "Envoi..." : "Tester la connexion"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -57,7 +245,7 @@ export default function AdminSettings() {
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch("/api/admin/settings", { credentials: "include" });
+    const r = await fetch(`${BASE}/api/admin/settings`, { credentials: "include" });
     const d = await r.json();
     setValues(d ?? {});
     setLoading(false);
@@ -67,7 +255,7 @@ export default function AdminSettings() {
 
   const save = async () => {
     setSaving(true);
-    await fetch("/api/admin/settings", {
+    await fetch(`${BASE}/api/admin/settings`, {
       method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
     });
     setSaved(true);
@@ -94,9 +282,11 @@ export default function AdminSettings() {
                 <CheckCircle2 className="w-4 h-4" /> Enregistré !
               </div>
             )}
-            <button onClick={save} disabled={saving || loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 shadow-sm">
-              <Save className="w-4 h-4" /> {saving ? "Enregistrement..." : "Enregistrer"}
-            </button>
+            {activeGroup !== "telegram" && (
+              <button onClick={save} disabled={saving || loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 shadow-sm">
+                <Save className="w-4 h-4" /> {saving ? "Enregistrement..." : "Enregistrer"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -115,38 +305,46 @@ export default function AdminSettings() {
                 {g.title}
               </button>
             ))}
+            <button onClick={() => setActiveGroup("telegram")}
+              className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "telegram" ? "bg-blue-50 text-blue-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
+              <Bot className="w-4 h-4" /> Telegram Bot
+            </button>
           </div>
 
-          <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h2 className="font-bold text-gray-900 mb-5">{currentGroup.title}</h2>
-            {loading ? (
-              <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />)}</div>
-            ) : (
-              <div className="space-y-5">
-                {currentGroup.fields.map(field => (
-                  <div key={field.key}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-sm font-semibold text-gray-700">{field.label}</label>
-                      {field.type === "boolean" && (
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" checked={get(field.key) === "true"}
-                            onChange={e => set(field.key, e.target.checked ? "true" : "false")}
-                            className="sr-only peer" />
-                          <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
-                        </label>
+          {activeGroup === "telegram" ? (
+            <TelegramSection allValues={values} />
+          ) : (
+            <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h2 className="font-bold text-gray-900 mb-5">{currentGroup.title}</h2>
+              {loading ? (
+                <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />)}</div>
+              ) : (
+                <div className="space-y-5">
+                  {currentGroup.fields.map(field => (
+                    <div key={field.key}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-sm font-semibold text-gray-700">{field.label}</label>
+                        {field.type === "boolean" && (
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked={get(field.key) === "true"}
+                              onChange={e => set(field.key, e.target.checked ? "true" : "false")}
+                              className="sr-only peer" />
+                            <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
+                          </label>
+                        )}
+                      </div>
+                      {field.type !== "boolean" && (
+                        <input type={field.type} value={get(field.key, "")} onChange={e => set(field.key, e.target.value)}
+                          placeholder={field.placeholder}
+                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                       )}
+                      <p className="text-xs text-gray-400 mt-1">{field.hint}</p>
                     </div>
-                    {field.type !== "boolean" && (
-                      <input type={field.type} value={get(field.key, "")} onChange={e => set(field.key, e.target.value)}
-                        placeholder={field.placeholder}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                    )}
-                    <p className="text-xs text-gray-400 mt-1">{field.hint}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
