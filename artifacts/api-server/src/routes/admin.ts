@@ -1184,6 +1184,48 @@ router.get("/admin/broadcast/recipients", requireAdmin, async (req: any, res: an
   res.json({ recipients: users, total: users.length });
 });
 
+router.post("/admin/message/individual", requireAdmin, async (req: any, res: any) => {
+  const { email, subject, body } = req.body as { email?: string; subject?: string; body?: string };
+  if (!email?.trim() || !subject?.trim() || !body?.trim()) {
+    res.status(400).json({ error: "Email, sujet et message sont requis." });
+    return;
+  }
+
+  const [user] = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName })
+    .from(usersTable).where(eq(usersTable.email, email.trim().toLowerCase()));
+
+  const merchantName = user?.companyName ?? email.trim();
+  const htmlBody = body.replace(/\n/g, "<br>");
+
+  const result = await sendBroadcastEmail({
+    to: email.trim(),
+    merchantName,
+    subject: subject.trim(),
+    htmlBody,
+  });
+
+  if (result.ok) {
+    await logAdminAction(req.session.userId, "SEND_INDIVIDUAL_EMAIL", "user", user ? String(user.id) : undefined, JSON.stringify({ email: email.trim(), subject }), req.ip);
+    res.json({ ok: true });
+  } else {
+    res.status(500).json({ error: result.error ?? "Échec de l'envoi." });
+  }
+});
+
+router.get("/admin/merchants/search", requireAdmin, async (req: any, res: any) => {
+  const { q = "" } = req.query as Record<string, string>;
+  if (q.trim().length < 2) { res.json({ merchants: [] }); return; }
+  const term = `%${q.toLowerCase()}%`;
+  const merchants = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country })
+    .from(usersTable)
+    .where(and(
+      eq(usersTable.role, "user"),
+      or(ilike(usersTable.email, term), ilike(usersTable.companyName, term))
+    ))
+    .limit(8);
+  res.json({ merchants });
+});
+
 router.post("/admin/broadcast", requireAdmin, async (req: any, res: any) => {
   const { subject, body, filter = "all" } = req.body as { subject?: string; body?: string; filter?: string };
   if (!subject?.trim() || !body?.trim()) {
