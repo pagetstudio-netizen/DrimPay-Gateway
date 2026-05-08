@@ -178,15 +178,11 @@ export default function ApiKeys() {
                           Créée le {new Date(key.createdAt).toLocaleDateString("fr-FR")}
                           {key.lastUsedAt && ` · Dernière utilisation ${new Date(key.lastUsedAt).toLocaleDateString("fr-FR")}`}
                         </p>
+                        <p className="text-[10px] text-amber-500/80 mt-0.5">
+                          Clé complète non récupérable — copiez-la à la création
+                        </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => copy(key.prefix, `prefix-${key.id}`)}
-                          title="Copier le préfixe"
-                          className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
-                        >
-                          {copiedId === `prefix-${key.id}` ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                        </button>
                         {key.status === "active" && (
                           <button
                             onClick={() => setDeleteId(key.id)}
