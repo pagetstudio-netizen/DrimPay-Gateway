@@ -60,9 +60,12 @@ export default function DashboardReversement() {
   const [selectedCountry, setSelectedCountry] = useState<(typeof COUNTRIES)[number] | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Read ?country=XX from URL to pre-select the wallet country
+  const preselectedCountry = new URLSearchParams(window.location.search).get("country") ?? "";
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { countryCode: "", operator: "", phone: "", amount: "", note: "" },
+    defaultValues: { countryCode: preselectedCountry, operator: "", phone: "", amount: "", note: "" },
   });
 
   const watchCountry = form.watch("countryCode");
@@ -70,6 +73,7 @@ export default function DashboardReversement() {
   useEffect(() => {
     const found = COUNTRIES.find((c) => c.code === watchCountry) ?? null;
     setSelectedCountry(found);
+    // Only reset operator when country changes after initial mount
     form.setValue("operator", "");
   }, [watchCountry]);
 

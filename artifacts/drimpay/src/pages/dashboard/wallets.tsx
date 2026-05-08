@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, Info } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, Info,
+  X, CheckCircle2, Loader2, Phone, Banknote
+} from "lucide-react";
 import { DashboardLayout } from "./layout";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProductionGate } from "@/components/ui/production-gate";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const COUNTRY_MAP: Record<string, { name: string; flag: string; currency: string; operators: string[] }> = {
   TG: { name: "Togo",          flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] },
@@ -20,17 +27,229 @@ function fmt(n: string | number, currency: string) {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${currency}`;
 }
 
+// ── Pay-in modal ──────────────────────────────────────────────────────────────
+interface PayinModalProps {
+  wallet: any;
+  onClose: () => void;
+  onSuccess: (newBalance: number) => void;
+}
+
+function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
+  const c = COUNTRY_MAP[wallet.countryCode] ?? { name: wallet.countryCode, flag: "🌍", currency: wallet.currency, operators: [] };
+  const [operator, setOperator] = useState(c.operators[0] ?? "");
+  const [phone, setPhone] = useState("");
+  const [amount, setAmount] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const feeRate = 0.03;
+  const amountNum = parseFloat(amount) || 0;
+  const fee = +(amountNum * feeRate).toFixed(2);
+  const net = +(amountNum - fee).toFixed(2);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phone.trim() || amountNum <= 0 || !operator) {
+      setErrorMsg("Veuillez remplir tous les champs."); return;
+    }
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const r = await fetch(`${BASE}/api/dashboard/payin`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountNum,
+          currency: c.currency,
+          countryCode: wallet.countryCode,
+          operator,
+          phone: phone.trim(),
+          description: "Réapprovisionnement wallet",
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) { setErrorMsg(data.error ?? "Erreur"); setStatus("error"); return; }
+      setStatus("success");
+      const currentBalance = parseFloat(String(wallet.balance)) || 0;
+      onSuccess(+(currentBalance + data.netAmount).toFixed(2));
+    } catch {
+      setErrorMsg("Erreur réseau, veuillez réessayer.");
+      setStatus("error");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 60 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 60 }}
+        transition={{ type: "spring", stiffness: 320, damping: 30 }}
+        className="relative bg-card border border-border rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center">
+              <ArrowDownLeft className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Réapprovisionner le wallet</p>
+              <p className="text-xs text-muted-foreground">
+                {c.flag} {c.name} · {c.currency}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {status === "success" ? (
+          <div className="px-6 py-10 flex flex-col items-center gap-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8 text-green-500" />
+            </div>
+            <div>
+              <p className="font-semibold text-lg">Pay-in réussi !</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {fmt(net, c.currency)} ont été crédités sur votre wallet {c.name}.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="mt-2 px-6 py-2.5 rounded-xl bg-foreground text-background text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              Fermer
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="px-6 py-5 space-y-4">
+            {/* Operator */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Opérateur</label>
+              <div className="grid grid-cols-2 gap-2">
+                {c.operators.map(op => (
+                  <button
+                    key={op}
+                    type="button"
+                    onClick={() => setOperator(op)}
+                    className={cn(
+                      "py-2.5 px-3 rounded-xl border-2 text-sm font-medium transition-all text-center",
+                      operator === op
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-muted/20 text-muted-foreground hover:border-primary/40"
+                    )}
+                  >
+                    {op}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Numéro Mobile Money</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="ex : +228 90 00 00 00"
+                  className="pl-9 bg-muted/30 border-border"
+                />
+              </div>
+            </div>
+
+            {/* Amount */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Montant</label>
+              <div className="relative">
+                <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="ex : 10 000"
+                  className="pl-9 pr-16 bg-muted/30 border-border"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-bold">
+                  {c.currency}
+                </span>
+              </div>
+            </div>
+
+            {/* Fee summary */}
+            {amountNum > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-muted/30 border border-border rounded-xl px-4 py-3 space-y-1.5 text-xs"
+              >
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Montant brut</span>
+                  <span className="font-medium text-foreground">{fmt(amountNum, c.currency)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Frais DrimPay (3%)</span>
+                  <span className="text-red-400">− {fmt(fee, c.currency)}</span>
+                </div>
+                <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1.5 mt-1">
+                  <span>Montant crédité</span>
+                  <span className="text-green-500">{fmt(net, c.currency)}</span>
+                </div>
+              </motion.div>
+            )}
+
+            {errorMsg && (
+              <p className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                {errorMsg}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={status === "loading"}
+              className="w-full py-3.5 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {status === "loading" && <Loader2 className="w-4 h-4 animate-spin" />}
+              {status === "loading" ? "Traitement…" : "Confirmer le pay-in"}
+            </button>
+          </form>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function Wallets() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payinWallet, setPayinWallet] = useState<any | null>(null);
+  const [, navigate] = useLocation();
 
   useEffect(() => {
-    fetch("/api/dashboard/wallets", { credentials: "include" })
+    fetch(`${BASE}/api/dashboard/wallets`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setWallets(Array.isArray(d) ? d : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const handlePayinSuccess = (walletId: number, newBalance: number) => {
+    setWallets(prev => prev.map(w => w.id === walletId ? { ...w, balance: String(newBalance) } : w));
+    // keep modal open to show success screen — it calls onClose itself
+  };
 
   return (
     <DashboardLayout>
@@ -116,18 +335,23 @@ export default function Wallets() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <Link href={`/dashboard/payments?country=${w.countryCode}`}>
-                      <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors cursor-pointer text-xs font-medium">
-                        <ArrowDownLeft className="w-3 h-3" />
-                        Pay-in
-                      </div>
-                    </Link>
-                    <Link href={`/dashboard/payout?country=${w.countryCode}`}>
-                      <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors cursor-pointer text-xs font-medium">
-                        <ArrowUpRight className="w-3 h-3" />
-                        Pay-out
-                      </div>
-                    </Link>
+                    {/* Pay-in → opens recharge modal */}
+                    <button
+                      onClick={() => setPayinWallet(w)}
+                      className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors text-xs font-medium"
+                    >
+                      <ArrowDownLeft className="w-3 h-3" />
+                      Pay-in
+                    </button>
+
+                    {/* Pay-out → redirects to reversement with country pre-selected */}
+                    <button
+                      onClick={() => navigate(`/dashboard/reversement?country=${w.countryCode}`)}
+                      className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors text-xs font-medium"
+                    >
+                      <ArrowUpRight className="w-3 h-3" />
+                      Pay-out
+                    </button>
                   </div>
                 </motion.div>
               );
@@ -155,6 +379,19 @@ export default function Wallets() {
         </div>
       </div>
       </ProductionGate>
+
+      {/* Pay-in modal */}
+      <AnimatePresence>
+        {payinWallet && (
+          <PayinModal
+            wallet={payinWallet}
+            onClose={() => setPayinWallet(null)}
+            onSuccess={(newBalance) => {
+              handlePayinSuccess(payinWallet.id, newBalance);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 }
