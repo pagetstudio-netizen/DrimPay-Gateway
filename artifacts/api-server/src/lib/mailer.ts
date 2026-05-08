@@ -37,7 +37,7 @@ export function invalidateMailerCache() { _smtpCache = null; }
 export async function sendContractEmail(opts: {
   to: string;
   merchantName: string;
-  pdfBuffer: Buffer;
+  contractBuffer: Buffer;
 }): Promise<{ ok: boolean; error?: string }> {
   const cfg = await getSmtpConfig();
   if (!cfg) {
@@ -56,7 +56,7 @@ export async function sendContractEmail(opts: {
     await transporter.sendMail({
       from: `"DrimPay" <${cfg.from}>`,
       to: opts.to,
-      subject: "Votre contrat DrimPay — Accès aux services de paiement",
+      subject: "Votre contrat DrimPay — Action requise : signature et envoi",
       html: `
 <!DOCTYPE html>
 <html>
@@ -75,23 +75,27 @@ export async function sendContractEmail(opts: {
         <!-- Body -->
         <tr>
           <td style="padding:36px 40px;">
-            <h2 style="color:#111;margin:0 0 16px;">Votre contrat est prêt ✍️</h2>
+            <h2 style="color:#111;margin:0 0 16px;">Votre contrat d'accès aux services de paiement</h2>
             <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
               Bonjour <strong>${opts.merchantName}</strong>,
             </p>
-            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
-              Merci d'avoir complété votre dossier KYB sur DrimPay. Votre contrat d'accès aux services de paiement est joint à cet email en pièce jointe PDF.
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+              Merci d'avoir soumis votre dossier KYB sur DrimPay. Votre contrat d'accès aux services de paiement est joint à cet email en pièce jointe (format Word .docx).
             </p>
-            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
-              Notre équipe va examiner votre dossier sous <strong>24 à 72h ouvrables</strong>. Vous recevrez une notification dès la validation ou si des documents supplémentaires sont requis.
-            </p>
-            <div style="background:#f8f9fa;border-left:4px solid #1a7a3c;border-radius:4px;padding:16px 20px;margin:0 0 24px;">
-              <p style="margin:0;font-size:13px;color:#555;line-height:1.6;">
-                <strong>Prochaines étapes :</strong><br>
-                1. Consultez votre contrat en pièce jointe<br>
-                2. Conservez ce document dans vos archives<br>
-                3. Attendez la validation de votre KYB (24–72h)<br>
-                4. Votre accès production sera activé automatiquement
+            <div style="background:#fff8e1;border-left:4px solid #f59e0b;border-radius:4px;padding:20px 24px;margin:0 0 24px;">
+              <p style="margin:0 0 10px;font-size:14px;font-weight:bold;color:#92400e;">Action requise pour activer votre compte en production</p>
+              <p style="margin:0;font-size:13px;color:#78350f;line-height:2;">
+                1. Téléchargez et imprimez le contrat en pièce jointe<br>
+                2. Signez le document (représentant légal)<br>
+                3. Scannez ou photographiez le contrat signé<br>
+                4. Envoyez-le à notre service client : <a href="mailto:support@drimpay.africa" style="color:#92400e;font-weight:bold;">support@drimpay.africa</a><br>
+                5. Votre compte production sera activé après validation par notre équipe
+              </p>
+            </div>
+            <div style="background:#f0faf4;border-left:4px solid #1a7a3c;border-radius:4px;padding:16px 20px;margin:0 0 24px;">
+              <p style="margin:0;font-size:13px;color:#1a5c2e;line-height:1.8;">
+                <strong>Délai de traitement :</strong> 24 à 72 heures ouvrables après réception du contrat signé.<br>
+                En attendant, votre environnement sandbox reste disponible pour tester votre intégration.
               </p>
             </div>
             <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
@@ -116,9 +120,9 @@ export async function sendContractEmail(opts: {
       `.trim(),
       attachments: [
         {
-          filename: `DrimPay_Contrat_${opts.merchantName.replace(/\s+/g, "_")}.pdf`,
-          content: opts.pdfBuffer,
-          contentType: "application/pdf",
+          filename: `DrimPay_Contrat_${opts.merchantName.replace(/\s+/g, "_")}.docx`,
+          content: opts.contractBuffer,
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         },
       ],
     });

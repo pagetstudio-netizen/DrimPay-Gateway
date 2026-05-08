@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileCheck, CheckCircle2, Clock, XCircle, AlertCircle, Upload, Building,
-  Globe, FileText, Hash, X, Paperclip, User, Shield, PenLine, Mail,
+  Globe, FileText, Hash, X, Paperclip, User, Shield, Mail,
   ChevronRight, ChevronLeft, Eye, EyeOff, Lock, Smartphone, Calendar,
   CreditCard, Briefcase, MapPin, Flag
 } from "lucide-react";
@@ -116,7 +116,7 @@ const STEPS = [
   { id: 1, label: "Entreprise",        shortLabel: "Entreprise",  icon: Building },
   { id: 2, label: "Représentant légal", shortLabel: "Représentant", icon: User },
   { id: 3, label: "Documents",         shortLabel: "Documents",   icon: FileText },
-  { id: 4, label: "Contrat & Signature", shortLabel: "Contrat",   icon: PenLine },
+  { id: 4, label: "Contrat & Soumission", shortLabel: "Contrat",   icon: FileCheck },
 ];
 
 interface UploadDoc {
@@ -235,100 +235,6 @@ function FileUploadRow({
   );
 }
 
-function SignatureCanvas({ onSignature }: { onSignature: (data: string) => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [drawing, setDrawing] = useState(false);
-  const [hasSig, setHasSig] = useState(false);
-  const lastPos = useRef<{ x: number; y: number } | null>(null);
-
-  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    if ("touches" in e) {
-      const t = e.touches[0];
-      return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
-    }
-    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
-  };
-
-  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    setDrawing(true);
-    lastPos.current = getPos(e);
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    if (!drawing) return;
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    const pos = getPos(e);
-    ctx.beginPath();
-    ctx.moveTo(lastPos.current!.x, lastPos.current!.y);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = "#16a34a";
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.stroke();
-    lastPos.current = pos;
-    setHasSig(true);
-  };
-
-  const stopDraw = () => {
-    setDrawing(false);
-    if (hasSig && canvasRef.current) {
-      onSignature(canvasRef.current.toDataURL());
-    }
-  };
-
-  const clear = () => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasSig(false);
-    onSignature("");
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="relative rounded-xl border-2 border-dashed border-border overflow-hidden bg-muted/20 touch-none">
-        <canvas
-          ref={canvasRef}
-          width={600}
-          height={150}
-          className="w-full h-[150px] cursor-crosshair"
-          onMouseDown={startDraw}
-          onMouseMove={draw}
-          onMouseUp={stopDraw}
-          onMouseLeave={stopDraw}
-          onTouchStart={startDraw}
-          onTouchMove={draw}
-          onTouchEnd={stopDraw}
-        />
-        {!hasSig && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <PenLine className="w-4 h-4" />
-              Signez ici avec votre souris ou votre doigt
-            </p>
-          </div>
-        )}
-      </div>
-      {hasSig && (
-        <button
-          type="button"
-          onClick={clear}
-          className="text-xs text-muted-foreground hover:text-red-500 transition-colors flex items-center gap-1"
-        >
-          <X className="w-3 h-3" /> Effacer la signature
-        </button>
-      )}
-    </div>
-  );
-}
 
 // ── localStorage helpers (7-day TTL) ──────────────────────────────────────────
 const LS_KEY = "drimpay_kyb_draft";
@@ -361,7 +267,6 @@ export default function Kyb() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState(1);
-  const [signatureData, setSignatureData] = useState("");
   const [contractSent, setContractSent] = useState(false);
 
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({
@@ -494,15 +399,13 @@ export default function Kyb() {
 
   const handleFinalSubmit = form4.handleSubmit(async (values) => {
     setError("");
-    if (!signatureData) { setError("Veuillez signer le contrat avant de soumettre."); return; }
     setSubmitting(true);
     try {
       await saveStep(4, {
         contractEmail: values.contractEmail,
         contractAccepted: "true",
-        signatureData,
       });
-      lsClear(); // Draft fulfilled — clear local storage
+      lsClear();
       setContractSent(true);
     } catch (e: any) { setError(e.message); }
     setSubmitting(false);
@@ -1114,7 +1017,7 @@ export default function Kyb() {
                           <Mail className="w-4 h-4 text-primary" />
                           Adresse email professionnelle
                         </h3>
-                        <p className="text-xs text-muted-foreground mb-4">Le contrat officiel DrimPay sera envoyé à cette adresse pour archivage électronique.</p>
+                        <p className="text-xs text-muted-foreground mb-4">Le contrat officiel DrimPay sera envoyé à cette adresse. Vous devrez l'imprimer, le signer, et le retourner à notre service client pour activer votre compte en production.</p>
                         <FormField control={form4.control} name="contractEmail" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Email professionnel <span className="text-red-500">*</span></FormLabel>
@@ -1129,28 +1032,33 @@ export default function Kyb() {
                         )} />
                       </div>
 
-                      {/* Signature */}
-                      <div className="rounded-xl border border-border bg-card p-6">
-                        <h3 className="font-semibold flex items-center gap-2 text-base mb-1">
-                          <PenLine className="w-4 h-4 text-primary" />
-                          Signature électronique
+                      {/* Signature instructions */}
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6">
+                        <h3 className="font-semibold flex items-center gap-2 text-base mb-3 text-amber-600 dark:text-amber-400">
+                          <FileCheck className="w-4 h-4" />
+                          Etape finale — Signature physique requise
                         </h3>
-                        <p className="text-xs text-muted-foreground mb-4">
-                          Signez ci-dessous pour confirmer votre engagement. La signature est horodatée et associée à votre session.
+                        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                          Apres soumission de votre dossier, vous recevrez le contrat DrimPay par email. Vous devrez :
                         </p>
-                        <SignatureCanvas onSignature={setSignatureData} />
-                        {!signatureData && (
-                          <p className="text-xs text-amber-500 flex items-center gap-1.5 mt-2">
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            La signature est requise pour soumettre le dossier.
-                          </p>
-                        )}
-                        {signatureData && (
-                          <p className="text-xs text-green-600 flex items-center gap-1.5 mt-2">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Signature enregistrée — horodatée le {new Date().toLocaleString("fr-FR")}
-                          </p>
-                        )}
+                        <ol className="space-y-2.5 text-sm text-muted-foreground">
+                          <li className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
+                            <span>Telecharger et imprimer le contrat recu par email</span>
+                          </li>
+                          <li className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
+                            <span>Le signer en tant que representant legal de votre entreprise</span>
+                          </li>
+                          <li className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
+                            <span>Scanner ou photographier le contrat signe et l'envoyer a <strong className="text-foreground">support@drimpay.africa</strong></span>
+                          </li>
+                          <li className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">4</span>
+                            <span>Votre compte production sera active apres validation par notre equipe <strong className="text-foreground">(24 a 72h)</strong></span>
+                          </li>
+                        </ol>
                       </div>
 
                       <div className="flex justify-between">
@@ -1160,7 +1068,7 @@ export default function Kyb() {
                         <Button
                           type="submit"
                           className="text-black gap-2"
-                          disabled={submitting || !signatureData}
+                          disabled={submitting}
                         >
                           {submitting ? (
                             <><span className="animate-spin inline-block w-4 h-4 border-2 border-black/30 border-t-black rounded-full" /> Soumission...</>
