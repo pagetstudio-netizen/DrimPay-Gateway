@@ -5,7 +5,7 @@ import {
   usersTable, transactionsTable, walletsTable, kybSubmissionsTable,
   apiKeysTable, paymentLinksTable, operatorsTable, countriesTable,
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
-  blacklistedPhonesTable,
+  blacklistedPhonesTable, paymentLinkAttemptsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
@@ -1018,6 +1018,73 @@ router.get("/admin/telegram/detect", requireAdmin, async (req: any, res: any) =>
   if (!token) { res.status(400).json({ error: "token requis" }); return; }
   const result = await detectChatId(token.trim());
   res.json(result);
+});
+
+// ─── PAYMENT LINK ATTEMPTS ────────────────────────────────────────────────────
+router.get("/admin/attempts", requireAdmin, async (req: any, res: any) => {
+  const { page = "1", limit = "50", status, search } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
+  const offset = (pageNum - 1) * limitNum;
+
+  const conditions: any[] = [];
+  if (status && status !== "all") conditions.push(eq(paymentLinkAttemptsTable.status, status));
+
+  const where = conditions.length ? and(...conditions) : undefined;
+
+  let attempts = await db
+    .select({
+      id: paymentLinkAttemptsTable.id,
+      paymentLinkId: paymentLinkAttemptsTable.paymentLinkId,
+      merchantId: paymentLinkAttemptsTable.merchantId,
+      phone: paymentLinkAttemptsTable.phone,
+      amount: paymentLinkAttemptsTable.amount,
+      name: paymentLinkAttemptsTable.name,
+      email: paymentLinkAttemptsTable.email,
+      countryCode: paymentLinkAttemptsTable.countryCode,
+      operator: paymentLinkAttemptsTable.operator,
+      status: paymentLinkAttemptsTable.status,
+      transactionReference: paymentLinkAttemptsTable.transactionReference,
+      note: paymentLinkAttemptsTable.note,
+      ipAddress: paymentLinkAttemptsTable.ipAddress,
+      createdAt: paymentLinkAttemptsTable.createdAt,
+      linkTitle: paymentLinksTable.title,
+      merchantName: usersTable.companyName,
+      merchantEmail: usersTable.email,
+    })
+    .from(paymentLinkAttemptsTable)
+    .leftJoin(paymentLinksTable, eq(paymentLinkAttemptsTable.paymentLinkId, paymentLinksTable.id))
+    .leftJoin(usersTable, eq(paymentLinkAttemptsTable.merchantId, usersTable.id))
+    .where(where)
+    .orderBy(desc(paymentLinkAttemptsTable.createdAt))
+    .limit(limitNum).offset(offset);
+
+  if (search) {
+    const q = search.toLowerCase();
+    attempts = attempts.filter(a =>
+      a.phone.toLowerCase().includes(q) ||
+      (a.merchantName ?? "").toLowerCase().includes(q) ||
+      (a.name ?? "").toLowerCase().includes(q) ||
+      (a.email ?? "").toLowerCase().includes(q) ||
+      (a.transactionReference ?? "").toLowerCase().includes(q)
+    );
+  }
+
+  const [{ total }] = await db.select({ total: count() }).from(paymentLinkAttemptsTable).where(where);
+
+  res.json({ attempts, total: Number(total), page: pageNum, limit: limitNum });
+});
+
+router.patch("/admin/attempts/:id/note", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  const { note } = req.body as { note: string };
+  const [updated] = await db
+    .update(paymentLinkAttemptsTable)
+    .set({ note: note ?? null, updatedAt: new Date() })
+    .where(eq(paymentLinkAttemptsTable.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Tentative introuvable." }); return; }
+  res.json({ ok: true });
 });
 
 router.post("/admin/telegram/save", requireAdmin, async (req: any, res: any) => {

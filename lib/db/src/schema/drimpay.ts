@@ -342,6 +342,25 @@ export const adminSettingsTable = pgTable("admin_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const paymentLinkAttemptsTable = pgTable("payment_link_attempts", {
+  id: serial("id").primaryKey(),
+  paymentLinkId: integer("payment_link_id").notNull().references(() => paymentLinksTable.id),
+  merchantId: integer("merchant_id").notNull().references(() => usersTable.id),
+  phone: text("phone").notNull(),
+  amount: numeric("amount", { precision: 18, scale: 2 }),
+  name: text("name"),
+  email: text("email"),
+  countryCode: text("country_code"),
+  operator: text("operator"),
+  status: text("status").notNull().default("initiated"),
+  note: text("note"),
+  transactionReference: text("transaction_reference"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertBlogArticleSchema = createInsertSchema(blogArticlesTable).omit({ id: true });
 export const insertJobSchema = createInsertSchema(jobsTable).omit({ id: true });
 export const insertContactSchema = createInsertSchema(contactSubmissionsTable).omit({ id: true });

@@ -225,6 +225,7 @@ export default function PayPage() {
   const [email, setEmail]                 = useState("");
   const [error, setError]                 = useState("");
   const [txRef, setTxRef]                 = useState("");
+  const [attemptId, setAttemptId]         = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -264,14 +265,49 @@ export default function PayPage() {
     setStep("form");
   };
 
-  const handleSubmit = () => {
+  const logAttempt = async (): Promise<number | null> => {
+    try {
+      const r = await fetch(`${BASE}/api/pay/${token}/attempt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone,
+          amount: parseFloat(amount) || undefined,
+          name: name || undefined,
+          email: email || undefined,
+          countryCode: selectedCountry || undefined,
+          operator: selectedOperator || undefined,
+        }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        return d.attemptId ?? null;
+      }
+    } catch { /* silencieux */ }
+    return null;
+  };
+
+  const updateAttempt = async (id: number, status: string, transactionReference?: string) => {
+    try {
+      await fetch(`${BASE}/api/pay/${token}/attempt/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, transactionReference }),
+      });
+    } catch { /* silencieux */ }
+  };
+
+  const handleSubmit = async () => {
     if (!canSubmit) return;
     setError("");
+    const id = await logAttempt();
+    setAttemptId(id);
     setStep("confirm");
   };
 
   const handleConfirm = async () => {
     setStep("processing");
+    if (attemptId) await updateAttempt(attemptId, "confirmed");
     try {
       const r = await fetch(`${BASE}/api/pay/${token}`, {
         method: "POST",
@@ -286,10 +322,17 @@ export default function PayPage() {
         }),
       });
       const data = await r.json();
-      if (!r.ok) { setError(data.error ?? "Paiement échoué"); setStep("error"); return; }
+      if (!r.ok) {
+        if (attemptId) await updateAttempt(attemptId, "failed");
+        setError(data.error ?? "Paiement échoué");
+        setStep("error");
+        return;
+      }
+      if (attemptId) await updateAttempt(attemptId, "success", data.reference);
       setTxRef(data.reference);
       setStep("success");
     } catch {
+      if (attemptId) await updateAttempt(attemptId, "failed");
       setError("Erreur réseau. Veuillez réessayer.");
       setStep("error");
     }

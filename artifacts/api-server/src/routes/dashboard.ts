@@ -13,6 +13,7 @@ import {
   operatorsTable,
   operatorAggregatorsTable,
   blacklistedPhonesTable,
+  paymentLinkAttemptsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -1338,6 +1339,123 @@ router.post("/pay/:token", async (req, res) => {
   } catch {}
 
   res.status(201).json({ reference, amount, fee, netAmount, currency: effectiveCurrency });
+});
+
+// ─── Payment link attempts (public — log every payer action) ─────────────────
+
+router.post("/pay/:token/attempt", async (req, res) => {
+  const { token } = req.params;
+  const { phone, amount, name, email, countryCode, operator } = req.body as {
+    phone: string; amount?: number; name?: string; email?: string;
+    countryCode?: string; operator?: string;
+  };
+
+  if (!phone) { res.status(400).json({ error: "phone requis" }); return; }
+
+  const [link] = await db
+    .select({ id: paymentLinksTable.id, userId: paymentLinksTable.userId, status: paymentLinksTable.status })
+    .from(paymentLinksTable)
+    .where(eq(paymentLinksTable.token, token));
+
+  if (!link || link.status !== "active") {
+    res.status(410).json({ error: "Lien invalide." }); return;
+  }
+
+  const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.ip ?? "";
+  const ua = req.headers["user-agent"] ?? "";
+
+  const [attempt] = await db.insert(paymentLinkAttemptsTable).values({
+    paymentLinkId: link.id,
+    merchantId: link.userId,
+    phone: String(phone).replace(/\s+/g, "").trim(),
+    amount: amount != null ? String(amount) : null,
+    name: name || null,
+    email: email || null,
+    countryCode: countryCode || null,
+    operator: operator || null,
+    status: "initiated",
+    ipAddress: ip,
+    userAgent: ua,
+  }).returning();
+
+  res.status(201).json({ attemptId: attempt.id });
+});
+
+router.patch("/pay/:token/attempt/:id", async (req, res) => {
+  const { token, id } = req.params;
+  const { status, transactionReference, note } = req.body as {
+    status: string; transactionReference?: string; note?: string;
+  };
+
+  const allowed = ["initiated", "confirmed", "success", "failed", "abandoned"];
+  if (!allowed.includes(status)) {
+    res.status(400).json({ error: "Statut invalide." }); return;
+  }
+
+  const [link] = await db
+    .select({ id: paymentLinksTable.id })
+    .from(paymentLinksTable)
+    .where(eq(paymentLinksTable.token, token));
+
+  if (!link) { res.status(404).json({ error: "Lien introuvable." }); return; }
+
+  const [updated] = await db
+    .update(paymentLinkAttemptsTable)
+    .set({
+      status,
+      transactionReference: transactionReference ?? null,
+      note: note ?? null,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(paymentLinkAttemptsTable.id, parseInt(id)),
+      eq(paymentLinkAttemptsTable.paymentLinkId, link.id),
+    ))
+    .returning();
+
+  if (!updated) { res.status(404).json({ error: "Tentative introuvable." }); return; }
+  res.json({ ok: true, attempt: updated });
+});
+
+// GET /dashboard/attempts — merchant sees their link attempts
+router.get("/dashboard/attempts", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const { page = "1", limit = "50", status, linkId } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
+  const offset = (pageNum - 1) * limitNum;
+
+  const conditions: any[] = [eq(paymentLinkAttemptsTable.merchantId, userId)];
+  if (status && status !== "all") conditions.push(eq(paymentLinkAttemptsTable.status, status));
+  if (linkId) conditions.push(eq(paymentLinkAttemptsTable.paymentLinkId, parseInt(linkId)));
+
+  const where = conditions.length ? and(...conditions) : undefined;
+
+  const attempts = await db
+    .select({
+      id: paymentLinkAttemptsTable.id,
+      paymentLinkId: paymentLinkAttemptsTable.paymentLinkId,
+      phone: paymentLinkAttemptsTable.phone,
+      amount: paymentLinkAttemptsTable.amount,
+      name: paymentLinkAttemptsTable.name,
+      email: paymentLinkAttemptsTable.email,
+      countryCode: paymentLinkAttemptsTable.countryCode,
+      operator: paymentLinkAttemptsTable.operator,
+      status: paymentLinkAttemptsTable.status,
+      transactionReference: paymentLinkAttemptsTable.transactionReference,
+      note: paymentLinkAttemptsTable.note,
+      createdAt: paymentLinkAttemptsTable.createdAt,
+      linkTitle: paymentLinksTable.title,
+    })
+    .from(paymentLinkAttemptsTable)
+    .leftJoin(paymentLinksTable, eq(paymentLinkAttemptsTable.paymentLinkId, paymentLinksTable.id))
+    .where(where)
+    .orderBy(desc(paymentLinkAttemptsTable.createdAt))
+    .limit(limitNum).offset(offset);
+
+  const [{ total }] = await db.select({ total: count() }).from(paymentLinkAttemptsTable).where(where);
+
+  res.json({ attempts, total: Number(total), page: pageNum, limit: limitNum });
 });
 
 // ─── Mass Payout ─────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowDownLeft, ArrowUpRight, CheckCircle2, Clock,
   XCircle, AlertCircle, X, RefreshCw, ChevronLeft, ChevronRight,
-  Filter, Copy, Check, ExternalLink
+  Filter, Copy, Check, ExternalLink, MousePointerClick, MessageSquare,
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { Button } from "@/components/ui/button";
@@ -278,7 +278,23 @@ function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
   );
 }
 
+// ── Attempt status helpers ────────────────────────────────────────────────────
+const ATTEMPT_COLORS: Record<string, string> = {
+  initiated:  "bg-blue-500/10 text-blue-400",
+  confirmed:  "bg-indigo-500/10 text-indigo-400",
+  success:    "bg-green-500/10 text-green-400",
+  failed:     "bg-red-500/10 text-red-400",
+  abandoned:  "bg-muted/40 text-muted-foreground",
+};
+const ATTEMPT_LABELS: Record<string, string> = {
+  initiated: "Initié", confirmed: "Confirmé", success: "Réussi",
+  failed: "Échoué", abandoned: "Abandonné",
+};
+
 export default function DashboardPayments() {
+  const [mainTab, setMainTab] = useState<"transactions" | "attempts">("transactions");
+
+  // ── Transactions ──
   const [txs, setTxs] = useState<Tx[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -289,28 +305,47 @@ export default function DashboardPayments() {
   const [selected, setSelected] = useState<Tx | null>(null);
   const limit = 20;
 
+  // ── Attempts ──
+  const [attempts, setAttempts] = useState<any[]>([]);
+  const [attemptsTotal, setAttemptsTotal] = useState(0);
+  const [attemptsLoading, setAttemptsLoading] = useState(false);
+  const [attemptsPage, setAttemptsPage] = useState(1);
+  const [attemptsStatus, setAttemptsStatus] = useState("all");
+  const ALIMIT = 50;
+
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (typeFilter !== "all") params.set("type", typeFilter);
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (search.trim()) params.set("search", search.trim());
-
     try {
       const r = await fetch(`/api/dashboard/payments?${params}`, { credentials: "include" });
       const d = await r.json();
       setTxs(Array.isArray(d.transactions) ? d.transactions : []);
       setTotal(d.total ?? 0);
-    } catch {
-      setTxs([]); setTotal(0);
-    } finally {
-      setLoading(false);
-    }
+    } catch { setTxs([]); setTotal(0); }
+    finally { setLoading(false); }
   }, [page, typeFilter, statusFilter, search]);
 
-  useEffect(() => { load(); }, [load]);
+  const loadAttempts = useCallback(async () => {
+    setAttemptsLoading(true);
+    const params = new URLSearchParams({ page: String(attemptsPage), limit: String(ALIMIT) });
+    if (attemptsStatus !== "all") params.set("status", attemptsStatus);
+    try {
+      const r = await fetch(`/api/dashboard/attempts?${params}`, { credentials: "include" });
+      const d = await r.json();
+      setAttempts(Array.isArray(d.attempts) ? d.attempts : []);
+      setAttemptsTotal(d.total ?? 0);
+    } catch { setAttempts([]); setAttemptsTotal(0); }
+    finally { setAttemptsLoading(false); }
+  }, [attemptsPage, attemptsStatus]);
+
+  useEffect(() => { if (mainTab === "transactions") load(); }, [load, mainTab]);
+  useEffect(() => { if (mainTab === "attempts") loadAttempts(); }, [loadAttempts, mainTab]);
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  const attemptsTotalPages = Math.max(1, Math.ceil(attemptsTotal / ALIMIT));
 
   return (
     <DashboardLayout>
@@ -326,135 +361,219 @@ export default function DashboardPayments() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Payment History</h1>
-            <p className="text-muted-foreground text-sm mt-1">All pay-in and pay-out transactions with full details.</p>
+            <h1 className="text-2xl font-bold">Payments</h1>
+            <p className="text-muted-foreground text-sm mt-1">Transactions and payment link attempts.</p>
           </div>
-          <span className="text-xs bg-muted/40 border border-border rounded-full px-3 py-1 text-muted-foreground">
-            {total.toLocaleString()} total
-          </span>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by reference, order ID, phone number..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            />
-          </div>
-          <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-36">
-              <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="payin">Pay-in</SelectItem>
-              <SelectItem value="payout">Pay-out</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="success">Success</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="processing">Processing</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Main tabs */}
+        <div className="flex border-b border-border mb-5 gap-1">
+          {([
+            { key: "transactions", label: "Transactions", count: total },
+            { key: "attempts",     label: "Tentatives", count: attemptsTotal, icon: MousePointerClick },
+          ] as const).map(({ key, label, count, icon: Icon }) => (
+            <button key={key} onClick={() => setMainTab(key)}
+              className={cn("flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+                mainTab === key
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground")}>
+              {Icon && <Icon className="w-3.5 h-3.5" />}
+              {label}
+              {count > 0 && (
+                <span className={cn("text-xs px-1.5 py-0.5 rounded-full", mainTab === key ? "bg-primary/20 text-primary" : "bg-muted/50 text-muted-foreground")}>
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/20">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reference</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fee</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i} className="border-b border-border/50">
-                      {Array.from({ length: 7 }).map((_, j) => (
-                        <td key={j} className="px-4 py-3.5">
-                          <div className="h-4 bg-muted/40 rounded animate-pulse" style={{ width: `${60 + j * 10}%` }} />
+        {/* ── TRANSACTIONS ── */}
+        {mainTab === "transactions" && (
+          <>
+            <div className="flex flex-col sm:flex-row gap-3 mb-5">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search by reference, order ID, phone number..." className="pl-9"
+                  value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+              </div>
+              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-36">
+                  <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" /><SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="payin">Pay-in</SelectItem>
+                  <SelectItem value="payout">Pay-out</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="success">Success</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/20">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reference</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fee</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      Array.from({ length: 8 }).map((_, i) => (
+                        <tr key={i} className="border-b border-border/50">
+                          {Array.from({ length: 7 }).map((_, j) => (
+                            <td key={j} className="px-4 py-3.5"><div className="h-4 bg-muted/40 rounded animate-pulse" style={{ width: `${60 + j * 10}%` }} /></td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : txs.length === 0 ? (
+                      <tr><td colSpan={7}><EmptyStateTd /></td></tr>
+                    ) : txs.map((tx) => (
+                      <tr key={tx.id} className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer" onClick={() => setSelected(tx)}>
+                        <td className="px-4 py-3.5">
+                          <span className="inline-block bg-muted/30 border border-border/60 rounded-full px-2.5 py-0.5 font-mono text-xs text-foreground max-w-[180px] truncate">{tx.reference}</span>
                         </td>
+                        <td className="px-4 py-3.5 font-semibold">
+                          {parseFloat(tx.amount).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">{tx.currency}</span>
+                        </td>
+                        <td className="px-4 py-3.5 text-yellow-400">
+                          {parseFloat(tx.fee).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">{tx.currency}</span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className={cn("inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full",
+                            tx.type === "payin" ? "bg-blue-500/10 text-blue-400" : "bg-orange-500/10 text-orange-400")}>
+                            {tx.type === "payin" ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
+                            {tx.type === "payin" ? "Pay-in" : "Pay-out"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5"><StatusBadge status={tx.status} /></td>
+                        <td className="px-4 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
+                          {new Date(tx.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <Button size="sm" variant="outline" className="h-7 text-xs font-semibold border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                            onClick={(e) => { e.stopPropagation(); setSelected(tx); }}>
+                            Details
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!loading && total > limit && (
+                <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Page {page} of {totalPages} · {total} results</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="w-3.5 h-3.5" /></Button>
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}><ChevronRight className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── ATTEMPTS ── */}
+        {mainTab === "attempts" && (
+          <>
+            <div className="flex flex-col sm:flex-row gap-3 mb-5">
+              <Select value={attemptsStatus} onValueChange={(v) => { setAttemptsStatus(v); setAttemptsPage(1); }}>
+                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="initiated">Initié</SelectItem>
+                  <SelectItem value="confirmed">Confirmé</SelectItem>
+                  <SelectItem value="success">Réussi</SelectItem>
+                  <SelectItem value="failed">Échoué</SelectItem>
+                  <SelectItem value="abandoned">Abandonné</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => loadAttempts()}>
+                <RefreshCw className={cn("w-3.5 h-3.5", attemptsLoading && "animate-spin")} /> Actualiser
+              </Button>
+              <span className="ml-auto text-xs text-muted-foreground self-center">{attemptsTotal.toLocaleString()} tentatives</span>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/20">
+                      {["Lien","Téléphone","Montant","Pays","Opérateur","Statut","Date"].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
-                  ))
-                ) : txs.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>
-                      <EmptyStateTd />
-                    </td>
-                  </tr>
-                ) : (
-                  txs.map((tx) => (
-                    <tr key={tx.id} className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer" onClick={() => setSelected(tx)}>
-                      <td className="px-4 py-3.5">
-                        <span className="inline-block bg-muted/30 border border-border/60 rounded-full px-2.5 py-0.5 font-mono text-xs text-foreground max-w-[180px] truncate">
-                          {tx.reference}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 font-semibold">
-                        {parseFloat(tx.amount).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">{tx.currency}</span>
-                      </td>
-                      <td className="px-4 py-3.5 text-yellow-400">
-                        {parseFloat(tx.fee).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">{tx.currency}</span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className={cn("inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full",
-                          tx.type === "payin" ? "bg-blue-500/10 text-blue-400" : "bg-orange-500/10 text-orange-400"
-                        )}>
-                          {tx.type === "payin" ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
-                          {tx.type === "payin" ? "Pay-in" : "Pay-out"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5"><StatusBadge status={tx.status} /></td>
-                      <td className="px-4 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <Button size="sm" variant="outline" className="h-7 text-xs font-semibold border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                          onClick={(e) => { e.stopPropagation(); setSelected(tx); }}>
-                          Details
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {!loading && total > limit && (
-            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                Page {page} of {totalPages} · {total} results
-              </span>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Button>
+                  </thead>
+                  <tbody>
+                    {attemptsLoading ? (
+                      Array.from({ length: 8 }).map((_, i) => (
+                        <tr key={i} className="border-b border-border/50">
+                          {Array.from({ length: 7 }).map((_, j) => (
+                            <td key={j} className="px-4 py-3.5"><div className="h-4 bg-muted/40 rounded animate-pulse" style={{ width: `${60 + j * 7}%` }} /></td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : attempts.length === 0 ? (
+                      <tr>
+                        <td colSpan={7}>
+                          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                            <MousePointerClick className="w-8 h-8 mb-3 opacity-30" />
+                            <p className="text-sm font-medium">Aucune tentative enregistrée</p>
+                            <p className="text-xs mt-1 text-muted-foreground/70">Elles apparaissent dès qu'un client remplit le formulaire sur un lien de paiement</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : attempts.map((a) => (
+                      <tr key={a.id} className="border-b border-border/50 hover:bg-muted/10 transition-colors">
+                        <td className="px-4 py-3.5 text-xs text-muted-foreground max-w-[140px] truncate">{a.linkTitle ?? "—"}</td>
+                        <td className="px-4 py-3.5 font-mono text-xs">{a.phone}</td>
+                        <td className="px-4 py-3.5 font-semibold text-xs">
+                          {a.amount ? `${parseFloat(a.amount).toLocaleString()} XOF` : "—"}
+                        </td>
+                        <td className="px-4 py-3.5 text-xs">{a.countryCode ?? "—"}</td>
+                        <td className="px-4 py-3.5 text-xs text-muted-foreground">{a.operator ?? "—"}</td>
+                        <td className="px-4 py-3.5">
+                          <span className={cn("inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full", ATTEMPT_COLORS[a.status] ?? "bg-muted/30 text-muted-foreground")}>
+                            {ATTEMPT_LABELS[a.status] ?? a.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
+                          {new Date(a.createdAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+              {!attemptsLoading && attemptsTotal > ALIMIT && (
+                <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Page {attemptsPage} of {attemptsTotalPages} · {attemptsTotal} résultats</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0" disabled={attemptsPage <= 1} onClick={() => setAttemptsPage(p => p - 1)}><ChevronLeft className="w-3.5 h-3.5" /></Button>
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0" disabled={attemptsPage >= attemptsTotalPages} onClick={() => setAttemptsPage(p => p + 1)}><ChevronRight className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </motion.div>
     </DashboardLayout>
   );
