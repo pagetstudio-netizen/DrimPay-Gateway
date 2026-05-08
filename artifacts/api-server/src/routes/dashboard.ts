@@ -12,6 +12,7 @@ import {
   massPayoutJobsTable,
   operatorsTable,
   operatorAggregatorsTable,
+  blacklistedPhonesTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -1146,6 +1147,17 @@ router.post("/pay/:token", async (req, res) => {
 
   if (!phone || !reqAmount || reqAmount <= 0) {
     res.status(400).json({ error: "Téléphone et montant requis." }); return;
+  }
+
+  // ── Blacklist check ──────────────────────────────────────────────────────
+  const normalizedPhone = String(phone).replace(/\s+/g, "").trim();
+  const [blockedPhone] = await db
+    .select({ id: blacklistedPhonesTable.id })
+    .from(blacklistedPhonesTable)
+    .where(eq(blacklistedPhonesTable.phone, normalizedPhone));
+  if (blockedPhone) {
+    res.status(403).json({ error: "Ce numéro de téléphone est bloqué et ne peut pas effectuer de paiements." });
+    return;
   }
 
   const [link] = await db.select().from(paymentLinksTable).where(eq(paymentLinksTable.token, token));

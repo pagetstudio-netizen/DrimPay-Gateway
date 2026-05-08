@@ -6,6 +6,7 @@ import {
   transactionsTable,
   apiKeysTable,
   usersTable,
+  blacklistedPhonesTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -221,6 +222,20 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
     res.status(400).json({
       error: "INVALID_CURRENCY",
       message: `Country ${country_code} requires currency ${expectedCurrency}, received ${currency}`,
+    });
+    return;
+  }
+
+  // ── Blacklist check ────────────────────────────────────────────────────────
+  const normalizedPhone = phone.replace(/\s+/g, "").trim();
+  const [blacklisted] = await db
+    .select({ id: blacklistedPhonesTable.id })
+    .from(blacklistedPhonesTable)
+    .where(eq(blacklistedPhonesTable.phone, normalizedPhone));
+  if (blacklisted) {
+    res.status(403).json({
+      error: "PHONE_BLACKLISTED",
+      message: "Ce numéro de téléphone est bloqué et ne peut pas effectuer de paiements sur cette plateforme.",
     });
     return;
   }

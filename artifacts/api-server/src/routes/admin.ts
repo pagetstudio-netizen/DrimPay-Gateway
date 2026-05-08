@@ -5,6 +5,7 @@ import {
   usersTable, transactionsTable, walletsTable, kybSubmissionsTable,
   apiKeysTable, paymentLinksTable, operatorsTable, countriesTable,
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
+  blacklistedPhonesTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
@@ -890,6 +891,78 @@ router.put("/admin/settings", requireAdmin, async (req: any, res: any) => {
     await db.insert(adminSettingsTable).values({ key, value }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value, updatedAt: new Date() } });
   }
   await logAdminAction(req.session.userId, "UPDATE_SETTINGS", "settings", undefined, JSON.stringify(Object.keys(updates)), req.ip);
+  res.json({ ok: true });
+});
+
+// ─── LISTE NOIRE (Blacklist) ───────────────────────────────────────────────────
+router.get("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
+  const { search = "", page = "1", limit = "50" } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
+  const offset = (pageNum - 1) * limitNum;
+
+  let rows = await db
+    .select({
+      id: blacklistedPhonesTable.id,
+      phone: blacklistedPhonesTable.phone,
+      reason: blacklistedPhonesTable.reason,
+      blockedBy: blacklistedPhonesTable.blockedBy,
+      createdAt: blacklistedPhonesTable.createdAt,
+      adminEmail: usersTable.email,
+    })
+    .from(blacklistedPhonesTable)
+    .leftJoin(usersTable, eq(blacklistedPhonesTable.blockedBy, usersTable.id))
+    .orderBy(desc(blacklistedPhonesTable.createdAt))
+    .limit(limitNum)
+    .offset(offset);
+
+  if (search.trim()) {
+    const q = search.trim().toLowerCase();
+    rows = rows.filter(r =>
+      r.phone.toLowerCase().includes(q) ||
+      (r.reason ?? "").toLowerCase().includes(q)
+    );
+  }
+
+  const [{ total }] = await db.select({ total: count() }).from(blacklistedPhonesTable);
+  res.json({ items: rows, total: Number(total), page: pageNum, limit: limitNum });
+});
+
+router.post("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
+  const schema = z.object({
+    phone: z.string().min(6).max(20),
+    reason: z.string().max(500).optional(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Numéro invalide", details: parsed.error.flatten() });
+    return;
+  }
+
+  const normalized = parsed.data.phone.replace(/\s+/g, "").trim();
+
+  try {
+    const [created] = await db
+      .insert(blacklistedPhonesTable)
+      .values({ phone: normalized, reason: parsed.data.reason ?? null, blockedBy: req.session.userId })
+      .returning();
+    await logAdminAction(req.session.userId, "BLACKLIST_ADD", "blacklist", normalized, parsed.data.reason, req.ip);
+    res.status(201).json(created);
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "Ce numéro est déjà dans la liste noire." });
+    } else {
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  }
+});
+
+router.delete("/admin/blacklist/:id", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  const [row] = await db.select().from(blacklistedPhonesTable).where(eq(blacklistedPhonesTable.id, id));
+  if (!row) { res.status(404).json({ error: "Entrée introuvable" }); return; }
+  await db.delete(blacklistedPhonesTable).where(eq(blacklistedPhonesTable.id, id));
+  await logAdminAction(req.session.userId, "BLACKLIST_REMOVE", "blacklist", row.phone, undefined, req.ip);
   res.json({ ok: true });
 });
 

@@ -352,9 +352,18 @@ export type ServiceStatus = typeof serviceStatusesTable.$inferSelect;
 export type Incident = typeof incidentsTable.$inferSelect;
 export type Partner = typeof partnersTable.$inferSelect;
 export type Country = typeof countriesTable.$inferSelect;
+export const blacklistedPhonesTable = pgTable("blacklisted_phones", {
+  id: serial("id").primaryKey(),
+  phone: text("phone").notNull().unique(),
+  reason: text("reason"),
+  blockedBy: integer("blocked_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type Operator = typeof operatorsTable.$inferSelect;
 export type KybSubmission = typeof kybSubmissionsTable.$inferSelect;
 export type Wallet = typeof walletsTable.$inferSelect;
 export type Transaction = typeof transactionsTable.$inferSelect;
 export type ApiKey = typeof apiKeysTable.$inferSelect;
 export type Reversement = typeof reversementsTable.$inferSelect;
+export type BlacklistedPhone = typeof blacklistedPhonesTable.$inferSelect;

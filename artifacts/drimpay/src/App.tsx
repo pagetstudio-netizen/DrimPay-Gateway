@@ -61,6 +61,7 @@ import AdminOperators from "@/pages/admin/operators";
 import AdminApiKeys from "@/pages/admin/api-keys";
 import AdminPaymentLinks from "@/pages/admin/payment-links";
 import AdminKybContracts from "@/pages/admin/kyb-contracts";
+import AdminBlacklist from "@/pages/admin/blacklist";
 import AdminLogs from "@/pages/admin/logs";
 import AdminNotifications from "@/pages/admin/notifications";
 import DashboardNotifications from "@/pages/dashboard/notifications";
@@ -215,6 +216,7 @@ function AdminSwitch() {
       <Route path="/admin/api-keys" component={AdminApiKeys} />
       <Route path="/admin/payment-links" component={AdminPaymentLinks} />
       <Route path="/admin/kyb-contracts" component={AdminKybContracts} />
+      <Route path="/admin/blacklist" component={AdminBlacklist} />
       <Route path="/admin/logs" component={AdminLogs} />
       <Route path="/admin/notifications" component={AdminNotifications} />
       <Route path="/admin/settings" component={AdminSettings} />
