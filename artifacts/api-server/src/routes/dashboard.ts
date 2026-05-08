@@ -143,8 +143,11 @@ router.get("/dashboard/status", requireAuth, async (req, res) => {
 
 router.get("/dashboard/overview", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
 
-  const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, userId));
+  const wallets = await db.select().from(walletsTable).where(
+    and(eq(walletsTable.userId, userId), eq(walletsTable.mode, currentMode))
+  );
 
   const txStats = await db
     .select({
@@ -155,13 +158,13 @@ router.get("/dashboard/overview", requireAuth, async (req, res) => {
       txCount: count(),
     })
     .from(transactionsTable)
-    .where(eq(transactionsTable.userId, userId))
+    .where(and(eq(transactionsTable.userId, userId), eq(transactionsTable.mode, currentMode)))
     .groupBy(transactionsTable.type, transactionsTable.status);
 
   const recentTx = await db
     .select()
     .from(transactionsTable)
-    .where(eq(transactionsTable.userId, userId))
+    .where(and(eq(transactionsTable.userId, userId), eq(transactionsTable.mode, currentMode)))
     .orderBy(desc(transactionsTable.createdAt))
     .limit(10);
 
@@ -187,6 +190,7 @@ router.get("/dashboard/overview", requireAuth, async (req, res) => {
       and(
         eq(transactionsTable.userId, userId),
         eq(transactionsTable.status, "success"),
+        eq(transactionsTable.mode, currentMode),
         sql`${transactionsTable.createdAt} >= ${thirtyDaysAgo.toISOString()}`
       )
     )
@@ -228,7 +232,10 @@ router.get("/dashboard/overview", requireAuth, async (req, res) => {
 
 router.get("/dashboard/wallets", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
-  const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, userId));
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
+  const wallets = await db.select().from(walletsTable).where(
+    and(eq(walletsTable.userId, userId), eq(walletsTable.mode, currentMode))
+  );
 
   const enriched = wallets.map((w) => {
     const country = COUNTRIES.find((c) => c.code === w.countryCode);
@@ -240,9 +247,10 @@ router.get("/dashboard/wallets", requireAuth, async (req, res) => {
 
 router.get("/dashboard/transactions", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const { type, status, countryCode, page = "1", limit = "20" } = req.query as Record<string, string>;
 
-  const conditions: any[] = [eq(transactionsTable.userId, userId)];
+  const conditions: any[] = [eq(transactionsTable.userId, userId), eq(transactionsTable.mode, currentMode)];
   if (type) conditions.push(eq(transactionsTable.type, type as any));
   if (status) conditions.push(eq(transactionsTable.status, status as any));
   if (countryCode) conditions.push(eq(transactionsTable.countryCode, countryCode));
@@ -267,9 +275,10 @@ router.get("/dashboard/transactions", requireAuth, async (req, res) => {
 
 router.get("/dashboard/payments", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const { type, status, search, page = "1", limit = "20" } = req.query as Record<string, string>;
 
-  const conditions: any[] = [eq(transactionsTable.userId, userId)];
+  const conditions: any[] = [eq(transactionsTable.userId, userId), eq(transactionsTable.mode, currentMode)];
   if (type && type !== "all") conditions.push(eq(transactionsTable.type, type as any));
   if (status && status !== "all") conditions.push(eq(transactionsTable.status, status as any));
 
@@ -378,6 +387,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
   }
 
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
 
   // Check operator availability
@@ -390,12 +400,12 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
   let [wallet] = await db
     .select()
     .from(walletsTable)
-    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, countryCode)));
+    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, countryCode), eq(walletsTable.mode, currentMode)));
 
   if (!wallet) {
     [wallet] = await db
       .insert(walletsTable)
-      .values({ userId, countryCode, currency })
+      .values({ userId, countryCode, currency, mode: currentMode })
       .returning();
   }
 
@@ -420,6 +430,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       phone,
       description,
       externalRef,
+      mode: currentMode,
     })
     .returning();
 
@@ -449,6 +460,7 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
   }
 
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
 
   // Check operator availability
@@ -461,10 +473,10 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
   const [wallet] = await db
     .select()
     .from(walletsTable)
-    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, countryCode)));
+    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, countryCode), eq(walletsTable.mode, currentMode)));
 
   if (!wallet) {
-    res.status(400).json({ error: `No wallet found for country ${countryCode}. You can only payout from countries where you have received funds.` });
+    res.status(400).json({ error: `Aucun wallet ${currentMode} trouvé pour le pays ${countryCode}. Vous ne pouvez effectuer un payout que depuis des pays où vous avez reçu des fonds.` });
     return;
   }
 
@@ -473,7 +485,7 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
   const currentBalance = parseFloat(String(wallet.balance));
 
   if (currentBalance < totalDebit) {
-    res.status(400).json({ error: `Insufficient balance. Available: ${currentBalance} ${currency}, Required: ${totalDebit} ${currency} (including 3% fee of ${fee} ${currency})` });
+    res.status(400).json({ error: `Solde insuffisant. Disponible : ${currentBalance} ${currency}, Requis : ${totalDebit} ${currency} (dont frais 3% de ${fee} ${currency})` });
     return;
   }
 
@@ -496,6 +508,7 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
       phone,
       description,
       externalRef,
+      mode: currentMode,
     })
     .returning();
 
@@ -882,10 +895,11 @@ const reversementSchema = z.object({
 
 router.get("/dashboard/reversements", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const rows = await db
     .select()
     .from(reversementsTable)
-    .where(eq(reversementsTable.userId, userId))
+    .where(and(eq(reversementsTable.userId, userId), eq(reversementsTable.mode, currentMode)))
     .orderBy(desc(reversementsTable.createdAt))
     .limit(50);
   res.json(rows);
@@ -910,10 +924,10 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
   const [wallet] = await db
     .select()
     .from(walletsTable)
-    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, countryCode)));
+    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, countryCode), eq(walletsTable.mode, currentMode)));
 
   if (!wallet) {
-    res.status(400).json({ error: "Aucun wallet actif pour ce pays." });
+    res.status(400).json({ error: `Aucun wallet ${currentMode} actif pour ce pays.` });
     return;
   }
 
@@ -947,8 +961,9 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
       amount: String(amount),
       fee: String(fee),
       net: String(net),
-      note: currentMode === "sandbox" ? `[SANDBOX] ${note ?? ""}`.trim() : (note ?? null),
+      note: note ?? null,
       status: currentMode === "sandbox" ? "completed" : "pending",
+      mode: currentMode,
     })
     .returning();
 
@@ -1479,10 +1494,11 @@ const massPayoutSchema = z.object({
 
 router.get("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const jobs = await db
     .select()
     .from(massPayoutJobsTable)
-    .where(eq(massPayoutJobsTable.userId, userId))
+    .where(and(eq(massPayoutJobsTable.userId, userId), eq(massPayoutJobsTable.mode, currentMode)))
     .orderBy(desc(massPayoutJobsTable.createdAt))
     .limit(50);
   res.json(jobs);
@@ -1510,7 +1526,8 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
     totalCount: recipients.length,
     totalAmount: String(totalAmount),
     currency,
-    description: currentMode === "sandbox" ? `[SANDBOX] ${description ?? ""}`.trim() : description,
+    description,
+    mode: currentMode,
   }).returning();
 
   let successCount = 0;
@@ -1523,7 +1540,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
       const txRef = `MASS-OUT-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 
       let [wallet] = await db.select().from(walletsTable)
-        .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, r.countryCode)));
+        .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, r.countryCode), eq(walletsTable.mode, currentMode)));
 
       if (currentMode === "live") {
         // Live mode: need wallet + sufficient balance
@@ -1555,7 +1572,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
         // Sandbox mode: auto-create a sandbox wallet if needed, simulate without real deductions
         if (!wallet) {
           [wallet] = await db.insert(walletsTable)
-            .values({ userId, countryCode: r.countryCode, currency: countryCurrency })
+            .values({ userId, countryCode: r.countryCode, currency: countryCurrency, mode: "sandbox" })
             .returning();
         }
 
@@ -1572,7 +1589,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
           countryCode: r.countryCode,
           operator: r.operator,
           phone: r.phone,
-          description: `[SANDBOX] ${r.note ?? description ?? `Mass payout: ${reference}`}`,
+          description: r.note ?? description ?? `Mass payout: ${reference}`,
           mode: "sandbox",
         });
       }
@@ -1596,17 +1613,22 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 router.get("/dashboard/notifications", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const [recentTxRows, kybRows, walletRows] = await Promise.all([
     db.select().from(transactionsTable)
-      .where(and(eq(transactionsTable.userId, userId), sql`${transactionsTable.createdAt} >= ${sevenDaysAgo.toISOString()}`))
+      .where(and(
+        eq(transactionsTable.userId, userId),
+        eq(transactionsTable.mode, currentMode),
+        sql`${transactionsTable.createdAt} >= ${sevenDaysAgo.toISOString()}`
+      ))
       .orderBy(desc(transactionsTable.createdAt))
       .limit(50),
     db.select().from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, userId)).limit(1),
-    db.select().from(walletsTable).where(eq(walletsTable.userId, userId)),
+    db.select().from(walletsTable).where(and(eq(walletsTable.userId, userId), eq(walletsTable.mode, currentMode))),
   ]);
 
   const notifs: any[] = [];

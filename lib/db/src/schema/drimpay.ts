@@ -82,6 +82,8 @@ export const kybSubmissionsTable = pgTable("kyb_submissions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const walletModeEnum = pgEnum("wallet_mode", ["sandbox", "live"]);
+
 export const walletsTable = pgTable("wallets", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
@@ -90,6 +92,7 @@ export const walletsTable = pgTable("wallets", {
   balance: numeric("balance", { precision: 18, scale: 2 }).notNull().default("0"),
   lockedBalance: numeric("locked_balance", { precision: 18, scale: 2 }).notNull().default("0"),
   active: boolean("active").notNull().default(true),
+  mode: walletModeEnum("mode").notNull().default("sandbox"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -166,6 +169,7 @@ export const massPayoutJobsTable = pgTable("mass_payout_jobs", {
   totalAmount: numeric("total_amount", { precision: 18, scale: 2 }).notNull().default("0"),
   currency: text("currency").notNull(),
   description: text("description"),
+  mode: transactionModeEnum("mode").notNull().default("sandbox"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -185,6 +189,7 @@ export const reversementsTable = pgTable("reversements", {
   net: numeric("net", { precision: 18, scale: 2 }).notNull(),
   note: text("note"),
   status: reversementStatusEnum("status").notNull().default("pending"),
+  mode: transactionModeEnum("mode").notNull().default("sandbox"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
