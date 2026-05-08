@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { ArrowDownLeft, Copy, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  ArrowDownLeft, Copy, CheckCircle2, ChevronDown, ChevronRight,
+  BookOpen, KeyRound, Send, SearchCheck, List, Webhook, Activity,
+  ShieldCheck, RefreshCw, Globe, Shield
+} from "lucide-react";
 import { DashboardLayout } from "../layout";
 
 function CodeBlock({ code, lang = "json" }: { code: string; lang?: string }) {
@@ -22,10 +26,13 @@ function CodeBlock({ code, lang = "json" }: { code: string; lang?: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children }: { title: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
     <section className="mb-10">
-      <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">{title}</h2>
+      <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border flex items-center gap-2.5">
+        {Icon && <Icon className="w-5 h-5 text-green-500 shrink-0" />}
+        {title}
+      </h2>
       {children}
     </section>
   );
@@ -64,7 +71,7 @@ export default function DocPayin() {
           </div>
         </div>
 
-        <Section title="Introduction">
+        <Section title="Introduction" icon={BookOpen}>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
             L'API Pay-in DrimPay vous permet d'initier des collectes de fonds via Mobile Money dans 7 pays d'Afrique de l'Ouest et Centrale.
             Chaque transaction est créditée sur le wallet du pays correspondant.
@@ -76,14 +83,14 @@ export default function DocPayin() {
           </div>
         </Section>
 
-        <Section title="Authentification">
+        <Section title="Authentification" icon={KeyRound}>
           <p className="text-sm text-muted-foreground mb-4">
             Toutes les requêtes doivent inclure votre clé API dans le header <code className="text-primary font-mono">Authorization</code>.
           </p>
           <CodeBlock lang="http" code={`Authorization: Bearer dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`} />
         </Section>
 
-        <Section title="Initier un Pay-in">
+        <Section title="Initier un Pay-in" icon={Send}>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500/10 text-green-600 font-bold font-mono">POST</span>
             <code className="text-sm font-mono text-muted-foreground">/payin/initiate</code>
@@ -138,7 +145,7 @@ export default function DocPayin() {
 }`} />
         </Section>
 
-        <Section title="Vérifier le statut">
+        <Section title="Vérifier le statut" icon={SearchCheck}>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 font-bold font-mono">GET</span>
             <code className="text-sm font-mono text-muted-foreground">/payin/{"{reference}"}</code>
@@ -162,7 +169,7 @@ export default function DocPayin() {
 }`} />
         </Section>
 
-        <Section title="Lister les Pay-ins">
+        <Section title="Lister les Pay-ins" icon={List}>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 font-bold font-mono">GET</span>
             <code className="text-sm font-mono text-muted-foreground">/payin?page=1&limit=20&status=success&country_code=TG</code>
@@ -171,11 +178,12 @@ export default function DocPayin() {
   -H "Authorization: Bearer dp_live_xxxx"`} />
         </Section>
 
-        <Section title="Webhooks & Signature">
+        <Section title="Webhooks & Signature" icon={Webhook}>
           <p className="text-sm text-muted-foreground mb-4">
             DrimPay envoie des notifications POST en temps réel à votre <code className="font-mono text-primary">webhook_url</code> lors de chaque changement de statut. Chaque requête inclut un header de signature obligatoire.
           </p>
           <div className="flex items-start gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 mb-4">
+            <Shield className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-blue-400 mb-1">Header de signature</p>
               <p className="text-xs text-muted-foreground">Chaque webhook est signé avec votre <code className="font-mono text-primary">webhook_secret</code>. Vérifiez toujours la signature avant de traiter l'événement.</p>
@@ -221,7 +229,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
 });`} />
         </Section>
 
-        <Section title="Statuts de transaction">
+        <Section title="Statuts de transaction" icon={Activity}>
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             {[
               { status: "queued", color: "text-purple-600 bg-purple-500/10", desc: "Requête acceptée, en attente dans la file" },
@@ -240,7 +248,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
           </div>
         </Section>
 
-        <Section title="Limites & Sécurité">
+        <Section title="Limites & Sécurité" icon={ShieldCheck}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             {[
               { label: "Max par transaction", value: "1 000 000 FCFA" },
@@ -256,7 +264,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
           <p className="text-sm text-muted-foreground">Les requêtes dépassant ces limites reçoivent une réponse <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code>. Contactez le support pour augmenter vos limites.</p>
         </Section>
 
-        <Section title="Retry automatique">
+        <Section title="Retry automatique" icon={RefreshCw}>
           <p className="text-sm text-muted-foreground mb-4">
             En cas d'échec réseau, réessayez avec le même <code className="font-mono text-primary">order_id</code> — l'API est idempotente et ne créera pas de doublon. DrimPay réessaie automatiquement les webhooks jusqu'à 3 fois avec backoff exponentiel.
           </p>
@@ -282,7 +290,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
 }`} />
         </Section>
 
-        <Section title="Pays et opérateurs supportés">
+        <Section title="Pays et opérateurs supportés" icon={Globe}>
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="grid grid-cols-4 gap-0 px-4 py-2.5 bg-muted/40 border-b border-border text-xs font-semibold text-muted-foreground">
               <span>Pays</span>

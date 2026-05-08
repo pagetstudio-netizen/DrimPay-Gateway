@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { ArrowUpRight, Copy, CheckCircle2, AlertTriangle } from "lucide-react";
+import {
+  ArrowUpRight, Copy, CheckCircle2, AlertTriangle,
+  Send, SearchCheck, Webhook, Activity, UserCheck,
+  Lock, ShieldCheck, RefreshCw, Calculator, Globe, Shield
+} from "lucide-react";
 import { DashboardLayout } from "../layout";
 
 function CodeBlock({ code, lang = "json" }: { code: string; lang?: string }) {
@@ -29,6 +33,18 @@ function Param({ name, type, required, desc }: { name: string; type: string; req
       <div className="w-20 shrink-0 text-xs text-muted-foreground font-mono">{type}</div>
       <div className="flex-1 text-sm text-muted-foreground">{desc}</div>
     </div>
+  );
+}
+
+function Section({ title, icon: Icon, children }: { title: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
+  return (
+    <section className="mb-10">
+      <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border flex items-center gap-2.5">
+        {Icon && <Icon className="w-5 h-5 text-blue-500 shrink-0" />}
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }
 
@@ -63,8 +79,7 @@ export default function DocPayout() {
           </div>
         </div>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Initier un Pay-out</h2>
+        <Section title="Initier un Pay-out" icon={Send}>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500/10 text-green-600 font-bold font-mono">POST</span>
             <code className="text-sm font-mono text-muted-foreground">/payout/initiate</code>
@@ -117,21 +132,20 @@ export default function DocPayout() {
   "created_at": "2024-05-07T11:00:00Z",
   "estimated_completion": "2024-05-07T11:05:00Z"
 }`} />
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Vérifier le statut</h2>
+        <Section title="Vérifier le statut" icon={SearchCheck}>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 font-bold font-mono">GET</span>
             <code className="text-sm font-mono text-muted-foreground">/payout/{"{reference}"}</code>
           </div>
           <CodeBlock lang="curl" code={`curl "https://api.drimpay.africa/v2/payout/OUT-1715000000-E5F6G7H8" \\
   -H "Authorization: Bearer dp_live_xxxx"`} />
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Webhook & Signature</h2>
+        <Section title="Webhook & Signature" icon={Webhook}>
           <div className="flex items-start gap-3 p-4 rounded-xl border border-orange-500/20 bg-orange-500/5 mb-4">
+            <Shield className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-orange-500 mb-1">Signature obligatoire</p>
               <p className="text-xs text-muted-foreground">Chaque webhook inclut un header <code className="font-mono text-primary">X-DrimPay-Signature: sha256=HASH</code>. Vérifiez toujours cette signature avant de traiter l'événement.</p>
@@ -172,10 +186,9 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
   // Gérer les statuts : queued | processing | success | failed | reversed | cancelled
   res.status(200).send("OK");
 });`} />
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Statuts de transaction</h2>
+        <Section title="Statuts de transaction" icon={Activity}>
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             {[
               { status: "queued", color: "text-purple-600 bg-purple-500/10", desc: "Requête acceptée, en attente dans la file" },
@@ -192,10 +205,9 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
               </div>
             ))}
           </div>
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">KYB Obligatoire</h2>
+        <Section title="KYB Obligatoire" icon={UserCheck}>
           <div className="flex items-start gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 mb-4">
             <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <div>
@@ -210,10 +222,9 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
   "error": "KYB_REQUIRED",
   "message": "Votre compte doit compléter la vérification KYB avant d'effectuer des pay-outs en production"
 }`} />
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Protection du wallet (anti double dépense)</h2>
+        <Section title="Protection du wallet (anti double dépense)" icon={Lock}>
           <p className="text-sm text-muted-foreground mb-4">
             DrimPay utilise un verrou au niveau de la base de données pour chaque débit de wallet. Les requêtes simultanées sont sérialisées — votre solde ne peut jamais passer en négatif. Utilisez toujours un <code className="font-mono text-primary">order_id</code> unique pour éviter les doublons.
           </p>
@@ -229,10 +240,9 @@ UPDATE wallets
   WHERE id = :wallet_id;
 
 COMMIT;`} />
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Limites & Sécurité</h2>
+        <Section title="Limites & Sécurité" icon={ShieldCheck}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             {[
               { label: "Max par transaction", value: "1 000 000 FCFA" },
@@ -245,10 +255,9 @@ COMMIT;`} />
               </div>
             ))}
           </div>
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Retry automatique</h2>
+        <Section title="Retry automatique" icon={RefreshCw}>
           <p className="text-sm text-muted-foreground mb-4">
             En cas d'échec réseau, réessayez avec le même <code className="font-mono text-primary">order_id</code>. L'API est idempotente et ne débitera jamais deux fois le même paiement.
           </p>
@@ -272,10 +281,9 @@ COMMIT;`} />
     return payoutAvecRetry(payload, tentatives + 1);
   }
 }`} />
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Calcul des frais</h2>
+        <Section title="Calcul des frais" icon={Calculator}>
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-muted-foreground mb-4">
               Les frais de <strong className="text-foreground">3%</strong> sont calculés sur le montant brut et déduits de votre wallet.
@@ -286,10 +294,9 @@ fee (3%)     =    750 XOF
 total_debit  = 25 750 XOF  // Montant prélevé sur votre wallet
 beneficiary  = 25 000 XOF  // Montant reçu par le bénéficiaire`} lang="text" />
           </div>
-        </section>
+        </Section>
 
-        <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border">Pays et opérateurs supportés</h2>
+        <Section title="Pays et opérateurs supportés" icon={Globe}>
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="grid grid-cols-4 gap-0 px-4 py-2.5 bg-muted/40 border-b border-border text-xs font-semibold text-muted-foreground">
               <span>Pays</span>
@@ -324,7 +331,7 @@ beneficiary  = 25 000 XOF  // Montant reçu par le bénéficiaire`} lang="text" 
               </div>
             ))}
           </div>
-        </section>
+        </Section>
       </div>
     </DashboardLayout>
   );
