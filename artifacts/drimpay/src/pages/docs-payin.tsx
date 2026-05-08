@@ -403,10 +403,7 @@ def drimpay_webhook():
         </button>
         <Link href="/">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-sm bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-base leading-none">D</span>
-            </div>
-            <span className="font-bold text-lg tracking-tight">DrimPay</span>
+            <img src="/logo-drimpay.png" alt="DrimPay" className="h-8 w-auto object-contain" />
           </div>
         </Link>
         <div className="hidden sm:flex items-center gap-2 text-muted-foreground">

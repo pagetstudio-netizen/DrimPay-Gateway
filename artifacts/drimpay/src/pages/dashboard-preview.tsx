@@ -30,7 +30,7 @@ export default function DashboardPreview() {
         <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-2xl mb-8">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background/50">
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-sm bg-primary flex items-center justify-center"><span className="text-primary-foreground font-bold text-sm">D</span></div>
+              <img src="/logo-drimpay.png" alt="DrimPay" className="h-6 w-auto object-contain" />
               <span className="font-semibold text-sm">DrimPay Dashboard</span>
             </div>
             <div className="flex items-center gap-2">

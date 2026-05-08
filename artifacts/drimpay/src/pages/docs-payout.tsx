@@ -165,10 +165,7 @@ print(data["reference"])`,
         </button>
         <Link href="/">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-sm bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-base leading-none">D</span>
-            </div>
-            <span className="font-bold text-lg tracking-tight">DrimPay</span>
+            <img src="/logo-drimpay.png" alt="DrimPay" className="h-8 w-auto object-contain" />
           </div>
         </Link>
         <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
@@ -195,9 +192,7 @@ print(data["reference"])`,
           <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-sm bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm leading-none">D</span>
-                </div>
+                <img src="/logo-drimpay.png" alt="DrimPay" className="h-6 w-auto object-contain" />
                 <span className="font-bold tracking-tight">Pay-out API</span>
               </div>
               <button onClick={() => setMobileNavOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
