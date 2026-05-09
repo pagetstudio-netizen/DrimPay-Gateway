@@ -199,20 +199,21 @@ function ModeSwitcher() {
       {/* KYB blocked dialog */}
       <AnimatePresence>
         {kybBlocked && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ alignItems: "center" }}>
             <motion.div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={cancel}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 16 }}
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
               transition={{ type: "spring", stiffness: 340, damping: 28 }}
-              className="relative bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
+              className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-auto"
+              style={{ position: "relative", zIndex: 1 }}
             >
               <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
                 <ShieldX className="w-6 h-6 text-red-600" />
@@ -227,14 +228,14 @@ function ModeSwitcher() {
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
                 <span>Complétez votre vérification KYB et attendez la validation (24–72h). Une fois approuvé, vous pourrez activer le mode Live.</span>
               </div>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={cancel}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
                 >
                   Fermer
                 </button>
-                <Link href="/dashboard/kyb" className="flex-1">
+                <Link href="/dashboard/kyb" className="block">
                   <button
                     onClick={cancel}
                     className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
