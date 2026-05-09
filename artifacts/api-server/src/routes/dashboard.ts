@@ -41,9 +41,20 @@ function requireAuth(req: any, res: any, next: any) {
 
 // ── Live / Sandbox mode ───────────────────────────────────────────────────────
 
-router.get("/dashboard/mode", requireAuth, (req, res) => {
+router.get("/dashboard/mode", requireAuth, async (req, res) => {
   if (!req.session.mode) req.session.mode = "sandbox";
-  res.json({ mode: req.session.mode });
+  let kybStatus: string = "pending";
+  if (req.session.role !== "admin") {
+    const userId = req.session.userId!;
+    const [kyb] = await db
+      .select({ status: kybSubmissionsTable.status })
+      .from(kybSubmissionsTable)
+      .where(eq(kybSubmissionsTable.userId, userId));
+    kybStatus = kyb?.status ?? "pending";
+  } else {
+    kybStatus = "approved";
+  }
+  res.json({ mode: req.session.mode, kybStatus });
 });
 
 router.post("/dashboard/mode", requireAuth, async (req, res) => {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight,
   CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal,
-  FlaskConical, Zap, AlertTriangle, ShieldX
+  FlaskConical, Zap, AlertTriangle, ShieldX, Lock
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
@@ -64,7 +64,7 @@ function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
 }
 
 function ModeSwitcher() {
-  const { mode, setMode } = useMode();
+  const { mode, kybStatus, setMode } = useMode();
   const { user } = useAuth();
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState<"live" | "sandbox" | null>(null);
@@ -72,9 +72,14 @@ function ModeSwitcher() {
   const [switching, setSwitching] = useState(false);
 
   const isAdmin = user?.role === "admin";
+  const liveBlocked = !isAdmin && kybStatus !== "approved";
 
   const handleClick = (target: "live" | "sandbox") => {
     if (target === mode) return;
+    if (target === "live" && liveBlocked) {
+      setKybBlocked(true);
+      return;
+    }
     setPending(target);
     setConfirming(true);
   };
@@ -84,7 +89,7 @@ function ModeSwitcher() {
     setSwitching(true);
     const result = await setMode(pending);
     setSwitching(false);
-    if (result.error === "KYB_NOT_APPROVED" && !isAdmin) {
+    if (result.error === "KYB_NOT_APPROVED") {
       setConfirming(false);
       setKybBlocked(true);
       return;
@@ -102,6 +107,7 @@ function ModeSwitcher() {
   return (
     <>
       <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
+        {/* Sandbox button — always accessible */}
         <button
           onClick={() => handleClick("sandbox")}
           className={cn(
@@ -114,21 +120,32 @@ function ModeSwitcher() {
           <FlaskConical className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Sandbox</span>
         </button>
+
+        {/* Live button — locked when KYB not approved */}
         <button
           onClick={() => handleClick("live")}
+          title={liveBlocked ? "KYB requis pour accéder au mode Live" : undefined}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-            mode === "live"
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all relative",
+            mode === "live" && !liveBlocked
               ? "bg-emerald-500 text-white shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
+              : liveBlocked
+                ? "text-gray-400 cursor-pointer select-none"
+                : "text-gray-500 hover:text-gray-700"
           )}
         >
-          <Zap className="w-3.5 h-3.5" />
+          {liveBlocked
+            ? <Lock className="w-3.5 h-3.5" />
+            : <Zap className="w-3.5 h-3.5" />
+          }
           <span className="hidden sm:inline">Live</span>
+          {liveBlocked && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-400 border border-white" />
+          )}
         </button>
       </div>
 
-      {/* Confirmation dialog */}
+      {/* Confirmation dialog (sandbox ↔ live for approved accounts) */}
       <AnimatePresence>
         {confirming && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -199,7 +216,7 @@ function ModeSwitcher() {
       {/* KYB blocked dialog */}
       <AnimatePresence>
         {kybBlocked && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ alignItems: "center" }}>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
               className="fixed inset-0 bg-black/60 backdrop-blur-sm"
               initial={{ opacity: 0 }}
@@ -212,8 +229,7 @@ function ModeSwitcher() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }}
               transition={{ type: "spring", stiffness: 340, damping: 28 }}
-              className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-auto"
-              style={{ position: "relative", zIndex: 1 }}
+              className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-auto z-10"
             >
               <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
                 <ShieldX className="w-6 h-6 text-red-600" />
@@ -221,12 +237,18 @@ function ModeSwitcher() {
               <h3 className="text-base font-bold text-gray-900 text-center mb-2">
                 Compte non approuvé
               </h3>
-              <p className="text-sm text-gray-500 text-center leading-relaxed mb-5">
-                Le mode Live est réservé aux comptes dont le dossier KYB a été <strong className="text-gray-700">validé et approuvé</strong> par notre équipe.
+              <p className="text-sm text-gray-500 text-center leading-relaxed mb-4">
+                Le mode Live est réservé aux comptes dont le dossier KYB a été{" "}
+                <strong className="text-gray-700">validé et approuvé</strong> par notre équipe.
               </p>
               <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mb-5 text-xs text-blue-800">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
-                <span>Complétez votre vérification KYB et attendez la validation (24–72h). Une fois approuvé, vous pourrez activer le mode Live.</span>
+                <span>
+                  {kybStatus === "submitted" || kybStatus === "under_review"
+                    ? "Votre dossier est en cours d'examen. Vous serez notifié dès que la validation sera effectuée (24–72h)."
+                    : "Complétez votre vérification KYB et attendez la validation (24–72h). Une fois approuvé, vous pourrez activer le mode Live."
+                  }
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -240,7 +262,10 @@ function ModeSwitcher() {
                     onClick={cancel}
                     className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
                   >
-                    Aller au KYB
+                    {kybStatus === "submitted" || kybStatus === "under_review"
+                      ? "Voir le statut"
+                      : "Démarrer le KYB"
+                    }
                   </button>
                 </Link>
               </div>

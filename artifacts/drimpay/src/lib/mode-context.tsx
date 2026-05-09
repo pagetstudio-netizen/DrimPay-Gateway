@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 
 export type Mode = "sandbox" | "live";
+export type KybStatus = "pending" | "submitted" | "under_review" | "approved" | "rejected";
 
 type ModeState = {
   mode: Mode;
+  kybStatus: KybStatus;
   loading: boolean;
   setMode: (m: Mode) => Promise<{ error?: string }>;
 };
@@ -14,12 +16,16 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export function ModeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<Mode>("sandbox");
+  const [kybStatus, setKybStatus] = useState<KybStatus>("pending");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${BASE}/api/dashboard/mode`, { credentials: "include" })
-      .then(r => (r.ok ? r.json() : { mode: "sandbox" }))
-      .then(d => setModeState((d.mode as Mode) ?? "sandbox"))
+      .then(r => (r.ok ? r.json() : { mode: "sandbox", kybStatus: "pending" }))
+      .then(d => {
+        setModeState((d.mode as Mode) ?? "sandbox");
+        setKybStatus((d.kybStatus as KybStatus) ?? "pending");
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -40,7 +46,7 @@ export function ModeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ModeContext.Provider value={{ mode, loading, setMode }}>
+    <ModeContext.Provider value={{ mode, kybStatus, loading, setMode }}>
       {children}
     </ModeContext.Provider>
   );
