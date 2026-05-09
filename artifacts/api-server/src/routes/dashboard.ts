@@ -22,9 +22,7 @@ import multer from "multer";
 import { notifyKybSubmitted, notifyReversement, notifyPayin } from "../lib/telegram";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
-import { uploadKybDocument } from "../lib/storage";
-import path from "path";
-import fs from "fs";
+import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
 
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -847,9 +845,8 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
             id: kyb.id,
           }).catch(() => {});
 
-          // 2) Read contract DOCX template from disk
-          const contractDocxPath = path.join(process.cwd(), "static", "contrat-drimpay.docx");
-          const contractBuf = fs.readFileSync(contractDocxPath);
+          // 2) Download contract DOCX template from Supabase (falls back to disk)
+          const contractBuf = await downloadContractTemplate();
 
           const contractTo = (kyb as any).contractEmail || user.email;
           const merchantName = (kyb as any).legalRepName ?? user.companyName;
