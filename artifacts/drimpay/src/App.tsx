@@ -69,6 +69,7 @@ import AdminBroadcast from "@/pages/admin/broadcast";
 import DashboardNotifications from "@/pages/dashboard/notifications";
 import DashboardVerifyCode from "@/pages/dashboard/verify-code";
 import AdminSettings from "@/pages/admin/settings";
+import AdminContract from "@/pages/admin/contract";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -222,6 +223,7 @@ function AdminSwitch() {
       <Route path="/admin/logs" component={AdminLogs} />
       <Route path="/admin/broadcast" component={AdminBroadcast} />
       <Route path="/admin/notifications" component={AdminNotifications} />
+      <Route path="/admin/contract" component={AdminContract} />
       <Route path="/admin/settings" component={AdminSettings} />
       <Route component={AdminDashboard} />
     </Switch>

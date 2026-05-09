@@ -12,13 +12,25 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import path from "path";
 import fs from "fs";
-import { downloadKybDocument } from "../lib/storage";
+import { downloadKybDocument, downloadContractTemplate, uploadContractTemplateBuffer, getContractTemplateInfo } from "../lib/storage";
+import multer from "multer";
 import {
   notifyKybDecision, notifyBlacklist,
   testConnection, detectChatId, invalidateTelegramCache,
 } from "../lib/telegram";
+
 import { generateContractPdf } from "../lib/contract-pdf";
 import { sendBroadcastEmail, sendKybApprovedEmail, sendKybRejectedEmail } from "../lib/mailer";
+
+const contractUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      || file.originalname.endsWith(".docx");
+    cb(null, ok);
+  },
+});
 
 const router = Router();
 
@@ -620,6 +632,54 @@ router.get("/admin/kyb/:id/contract", requireAdmin, async (req: any, res: any) =
   } catch (err: any) {
     console.error("[CONTRACT PDF]", err);
     res.status(500).json({ error: "Erreur lors de la génération du PDF", details: err?.message });
+  }
+});
+
+// ─── CONTRACT TEMPLATE MANAGEMENT ────────────────────────────────────────────
+
+// GET /api/admin/contract/info — metadata of the current DOCX template in Supabase
+router.get("/admin/contract/info", requireAdmin, async (_req: any, res: any) => {
+  const info = await getContractTemplateInfo();
+  if (!info) {
+    res.json({ ok: false, error: "Fichier non trouvé dans Supabase" });
+    return;
+  }
+  res.json({ ok: true, size: info.size, updatedAt: info.updatedAt });
+});
+
+// POST /api/admin/contract/upload — replace the DOCX template in Supabase
+router.post(
+  "/admin/contract/upload",
+  requireAdmin,
+  contractUpload.single("contract"),
+  async (req: any, res: any) => {
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
+      res.status(400).json({ error: "Aucun fichier reçu ou format invalide (seuls les .docx sont acceptés)." });
+      return;
+    }
+    try {
+      await uploadContractTemplateBuffer(file.buffer);
+      await logAdminAction(req.session.userId, "UPLOAD_CONTRACT_TEMPLATE", "contract", undefined, `${file.originalname} (${file.size} octets)`, req.ip);
+      res.json({ ok: true, size: file.size, originalName: file.originalname });
+    } catch (err: any) {
+      console.error("[Admin] Contract upload error:", err?.message);
+      res.status(500).json({ error: err?.message ?? "Erreur lors de l'upload" });
+    }
+  }
+);
+
+// GET /api/admin/contract/download — download the current DOCX template from Supabase
+router.get("/admin/contract/download", requireAdmin, async (_req: any, res: any) => {
+  try {
+    const buf = await downloadContractTemplate();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", 'attachment; filename="contrat-drimpay.docx"');
+    res.setHeader("Content-Length", buf.length);
+    res.send(buf);
+  } catch (err: any) {
+    console.error("[Admin] Contract download error:", err?.message);
+    res.status(404).json({ error: "Fichier introuvable" });
   }
 });
 

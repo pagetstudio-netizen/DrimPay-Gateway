@@ -48,6 +48,39 @@ export async function ensureKybBucket(): Promise<void> {
 // ── Contract template ─────────────────────────────────────────────────────────
 
 /**
+ * Upload a Buffer as the contract DOCX template to Supabase.
+ * Called from the admin upload route.
+ */
+export async function uploadContractTemplateBuffer(buffer: Buffer): Promise<void> {
+  const { error } = await supabaseAdmin.storage
+    .from(KYB_BUCKET)
+    .upload(CONTRACT_TEMPLATE_PATH, buffer, {
+      contentType: CONTRACT_MIME,
+      upsert: true,
+    });
+  if (error) throw new Error(`Contract upload failed: ${error.message}`);
+  console.log("[Storage] Contract template replaced by admin");
+}
+
+/**
+ * Return basic metadata about the current contract template in Supabase.
+ */
+export async function getContractTemplateInfo(): Promise<{ size: number; updatedAt: string } | null> {
+  try {
+    const folder = CONTRACT_TEMPLATE_PATH.split("/")[0];
+    const filename = CONTRACT_TEMPLATE_PATH.split("/").pop()!;
+    const { data, error } = await supabaseAdmin.storage
+      .from(KYB_BUCKET)
+      .list(folder, { search: filename });
+    if (error || !data?.length) return null;
+    const file = data[0];
+    return { size: file.metadata?.size ?? 0, updatedAt: file.updated_at ?? file.created_at ?? "" };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Upload the contract DOCX template from disk to Supabase on first startup.
  * Uses upsert so re-deployments always keep the latest version in sync.
  */
