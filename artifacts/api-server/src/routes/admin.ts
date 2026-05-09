@@ -12,6 +12,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import path from "path";
 import fs from "fs";
+import { downloadKybDocument } from "../lib/storage";
 import {
   notifyKybDecision, notifyBlacklist,
   testConnection, detectChatId, invalidateTelegramCache,
@@ -549,26 +550,29 @@ router.get("/admin/kyb/:id/document/:field", requireAdmin, async (req: any, res:
   const [kyb] = await db.select().from(kybSubmissionsTable).where(eq(kybSubmissionsTable.id, id));
   if (!kyb) { res.status(404).json({ error: "Dossier KYB introuvable" }); return; }
 
-  const filePath: string | null = (kyb as any)[field] ?? null;
-  if (!filePath) { res.status(404).json({ error: "Document non soumis" }); return; }
+  const storagePath: string | null = (kyb as any)[field] ?? null;
+  if (!storagePath) { res.status(404).json({ error: "Document non soumis" }); return; }
 
-  const resolvedPath = path.resolve(filePath);
-  const uploadsRoot = path.resolve(process.cwd(), "uploads");
-
-  if (!resolvedPath.startsWith(uploadsRoot)) {
-    res.status(403).json({ error: "Accès refusé" });
-    return;
+  try {
+    const buffer = await downloadKybDocument(storagePath);
+    const basename = path.basename(storagePath);
+    const ext = path.extname(basename).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      ".pdf": "application/pdf",
+      ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+      ".png": "image/png", ".gif": "image/gif",
+      ".webp": "image/webp", ".heic": "image/heic",
+    };
+    const contentType = mimeMap[ext] ?? "application/octet-stream";
+    const disposition = req.query.download === "1" ? "attachment" : "inline";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `${disposition}; filename="${basename}"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.send(buffer);
+  } catch (err: any) {
+    console.error("[Admin KYB doc]", err?.message);
+    res.status(404).json({ error: "Fichier introuvable dans le stockage" });
   }
-
-  if (!fs.existsSync(resolvedPath)) {
-    res.status(404).json({ error: "Fichier introuvable sur le serveur" });
-    return;
-  }
-
-  const disposition = req.query.download === "1" ? "attachment" : "inline";
-  const basename = path.basename(resolvedPath);
-  res.setHeader("Content-Disposition", `${disposition}; filename="${basename}"`);
-  res.sendFile(resolvedPath);
 });
 
 // ─── CONTRACT PDF DOWNLOAD ────────────────────────────────────────────────────

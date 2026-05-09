@@ -22,26 +22,12 @@ import multer from "multer";
 import { notifyKybSubmitted, notifyReversement, notifyPayin } from "../lib/telegram";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
+import { uploadKybDocument } from "../lib/storage";
 import path from "path";
 import fs from "fs";
 
-const KYB_UPLOADS_DIR = path.join(process.cwd(), "uploads", "kyb");
-if (!fs.existsSync(KYB_UPLOADS_DIR)) fs.mkdirSync(KYB_UPLOADS_DIR, { recursive: true });
-
-const kybStorage = multer.diskStorage({
-  destination: (req: any, _file, cb) => {
-    const userId = req.session?.userId ?? "unknown";
-    const dir = path.join(KYB_UPLOADS_DIR, String(userId));
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}_${Date.now()}${ext}`);
-  },
-});
-
-const kybUpload = multer({ storage: kybStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+// Memory storage — files go to Supabase, nothing kept on disk
+const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -769,31 +755,32 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         return;
       }
       updateValues = { ...parsed.data };
-      // Save identity document file paths (sent alongside step 2 text fields)
+      // Upload identity documents to Supabase Storage
       const files = req.files as Record<string, Express.Multer.File[]> | undefined;
       const idDocKeys = ["documentIdFront", "documentIdBack", "documentSelfie"];
-      idDocKeys.forEach((key) => {
+      await Promise.all(idDocKeys.map(async (key) => {
         const file = files?.[key]?.[0];
-        if (file) updateValues[key] = file.path;
-      });
+        if (file) {
+          const storagePath = await uploadKybDocument(userId, key, file.buffer, file.mimetype, file.originalname);
+          updateValues[key] = storagePath;
+        }
+      }));
     } else if (stepNum === 3) {
       updateValues = {};
-      // Extract uploaded file names from multipart files
       const files = req.files as Record<string, Express.Multer.File[]> | undefined;
-      const step3DocKeys = [
+      const allDocKeys = [
         "documentRccm", "documentCertificate", "documentProofAddress",
         "documentBankStatement", "documentStatuts", "documentLicense",
+        "documentIdFront", "documentIdBack", "documentSelfie",
       ];
-      step3DocKeys.forEach((key) => {
+      // Upload all documents to Supabase Storage in parallel
+      await Promise.all(allDocKeys.map(async (key) => {
         const file = files?.[key]?.[0];
-        if (file) updateValues[key] = file.path;
-      });
-      // Also capture any step-2 identity docs that arrive in the same multipart
-      const step2DocKeys = ["documentIdFront", "documentIdBack", "documentSelfie"];
-      step2DocKeys.forEach((key) => {
-        const file = files?.[key]?.[0];
-        if (file) updateValues[key] = file.path;
-      });
+        if (file) {
+          const storagePath = await uploadKybDocument(userId, key, file.buffer, file.mimetype, file.originalname);
+          updateValues[key] = storagePath;
+        }
+      }));
       if (Object.keys(updateValues).length === 0) {
         res.status(400).json({ error: "Aucun document reçu. Veuillez téléverser les documents obligatoires." });
         return;
