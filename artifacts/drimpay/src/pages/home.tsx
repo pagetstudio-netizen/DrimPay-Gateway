@@ -2,6 +2,8 @@ import { Link } from "wouter";
 import { useState, type ReactNode } from "react";
 import { ArrowRight, CreditCard, LayoutGrid } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
+import { useSEO, organizationSchema, websiteSchema, webPageSchema, SITE_URL } from "@/lib/seo";
+import { useLang } from "@/lib/i18n";
 import iconMobileMoney from "@assets/10149443_1778509419659.png";
 import iconPaymentLink from "@assets/6360759_(1)_1778509419794.png";
 import iconMassPayout from "@assets/atm_1778509419824.png";
@@ -187,6 +189,36 @@ function ProductsSection() {
 /*  MAIN PAGE                                                                 */
 /* ══════════════════════════════════════════════════════════════════════════ */
 export default function Home() {
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "DrimPay — Infrastructure de Paiement Mobile Money pour l'Afrique"
+      : "DrimPay — Mobile Money Payment Infrastructure for Africa",
+    description: lang === "fr"
+      ? "Intégrez Orange Money, Wave, MTN, Moov en une seule API. Encaissements, décaissements et wallets pour 7 pays d'Afrique de l'Ouest et Centrale. Frais fixes à 3%, zéro frais cachés."
+      : "Integrate Orange Money, Wave, MTN, Moov with one API. Pay-ins, pay-outs and wallets across 7 West & Central African countries. Flat 3% fee, no hidden costs.",
+    keywords: lang === "fr"
+      ? "infrastructure paiement Afrique, API Mobile Money, encaissement Afrique, décaissement mobile, fintech Afrique francophone, passerelle paiement Togo Bénin Sénégal"
+      : "Africa payment API, Mobile Money integration, fintech West Africa, payment gateway Africa",
+    jsonLd: [
+      organizationSchema,
+      websiteSchema,
+      webPageSchema(
+        `${SITE_URL}/${lang}`,
+        lang === "fr" ? "DrimPay — Infrastructure de Paiement Mobile Money pour l'Afrique" : "DrimPay — Mobile Money Payment Infrastructure for Africa",
+        lang === "fr" ? "Passerelle de paiement unifiée pour l'Afrique de l'Ouest et Centrale." : "Unified payment gateway for West & Central Africa.",
+      ),
+      {
+        "@type": "SoftwareApplication",
+        name: "DrimPay API",
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Web",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "XOF", description: "3% par transaction réussie" },
+        provider: { "@id": `${SITE_URL}/#organization` },
+      },
+    ],
+  });
+
   return (
     <div className="flex flex-col min-h-screen font-sans">
 

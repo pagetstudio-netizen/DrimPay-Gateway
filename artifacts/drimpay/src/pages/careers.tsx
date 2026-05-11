@@ -6,6 +6,7 @@ import { ArrowRight, MapPin, Briefcase, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 const departmentValues = ["All", "Engineering", "Product", "Marketing", "Support", "Operations"];
 
@@ -14,6 +15,25 @@ export default function Careers() {
   const { data: jobs, isLoading } = useListJobs({ department: department || undefined });
   const t = useT();
   const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Carrières chez DrimPay — Rejoignez l'Infrastructure de Paiement de l'Afrique"
+      : "Careers at DrimPay — Join Africa's Payment Infrastructure",
+    description: lang === "fr"
+      ? "Rejoignez l'équipe DrimPay et construisez l'infrastructure financière de l'Afrique. Postes ouverts en ingénierie, produit, opérations et business development."
+      : "Join the DrimPay team and build Africa's financial infrastructure. Open positions in engineering, product, operations and business development.",
+    keywords: lang === "fr"
+      ? "emploi fintech Afrique, carrière paiement mobile, recrutement DrimPay, emploi développeur Afrique, travail fintech Dakar Abidjan"
+      : "Africa fintech jobs, mobile payment career, DrimPay recruiting, developer jobs Africa",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/careers`,
+        lang === "fr" ? "Carrières chez DrimPay" : "Careers at DrimPay",
+        lang === "fr" ? "Rejoignez l'équipe qui construit l'infrastructure de paiement de l'Afrique." : "Join the team building Africa's payment infrastructure.",
+        [{ name: lang === "fr" ? "Carrières" : "Careers", url: `${SITE_URL}/${lang}/careers` }],
+      ),
+    ],
+  });
 
   const filteredJobs = department && department !== "All" ? (jobs ?? []).filter((j) => j.department === department) : (jobs ?? []);
   const perkIcons = [Globe, Briefcase, ArrowRight];

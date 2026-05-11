@@ -1,13 +1,34 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Shield, Lock, Eye, AlertTriangle, FileText, Server, ArrowRight } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 const fadeUp = (delay = 0) => ({ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay } } });
 const pillarIcons = [Lock, Shield, Eye, AlertTriangle, FileText, Server];
 
 export default function Security() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Sécurité & Conformité DrimPay — PCI DSS, ISO 27001, Conforme BCEAO"
+      : "DrimPay Security & Compliance — PCI DSS, ISO 27001, BCEAO Compliant",
+    description: lang === "fr"
+      ? "DrimPay traite la sécurité comme de l'infrastructure : TLS 1.3, AES-256, détection de fraude en temps réel, conformité BCEAO/BEAC, certifications PCI DSS Niveau 1 et ISO 27001."
+      : "DrimPay treats security as infrastructure: TLS 1.3, AES-256, real-time fraud detection, BCEAO/BEAC compliance, PCI DSS Level 1 and ISO 27001 certifications.",
+    keywords: lang === "fr"
+      ? "sécurité paiement Afrique, conformité BCEAO, PCI DSS Afrique, chiffrement AES-256, détection fraude"
+      : "Africa payment security, BCEAO compliance, PCI DSS Africa, AES-256 encryption, fraud detection",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/security`,
+        lang === "fr" ? "Sécurité & Conformité DrimPay" : "DrimPay Security & Compliance",
+        lang === "fr" ? "Infrastructure de sécurité enterprise-grade pour vos paiements." : "Enterprise-grade security infrastructure for your payments.",
+        [{ name: lang === "fr" ? "Sécurité" : "Security", url: `${SITE_URL}/${lang}/security` }],
+      ),
+    ],
+  });
 
   return (
     <div className="bg-[#F8F6F1]">

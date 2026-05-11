@@ -5,11 +5,31 @@ import { ArrowRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function News() {
   const { data, isLoading } = useListBlogArticles({ category: "DrimPay News", limit: 12 });
   const t = useT();
   const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Actualités DrimPay — Mises à Jour Produit, Lancements & Annonces"
+      : "DrimPay News — Product Updates, Launches & Announcements",
+    description: lang === "fr"
+      ? "Retrouvez toutes les actualités de DrimPay : nouvelles fonctionnalités, nouveaux pays, partenariats et mises à jour de la plateforme de paiement Mobile Money."
+      : "Find all DrimPay news: new features, new countries, partnerships and updates to the Mobile Money payment platform.",
+    keywords: lang === "fr"
+      ? "actualités DrimPay, mises à jour paiement, nouvelles fonctionnalités fintech, annonces DrimPay"
+      : "DrimPay news, payment updates, fintech features, DrimPay announcements",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/news`,
+        lang === "fr" ? "Actualités DrimPay" : "DrimPay News",
+        lang === "fr" ? "Dernières actualités et annonces de DrimPay." : "Latest DrimPay news and announcements.",
+        [{ name: lang === "fr" ? "Actualités" : "News", url: `${SITE_URL}/${lang}/news` }],
+      ),
+    ],
+  });
 
   return (
     <div className="pt-24 pb-20">

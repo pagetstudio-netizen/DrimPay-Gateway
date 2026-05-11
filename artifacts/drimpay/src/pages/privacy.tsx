@@ -1,8 +1,26 @@
 import { motion } from "framer-motion";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function Privacy() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Politique de Confidentialité — DrimPay"
+      : "Privacy Policy — DrimPay",
+    description: lang === "fr"
+      ? "Politique de confidentialité de DrimPay. Comment nous collectons, utilisons et protégeons vos données personnelles et celles de vos clients."
+      : "DrimPay privacy policy. How we collect, use and protect your personal data and that of your customers.",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/privacy`,
+        lang === "fr" ? "Politique de confidentialité DrimPay" : "DrimPay Privacy Policy",
+        lang === "fr" ? "Politique de confidentialité et protection des données." : "Privacy policy and data protection.",
+        [{ name: lang === "fr" ? "Confidentialité" : "Privacy", url: `${SITE_URL}/${lang}/privacy` }],
+      ),
+    ],
+  });
 
   return (
     <div className="pt-24 pb-20">

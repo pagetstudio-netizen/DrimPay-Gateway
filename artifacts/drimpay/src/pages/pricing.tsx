@@ -4,7 +4,8 @@ import {
   CheckCircle2, ArrowRight, Zap, User, Rocket, TrendingUp,
   Building2, Globe, Shield, PhoneCall, Star,
 } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, faqSchema, SITE_URL } from "@/lib/seo";
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
@@ -17,6 +18,37 @@ const planColors = [
 
 export default function Pricing() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Tarification DrimPay — 3% par Transaction, Zéro Frais Cachés"
+      : "DrimPay Pricing — 3% per Transaction, No Hidden Fees",
+    description: lang === "fr"
+      ? "Tarification transparente DrimPay : 3% par transaction réussie, sans abonnement mensuel, sans frais de mise en service. Remises sur volume disponibles. Disponible pour particuliers et entreprises."
+      : "Transparent DrimPay pricing: 3% per successful transaction, no monthly subscription, no setup fees. Volume discounts available. Available for individuals and businesses.",
+    keywords: lang === "fr"
+      ? "tarif paiement Afrique, frais Mobile Money, 3% transaction, prix API paiement, coût passerelle paiement"
+      : "Africa payment pricing, Mobile Money fees, 3% transaction fee, payment API cost",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/pricing`,
+        lang === "fr" ? "Tarification DrimPay" : "DrimPay Pricing",
+        lang === "fr" ? "Frais simples et transparents pour vos paiements Mobile Money." : "Simple and transparent fees for your Mobile Money payments.",
+        [{ name: lang === "fr" ? "Tarification" : "Pricing", url: `${SITE_URL}/${lang}/pricing` }],
+      ),
+      faqSchema(lang === "fr" ? [
+        { question: "Quels sont les frais DrimPay ?", answer: "DrimPay applique un taux fixe de 3% sur chaque transaction réussie. Aucun frais mensuel, aucun frais d'installation, aucun frais caché." },
+        { question: "Y a-t-il un abonnement mensuel ?", answer: "Non. DrimPay fonctionne sur un modèle pay-as-you-go. Vous payez uniquement sur les transactions réussies." },
+        { question: "Des remises sur volume sont-elles disponibles ?", answer: "Oui. Des taux négociés sont disponibles pour les volumes supérieurs à 50M XOF/mois. Contactez notre équipe commerciale." },
+        { question: "DrimPay est-il disponible en mode sandbox ?", answer: "Oui. Chaque compte DrimPay inclut un environnement sandbox complet pour tester vos intégrations sans argent réel." },
+      ] : [
+        { question: "What are DrimPay's fees?", answer: "DrimPay charges a flat 3% on every successful transaction. No monthly fees, no setup fees, no hidden charges." },
+        { question: "Is there a monthly subscription?", answer: "No. DrimPay operates on a pay-as-you-go model. You only pay on successful transactions." },
+        { question: "Are volume discounts available?", answer: "Yes. Negotiated rates are available for volumes above 50M XOF/month. Contact our sales team." },
+        { question: "Is sandbox mode available?", answer: "Yes. Every DrimPay account includes a full sandbox environment for testing integrations without real money." },
+      ]),
+    ],
+  });
 
   return (
     <div className="bg-[#F8F6F1]">

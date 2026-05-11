@@ -4,7 +4,8 @@ import {
   ArrowRight, Target, Eye, Zap, Shield, Globe, Star,
   ChevronRight, MapPin, Users, TrendingUp, Check, Layers,
 } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, organizationSchema, webPageSchema, SITE_URL } from "@/lib/seo";
 
 /* ── animation helpers ──────────────────────────────────────────────────── */
 const fadeUp = { hidden: { opacity: 0, y: 28 }, visible: { opacity: 1, y: 0 } };
@@ -76,6 +77,27 @@ const MILESTONES = [
 ══════════════════════════════════════════════════════════════════════════════ */
 export default function About() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "À propos de DrimPay — Fintech Infrastructure pour l'Afrique Francophone"
+      : "About DrimPay — Fintech Infrastructure for Francophone Africa",
+    description: lang === "fr"
+      ? "DrimPay a été fondé pour unifier les systèmes de paiement fragmentés d'Afrique de l'Ouest et Centrale. Découvrez notre mission, notre vision et l'équipe derrière l'infrastructure."
+      : "DrimPay was founded to unify fragmented payment systems across West & Central Africa. Learn about our mission, vision and the team behind the infrastructure.",
+    keywords: lang === "fr"
+      ? "DrimPay à propos, fintech Afrique, ASHTECH SARL, paiement mobile Afrique, infrastructure financière"
+      : "DrimPay about, Africa fintech, payment infrastructure, mobile money Africa",
+    jsonLd: [
+      organizationSchema,
+      webPageSchema(
+        `${SITE_URL}/${lang}/about`,
+        lang === "fr" ? "À propos de DrimPay" : "About DrimPay",
+        lang === "fr" ? "Découvrez l'équipe et la mission de DrimPay." : "Learn about DrimPay's team and mission.",
+        [{ name: lang === "fr" ? "À propos" : "About", url: `${SITE_URL}/${lang}/about` }],
+      ),
+    ],
+  });
 
   return (
     <div className="bg-[#F8F6F1]">

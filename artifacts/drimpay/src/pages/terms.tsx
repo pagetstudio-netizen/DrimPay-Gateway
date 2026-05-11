@@ -1,8 +1,27 @@
 import { motion } from "framer-motion";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function Terms() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Conditions Générales d'Utilisation — DrimPay"
+      : "Terms of Service — DrimPay",
+    description: lang === "fr"
+      ? "Conditions générales d'utilisation de la plateforme DrimPay. Droits, obligations et responsabilités des marchands utilisant l'infrastructure de paiement DrimPay."
+      : "Terms of service for the DrimPay platform. Rights, obligations and responsibilities of merchants using DrimPay payment infrastructure.",
+    noIndex: false,
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/terms`,
+        lang === "fr" ? "CGU DrimPay" : "DrimPay Terms of Service",
+        lang === "fr" ? "Conditions générales d'utilisation de DrimPay." : "DrimPay terms of service.",
+        [{ name: lang === "fr" ? "CGU" : "Terms", url: `${SITE_URL}/${lang}/terms` }],
+      ),
+    ],
+  });
 
   return (
     <div className="pt-24 pb-20">

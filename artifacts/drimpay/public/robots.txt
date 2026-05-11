@@ -1,0 +1,29 @@
+User-agent: *
+Allow: /
+
+# Zones privées — ne pas indexer
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /fr/dashboard
+Disallow: /fr/dashboard/
+Disallow: /en/dashboard
+Disallow: /en/dashboard/
+Disallow: /fr/login
+Disallow: /en/login
+Disallow: /fr/signup
+Disallow: /en/signup
+
+# Pages de paiement public (lien de paiement) — indexer avec précaution
+Disallow: /pay/
+Disallow: /fr/pay/
+Disallow: /en/pay/
+
+# Crawl delay pour éviter la surcharge
+Crawl-delay: 1
+
+# Sitemap
+Sitemap: https://drimpay.io/sitemap.xml
+Sitemap: https://drimpay.io/sitemap-fr.xml

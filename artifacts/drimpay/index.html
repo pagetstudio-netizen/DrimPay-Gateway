@@ -1,78 +1,123 @@
 <!DOCTYPE html>
-<html lang="fr" class="dark">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
 
-    <!-- Primary Meta Tags -->
-    <title>DrimPay — Infrastructure de Paiement pour l'Afrique Francophone</title>
-    <meta name="title" content="DrimPay — Infrastructure de Paiement pour l'Afrique Francophone" />
-    <meta name="description" content="DrimPay est la passerelle de paiement unifiée pour l'Afrique de l'Ouest et Centrale. Intégrez Mobile Money, Pay-in, Pay-out et Portefeuilles Virtuels en une seule API. Disponible au Sénégal, Côte d'Ivoire, Cameroun, Mali, Burkina Faso et plus." />
-    <meta name="keywords" content="paiement Afrique, Mobile Money, Wave, Orange Money, MTN, passerelle paiement, fintech Afrique, API paiement, Pay-in, Pay-out, XOF, DrimPay" />
+    <!-- ── Default meta (overridden per-page by useSEO hook) ─────────────── -->
+    <title>DrimPay — Infrastructure de Paiement Mobile Money pour l'Afrique</title>
+    <meta name="title" content="DrimPay — Infrastructure de Paiement Mobile Money pour l'Afrique" />
+    <meta name="description" content="Intégrez Orange Money, Wave, MTN MoMo, Moov en une seule API. Encaissements, décaissements et wallets pour 7 pays d'Afrique de l'Ouest et Centrale. Frais transparents à 3%." />
+    <meta name="keywords" content="DrimPay, Mobile Money, API paiement Afrique, Orange Money, Wave, MTN MoMo, Moov, fintech Afrique, encaissement, décaissement, XOF, XAF, Togo, Bénin, Sénégal, Cameroun" />
     <meta name="author" content="DrimPay" />
-    <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#84cc16" />
-    <link rel="canonical" href="https://drimpay.io" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="theme-color" content="#B5F03C" />
+    <meta name="color-scheme" content="light" />
 
-    <!-- Open Graph / Facebook -->
+    <!-- ── Canonical & hreflang (defaults, overridden per-page) ──────────── -->
+    <link rel="canonical" href="https://drimpay.io/fr" />
+    <link rel="alternate" hreflang="fr" href="https://drimpay.io/fr" />
+    <link rel="alternate" hreflang="en" href="https://drimpay.io/en" />
+    <link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr" />
+
+    <!-- ── Open Graph ────────────────────────────────────────────────────── -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://drimpay.io" />
+    <meta property="og:url" content="https://drimpay.io/fr" />
     <meta property="og:site_name" content="DrimPay" />
-    <meta property="og:title" content="DrimPay — Infrastructure de Paiement pour l'Afrique Francophone" />
-    <meta property="og:description" content="Une API unifiée pour gérer les Encaissements, Décaissements et Portefeuilles Virtuels en Afrique de l'Ouest et Centrale. Intégration rapide, frais transparents à 3%." />
+    <meta property="og:title" content="DrimPay — Infrastructure de Paiement Mobile Money pour l'Afrique" />
+    <meta property="og:description" content="Une API unifiée pour gérer Encaissements, Décaissements et Portefeuilles Virtuels en Afrique de l'Ouest et Centrale. Orange Money, Wave, MTN, Moov. Frais fixes à 3%." />
     <meta property="og:image" content="https://drimpay.io/opengraph.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="DrimPay — Infrastructure de Paiement pour l'Afrique" />
+    <meta property="og:image:alt" content="DrimPay — Infrastructure de Paiement Mobile Money pour l'Afrique" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:locale:alternate" content="en_US" />
 
-    <!-- Twitter / X Card -->
+    <!-- ── Twitter / X Card ──────────────────────────────────────────────── -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@drimpay" />
     <meta name="twitter:creator" content="@drimpay" />
-    <meta name="twitter:url" content="https://drimpay.io" />
-    <meta name="twitter:title" content="DrimPay — Infrastructure de Paiement pour l'Afrique Francophone" />
-    <meta name="twitter:description" content="Une API unifiée pour gérer les Encaissements, Décaissements et Portefeuilles Virtuels en Afrique de l'Ouest et Centrale. Frais transparents à 3%." />
+    <meta name="twitter:url" content="https://drimpay.io/fr" />
+    <meta name="twitter:title" content="DrimPay — Infrastructure de Paiement Mobile Money pour l'Afrique" />
+    <meta name="twitter:description" content="Une API unifiée pour gérer Encaissements, Décaissements et Wallets en Afrique. Orange Money, Wave, MTN, Moov. Frais fixes à 3%." />
     <meta name="twitter:image" content="https://drimpay.io/opengraph.jpg" />
     <meta name="twitter:image:alt" content="DrimPay — Infrastructure de Paiement pour l'Afrique" />
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <!-- ── Favicon & Icons ───────────────────────────────────────────────── -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/favicon.png" sizes="180x180" />
+    <meta name="msapplication-TileColor" content="#B5F03C" />
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    <!-- ── Performance ───────────────────────────────────────────────────── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://api.drimpay.africa" />
 
-    <!-- JSON-LD Structured Data -->
+    <!-- ── Fonts ─────────────────────────────────────────────────────────── -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+
+    <!-- ── Default JSON-LD (home-level, overridden per-page) ─────────────── -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "FinancialService",
-      "name": "DrimPay",
-      "url": "https://drimpay.io",
-      "logo": "https://drimpay.io/favicon.svg",
-      "image": "https://drimpay.io/opengraph.jpg",
-      "description": "Passerelle de paiement unifiée pour l'Afrique de l'Ouest et Centrale. API Pay-in, Pay-out et Portefeuilles Virtuels avec Mobile Money (Wave, Orange Money, MTN, Moov).",
-      "areaServed": [
-        { "@type": "Country", "name": "Sénégal" },
-        { "@type": "Country", "name": "Côte d'Ivoire" },
-        { "@type": "Country", "name": "Cameroun" },
-        { "@type": "Country", "name": "Mali" },
-        { "@type": "Country", "name": "Burkina Faso" },
-        { "@type": "Country", "name": "Togo" },
-        { "@type": "Country", "name": "Bénin" }
-      ],
-      "sameAs": [
-        "https://twitter.com/drimpay",
-        "https://linkedin.com/company/drimpay"
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://drimpay.io/#organization",
+          "name": "DrimPay",
+          "url": "https://drimpay.io",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://drimpay.io/favicon.svg",
+            "width": 512,
+            "height": 512
+          },
+          "image": "https://drimpay.io/opengraph.jpg",
+          "description": "Passerelle de paiement Mobile Money unifiée pour l'Afrique de l'Ouest et Centrale. API Pay-in, Pay-out et Portefeuilles Virtuels.",
+          "foundingDate": "2023",
+          "areaServed": [
+            { "@type": "Country", "name": "Togo" },
+            { "@type": "Country", "name": "Bénin" },
+            { "@type": "Country", "name": "Sénégal" },
+            { "@type": "Country", "name": "Côte d'Ivoire" },
+            { "@type": "Country", "name": "Cameroun" },
+            { "@type": "Country", "name": "Mali" },
+            { "@type": "Country", "name": "Burkina Faso" }
+          ],
+          "sameAs": [
+            "https://twitter.com/drimpay",
+            "https://linkedin.com/company/drimpay"
+          ],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "support@drimpay.io",
+            "availableLanguage": ["French", "English"]
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://drimpay.io/#website",
+          "url": "https://drimpay.io",
+          "name": "DrimPay",
+          "description": "Infrastructure de paiement API-first pour l'Afrique de l'Ouest et Centrale.",
+          "publisher": { "@id": "https://drimpay.io/#organization" },
+          "inLanguage": ["fr-FR", "en-US"],
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://drimpay.io/fr/blog?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
       ]
     }
     </script>
   </head>
-  <body class="dark">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

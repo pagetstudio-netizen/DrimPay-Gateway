@@ -4,7 +4,8 @@ import { useGetJob, getGetJobQueryKey } from "@workspace/api-client-react";
 import { ArrowLeft, MapPin, Briefcase, Globe, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function CareerDetail({ params }: { params: { id: string } }) {
   const id = parseInt(params.id);
@@ -12,6 +13,39 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
     query: { enabled: !isNaN(id), queryKey: getGetJobQueryKey(id) },
   });
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: job?.title
+      ? `${job.title} — DrimPay Careers`
+      : lang === "fr" ? "Poste — DrimPay Carrières" : "Position — DrimPay Careers",
+    description: job
+      ? lang === "fr"
+        ? `Rejoignez DrimPay en tant que ${job.title}${job.location ? ` — ${job.location}` : ""}. ${job.department ? `Département : ${job.department}.` : ""} Construisez l'infrastructure de paiement de l'Afrique.`
+        : `Join DrimPay as ${job.title}${job.location ? ` — ${job.location}` : ""}. ${job.department ? `Department: ${job.department}.` : ""} Build Africa's payment infrastructure.`
+      : lang === "fr"
+        ? "Rejoignez l'équipe DrimPay et participez à la construction de l'infrastructure de paiement de l'Afrique."
+        : "Join the DrimPay team and help build Africa's payment infrastructure.",
+    jsonLd: job ? [
+      webPageSchema(
+        `${SITE_URL}/${lang}/careers/${params.id}`,
+        job.title,
+        `${job.title} at DrimPay`,
+        [
+          { name: lang === "fr" ? "Carrières" : "Careers", url: `${SITE_URL}/${lang}/careers` },
+          { name: job.title, url: `${SITE_URL}/${lang}/careers/${params.id}` },
+        ],
+      ),
+      {
+        "@type": "JobPosting",
+        title: job.title,
+        hiringOrganization: { "@id": `${SITE_URL}/#organization` },
+        jobLocation: job.location ? { "@type": "Place", name: job.location } : undefined,
+        employmentType: job.type ?? "FULL_TIME",
+        description: job.description ?? `${job.title} at DrimPay`,
+        datePosted: new Date().toISOString().split("T")[0],
+      },
+    ] : undefined,
+  });
 
   if (isLoading) {
     return (

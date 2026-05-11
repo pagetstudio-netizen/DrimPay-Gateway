@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Zap, Building2, Code, Wallet } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
@@ -22,6 +23,37 @@ function Step({ num, title, desc }: { num: string; title: string; desc: string }
 
 export default function HowItWorks() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Comment Fonctionne DrimPay — Architecture API Mobile Money Pay-in & Pay-out"
+      : "How DrimPay Works — Mobile Money API Architecture Pay-in & Pay-out",
+    description: lang === "fr"
+      ? "Découvrez l'architecture de DrimPay : une seule API REST pour encaisser et décaisser via Mobile Money dans 7 pays. Routage intelligent, webhooks en temps réel, wallets géo-isolés."
+      : "Explore DrimPay's architecture: one REST API to collect and disburse via Mobile Money in 7 countries. Smart routing, real-time webhooks, geo-isolated wallets.",
+    keywords: lang === "fr"
+      ? "architecture API paiement, encaissement Mobile Money, décaissement Mobile Money, webhook paiement, routage opérateur"
+      : "payment API architecture, Mobile Money collection, Mobile Money disbursement, payment webhook",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/how-it-works`,
+        lang === "fr" ? "Comment fonctionne DrimPay" : "How DrimPay works",
+        lang === "fr" ? "Architecture et flux de paiement DrimPay." : "DrimPay payment architecture and flows.",
+        [{ name: lang === "fr" ? "Comment ça marche" : "How it works", url: `${SITE_URL}/${lang}/how-it-works` }],
+      ),
+      {
+        "@type": "HowTo",
+        name: lang === "fr" ? "Intégrer DrimPay en 4 étapes" : "Integrate DrimPay in 4 steps",
+        description: lang === "fr" ? "Guide d'intégration de l'API DrimPay" : "DrimPay API integration guide",
+        step: [
+          { "@type": "HowToStep", position: 1, name: lang === "fr" ? "Créer un compte" : "Create an account", text: lang === "fr" ? "Créez votre compte marchand et obtenez vos clés API sandbox." : "Create your merchant account and get sandbox API keys." },
+          { "@type": "HowToStep", position: 2, name: lang === "fr" ? "Compléter le KYB" : "Complete KYB", text: lang === "fr" ? "Soumettez votre dossier KYB pour activer votre compte live." : "Submit your KYB documents to activate your live account." },
+          { "@type": "HowToStep", position: 3, name: lang === "fr" ? "Intégrer l'API" : "Integrate the API", text: lang === "fr" ? "Appelez POST /v1/payin ou /v1/payout depuis votre backend." : "Call POST /v1/payin or /v1/payout from your backend." },
+          { "@type": "HowToStep", position: 4, name: lang === "fr" ? "Recevoir les webhooks" : "Receive webhooks", text: lang === "fr" ? "Configurez votre endpoint webhook pour recevoir les notifications de statut." : "Configure your webhook endpoint to receive status notifications." },
+        ],
+      },
+    ],
+  });
   const systemIcons = [Wallet, Building2, Code];
 
   return (

@@ -6,6 +6,8 @@ import {
   Zap, Webhook, Code, Terminal, AlertTriangle, CheckCircle2, Clock, XCircle,
   AlertCircle, Menu, X, Server, RefreshCw, Lock, Activity, Timer, Ban
 } from "lucide-react";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
+import { useLang } from "@/lib/i18n";
 import apiIconImg from "@assets/6213702_1778508885407.png";
 import { cn } from "@/lib/utils";
 
@@ -105,6 +107,36 @@ export default function DocsPayin() {
   const [active, setActive] = useState("introduction");
   const [langTab, setLangTab] = useState("curl");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "API Pay-in DrimPay — Documentation Encaissement Mobile Money (Orange Money, Wave, MTN)"
+      : "DrimPay Pay-in API — Mobile Money Collection Documentation (Orange Money, Wave, MTN)",
+    description: lang === "fr"
+      ? "Documentation complète de l'API Pay-in DrimPay : initier un encaissement Mobile Money, gérer les statuts de paiement, configurer les webhooks et tester en sandbox."
+      : "Complete DrimPay Pay-in API documentation: initiate a Mobile Money collection, manage payment statuses, configure webhooks and test in sandbox.",
+    keywords: lang === "fr"
+      ? "API pay-in Mobile Money, encaissement Orange Money, collecte Wave Sénégal, MTN MoMo API, initier paiement Afrique"
+      : "Mobile Money pay-in API, Orange Money collection, Wave Senegal, MTN MoMo API, Africa payment initiation",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/docs/payin`,
+        lang === "fr" ? "Documentation API Pay-in DrimPay" : "DrimPay Pay-in API Documentation",
+        lang === "fr" ? "Guide complet pour intégrer l'encaissement Mobile Money." : "Complete guide for integrating Mobile Money collection.",
+        [
+          { name: "Docs", url: `${SITE_URL}/${lang}/docs` },
+          { name: "Pay-in", url: `${SITE_URL}/${lang}/docs/payin` },
+        ],
+      ),
+      {
+        "@type": "TechArticle",
+        headline: lang === "fr" ? "API Pay-in DrimPay" : "DrimPay Pay-in API",
+        description: lang === "fr" ? "Référence complète pour l'encaissement Mobile Money." : "Full reference for Mobile Money pay-in.",
+        author: { "@id": `${SITE_URL}/#organization` },
+        publisher: { "@id": `${SITE_URL}/#organization` },
+      },
+    ],
+  });
 
   const scroll = (id: string) => {
     setActive(id);

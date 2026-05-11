@@ -7,7 +7,8 @@ import {
   ChevronRight, MapPin, TrendingUp, Wifi, Filter,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, organizationSchema, SITE_URL } from "@/lib/seo";
 
 /* ── animation helpers ──────────────────────────────────────────────────── */
 const fadeUp = { hidden: { opacity: 0, y: 28 }, visible: { opacity: 1, y: 0 } };
@@ -65,7 +66,35 @@ const ZONE_ICONS = [
 export default function Countries() {
   const { data: countries, isLoading } = useListSupportedCountries();
   const t = useT();
+  const lang = useLang();
   const [filter, setFilter] = useState<"all" | "payin" | "payout">("all");
+
+  useSEO({
+    title: lang === "fr"
+      ? "Pays & Opérateurs Couverts — Togo, Bénin, Sénégal, Côte d'Ivoire, Cameroun, Mali, Burkina Faso"
+      : "Covered Countries & Operators — Togo, Benin, Senegal, Ivory Coast, Cameroon, Mali, Burkina Faso",
+    description: lang === "fr"
+      ? "DrimPay couvre 7 pays d'Afrique de l'Ouest et Centrale avec 20+ opérateurs Mobile Money (Orange Money, Wave, MTN MoMo, Moov, TMoney). Zones BCEAO et BEAC intégrées."
+      : "DrimPay covers 7 West & Central African countries with 20+ Mobile Money operators (Orange Money, Wave, MTN MoMo, Moov, TMoney). BCEAO and BEAC zones integrated.",
+    keywords: lang === "fr"
+      ? "pays paiement Afrique, Orange Money Togo, Wave Sénégal, MTN Cameroun, Moov Bénin, TMoney, couverture BCEAO BEAC"
+      : "Africa payment countries, Orange Money, Wave Senegal, MTN Cameroon, BCEAO BEAC coverage",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/countries`,
+        lang === "fr" ? "Pays & Opérateurs couverts par DrimPay" : "Countries & Operators covered by DrimPay",
+        lang === "fr" ? "Liste des pays et opérateurs Mobile Money intégrés." : "List of integrated countries and Mobile Money operators.",
+        [{ name: lang === "fr" ? "Pays" : "Countries", url: `${SITE_URL}/${lang}/countries` }],
+      ),
+      {
+        "@type": "Service",
+        name: "DrimPay Mobile Money API",
+        provider: { "@id": `${SITE_URL}/#organization` },
+        areaServed: ["Togo", "Bénin", "Sénégal", "Côte d'Ivoire", "Cameroun", "Mali", "Burkina Faso"].map(n => ({ "@type": "Country", name: n })),
+        serviceType: "Mobile Money Payment Gateway",
+      },
+    ],
+  });
 
   const filtered = (countries ?? []).filter((c) => {
     if (filter === "payin") return c.payinEnabled;

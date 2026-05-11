@@ -5,6 +5,7 @@ import { ArrowLeft, Clock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function BlogPost({ params }: { params: { slug: string } }) {
   const { data: article, isLoading } = useGetBlogArticle(params.slug, {
@@ -12,6 +13,38 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
   });
   const t = useT();
   const lang = useLang();
+  useSEO({
+    title: article?.title
+      ? article.title
+      : lang === "fr" ? "Article Blog — DrimPay" : "Blog Article — DrimPay",
+    description: article?.excerpt
+      ? article.excerpt
+      : lang === "fr"
+        ? "Lisez les derniers articles de blog DrimPay sur la fintech en Afrique et les paiements Mobile Money."
+        : "Read the latest DrimPay blog articles on fintech in Africa and Mobile Money payments.",
+    ogType: "article",
+    jsonLd: article ? [
+      webPageSchema(
+        `${SITE_URL}/${lang}/blog/${params.slug}`,
+        article.title,
+        article.excerpt ?? "",
+        [
+          { name: "Blog", url: `${SITE_URL}/${lang}/blog` },
+          { name: article.title, url: `${SITE_URL}/${lang}/blog/${params.slug}` },
+        ],
+      ),
+      {
+        "@type": "BlogPosting",
+        headline: article.title,
+        description: article.excerpt ?? "",
+        author: { "@type": "Organization", name: "DrimPay" },
+        publisher: { "@id": `${SITE_URL}/#organization` },
+        url: `${SITE_URL}/${lang}/blog/${params.slug}`,
+        inLanguage: lang === "fr" ? "fr-FR" : "en-US",
+        ...(article.publishedAt ? { datePublished: article.publishedAt } : {}),
+      },
+    ] : undefined,
+  });
 
   if (isLoading) {
     return (

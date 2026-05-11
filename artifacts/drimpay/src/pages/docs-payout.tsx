@@ -6,6 +6,8 @@ import {
   Zap, Webhook, Code, Terminal, AlertTriangle, CheckCircle2, Clock, XCircle, Users, AlertCircle,
   Menu, X
 } from "lucide-react";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
+import { useLang } from "@/lib/i18n";
 import apiIconImg from "@assets/6213702_1778508885407.png";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +67,36 @@ export default function DocsPayout() {
   const [langTab, setLangTab] = useState("curl");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const LANGS = ["curl", "node.js", "php", "python"];
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "API Pay-out DrimPay — Documentation Décaissement Mobile Money (Orange Money, MTN, Moov)"
+      : "DrimPay Pay-out API — Mobile Money Disbursement Documentation (Orange Money, MTN, Moov)",
+    description: lang === "fr"
+      ? "Documentation complète de l'API Pay-out DrimPay : envoyer de l'argent vers un wallet Mobile Money, vérifier les statuts, gérer les erreurs et tester en sandbox."
+      : "Complete DrimPay Pay-out API documentation: send money to a Mobile Money wallet, check statuses, handle errors and test in sandbox.",
+    keywords: lang === "fr"
+      ? "API pay-out Mobile Money, décaissement Orange Money, envoi argent MTN, Moov Africa API, décaisser Afrique"
+      : "Mobile Money pay-out API, Orange Money disbursement, MTN money transfer, Moov Africa API, Africa payout",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/docs/payout`,
+        lang === "fr" ? "Documentation API Pay-out DrimPay" : "DrimPay Pay-out API Documentation",
+        lang === "fr" ? "Guide complet pour intégrer le décaissement Mobile Money." : "Complete guide for integrating Mobile Money disbursement.",
+        [
+          { name: "Docs", url: `${SITE_URL}/${lang}/docs` },
+          { name: "Pay-out", url: `${SITE_URL}/${lang}/docs/payout` },
+        ],
+      ),
+      {
+        "@type": "TechArticle",
+        headline: lang === "fr" ? "API Pay-out DrimPay" : "DrimPay Pay-out API",
+        description: lang === "fr" ? "Référence complète pour le décaissement Mobile Money." : "Full reference for Mobile Money pay-out.",
+        author: { "@id": `${SITE_URL}/#organization` },
+        publisher: { "@id": `${SITE_URL}/#organization` },
+      },
+    ],
+  });
 
   const scroll = (id: string) => {
     setActive(id);

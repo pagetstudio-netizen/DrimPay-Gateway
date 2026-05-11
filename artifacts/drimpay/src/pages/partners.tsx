@@ -3,11 +3,32 @@ import { useListPartners } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function Partners() {
   const { data: partners, isLoading } = useListPartners();
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Partenaires DrimPay — Opérateurs Mobile Money, Banques & Agrégateurs"
+      : "DrimPay Partners — Mobile Money Operators, Banks & Aggregators",
+    description: lang === "fr"
+      ? "Découvrez l'écosystème de partenaires DrimPay : Orange Money, Wave, MTN MoMo, Moov Africa, TMoney, Vodacom et nos partenaires bancaires et agrégateurs en Afrique."
+      : "Explore DrimPay's partner ecosystem: Orange Money, Wave, MTN MoMo, Moov Africa, TMoney, Vodacom and our banking and aggregator partners in Africa.",
+    keywords: lang === "fr"
+      ? "partenaires Mobile Money, Orange Money, Wave, MTN, Moov, TMoney, Vodacom, banque Afrique, agrégateur paiement"
+      : "Mobile Money partners, Orange Money, Wave, MTN, Moov, Africa bank, payment aggregator",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/partners`,
+        lang === "fr" ? "Partenaires DrimPay" : "DrimPay Partners",
+        lang === "fr" ? "Écosystème de partenaires Mobile Money de DrimPay." : "DrimPay Mobile Money partner ecosystem.",
+        [{ name: lang === "fr" ? "Partenaires" : "Partners", url: `${SITE_URL}/${lang}/partners` }],
+      ),
+    ],
+  });
 
   return (
     <div className="bg-[#F8F6F1]">

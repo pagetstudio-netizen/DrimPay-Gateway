@@ -1,10 +1,31 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Building2, CheckCircle2, FileText, Clock, ArrowRight, Star } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function Businesses() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "DrimPay pour les Entreprises — Paiements Mobile Money à Grande Échelle en Afrique"
+      : "DrimPay for Businesses — Large-Scale Mobile Money Payments in Africa",
+    description: lang === "fr"
+      ? "Intégrez les paiements Mobile Money dans votre entreprise avec DrimPay : collecte de masse, décaissements en lot, wallets multi-pays et conformité KYB automatisée."
+      : "Integrate Mobile Money payments into your business with DrimPay: mass collection, batch disbursements, multi-country wallets and automated KYB compliance.",
+    keywords: lang === "fr"
+      ? "paiement entreprise Afrique, Mobile Money entreprise, solution paiement B2B, décaissement masse, collecte Mobile Money"
+      : "Africa business payments, Mobile Money enterprise, B2B payment solution, mass disbursement",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/businesses`,
+        lang === "fr" ? "DrimPay pour les Entreprises" : "DrimPay for Businesses",
+        lang === "fr" ? "Solutions de paiement Mobile Money pour les entreprises en Afrique." : "Mobile Money payment solutions for businesses in Africa.",
+        [{ name: lang === "fr" ? "Entreprises" : "Businesses", url: `${SITE_URL}/${lang}/businesses` }],
+      ),
+    ],
+  });
 
   return (
     <div className="bg-[#F8F6F1]">

@@ -6,12 +6,33 @@ import { ArrowRight, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function Blog() {
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
   const t = useT();
   const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Blog DrimPay — Actualités Fintech, Guides Mobile Money & Insights Afrique"
+      : "DrimPay Blog — Fintech News, Mobile Money Guides & Africa Insights",
+    description: lang === "fr"
+      ? "Lisez les dernières actualités sur la fintech en Afrique, les guides d'intégration Mobile Money, et les analyses de marché des paiements en Afrique de l'Ouest et Centrale."
+      : "Read the latest fintech news in Africa, Mobile Money integration guides, and payment market analysis for West and Central Africa.",
+    keywords: lang === "fr"
+      ? "blog fintech Afrique, actualité Mobile Money, guide paiement Afrique, Orange Money, Wave, fintech Afrique francophone"
+      : "Africa fintech blog, Mobile Money news, Africa payment guide, fintech francophone Africa",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/blog`,
+        lang === "fr" ? "Blog DrimPay" : "DrimPay Blog",
+        lang === "fr" ? "Actualités et guides sur les paiements mobiles en Afrique." : "News and guides on mobile payments in Africa.",
+        [{ name: "Blog", url: `${SITE_URL}/${lang}/blog` }],
+      ),
+      { "@type": "Blog", name: "DrimPay Blog", publisher: { "@id": `${SITE_URL}/#organization` } },
+    ],
+  });
 
   const { data, isLoading } = useListBlogArticles({ category: selectedCategory, page, limit: 6 });
   const { data: categories } = useListBlogCategories();

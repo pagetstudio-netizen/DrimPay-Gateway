@@ -3,13 +3,14 @@ import { useSubmitContact } from "@workspace/api-client-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 import { Mail, Phone, MapPin, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
 
 const makeSchema = (t: ReturnType<typeof useT>) =>
   z.object({
@@ -24,6 +25,32 @@ type FormData = { name: string; email: string; company?: string; subject: string
 
 export default function Contact() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Contacter DrimPay — Support Technique, Partenariats & Questions Commerciales"
+      : "Contact DrimPay — Technical Support, Partnerships & Business Inquiries",
+    description: lang === "fr"
+      ? "Contactez l'équipe DrimPay pour toute question technique, demande de partenariat ou question commerciale. Support disponible par e-mail et formulaire de contact."
+      : "Contact the DrimPay team for technical questions, partnership requests or business inquiries. Support available by email and contact form.",
+    keywords: lang === "fr"
+      ? "contact DrimPay, support paiement Afrique, partenariat fintech, aide technique DrimPay"
+      : "contact DrimPay, Africa payment support, fintech partnership, DrimPay technical help",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/contact`,
+        lang === "fr" ? "Contacter DrimPay" : "Contact DrimPay",
+        lang === "fr" ? "Contactez l'équipe DrimPay pour toute question." : "Contact the DrimPay team for any question.",
+        [{ name: lang === "fr" ? "Contact" : "Contact", url: `${SITE_URL}/${lang}/contact` }],
+      ),
+      {
+        "@type": "ContactPage",
+        name: lang === "fr" ? "Page de contact DrimPay" : "DrimPay Contact Page",
+        url: `${SITE_URL}/${lang}/contact`,
+        contactOption: "TollFree",
+      },
+    ],
+  });
   const [submitted, setSubmitted] = useState(false);
   const mutation = useSubmitContact();
 

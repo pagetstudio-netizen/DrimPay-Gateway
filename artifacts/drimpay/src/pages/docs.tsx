@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen, Shield, Zap, Globe } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useT, useLang } from "@/lib/i18n";
+import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 import apiIcon from "@assets/6213702_1778508885407.png";
 import payinIcon from "@assets/2164832_1778521327582.png";
 import payoutIcon from "@assets/6213702_1778521327626.png";
@@ -10,6 +11,33 @@ const commonIcons = [Shield, Globe, Zap, BookOpen];
 
 export default function Docs() {
   const t = useT();
+  const lang = useLang();
+  useSEO({
+    title: lang === "fr"
+      ? "Documentation API DrimPay — Pay-in, Pay-out, Webhooks & SDKs"
+      : "DrimPay API Documentation — Pay-in, Pay-out, Webhooks & SDKs",
+    description: lang === "fr"
+      ? "Documentation complète de l'API DrimPay : intégration Pay-in Mobile Money, Pay-out, webhooks en temps réel, référence des codes d'erreur et guides de démarrage rapide."
+      : "Complete DrimPay API documentation: Mobile Money Pay-in integration, Pay-out, real-time webhooks, error code reference and quickstart guides.",
+    keywords: lang === "fr"
+      ? "documentation API paiement, API Mobile Money, référence API, webhook paiement Afrique, SDK paiement"
+      : "payment API documentation, Mobile Money API reference, payment webhook, Africa payment SDK",
+    jsonLd: [
+      webPageSchema(
+        `${SITE_URL}/${lang}/docs`,
+        lang === "fr" ? "Documentation API DrimPay" : "DrimPay API Documentation",
+        lang === "fr" ? "Référence complète de l'API DrimPay." : "Complete DrimPay API reference.",
+        [{ name: "Docs", url: `${SITE_URL}/${lang}/docs` }],
+      ),
+      {
+        "@type": "TechArticle",
+        headline: lang === "fr" ? "Documentation API DrimPay" : "DrimPay API Documentation",
+        description: lang === "fr" ? "Référence API pour intégrer les paiements Mobile Money." : "API reference for integrating Mobile Money payments.",
+        author: { "@id": `${SITE_URL}/#organization` },
+        publisher: { "@id": `${SITE_URL}/#organization` },
+      },
+    ],
+  });
 
   return (
     <div className="bg-[#F8F6F1] min-h-screen">
