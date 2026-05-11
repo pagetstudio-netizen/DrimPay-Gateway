@@ -68,7 +68,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <LangSwitcher />
             <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">{t.nav.signin}</Link>
             <Link href="/signup">
-              <Button variant="default" className="font-semibold text-primary-foreground">
+              <Button variant="default" className="font-semibold">
                 {t.nav.getApiKey} <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>

@@ -66,7 +66,9 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE */
+/* ═══════════════════════════════════════════════════════════════
+   LIGHT MODE — Warm Premium Palette (matches home.tsx identity)
+   ═══════════════════════════════════════════════════════════════ */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -76,39 +78,43 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Light backgrounds */
-  --background: 210 20% 98%;
-  --foreground: 222 47% 8%;
+  /* ── Backgrounds (warm cream, not cold blue-gray) */
+  --background: 40 28% 96%;        /* #F8F6F1 warm cream */
+  --foreground: 0 0% 6%;            /* #0f0f0f near-black */
 
-  --border: 220 13% 88%;
-  --input: 220 13% 88%;
-  --ring: 77 85% 44%;
+  --border: 40 14% 87%;             /* #E5E3DC warm gray border */
+  --input: 40 14% 87%;
+  --ring: 77 85% 44%;               /* lime green focus ring */
 
+  /* ── Cards (pure white on warm background = naturally premium) */
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 8%;
-  --card-border: 220 13% 88%;
+  --card-foreground: 0 0% 6%;
+  --card-border: 40 14% 88%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 8%;
-  --popover-border: 220 13% 88%;
+  --popover-foreground: 0 0% 6%;
+  --popover-border: 40 14% 88%;
 
-  /* Lime green brand — kept same hue, slightly deeper for contrast on white */
+  /* ── Primary = lime green brand accent */
   --primary: 77 85% 44%;
   --primary-foreground: 0 0% 0%;
 
-  --secondary: 220 13% 93%;
-  --secondary-foreground: 222 47% 8%;
+  /* ── Secondary = warm cream (#F5F0E8) */
+  --secondary: 38 33% 93%;
+  --secondary-foreground: 0 0% 6%;
 
-  --muted: 210 20% 94%;
-  --muted-foreground: 215 16% 42%;
+  /* ── Muted = warm medium tones */
+  --muted: 38 22% 91%;
+  --muted-foreground: 0 0% 40%;     /* warm gray text, not cold blue */
 
+  /* ── Accent = lime green */
   --accent: 77 85% 44%;
   --accent-foreground: 0 0% 0%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  /* Sidebar — lime green brand color */
+  /* ── Sidebar — kept lime green brand */
   --sidebar: 77 85% 62%;
   --sidebar-foreground: 222 47% 8%;
   --sidebar-border: 77 85% 55%;
@@ -128,35 +134,31 @@
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem;
-  --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.05);
-  --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.07);
-  --shadow-sm: 0px 1px 4px 0px rgba(0,0,0,0.08), 0px 1px 2px -1px rgba(0,0,0,0.06);
-  --shadow: 0px 2px 6px 0px rgba(0,0,0,0.08), 0px 1px 3px -1px rgba(0,0,0,0.06);
-  --shadow-md: 0px 4px 12px 0px rgba(0,0,0,0.08), 0px 2px 4px -1px rgba(0,0,0,0.06);
-  --shadow-lg: 0px 8px 24px 0px rgba(0,0,0,0.08), 0px 4px 8px -2px rgba(0,0,0,0.06);
-  --shadow-xl: 0px 16px 40px 0px rgba(0,0,0,0.10), 0px 8px 16px -4px rgba(0,0,0,0.06);
-  --shadow-2xl: 0px 24px 60px 0px rgba(0,0,0,0.12);
+
+  /* ── Shadows — slightly warmer tone */
+  --shadow-2xs: 0px 1px 2px 0px rgba(15,15,15,0.04);
+  --shadow-xs: 0px 1px 3px 0px rgba(15,15,15,0.06);
+  --shadow-sm: 0px 1px 4px 0px rgba(15,15,15,0.07), 0px 1px 2px -1px rgba(15,15,15,0.05);
+  --shadow: 0px 2px 6px 0px rgba(15,15,15,0.08), 0px 1px 3px -1px rgba(15,15,15,0.05);
+  --shadow-md: 0px 4px 12px 0px rgba(15,15,15,0.08), 0px 2px 4px -1px rgba(15,15,15,0.05);
+  --shadow-lg: 0px 8px 24px 0px rgba(15,15,15,0.09), 0px 4px 8px -2px rgba(15,15,15,0.05);
+  --shadow-xl: 0px 16px 40px 0px rgba(15,15,15,0.10), 0px 8px 16px -4px rgba(15,15,15,0.06);
+  --shadow-2xl: 0px 24px 60px 0px rgba(15,15,15,0.12);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
   --sidebar-accent-border: hsl(var(--sidebar-accent));
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
   --primary-border: hsl(var(--primary));
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
   --secondary-border: hsl(var(--secondary));
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
   --muted-border: hsl(var(--muted));
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
   --accent-border: hsl(var(--accent));
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
