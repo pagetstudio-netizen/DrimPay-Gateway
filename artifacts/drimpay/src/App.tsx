@@ -22,7 +22,6 @@ import Careers from "@/pages/careers";
 import CareerDetail from "@/pages/career-detail";
 import Contact from "@/pages/contact";
 import Partners from "@/pages/partners";
-import Help from "@/pages/help";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
 import DashboardPreview from "@/pages/dashboard-preview";
@@ -96,13 +95,39 @@ function Redirect({ to }: { to: string }) {
   return null;
 }
 
+const LANG_STORAGE_KEY = "drimpay_lang";
+
+/**
+ * Read the user's stored language preference (set when they explicitly switch).
+ */
+function getStoredLang(): Lang | null {
+  try {
+    const v = localStorage.getItem(LANG_STORAGE_KEY);
+    if (v === "fr" || v === "en") return v;
+  } catch {}
+  return null;
+}
+
+/**
+ * Persist the user's language choice so it survives navigation and reloads.
+ */
+export function storeLang(lang: Lang) {
+  try {
+    localStorage.setItem(LANG_STORAGE_KEY, lang);
+  } catch {}
+}
+
 /**
  * Detect the best language for the user based on:
- * 1. Browser/OS language setting
- * 2. Timezone (to catch French-speaking West/Central Africa users)
+ * 1. Explicitly stored user preference (localStorage)
+ * 2. Browser/OS language setting
+ * 3. Timezone (to catch French-speaking West/Central Africa users)
  * Defaults to French since DrimPay is primarily a Francophone Africa platform.
  */
 function detectLang(): Lang {
+  const stored = getStoredLang();
+  if (stored) return stored;
+
   try {
     const browserLang = (
       navigator.language ||
@@ -115,33 +140,15 @@ function detectLang(): Lang {
 
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const frenchAfricaZones = [
-      "Africa/Abidjan",
-      "Africa/Porto-Novo",
-      "Africa/Cotonou",
-      "Africa/Douala",
-      "Africa/Yaoundé",
-      "Africa/Ouagadougou",
-      "Africa/Bamako",
-      "Africa/Dakar",
-      "Africa/Lome",
-      "Africa/Kinshasa",
-      "Africa/Lubumbashi",
-      "Africa/Libreville",
-      "Africa/Malabo",
-      "Africa/Niamey",
-      "Africa/Ndjamena",
-      "Africa/Brazzaville",
-      "Africa/Bangui",
-      "Africa/Bujumbura",
-      "Africa/Kigali",
-      "Africa/Djibouti",
-      "Indian/Comoro",
-      "Indian/Mayotte",
-      "Africa/Tunis",
-      "Africa/Algiers",
-      "Africa/Casablanca",
-      "Africa/Nouakchott",
-      "Africa/Conakry",
+      "Africa/Abidjan", "Africa/Porto-Novo", "Africa/Cotonou",
+      "Africa/Douala", "Africa/Yaoundé", "Africa/Ouagadougou",
+      "Africa/Bamako", "Africa/Dakar", "Africa/Lome",
+      "Africa/Kinshasa", "Africa/Lubumbashi", "Africa/Libreville",
+      "Africa/Malabo", "Africa/Niamey", "Africa/Ndjamena",
+      "Africa/Brazzaville", "Africa/Bangui", "Africa/Bujumbura",
+      "Africa/Kigali", "Africa/Djibouti", "Indian/Comoro",
+      "Indian/Mayotte", "Africa/Tunis", "Africa/Algiers",
+      "Africa/Casablanca", "Africa/Nouakchott", "Africa/Conakry",
     ];
     if (frenchAfricaZones.includes(tz)) return "fr";
   } catch {}
@@ -172,7 +179,6 @@ function PublicSwitch() {
             <Route path="/careers/:id" component={CareerDetail} />
             <Route path="/contact" component={Contact} />
             <Route path="/partners" component={Partners} />
-            <Route path="/help" component={Help} />
             <Route path="/terms" component={Terms} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/dashboard-preview" component={DashboardPreview} />
