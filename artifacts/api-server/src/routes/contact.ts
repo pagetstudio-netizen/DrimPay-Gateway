@@ -17,7 +17,7 @@ router.post("/contact", async (req, res) => {
   try {
     const parsed = contactSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
+      res.status(400).json({ error: "Invalid request body", details: parsed.error.issues }); return;
     }
 
     await db.insert(contactSubmissionsTable).values({

@@ -25,9 +25,9 @@ router.get("/jobs", async (req, res) => {
 router.get("/jobs/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
     const [job] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
-    if (!job) return res.status(404).json({ error: "Job not found" });
+    if (!job) { res.status(404).json({ error: "Job not found" }); return; }
     res.json(jobToResponse(job));
   } catch (err) {
     req.log.error({ err }, "Failed to get job");

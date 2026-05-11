@@ -7,7 +7,7 @@ import {
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
   blacklistedPhonesTable, paymentLinkAttemptsTable,
 } from "@workspace/db/schema";
-import { eq, and, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
+import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import path from "path";
@@ -387,7 +387,7 @@ router.get("/admin/kyb", requireAdmin, async (req: any, res: any) => {
     const q = `%${search.trim().toLowerCase()}%`;
     conditions.push(sql`(
       lower(${usersTable.email}) LIKE ${q}
-      OR lower(${usersTable.company_name}) LIKE ${q}
+      OR lower(${usersTable.companyName}) LIKE ${q}
       OR lower(coalesce(${kybSubmissionsTable.companyLegalName}, '')) LIKE ${q}
       OR lower(coalesce(${kybSubmissionsTable.tradeName}, '')) LIKE ${q}
       OR lower(coalesce(${kybSubmissionsTable.legalRepName}, '')) LIKE ${q}

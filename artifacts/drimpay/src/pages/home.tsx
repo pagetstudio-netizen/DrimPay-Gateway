@@ -114,19 +114,19 @@ function ProductsSection() {
   const [active, setActive] = useState(0);
   const p = PRODUCTS[active];
   return (
-    <section className="py-24 bg-[#F5F0E8]">
-      <div className="max-w-6xl mx-auto px-6 md:px-10">
+    <section className="py-14 sm:py-20 md:py-24 bg-[#F5F0E8]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10">
         <motion.h2
           variants={fadeUp}
           initial="hidden"
           whileInView="visible"
           viewport={viewportConfig}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="text-3xl md:text-5xl font-extrabold text-[#0f0f0f] mb-14 leading-tight tracking-tight"
+          className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-[#0f0f0f] mb-8 sm:mb-14 leading-tight tracking-tight"
         >
           Produits Prêts à l'Emploi
         </motion.h2>
-        <div className="grid lg:grid-cols-2 gap-10 items-start">
+        <div className="grid lg:grid-cols-2 gap-6 sm:gap-10 items-start">
           <motion.div
             variants={staggerFast}
             initial="hidden"
@@ -140,7 +140,7 @@ function ProductsSection() {
                 variants={fadeUp}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 onClick={() => setActive(i)}
-                className={`w-full text-left px-5 py-4 rounded-2xl font-bold text-lg transition-all ${
+                className={`w-full text-left px-4 sm:px-5 py-3 sm:py-4 rounded-2xl font-bold text-base sm:text-lg transition-all ${
                   active === i ? "bg-[#0f0f0f] text-white shadow-lg" : "text-[#0f0f0f] hover:bg-white/60"
                 }`}
               >
@@ -200,12 +200,10 @@ export default function Home() {
 
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section
-        className="relative overflow-hidden bg-[#F8F6F1]"
+        className="relative overflow-hidden bg-[#F8F6F1] pt-24 pb-14 sm:pt-32 md:pt-[140px] md:pb-20"
         style={{
           backgroundImage: GRID_SVG,
           backgroundSize: "60px 60px",
-          paddingTop: "140px",
-          paddingBottom: "80px",
         }}
       >
         {/* Radial glow */}
@@ -223,7 +221,7 @@ export default function Home() {
           variants={stagger}
           initial="hidden"
           animate="visible"
-          className="max-w-5xl mx-auto px-6 md:px-10 relative text-center"
+          className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 relative text-center"
         >
           {/* Badge */}
           <motion.div
@@ -239,7 +237,7 @@ export default function Home() {
           <motion.h1
             variants={fadeUp}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-5xl md:text-7xl font-extrabold text-[#0f0f0f] leading-[1.02] tracking-tight mb-6 max-w-4xl mx-auto"
+            className="text-4xl sm:text-5xl md:text-7xl font-extrabold text-[#0f0f0f] leading-[1.02] tracking-tight mb-6 max-w-4xl mx-auto"
           >
             La Plateforme de Paiement{" "}
             <span className="relative inline-block">
@@ -319,9 +317,9 @@ export default function Home() {
 
 
       {/* ── BETTER WAY ────────────────────────────────────────────────── */}
-      <section className="py-24 bg-[#F5F0E8]">
-        <div className="max-w-6xl mx-auto px-6 md:px-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
+      <section className="py-14 sm:py-20 md:py-24 bg-[#F5F0E8]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
             <motion.div
               variants={slideLeft}
               initial="hidden"
@@ -329,8 +327,8 @@ export default function Home() {
               viewport={viewportConfig}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
-              <h2 className="text-4xl md:text-5xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight mb-6">
-                Une meilleure façon<br />de lancer un<br />produit de paiement
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight mb-6">
+                Une meilleure façon de lancer un produit de paiement
               </h2>
               <Link href="/how-it-works">
                 <motion.button
@@ -365,15 +363,15 @@ export default function Home() {
       </section>
 
       {/* ── THREE FEATURE CARDS ──────────────────────────────────────── */}
-      <section className="py-24 bg-[#F8F6F1]">
-        <div className="max-w-6xl mx-auto px-6 md:px-10">
+      <section className="py-14 sm:py-20 md:py-24 bg-[#F8F6F1]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10">
           <motion.h2
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
             viewport={viewportConfig}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="text-3xl md:text-5xl font-extrabold text-[#0f0f0f] mb-4 leading-tight tracking-tight"
+            className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-[#0f0f0f] mb-4 leading-tight tracking-tight"
           >
             Tout ce qu'il vous faut
           </motion.h2>
@@ -393,7 +391,7 @@ export default function Home() {
             initial="hidden"
             whileInView="visible"
             viewport={viewportConfig}
-            className="grid md:grid-cols-3 gap-6"
+            className="grid sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6"
           >
             {/* Card 1 — Pay-in */}
             <motion.div
@@ -465,15 +463,15 @@ export default function Home() {
       </section>
 
       {/* ── MAKE IT YOUR OWN ─────────────────────────────────────────── */}
-      <section className="py-24 bg-white">
-        <div className="max-w-5xl mx-auto px-6 md:px-10 text-center">
+      <section className="py-14 sm:py-20 md:py-24 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 text-center">
           <motion.h2
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
             viewport={viewportConfig}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl md:text-6xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight mb-4"
+            className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight mb-4"
           >
             Faites-en le Vôtre
           </motion.h2>
@@ -494,27 +492,27 @@ export default function Home() {
             initial="hidden"
             whileInView="visible"
             viewport={viewportConfig}
-            className="relative flex items-center justify-center h-48 mb-8"
+            className="relative flex items-center justify-center h-44 sm:h-48 mb-8 overflow-hidden"
           >
             {[
-              { bg: "bg-[#5B5EF5]", label: "Business Premium", style: { transform: "rotate(-8deg) translateX(-80px) translateY(8px)", position: "absolute" as const } },
-              { bg: "bg-[#1a6b4a]", label: "Carte Enterprise",  style: { transform: "rotate(7deg) translateX(80px) translateY(8px)", position: "absolute" as const } },
+              { bg: "bg-[#5B5EF5]", label: "Business Premium", style: { transform: "rotate(-8deg) translateX(-60px) translateY(8px)", position: "absolute" as const } },
+              { bg: "bg-[#1a6b4a]", label: "Carte Enterprise",  style: { transform: "rotate(7deg) translateX(60px) translateY(8px)", position: "absolute" as const } },
               { bg: "bg-[#B5F03C]", label: "Carte Standard",    style: { transform: "translateY(-8px)", position: "relative" as const, zIndex: 10 } },
             ].map((c, i) => (
               <motion.div
                 key={i}
                 variants={scaleUp}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className={`w-48 h-28 rounded-2xl ${c.bg} p-4 flex flex-col justify-between shadow-xl`}
+                className={`w-40 h-24 sm:w-48 sm:h-28 rounded-2xl ${c.bg} p-3 sm:p-4 flex flex-col justify-between shadow-xl`}
                 style={c.style}
               >
                 <div className="flex justify-between items-start">
-                  <div className="w-6 h-4 rounded bg-white/30" />
-                  <span className="text-white/70 text-[9px] font-bold tracking-widest">DRIMPAY</span>
+                  <div className="w-5 h-3.5 sm:w-6 sm:h-4 rounded bg-white/30" />
+                  <span className="text-white/70 text-[8px] sm:text-[9px] font-bold tracking-widest">DRIMPAY</span>
                 </div>
                 <div>
-                  <p className="text-white text-[10px] font-mono tracking-widest opacity-60">•••• 4242</p>
-                  <p className="text-white text-[9px] mt-0.5 opacity-50">{c.label}</p>
+                  <p className="text-white text-[9px] sm:text-[10px] font-mono tracking-widest opacity-60">•••• 4242</p>
+                  <p className="text-white text-[8px] sm:text-[9px] mt-0.5 opacity-50">{c.label}</p>
                 </div>
               </motion.div>
             ))}
@@ -557,8 +555,8 @@ export default function Home() {
       <ProductsSection />
 
       {/* ── TWO CTA CARDS ────────────────────────────────────────────── */}
-      <section className="py-24 bg-[#F5F0E8]">
-        <div className="max-w-6xl mx-auto px-6 md:px-10">
+      <section className="py-14 sm:py-20 md:py-24 bg-[#F5F0E8]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10">
           <motion.div
             variants={stagger}
             initial="hidden"
@@ -640,8 +638,8 @@ export default function Home() {
       </section>
 
       {/* ── COMPLIANCE CARD ──────────────────────────────────────────── */}
-      <section className="py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-6 md:px-10">
+      <section className="py-14 sm:py-20 md:py-24 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10">
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -708,9 +706,9 @@ export default function Home() {
         whileInView="visible"
         viewport={viewportConfig}
         transition={{ duration: 0.7 }}
-        className="py-24 bg-[#0f0f0f]"
+        className="py-16 sm:py-20 md:py-24 bg-[#0f0f0f]"
       >
-        <div className="max-w-4xl mx-auto px-6 md:px-10 text-center">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-10 text-center">
           <motion.div
             variants={stagger}
             initial="hidden"
@@ -727,9 +725,9 @@ export default function Home() {
             <motion.h2
               variants={fadeUp}
               transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-              className="text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-6"
+              className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-6"
             >
-              Prêt à transformer<br />vos paiements ?
+              Prêt à transformer vos paiements ?
             </motion.h2>
             <motion.p
               variants={fadeUp}

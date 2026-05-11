@@ -530,7 +530,7 @@ export default function AdminSettings() {
                       </div>
                       {field.type !== "boolean" && (
                         <input type={field.type} value={get(field.key, "")} onChange={e => set(field.key, e.target.value)}
-                          placeholder={field.placeholder}
+                          placeholder={"placeholder" in field ? field.placeholder : undefined}
                           className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                       )}
                       <p className="text-xs text-gray-400 mt-1">{field.hint}</p>

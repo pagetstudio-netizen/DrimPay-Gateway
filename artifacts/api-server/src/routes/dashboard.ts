@@ -27,6 +27,8 @@ import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+const FEE_RATE = 0.03;
+
 const router = Router();
 
 function requireAuth(req: any, res: any, next: any) {
@@ -1093,7 +1095,7 @@ router.get("/dashboard/settings", requireAuth, async (req, res) => {
     webhookUrl: usersTable.webhookUrl,
     staticIp: usersTable.staticIp,
   }).from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
   res.json(user);
 });
 
@@ -1103,7 +1105,7 @@ router.patch("/dashboard/settings/webhook", requireAuth, async (req, res) => {
     webhookUrl: z.string().url("URL invalide").or(z.literal("")),
   });
   const result = schema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" });
+  if (!result.success) { res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" }); return; }
 
   await db.update(usersTable).set({ webhookUrl: result.data.webhookUrl || null }).where(eq(usersTable.id, userId));
   res.json({ success: true });
@@ -1115,7 +1117,7 @@ router.patch("/dashboard/settings/ip", requireAuth, async (req, res) => {
     staticIp: z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$/, "Adresse IP invalide").or(z.literal("")),
   });
   const result = schema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" });
+  if (!result.success) { res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" }); return; }
 
   await db.update(usersTable).set({ staticIp: result.data.staticIp || null }).where(eq(usersTable.id, userId));
   res.json({ success: true });
@@ -1128,13 +1130,13 @@ router.patch("/dashboard/settings/password", requireAuth, async (req, res) => {
     newPassword: z.string().min(8, "Minimum 8 caractères"),
   });
   const result = schema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" });
+  if (!result.success) { res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalide" }); return; }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
+  if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
 
   const valid = await bcrypt.compare(result.data.currentPassword, user.passwordHash);
-  if (!valid) return res.status(400).json({ error: "Mot de passe actuel incorrect" });
+  if (!valid) { res.status(400).json({ error: "Mot de passe actuel incorrect" }); return; }
 
   const newHash = await bcrypt.hash(result.data.newPassword, 12);
   await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, userId));
@@ -1860,10 +1862,10 @@ router.get("/dashboard/notifications", requireAuth, async (req, res) => {
         category: "kyb",
         title: "Vérification KYB approuvée",
         body: "Votre dossier KYB a été approuvé. Votre compte Live est maintenant actif.",
-        time: kyb.updatedAt ? relTime(kyb.updatedAt) : "Récemment",
+        time: kyb.reviewedAt ? relTime(kyb.reviewedAt) : "Récemment",
         read: true,
         href: "/dashboard/kyb",
-        createdAt: kyb.updatedAt ?? kyb.createdAt,
+        createdAt: kyb.reviewedAt ?? kyb.createdAt,
       });
     } else if (kyb.status === "submitted" || kyb.status === "under_review") {
       notifs.push({
@@ -1872,10 +1874,10 @@ router.get("/dashboard/notifications", requireAuth, async (req, res) => {
         category: "kyb",
         title: "KYB en cours d'examen",
         body: "Votre dossier KYB est entre les mains de notre équipe. Traitement sous 1 à 2 jours ouvrables.",
-        time: kyb.updatedAt ? relTime(kyb.updatedAt) : "Récemment",
+        time: kyb.submittedAt ? relTime(kyb.submittedAt) : "Récemment",
         read: false,
         href: "/dashboard/kyb",
-        createdAt: kyb.updatedAt ?? kyb.createdAt,
+        createdAt: kyb.submittedAt ?? kyb.createdAt,
       });
     } else if (kyb.status === "rejected") {
       notifs.push({
@@ -1884,10 +1886,10 @@ router.get("/dashboard/notifications", requireAuth, async (req, res) => {
         category: "kyb",
         title: "KYB refusé — Action requise",
         body: "Votre dossier KYB a été refusé. Veuillez soumettre à nouveau avec les documents corrects.",
-        time: kyb.updatedAt ? relTime(kyb.updatedAt) : "Récemment",
+        time: kyb.reviewedAt ? relTime(kyb.reviewedAt) : "Récemment",
         read: false,
         href: "/dashboard/kyb",
-        createdAt: kyb.updatedAt ?? kyb.createdAt,
+        createdAt: kyb.reviewedAt ?? kyb.createdAt,
       });
     } else {
       notifs.push({

@@ -1,100 +1,315 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useListSupportedCountries } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { ArrowRight, CheckCircle2, XCircle } from "lucide-react";
+import {
+  ArrowRight, CheckCircle2, XCircle, Globe, Zap, Shield,
+  ChevronRight, MapPin, TrendingUp, Wifi, Filter,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/lib/i18n";
 
+/* ── animation helpers ──────────────────────────────────────────────────── */
+const fadeUp = { hidden: { opacity: 0, y: 28 }, visible: { opacity: 1, y: 0 } };
+const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.09, delayChildren: 0.05 } } };
+const scaleUp = { hidden: { opacity: 0, scale: 0.94 }, visible: { opacity: 1, scale: 1 } };
+const viewport = { once: true, margin: "-60px" };
+
+/* ── operator type → color pill ─────────────────────────────────────────── */
+function getOperatorPill(type: string, active: boolean) {
+  const base = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border";
+  if (!active) return `${base} bg-[#f5f0e8] text-[#0f0f0f]/30 border-[#e5e3dc]`;
+  const lower = type.toLowerCase();
+  if (lower.includes("wave") || lower.includes("wallet")) return `${base} bg-blue-50 text-blue-600 border-blue-200`;
+  if (lower.includes("orange")) return `${base} bg-orange-50 text-orange-600 border-orange-200`;
+  if (lower.includes("mtn")) return `${base} bg-yellow-50 text-yellow-700 border-yellow-200`;
+  if (lower.includes("moov") || lower.includes("airtel")) return `${base} bg-sky-50 text-sky-600 border-sky-200`;
+  if (lower.includes("tmoney") || lower.includes("t-money")) return `${base} bg-red-50 text-red-600 border-red-200`;
+  if (lower.includes("mobile money")) return `${base} bg-[#B5F03C]/20 text-[#3a7a00] border-[#B5F03C]/40`;
+  return `${base} bg-[#f0ede6] text-[#0f0f0f]/60 border-[#e5e3dc]`;
+}
+
+/* ── operator logo dot ──────────────────────────────────────────────────── */
+function OperatorDot({ active }: { active: boolean }) {
+  return (
+    <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? "bg-emerald-400" : "bg-[#0f0f0f]/15"}`} />
+  );
+}
+
+/* ── filter tab ─────────────────────────────────────────────────────────── */
+function FilterTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
+        active
+          ? "bg-[#0f0f0f] text-white shadow-sm"
+          : "bg-white border border-[#e5e3dc] text-[#0f0f0f]/60 hover:border-[#0f0f0f]/30 hover:text-[#0f0f0f]"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+/* ── zone icons ─────────────────────────────────────────────────────────── */
+const ZONE_ICONS = [
+  <Globe key="g" className="w-5 h-5 text-[#3a7a00]" />,
+  <Shield key="s" className="w-5 h-5 text-[#3a7a00]" />,
+  <TrendingUp key="t" className="w-5 h-5 text-[#3a7a00]" />,
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN PAGE
+══════════════════════════════════════════════════════════════════════════════ */
 export default function Countries() {
   const { data: countries, isLoading } = useListSupportedCountries();
   const t = useT();
+  const [filter, setFilter] = useState<"all" | "payin" | "payout">("all");
+
+  const filtered = (countries ?? []).filter((c) => {
+    if (filter === "payin") return c.payinEnabled;
+    if (filter === "payout") return c.payoutEnabled;
+    return true;
+  });
+
+  const totalOperators = (countries ?? []).reduce((acc, c) => acc + (c.operators?.length ?? 0), 0);
 
   return (
     <div className="bg-[#F8F6F1]">
 
-      {/* ── HERO ────────────────────────────────────────────────── */}
-      <div className="pt-32 pb-16">
-        <div className="container mx-auto px-4 md:px-8">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#B5F03C]/20 border border-[#B5F03C]/30 mb-6 text-xs font-semibold text-[#3a7a00]">{t.countries.badge}</div>
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6 text-[#0f0f0f] leading-[1.02]">{t.countries.title}</h1>
-            <p className="text-xl text-[#0f0f0f]/55 leading-relaxed">{t.countries.desc}</p>
+      {/* ── HERO ──────────────────────────────────────────────────────────── */}
+      <div className="pt-24 md:pt-32 pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10">
+
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="visible"
+            className="mb-14"
+          >
+            {/* Badge */}
+            <motion.div
+              variants={fadeUp}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#B5F03C]/20 border border-[#B5F03C]/30 mb-6"
+            >
+              <MapPin className="w-3.5 h-3.5 text-[#3a7a00]" />
+              <span className="text-xs font-semibold text-[#3a7a00]">{t.countries.badge}</span>
+            </motion.div>
+
+            {/* Title */}
+            <motion.h1
+              variants={fadeUp}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter mb-5 text-[#0f0f0f] leading-[1.02] max-w-3xl"
+            >
+              {t.countries.title}
+            </motion.h1>
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.55 }}
+              className="text-lg text-[#0f0f0f]/55 leading-relaxed max-w-2xl"
+            >
+              {t.countries.desc}
+            </motion.p>
           </motion.div>
 
-          {/* ── COUNTRY GRID ──────────────────────────────────────── */}
+          {/* ── STATS ROW ─────────────────────────────────────────────────── */}
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-12"
+          >
+            {[
+              { value: countries?.length ?? "7", label: "Pays actifs", icon: <MapPin className="w-4 h-4" /> },
+              { value: totalOperators > 0 ? `${totalOperators}+` : "20+", label: "Opérateurs intégrés", icon: <Wifi className="w-4 h-4" /> },
+              { value: "2", label: "Zones monétaires", icon: <Globe className="w-4 h-4" />, hideMobile: true },
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                variants={scaleUp}
+                transition={{ duration: 0.4, delay: i * 0.07 }}
+                className={`p-5 rounded-2xl bg-white border border-[#E5E3DC] shadow-sm ${stat.hideMobile ? "hidden sm:flex" : "flex"} flex-col gap-1`}
+              >
+                <div className="flex items-center gap-2 text-[#B5F03C] mb-1">{stat.icon}</div>
+                <p className="text-2xl sm:text-3xl font-extrabold text-[#0f0f0f]">{stat.value}</p>
+                <p className="text-xs text-[#0f0f0f]/50 font-medium">{stat.label}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* ── FILTER TABS ───────────────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.2 }}
+            className="flex items-center gap-2 flex-wrap mb-8"
+          >
+            <Filter className="w-4 h-4 text-[#0f0f0f]/40 mr-1 flex-shrink-0" />
+            <FilterTab label="Tous les pays" active={filter === "all"} onClick={() => setFilter("all")} />
+            <FilterTab label="Encaissement actif" active={filter === "payin"} onClick={() => setFilter("payin")} />
+            <FilterTab label="Décaissement actif" active={filter === "payout"} onClick={() => setFilter("payout")} />
+          </motion.div>
+
+          {/* ── COUNTRY GRID ─────────────────────────────────────────────── */}
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
-              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-2xl bg-[#E5E3DC]" />)}
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
-              {(countries ?? []).map((country, i) => (
-                <motion.div
-                  key={country.code}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                  className="p-8 rounded-2xl border border-[#E5E3DC] bg-white hover:border-[#B5F03C]/50 hover:shadow-md transition-all"
-                  data-testid={`country-card-${country.code}`}
-                >
-                  <div className="flex items-center gap-4 mb-6">
-                    <span className="text-4xl">{country.flag}</span>
-                    <div>
-                      <h3 className="font-extrabold text-lg text-[#0f0f0f]">{country.name}</h3>
-                      <p className="text-sm text-[#0f0f0f]/45">{country.currency} · {country.code}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 mb-6 flex-wrap">
-                    <div className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${country.payinEnabled ? "bg-green-50 text-green-600 border border-green-200" : "bg-red-50 text-red-500 border border-red-200"}`}>
-                      {country.payinEnabled ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />} {t.countries.payin}
-                    </div>
-                    <div className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${country.payoutEnabled ? "bg-green-50 text-green-600 border border-green-200" : "bg-red-50 text-red-500 border border-red-200"}`}>
-                      {country.payoutEnabled ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />} {t.countries.payout}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-bold text-[#0f0f0f]/35 uppercase tracking-widest mb-3">{t.countries.operators}</p>
-                    <div className="flex flex-col gap-2">
-                      {(country.operators ?? []).map((op, j) => (
-                        <div key={j} className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-[#0f0f0f]">{op.name}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-[#0f0f0f]/40">{op.type}</span>
-                            <div className={`w-2 h-2 rounded-full ${op.active ? "bg-green-400" : "bg-red-400"}`} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-20">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-64 rounded-2xl bg-[#E5E3DC]" />
               ))}
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 mb-20">
+              <Globe className="w-12 h-12 text-[#0f0f0f]/15 mb-4" />
+              <p className="text-[#0f0f0f]/40 font-semibold">Aucun pays pour ce filtre</p>
+            </div>
+          ) : (
+            <motion.div
+              key={filter}
+              variants={stagger}
+              initial="hidden"
+              animate="visible"
+              className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-20"
+            >
+              {filtered.map((country, i) => (
+                <motion.div
+                  key={country.code}
+                  variants={fadeUp}
+                  transition={{ duration: 0.4, delay: i * 0.06 }}
+                  className="group bg-white rounded-2xl border border-[#E5E3DC] hover:border-[#B5F03C]/50 hover:shadow-md transition-all overflow-hidden"
+                  data-testid={`country-card-${country.code}`}
+                >
+                  {/* Card header */}
+                  <div className="px-6 pt-6 pb-4 flex items-start gap-4">
+                    <span className="text-4xl leading-none flex-shrink-0">{country.flag}</span>
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold text-lg text-[#0f0f0f] leading-tight">{country.name}</h3>
+                      <p className="text-sm text-[#0f0f0f]/40 font-medium mt-0.5">
+                        {country.currency} <span className="mx-1 opacity-40">·</span> {country.code}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="mx-6 h-px bg-[#F0EDE6]" />
+
+                  {/* Capability badges */}
+                  <div className="px-6 py-4 flex gap-2 flex-wrap">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${
+                      country.payinEnabled
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-[#f5f5f5] text-[#0f0f0f]/30 border-[#e5e3dc]"
+                    }`}>
+                      {country.payinEnabled
+                        ? <CheckCircle2 className="w-3 h-3" />
+                        : <XCircle className="w-3 h-3" />}
+                      {t.countries.payin}
+                    </span>
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${
+                      country.payoutEnabled
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-[#f5f5f5] text-[#0f0f0f]/30 border-[#e5e3dc]"
+                    }`}>
+                      {country.payoutEnabled
+                        ? <CheckCircle2 className="w-3 h-3" />
+                        : <XCircle className="w-3 h-3" />}
+                      {t.countries.payout}
+                    </span>
+                  </div>
+
+                  {/* Operators */}
+                  {(country.operators ?? []).length > 0 && (
+                    <div className="px-6 pb-6">
+                      <p className="text-[10px] font-bold text-[#0f0f0f]/30 uppercase tracking-widest mb-3">
+                        {t.countries.operators}
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {(country.operators ?? []).map((op, j) => (
+                          <div key={j} className="flex items-center justify-between gap-2 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <OperatorDot active={op.active} />
+                              <span className={`text-sm font-semibold truncate ${op.active ? "text-[#0f0f0f]" : "text-[#0f0f0f]/35"}`}>
+                                {op.name}
+                              </span>
+                            </div>
+                            <span className={getOperatorPill(op.type, op.active)}>
+                              {op.type}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </motion.div>
           )}
 
-          {/* ── ZONES ─────────────────────────────────────────────── */}
-          <div className="grid md:grid-cols-3 gap-6 mb-20">
+          {/* ── ZONES ─────────────────────────────────────────────────────── */}
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewport}
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16"
+          >
             {t.countries.zones.map((item, i) => (
-              <div key={i} className="p-6 rounded-xl border border-[#E5E3DC] bg-white">
-                <h3 className="font-extrabold text-lg mb-3 text-[#0f0f0f]">{item.title}</h3>
+              <motion.div
+                key={i}
+                variants={fadeUp}
+                transition={{ duration: 0.45, delay: i * 0.08 }}
+                className="p-6 rounded-2xl border border-[#E5E3DC] bg-white group hover:border-[#B5F03C]/50 transition-all"
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#B5F03C]/15 flex items-center justify-center mb-4 group-hover:bg-[#B5F03C]/25 transition-colors">
+                  {ZONE_ICONS[i]}
+                </div>
+                <h3 className="font-extrabold text-base mb-2 text-[#0f0f0f]">{item.title}</h3>
                 <p className="text-[#0f0f0f]/55 text-sm leading-relaxed">{item.desc}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
+
         </div>
       </div>
 
-      {/* ── CTA ─────────────────────────────────────────────────── */}
-      <div className="bg-[#0f0f0f] py-20">
-        <div className="container mx-auto px-4 md:px-8 text-center">
-          <h2 className="text-2xl font-extrabold mb-4 text-white">{t.countries.noCountryTitle}</h2>
-          <p className="text-white/50 mb-8 max-w-lg mx-auto leading-relaxed">{t.countries.noCountryDesc}</p>
-          <Link href="/contact">
-            <button className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#B5F03C] text-[#0f0f0f] font-semibold text-sm hover:bg-[#B5F03C]/90 transition-all shadow-lg">
-              {t.countries.contactUs} <ArrowRight className="w-4 h-4" />
-            </button>
-          </Link>
+      {/* ── DARK CTA ──────────────────────────────────────────────────────── */}
+      <div className="bg-[#0f0f0f] py-16 sm:py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+            <div className="max-w-xl">
+              <p className="text-[#B5F03C] text-xs font-bold uppercase tracking-widest mb-3">
+                Expansion continue
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-white leading-tight">
+                {t.countries.noCountryTitle}
+              </h2>
+              <p className="text-white/50 leading-relaxed text-sm sm:text-base">
+                {t.countries.noCountryDesc}
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+              <Link href="/contact">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-[#B5F03C] text-[#0f0f0f] font-bold text-sm shadow-lg hover:bg-[#c8ff55] transition-colors"
+                >
+                  {t.countries.contactUs} <ArrowRight className="w-4 h-4" />
+                </motion.button>
+              </Link>
+              <Link href="/signup">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 px-7 py-3 rounded-full border border-white/20 text-white font-semibold text-sm hover:bg-white/5 transition-colors"
+                >
+                  Créer un compte <ChevronRight className="w-4 h-4" />
+                </motion.button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 

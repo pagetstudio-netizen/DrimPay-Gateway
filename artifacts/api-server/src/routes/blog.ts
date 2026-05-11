@@ -59,7 +59,7 @@ router.get("/blog/articles/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
     const [article] = await db.select().from(blogArticlesTable).where(eq(blogArticlesTable.slug, slug));
-    if (!article) return res.status(404).json({ error: "Article not found" });
+    if (!article) { res.status(404).json({ error: "Article not found" }); return; }
     res.json(articleToResponse(article));
   } catch (err) {
     req.log.error({ err }, "Failed to get blog article");

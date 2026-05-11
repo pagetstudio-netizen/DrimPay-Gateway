@@ -369,9 +369,9 @@ export default function DashboardPayments() {
         {/* Main tabs */}
         <div className="flex border-b border-border mb-5 gap-1">
           {([
-            { key: "transactions", label: "Transactions", count: total },
-            { key: "attempts",     label: "Tentatives", count: attemptsTotal, icon: MousePointerClick },
-          ] as const).map(({ key, label, count, icon: Icon }) => (
+            { key: "transactions" as const, label: "Transactions", count: total, icon: undefined as typeof MousePointerClick | undefined },
+            { key: "attempts" as const,     label: "Tentatives", count: attemptsTotal, icon: MousePointerClick as typeof MousePointerClick | undefined },
+          ]).map(({ key, label, count, icon: Icon }) => (
             <button key={key} onClick={() => setMainTab(key)}
               className={cn("flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
                 mainTab === key
