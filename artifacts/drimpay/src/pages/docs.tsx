@@ -1,8 +1,10 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowDownLeft, ArrowUpRight, ArrowRight, BookOpen, Shield, Zap, Globe } from "lucide-react";
+import { ArrowRight, BookOpen, Shield, Zap, Globe } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import apiIcon from "@assets/6213702_1778508885407.png";
+import payinIcon from "@assets/2164832_1778520026076.png";
+import payoutIcon from "@assets/6213702_1778520026124.png";
 
 const commonIcons = [Shield, Globe, Zap, BookOpen];
 
@@ -49,7 +51,7 @@ export default function Docs() {
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-100 transition-colors" />
                   <div className="relative">
                     <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center mb-5">
-                      <ArrowDownLeft className="w-6 h-6 text-blue-500" />
+                      <img src={payinIcon} alt="Pay-in" className="w-8 h-8 object-contain" />
                     </div>
                     <h2 className="text-2xl font-extrabold mb-2 text-[#0f0f0f]">{t.docs.payinTitle}</h2>
                     <p className="text-[#0f0f0f]/55 mb-6 leading-relaxed">{t.docs.payinDesc}</p>
@@ -77,7 +79,7 @@ export default function Docs() {
                   <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-orange-100 transition-colors" />
                   <div className="relative">
                     <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center mb-5">
-                      <ArrowUpRight className="w-6 h-6 text-orange-500" />
+                      <img src={payoutIcon} alt="Pay-out" className="w-8 h-8 object-contain" />
                     </div>
                     <h2 className="text-2xl font-extrabold mb-2 text-[#0f0f0f]">{t.docs.payoutTitle}</h2>
                     <p className="text-[#0f0f0f]/55 mb-6 leading-relaxed">{t.docs.payoutDesc}</p>
