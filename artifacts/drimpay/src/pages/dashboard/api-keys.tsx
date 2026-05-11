@@ -77,10 +77,34 @@ export default function ApiKeys() {
     fetchKeys();
   };
 
-  const copy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const copy = async (text: string, id: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const el = document.createElement("textarea");
+        el.value = text;
+        el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0";
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2500);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = text;
+      el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0";
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2500);
+    }
   };
 
   return (
@@ -194,24 +218,20 @@ export default function ApiKeys() {
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {key.rawKey && (
-                          <button
-                            onClick={() => toggleReveal(key.id)}
-                            title={revealedIds.has(key.id) ? "Masquer" : "Afficher la clé"}
-                            className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
-                          >
-                            {revealedIds.has(key.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        )}
-                        {key.rawKey && (
-                          <button
-                            onClick={() => copy(key.rawKey, `key-${key.id}`)}
-                            title="Copier la clé"
-                            className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
-                          >
-                            {copiedId === `key-${key.id}` ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => toggleReveal(key.id)}
+                          title={revealedIds.has(key.id) ? "Masquer" : "Afficher la clé"}
+                          className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
+                        >
+                          {revealedIds.has(key.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => copy(revealedIds.has(key.id) && key.rawKey ? key.rawKey : (key.rawKey ?? `${key.prefix}••••••••••••••••••••••••`), `key-${key.id}`)}
+                          title="Copier la clé"
+                          className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
+                        >
+                          {copiedId === `key-${key.id}` ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                        </button>
                         {key.status === "active" && (
                           <button
                             onClick={() => setDeleteId(key.id)}
