@@ -364,6 +364,106 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── THREE FEATURE CARDS ──────────────────────────────────────── */}
+      <section className="py-24 bg-[#F8F6F1]">
+        <div className="max-w-6xl mx-auto px-6 md:px-10">
+          <motion.h2
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="text-3xl md:text-5xl font-extrabold text-[#0f0f0f] mb-4 leading-tight tracking-tight"
+          >
+            Tout ce qu'il vous faut
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="text-base text-[#0f0f0f]/50 mb-14 max-w-xl leading-relaxed"
+          >
+            Collectez, décaissez et partagez des paiements Mobile Money avec une seule infrastructure API.
+          </motion.p>
+
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            className="grid md:grid-cols-3 gap-6"
+          >
+            {/* Card 1 — Pay-in */}
+            <motion.div
+              variants={scaleUp}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="rounded-3xl bg-[#FF6B35] p-8 flex flex-col justify-between min-h-[320px] shadow-lg group hover:scale-[1.02] transition-transform"
+            >
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6 overflow-hidden">
+                  <img src={iconMobileMoney} alt="Mobile Money" className="w-9 h-9 object-contain" />
+                </div>
+                <h3 className="text-2xl font-extrabold text-white mb-3 leading-snug">Collecte Mobile Money</h3>
+                <p className="text-white/70 text-sm leading-relaxed">
+                  Acceptez des paiements depuis Orange Money, Wave, MTN, Moov et plus encore. Une seule intégration, tous les opérateurs.
+                </p>
+              </div>
+              <Link href="/docs/payin">
+                <button className="mt-8 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#0f0f0f] font-semibold text-sm hover:bg-white/90 transition-all">
+                  API Pay-in <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </motion.div>
+
+            {/* Card 2 — Pay-out */}
+            <motion.div
+              variants={scaleUp}
+              transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+              className="rounded-3xl bg-[#0d0c18] p-8 flex flex-col justify-between min-h-[320px] shadow-lg group hover:scale-[1.02] transition-transform"
+            >
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-6 overflow-hidden">
+                  <img src={iconMassPayout} alt="Mass Payout" className="w-9 h-9 object-contain" />
+                </div>
+                <h3 className="text-2xl font-extrabold text-white mb-3 leading-snug">Décaissements Instantanés</h3>
+                <p className="text-white/60 text-sm leading-relaxed">
+                  Envoyez des paiements à des centaines de bénéficiaires simultanément. Parfait pour les paies, commissions et remboursements.
+                </p>
+              </div>
+              <Link href="/docs/payout">
+                <button className="mt-8 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#B5F03C] text-[#0f0f0f] font-semibold text-sm hover:bg-[#B5F03C]/90 transition-all">
+                  API Pay-out <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </motion.div>
+
+            {/* Card 3 — Payment Links */}
+            <motion.div
+              variants={scaleUp}
+              transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="rounded-3xl bg-[#B5F03C] p-8 flex flex-col justify-between min-h-[320px] shadow-lg group hover:scale-[1.02] transition-transform"
+            >
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-[#0f0f0f]/10 flex items-center justify-center mb-6 overflow-hidden">
+                  <img src={iconPaymentLink} alt="Lien de paiement" className="w-9 h-9 object-contain" />
+                </div>
+                <h3 className="text-2xl font-extrabold text-[#0f0f0f] mb-3 leading-snug">Liens de Paiement</h3>
+                <p className="text-[#0f0f0f]/65 text-sm leading-relaxed">
+                  Créez un lien de paiement en quelques secondes. Partagez par WhatsApp, SMS ou email. Aucun site web requis.
+                </p>
+              </div>
+              <Link href="/signup">
+                <button className="mt-8 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
+                  Créer un lien <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ── MAKE IT YOUR OWN ─────────────────────────────────────────── */}
       <section className="py-24 bg-white">
         <div className="max-w-5xl mx-auto px-6 md:px-10 text-center">
