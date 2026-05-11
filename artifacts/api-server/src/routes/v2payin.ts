@@ -342,6 +342,17 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
     if (useClapay) {
       try {
         const clapay = getClapayClient();
+        const clapayGatewayPayload = {
+          amount, currency, country_code, operator, phone,
+          reference, order_id,
+          callback_url: `${baseCallbackUrl}/api/webhooks/clapay`,
+          description,
+          gateway: "clapay",
+        };
+        await db.update(transactionsTable)
+          .set({ gatewayPayload: JSON.stringify(clapayGatewayPayload), updatedAt: new Date() })
+          .where(eq(transactionsTable.id, tx.id));
+
         const clapayRes = await clapay.initiatePayin({
           amount, currency, country_code, operator, phone, reference, order_id,
           callback_url: `${baseCallbackUrl}/api/webhooks/clapay`,
@@ -388,6 +399,17 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
     if (usePayDunya) {
       try {
         const paydunya = getPayDunyaClient();
+        const pdGatewayPayload = {
+          amount, currency, country_code, operator, phone,
+          reference, order_id,
+          callback_url: `${baseCallbackUrl}/api/webhooks/paydunya`,
+          description,
+          gateway: "paydunya",
+        };
+        await db.update(transactionsTable)
+          .set({ gatewayPayload: JSON.stringify(pdGatewayPayload), updatedAt: new Date() })
+          .where(eq(transactionsTable.id, tx.id));
+
         const pdRes = await paydunya.initiatePayin({
           amount, currency, country_code, operator, phone, reference, order_id,
           callback_url: `${baseCallbackUrl}/api/webhooks/paydunya`,
