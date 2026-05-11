@@ -172,8 +172,12 @@ export default function Signup() {
   const t = useT();
   const [accountType, setAccountType] = useState<AccountType | null>(null);
 
+  const isPersonal = accountType === "personal";
+
   const schema = z.object({
-    companyName: z.string().min(2, t.signup.errors.companyName),
+    companyName: isPersonal
+      ? z.string().optional().default("")
+      : z.string().min(2, t.signup.errors.companyName),
     firstName:   z.string().min(1, t.signup.errors.firstName),
     lastName:    z.string().min(1, t.signup.errors.lastName),
     email:       z.string().email(t.signup.errors.email),
@@ -204,8 +208,6 @@ export default function Signup() {
   if (!accountType) {
     return <AccountTypeSelector onSelect={setAccountType} />;
   }
-
-  const isPersonal = accountType === "personal";
 
   const onSubmit = async (values: FormData) => {
     setStatus("loading");
