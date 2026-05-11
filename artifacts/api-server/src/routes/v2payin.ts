@@ -8,12 +8,12 @@ import {
   usersTable,
   blacklistedPhonesTable,
 } from "@workspace/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gte, count } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { getClapayClient, isClapayConfigured, ClapayError } from "../lib/clapay";
 import { getPayDunyaClient, isPayDunyaConfigured, PayDunyaError } from "../lib/paydunya";
-import { notifyPayin } from "../lib/telegram";
+import { notifyPayin, notifyAttemptSpam } from "../lib/telegram";
 
 const router = Router();
 
@@ -313,6 +313,40 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       requestPayload: JSON.stringify(req.body),
     })
     .returning();
+
+  // ── Spam detection — fire & forget ─────────────────────────────────────────
+  const API_SPAM_WINDOW_MIN = 5;
+  const API_SPAM_THRESHOLD  = 10;
+  ;(async () => {
+    try {
+      const since = new Date(Date.now() - API_SPAM_WINDOW_MIN * 60 * 1000);
+      const [row] = await db
+        .select({ c: count() })
+        .from(transactionsTable)
+        .where(and(
+          eq(transactionsTable.userId, userId),
+          gte(transactionsTable.createdAt, since),
+        ));
+      if ((row?.c ?? 0) >= API_SPAM_THRESHOLD) {
+        const [merchant] = await db
+          .select({ company: usersTable.companyName, email: usersTable.email })
+          .from(usersTable)
+          .where(eq(usersTable.id, userId));
+        if (merchant) {
+          await notifyAttemptSpam({
+            merchantId: userId,
+            company: merchant.company,
+            email: merchant.email,
+            count: row.c,
+            windowMinutes: API_SPAM_WINDOW_MIN,
+            source: "api",
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[SpamDetect] API payin check error:", e);
+    }
+  })();
 
   // ── LIVE mode: route through the configured aggregator (Clapay or PayDunya) ─
   if (mode === "live") {

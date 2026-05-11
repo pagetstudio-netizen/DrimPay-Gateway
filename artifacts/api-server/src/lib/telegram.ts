@@ -71,6 +71,7 @@ Le serveur a démarré. Alertes actives :
 • Connexion admin
 • Erreurs système critiques
 • Rapport quotidien (minuit Lomé)
+• Surcharge marchand (≥10 tentatives)
 
 Commandes: /stats | /ip | /help
 
@@ -264,7 +265,8 @@ async function handleCommand(token: string, chatId: string, text: string) {
 📋 KYB soumis / traités
 🔐 Connexions admin
 🆘 Erreurs critiques
-📊 Rapport quotidien (minuit Lomé)`
+📊 Rapport quotidien (minuit Lomé)
+⚠️ Surcharge marchand (≥10 tentatives / 10 min liens, 5 min API)`
     );
   }
 }
@@ -295,6 +297,46 @@ export function startPolling() {
   };
   poll();
   console.log("[Telegram] Command polling started");
+}
+
+// ─── Spam / surcharge detection ───────────────────────────────────────────────
+// key = `${merchantId}:${source}`, value = timestamp of last notification
+const _spamCooldown = new Map<string, number>();
+const SPAM_COOLDOWN_MS = 30 * 60 * 1000; // 30 min between repeated alerts
+
+/**
+ * Notify admins when a merchant triggers too many payment attempts.
+ * Deduplicates: only one alert per merchant per source every 30 minutes.
+ */
+export async function notifyAttemptSpam(opts: {
+  merchantId: number;
+  company: string;
+  email: string;
+  count: number;
+  windowMinutes: number;
+  source: "link" | "api";
+}) {
+  const key = `${opts.merchantId}:${opts.source}`;
+  const now = Date.now();
+  const last = _spamCooldown.get(key) ?? 0;
+  if (now - last < SPAM_COOLDOWN_MS) return; // already alerted recently
+  _spamCooldown.set(key, now);
+
+  const srcLabel = opts.source === "api" ? "API Pay-in" : "Lien de paiement";
+  await send(
+`⚠️ <b>ALERTE SURCHARGE — ${srcLabel}</b>
+
+Un marchand a déclenché <b>${opts.count} tentatives</b> en ${opts.windowMinutes} min.
+
+🏢 ${opts.company}
+📧 ${opts.email}
+🔖 ID: <code>${opts.merchantId}</code>
+📊 Source: ${srcLabel}
+🕒 Fenêtre: ${opts.windowMinutes} dernières minutes
+
+Vérifiez l'activité de ce marchand — possible abus ou test automatisé.
+📅 ${dt()}`
+  );
 }
 
 // ─── Admin helpers (called from admin routes) ──────────────────────────────────

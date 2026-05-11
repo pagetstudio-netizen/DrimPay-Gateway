@@ -547,7 +547,7 @@ export default function AdminTransactions() {
                 {loading ? (
                   <div className="p-6 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-12 bg-gray-50 rounded-xl animate-pulse" />)}</div>
                 ) : !txs.length ? (
-                  <div className="text-center py-16 text-gray-400"><ArrowLeftRight className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Aucune transaction trouvée</p></div>
+                  <div className="text-center py-16 text-gray-400"><SortArrows className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Aucune transaction trouvée</p></div>
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
@@ -681,6 +681,6 @@ export default function AdminTransactions() {
   );
 }
 
-function ArrowLeftRight({ className }: { className?: string }) {
+function SortArrows({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" /></svg>;
 }

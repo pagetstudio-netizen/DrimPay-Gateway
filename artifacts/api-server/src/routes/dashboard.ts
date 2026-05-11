@@ -15,11 +15,11 @@ import {
   blacklistedPhonesTable,
   paymentLinkAttemptsTable,
 } from "@workspace/db/schema";
-import { eq, and, desc, sum, count, sql } from "drizzle-orm";
+import { eq, and, desc, sum, count, sql, gte } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import { notifyKybSubmitted, notifyReversement, notifyPayin } from "../lib/telegram";
+import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam } from "../lib/telegram";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
@@ -1499,6 +1499,40 @@ router.post("/pay/:token/attempt", async (req, res) => {
   }).returning();
 
   res.status(201).json({ attemptId: attempt.id });
+
+  // ── Spam detection — fire & forget ─────────────────────────────────────────
+  const LINK_SPAM_WINDOW_MIN = 10;
+  const LINK_SPAM_THRESHOLD  = 10;
+  ;(async () => {
+    try {
+      const since = new Date(Date.now() - LINK_SPAM_WINDOW_MIN * 60 * 1000);
+      const [row] = await db
+        .select({ c: count() })
+        .from(paymentLinkAttemptsTable)
+        .where(and(
+          eq(paymentLinkAttemptsTable.merchantId, link.userId),
+          gte(paymentLinkAttemptsTable.createdAt, since),
+        ));
+      if ((row?.c ?? 0) >= LINK_SPAM_THRESHOLD) {
+        const [merchant] = await db
+          .select({ company: usersTable.companyName, email: usersTable.email })
+          .from(usersTable)
+          .where(eq(usersTable.id, link.userId));
+        if (merchant) {
+          await notifyAttemptSpam({
+            merchantId: link.userId,
+            company: merchant.company,
+            email: merchant.email,
+            count: row.c,
+            windowMinutes: LINK_SPAM_WINDOW_MIN,
+            source: "link",
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[SpamDetect] Link attempt check error:", e);
+    }
+  })();
 });
 
 router.patch("/pay/:token/attempt/:id", async (req, res) => {
