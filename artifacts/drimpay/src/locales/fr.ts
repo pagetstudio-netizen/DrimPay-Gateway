@@ -113,6 +113,23 @@ export const fr = {
     title: "Des frais simples et prévisibles",
     desc: "Pas de frais cachés. Pas de minimums mensuels. Payez uniquement ce que vous traitez. Les remises sur volume s'appliquent automatiquement au fur et à mesure de votre croissance.",
     mostPopular: "Le plus populaire",
+    personalLabel: "Pour les particuliers",
+    businessLabel: "Pour les entreprises",
+    personal: {
+      name: "Particulier",
+      badge: "Accès immédiat",
+      per: "par transaction réussie",
+      desc: "Pour les particuliers qui souhaitent envoyer et recevoir des paiements Mobile Money facilement, sans abonnement.",
+      features: [
+        "Envoi Mobile Money (Payout)",
+        "Réception Mobile Money (Payin)",
+        "1 pays inclus",
+        "Support par email",
+        "Règlement T+1",
+        "Aucun minimum mensuel",
+      ],
+      cta: "Créer un compte",
+    },
     plans: [
       {
         name: "Starter",

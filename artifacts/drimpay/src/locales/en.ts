@@ -115,6 +115,23 @@ export const en: Translations = {
     title: "Simple, predictable fees",
     desc: "No hidden charges. No monthly minimums. Pay only for what you process. Volume discounts apply automatically as you grow.",
     mostPopular: "Most Popular",
+    personalLabel: "For Individuals",
+    businessLabel: "For Businesses",
+    personal: {
+      name: "Personal",
+      badge: "Instant Access",
+      per: "per successful transaction",
+      desc: "For individuals who want to simply send and receive Mobile Money payments, with no subscription.",
+      features: [
+        "Mobile Money send (Payout)",
+        "Mobile Money receive (Payin)",
+        "1 country included",
+        "Email support",
+        "T+1 settlement",
+        "No monthly minimum",
+      ],
+      cta: "Create Account",
+    },
     plans: [
       {
         name: "Starter",
