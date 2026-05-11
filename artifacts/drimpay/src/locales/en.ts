@@ -379,7 +379,7 @@ export const en: Translations = {
     zones: [
       { title: "BCEAO Zone", desc: "Togo, Benin, Burkina Faso, Mali, Senegal, and Côte d'Ivoire share a unified currency (XOF) and BCEAO regulatory framework, simplifying cross-border compliance." },
       { title: "BEAC Zone", desc: "Cameroon operates under the BEAC framework with XAF currency. DrimPay maintains full compliance with COBAC regulations for electronic money operations." },
-      { title: "Expanding in 2025", desc: "Nigeria and Ghana are our next markets. Subscribe to our newsletter to be notified when we launch new country corridors." },
+      { title: "Next expansion", desc: "Nigeria, Ghana and DRC Congo Brazzaville are our next markets. Subscribe to our newsletter to be notified when we launch new country corridors." },
     ],
     noCountryTitle: "Don't see your country?",
     noCountryDesc: "We're expanding rapidly. Register your interest and be first to access new corridors when we launch.",

@@ -377,7 +377,7 @@ export const fr = {
     zones: [
       { title: "Zone BCEAO", desc: "Le Togo, le Bénin, le Burkina Faso, le Mali, le Sénégal et la Côte d'Ivoire partagent une monnaie unifiée (XOF) et un cadre réglementaire BCEAO, simplifiant la conformité transfrontalière." },
       { title: "Zone BEAC", desc: "Le Cameroun opère sous le cadre BEAC avec la monnaie XAF. DrimPay maintient une conformité totale avec les réglementations COBAC pour les opérations de monnaie électronique." },
-      { title: "En expansion en 2025", desc: "Le Nigeria et le Ghana sont nos prochains marchés. Abonnez-vous à notre newsletter pour être notifié lors du lancement de nouveaux corridors." },
+      { title: "Prochaine expansion", desc: "Le Nigeria, le Ghana et la RDC Congo Brazzaville sont nos prochains marchés. Abonnez-vous à notre newsletter pour être notifié lors du lancement de nouveaux corridors." },
     ],
     noCountryTitle: "Vous ne voyez pas votre pays ?",
     noCountryDesc: "Nous nous développons rapidement. Inscrivez votre intérêt et soyez le premier à accéder aux nouveaux corridors lors de leur lancement.",
