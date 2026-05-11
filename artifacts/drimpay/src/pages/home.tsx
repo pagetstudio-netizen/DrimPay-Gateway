@@ -220,7 +220,7 @@ export default function Home() {
   });
 
   return (
-    <div className="flex flex-col min-h-screen font-sans">
+    <div className="flex flex-col min-h-screen font-sans overflow-x-hidden">
 
       {/* Global CSS */}
       <style>{`
@@ -524,18 +524,18 @@ export default function Home() {
             initial="hidden"
             whileInView="visible"
             viewport={viewportConfig}
-            className="relative flex items-center justify-center h-44 sm:h-48 mb-8 overflow-hidden"
+            className="relative flex items-center justify-center h-44 sm:h-48 mb-8 overflow-hidden w-full max-w-xs sm:max-w-sm mx-auto"
           >
             {[
-              { bg: "bg-[#5B5EF5]", label: "Business Premium", style: { transform: "rotate(-8deg) translateX(-60px) translateY(8px)", position: "absolute" as const } },
-              { bg: "bg-[#1a6b4a]", label: "Carte Enterprise",  style: { transform: "rotate(7deg) translateX(60px) translateY(8px)", position: "absolute" as const } },
+              { bg: "bg-[#5B5EF5]", label: "Business Premium", style: { transform: "rotate(-8deg) translateX(-44px) translateY(8px)", position: "absolute" as const } },
+              { bg: "bg-[#1a6b4a]", label: "Carte Enterprise",  style: { transform: "rotate(7deg) translateX(44px) translateY(8px)", position: "absolute" as const } },
               { bg: "bg-[#B5F03C]", label: "Carte Standard",    style: { transform: "translateY(-8px)", position: "relative" as const, zIndex: 10 } },
             ].map((c, i) => (
               <motion.div
                 key={i}
                 variants={scaleUp}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className={`w-40 h-24 sm:w-48 sm:h-28 rounded-2xl ${c.bg} p-3 sm:p-4 flex flex-col justify-between shadow-xl`}
+                className={`w-36 h-22 sm:w-44 sm:h-26 rounded-2xl ${c.bg} p-3 sm:p-4 flex flex-col justify-between shadow-xl`}
                 style={c.style}
               >
                 <div className="flex justify-between items-start">
