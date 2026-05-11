@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, Info,
-  X, CheckCircle2, Loader2, Phone, Banknote, ChevronDown
+  X, CheckCircle2, Loader2, Phone, Banknote, ChevronDown,
+  ArrowLeftRight, Clock
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { Link, useLocation } from "wouter";
@@ -267,6 +268,7 @@ export default function Wallets() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [payinWallet, setPayinWallet] = useState<any | null>(null);
+  const [showExchangeSoon, setShowExchangeSoon] = useState(false);
   const [, navigate] = useLocation();
 
   useEffect(() => {
@@ -372,13 +374,13 @@ export default function Wallets() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    {/* Pay-in → opens recharge modal */}
+                    {/* Exchange → bientôt disponible */}
                     <button
-                      onClick={() => setPayinWallet(w)}
-                      className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors text-xs font-medium"
+                      onClick={() => setShowExchangeSoon(true)}
+                      className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium"
                     >
-                      <ArrowDownLeft className="w-3 h-3" />
-                      Pay-in
+                      <ArrowLeftRight className="w-3 h-3" />
+                      Échange
                     </button>
 
                     {/* Pay-out → redirects to reversement with country pre-selected */}
@@ -427,6 +429,45 @@ export default function Wallets() {
               handlePayinSuccess(walletId, newBalance);
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Exchange — bientôt disponible */}
+      <AnimatePresence>
+        {showExchangeSoon && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowExchangeSoon(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 340, damping: 28 }}
+              className="relative bg-card border border-border rounded-2xl w-full max-w-sm mx-4 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
+              <button
+                onClick={() => setShowExchangeSoon(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="px-8 py-10 flex flex-col items-center text-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <ArrowLeftRight className="w-7 h-7 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold mb-1">Échange de wallets</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    La fonctionnalité d'échange entre wallets de différents pays sera disponible prochainement.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm font-semibold text-primary">
+                  <Clock className="w-4 h-4" />
+                  Bientôt disponible
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </DashboardLayout>
