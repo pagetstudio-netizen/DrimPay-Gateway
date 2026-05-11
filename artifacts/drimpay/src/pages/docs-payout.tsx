@@ -250,6 +250,19 @@ print(data["reference"])`,
         <main className="flex-1 lg:ml-64 min-w-0 px-6 md:px-12 lg:px-16 py-10 max-w-4xl">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
 
+            {/* Brand card */}
+            <div className="inline-flex items-center gap-4 px-5 py-3.5 rounded-2xl border border-white/10 bg-white/5 mb-10">
+              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                <img src={apiIconImg} alt="DrimPay" className="w-5 h-5 object-contain" />
+              </div>
+              <div>
+                <p className="font-bold text-sm text-white leading-none mb-1">DrimPay</p>
+                <p className="text-xs text-white/40">Digital Reliable Infrastructure for Money</p>
+              </div>
+              <div className="w-px h-8 bg-white/10" />
+              <span className="text-xs font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-full border border-green-500/20">API v2.0</span>
+            </div>
+
             <div className="mb-10">
               <div className="flex items-center gap-2 mb-3">
                 <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">

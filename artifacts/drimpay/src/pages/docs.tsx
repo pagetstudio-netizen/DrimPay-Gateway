@@ -18,11 +18,21 @@ export default function Docs() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
+            {/* ── BRAND CARD ──────────────────────────────────────── */}
+            <div className="inline-flex items-center gap-4 px-5 py-3.5 rounded-2xl border border-[#E5E3DC] bg-white shadow-sm mb-10">
+              <div className="w-10 h-10 rounded-xl bg-[#0f0f0f] flex items-center justify-center shrink-0">
+                <img src={apiIcon} alt="DrimPay" className="w-6 h-6 object-contain" />
+              </div>
+              <div>
+                <p className="font-extrabold text-sm text-[#0f0f0f] leading-none mb-1">DrimPay</p>
+                <p className="text-xs text-[#0f0f0f]/45 font-medium">Digital Reliable Infrastructure for Money</p>
+              </div>
+              <div className="w-px h-8 bg-[#E5E3DC]" />
+              <span className="text-xs font-bold text-[#3a7a00] bg-[#B5F03C]/20 px-2.5 py-1 rounded-full border border-[#B5F03C]/30">API v2.0</span>
+            </div>
+
             {/* ── HEADER ──────────────────────────────────────────── */}
             <div className="mb-6 flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-white border border-[#E5E3DC] shadow-sm flex items-center justify-center">
-                <img src={apiIcon} alt="API" className="w-10 h-10 object-contain" />
-              </div>
               <span className="text-xs font-bold uppercase tracking-widest text-[#0f0f0f]/35">{t.docs.badge}</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tighter text-[#0f0f0f]">{t.docs.title}</h1>
