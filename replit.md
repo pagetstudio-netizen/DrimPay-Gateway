@@ -10,7 +10,9 @@ DrimPay is a complete fintech platform — a public marketing/developer site plu
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
-Required env vars: `DATABASE_URL`, `SESSION_SECRET`
+Required env vars: `SUPABASE_DATABASE_URL`, `SESSION_SECRET`
+
+> The app uses `SUPABASE_DATABASE_URL` (primary) with `DATABASE_URL` as fallback. Always set `SUPABASE_DATABASE_URL` on any deployment (Plesk, production, etc.).
 
 ## Stack
 
@@ -18,7 +20,7 @@ Required env vars: `DATABASE_URL`, `SESSION_SECRET`
 - **Node.js**: 24
 - **Frontend**: React + Vite (wouter routing, framer-motion, shadcn/ui)
 - **Backend**: Express 5 + Pino logging
-- **Database**: PostgreSQL + Drizzle ORM
+- **Database**: Supabase (PostgreSQL) + Drizzle ORM
 - **Validation**: Zod (server), generated Zod schemas (client)
 - **Build**: esbuild (CJS bundle for API server)
 
@@ -60,12 +62,25 @@ Required env vars: `DATABASE_URL`, `SESSION_SECRET`
 - Enterprise fintech aesthetic — dense information, serious design
 - French language in dashboard UI; English on public site
 
+## Deployment (Plesk)
+
+1. `git push origin main`
+2. Plesk → Pull + Deploy Now → Restart
+3. Variables d'environnement obligatoires sur Plesk :
+   - `SUPABASE_DATABASE_URL` — URL complète Supabase PostgreSQL (Settings > Database)
+   - `SESSION_SECRET` — clé secrète aléatoire longue
+   - `NODE_ENV=production`
+4. Schema DB : `pnpm --filter @workspace/db run push` (depuis Plesk ou CI, pointe vers Supabase)
+5. Commande de démarrage : `node artifacts/api-server/dist/index.mjs`
+6. Répertoire statique frontend : `artifacts/drimpay/dist/public/`
+
 ## Gotchas
 
 - API server build takes ~30s; restart workflow if DIDNT_OPEN_A_PORT error.
 - Use `z.string().email()` not `z.email()` in API server (Zod v3, not v4).
 - Dashboard routes bypass the public Layout — they render their own `DashboardLayout`.
 - Wallet created automatically on first pay-in for a given country.
+- Always use `SUPABASE_DATABASE_URL` — psql direct uses `DATABASE_URL` (local, empty). Use `psql "$SUPABASE_DATABASE_URL"` for direct DB access.
 
 ## Pointers
 
