@@ -21,30 +21,32 @@ export default function Pricing() {
   const lang = useLang();
   useSEO({
     title: lang === "fr"
-      ? "Tarification DrimPay — 3% par Transaction, Zéro Frais Cachés"
-      : "DrimPay Pricing — 3% per Transaction, No Hidden Fees",
+      ? "Tarification DrimPay — 5% Particuliers (négociable) · 3% Entreprises, Zéro Frais Cachés"
+      : "DrimPay Pricing — 5% Individuals (negotiable) · 3% Businesses, No Hidden Fees",
     description: lang === "fr"
-      ? "Tarification transparente DrimPay : 3% par transaction réussie, sans abonnement mensuel, sans frais de mise en service. Remises sur volume disponibles. Disponible pour particuliers et entreprises."
-      : "Transparent DrimPay pricing: 3% per successful transaction, no monthly subscription, no setup fees. Volume discounts available. Available for individuals and businesses.",
+      ? "Tarification transparente DrimPay : 5% pour les particuliers sur Payin et Payout (négociable selon volume), 3% fixe pour les entreprises. Sans abonnement, sans frais cachés."
+      : "Transparent DrimPay pricing: 5% for individuals on Payin and Payout (negotiable based on volume), flat 3% for businesses. No subscription, no hidden fees.",
     keywords: lang === "fr"
-      ? "tarif paiement Afrique, frais Mobile Money, 3% transaction, prix API paiement, coût passerelle paiement"
-      : "Africa payment pricing, Mobile Money fees, 3% transaction fee, payment API cost",
+      ? "tarif paiement Afrique, frais Mobile Money, 5% particuliers, 3% entreprises, prix API paiement, taux négociable volume"
+      : "Africa payment pricing, Mobile Money fees, 5% individuals, 3% businesses, payment API cost, negotiable rate",
     jsonLd: [
       webPageSchema(
         `${SITE_URL}/${lang}/pricing`,
         lang === "fr" ? "Tarification DrimPay" : "DrimPay Pricing",
-        lang === "fr" ? "Frais simples et transparents pour vos paiements Mobile Money." : "Simple and transparent fees for your Mobile Money payments.",
+        lang === "fr" ? "5% particuliers (négociable), 3% entreprises. Frais transparents pour vos paiements Mobile Money." : "5% individuals (negotiable), 3% businesses. Transparent fees for your Mobile Money payments.",
         [{ name: lang === "fr" ? "Tarification" : "Pricing", url: `${SITE_URL}/${lang}/pricing` }],
       ),
       faqSchema(lang === "fr" ? [
-        { question: "Quels sont les frais DrimPay ?", answer: "DrimPay applique un taux fixe de 3% sur chaque transaction réussie. Aucun frais mensuel, aucun frais d'installation, aucun frais caché." },
+        { question: "Quels sont les frais DrimPay pour les particuliers ?", answer: "DrimPay applique un taux de 5% sur chaque transaction (Payin et Payout) pour les particuliers. Ce taux est négociable si vous atteignez un bon volume de transactions. Aucun frais mensuel, aucun frais caché." },
+        { question: "Quels sont les frais DrimPay pour les entreprises ?", answer: "DrimPay applique un taux fixe de 3% sur chaque transaction réussie pour les entreprises (Starter, Business). Les plans Entreprise bénéficient d'un taux négocié en dessous de 3% selon le volume." },
+        { question: "Le taux de 5% pour les particuliers est-il négociable ?", answer: "Oui. Si vous réalisez un bon volume de transactions, notre équipe peut vous proposer un taux préférentiel. Contactez-nous via la page Contact pour discuter de vos conditions." },
         { question: "Y a-t-il un abonnement mensuel ?", answer: "Non. DrimPay fonctionne sur un modèle pay-as-you-go. Vous payez uniquement sur les transactions réussies." },
-        { question: "Des remises sur volume sont-elles disponibles ?", answer: "Oui. Des taux négociés sont disponibles pour les volumes supérieurs à 50M XOF/mois. Contactez notre équipe commerciale." },
         { question: "DrimPay est-il disponible en mode sandbox ?", answer: "Oui. Chaque compte DrimPay inclut un environnement sandbox complet pour tester vos intégrations sans argent réel." },
       ] : [
-        { question: "What are DrimPay's fees?", answer: "DrimPay charges a flat 3% on every successful transaction. No monthly fees, no setup fees, no hidden charges." },
+        { question: "What are DrimPay's fees for individuals?", answer: "DrimPay charges a 5% rate on each transaction (Payin and Payout) for individuals. This rate is negotiable if you reach a good transaction volume. No monthly fees, no hidden charges." },
+        { question: "What are DrimPay's fees for businesses?", answer: "DrimPay charges a flat 3% on every successful transaction for businesses (Starter, Business). Enterprise plans benefit from a negotiated rate below 3% based on volume." },
+        { question: "Is the 5% rate for individuals negotiable?", answer: "Yes. If you process a good volume of transactions, our team can offer you a preferential rate. Contact us via the Contact page to discuss your terms." },
         { question: "Is there a monthly subscription?", answer: "No. DrimPay operates on a pay-as-you-go model. You only pay on successful transactions." },
-        { question: "Are volume discounts available?", answer: "Yes. Negotiated rates are available for volumes above 50M XOF/month. Contact our sales team." },
         { question: "Is sandbox mode available?", answer: "Yes. Every DrimPay account includes a full sandbox environment for testing integrations without real money." },
       ]),
     ],
@@ -104,9 +106,15 @@ export default function Pricing() {
                 </span>
               </div>
 
-              <div className="mb-4">
-                <span className="text-5xl font-extrabold text-[#0f0f0f]">3%</span>
+              <div className="mb-2">
+                <span className="text-5xl font-extrabold text-[#0f0f0f]">{t.pricing.personal.rate}</span>
                 <span className="text-[#0f0f0f]/40 text-sm ml-2">{t.pricing.personal.per}</span>
+              </div>
+
+              <div className="mb-4">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold">
+                  <Zap className="w-3 h-3" /> {t.pricing.personal.negotiable}
+                </span>
               </div>
 
               <p className="text-[#0f0f0f]/55 text-sm leading-relaxed mb-6">{t.pricing.personal.desc}</p>
@@ -175,7 +183,7 @@ export default function Pricing() {
                   </div>
 
                   <div className="mb-1">
-                    <span className="text-4xl font-extrabold text-[#0f0f0f]">{i === 2 ? "—" : "3%"}</span>
+                    <span className="text-4xl font-extrabold text-[#0f0f0f]">{plan.rate}</span>
                   </div>
                   <p className="text-xs text-[#0f0f0f]/40 mb-4">{plan.per}</p>
                   <p className="text-[#0f0f0f]/55 text-sm leading-relaxed mb-7">{plan.desc}</p>
@@ -222,28 +230,53 @@ export default function Pricing() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[#F5F0E8] border-b border-[#E5E3DC]">
-                  <th className="text-left px-6 py-4 font-extrabold text-[#0f0f0f]">{t.pricing.feeCol1}</th>
-                  <th className="text-left px-6 py-4 font-extrabold text-[#0f0f0f]">{t.pricing.feeCol2}</th>
-                  <th className="text-left px-6 py-4 font-extrabold text-[#0f0f0f]">{t.pricing.feeCol3}</th>
-                  <th className="text-left px-6 py-4 font-extrabold text-[#0f0f0f]">{t.pricing.feeCol4}</th>
+                  <th className="text-left px-5 py-4 font-extrabold text-[#0f0f0f]">{t.pricing.feeCol1}</th>
+                  <th className="text-left px-5 py-4 font-extrabold text-[#0f0f0f]">
+                    <span className="flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-blue-500" />
+                      {t.pricing.feeCol2}
+                    </span>
+                  </th>
+                  <th className="text-left px-5 py-4 font-extrabold text-[#0f0f0f]">
+                    <span className="flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-[#3a7a00]" />
+                      {t.pricing.feeCol2b}
+                    </span>
+                  </th>
+                  <th className="text-left px-5 py-4 font-extrabold text-[#0f0f0f]">{t.pricing.feeCol3}</th>
+                  <th className="text-left px-5 py-4 font-extrabold text-[#0f0f0f]">{t.pricing.feeCol4}</th>
                 </tr>
               </thead>
               <tbody>
                 {t.pricing.feeRows.map((row, i) => (
                   <tr key={i} className="border-b border-[#E5E3DC] last:border-0 hover:bg-[#F8F6F1] transition-colors">
-                    <td className="px-6 py-4 font-semibold text-[#0f0f0f]">{row.type}</td>
-                    <td className="px-6 py-4 font-bold">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#B5F03C]/15 text-[#3a7a00] text-xs font-bold border border-[#B5F03C]/20">
-                        {row.fee}
-                      </span>
+                    <td className="px-5 py-4 font-semibold text-[#0f0f0f]">{row.type}</td>
+                    <td className="px-5 py-4">
+                      {row.feePersonal === "—" ? (
+                        <span className="text-[#0f0f0f]/30">—</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-700 text-xs font-bold border border-blue-500/20">
+                          {row.feePersonal}
+                        </span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-[#0f0f0f]/55">{row.min}</td>
-                    <td className="px-6 py-4 text-[#0f0f0f]/55">{row.max}</td>
+                    <td className="px-5 py-4">
+                      {row.feeBusiness === "—" ? (
+                        <span className="text-[#0f0f0f]/30">—</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#B5F03C]/15 text-[#3a7a00] text-xs font-bold border border-[#B5F03C]/20">
+                          {row.feeBusiness}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-[#0f0f0f]/55">{row.min}</td>
+                    <td className="px-5 py-4 text-[#0f0f0f]/55">{row.max}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <p className="mt-3 text-xs text-[#0f0f0f]/45 italic px-1">{t.pricing.feeNote}</p>
         </div>
       </div>
 
