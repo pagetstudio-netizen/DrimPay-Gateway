@@ -6,6 +6,7 @@ import {
   Zap, Webhook, Code, Terminal, AlertTriangle, CheckCircle2, Clock, XCircle,
   AlertCircle, Menu, X, Server, RefreshCw, Lock, Activity, Timer, Ban
 } from "lucide-react";
+import apiIconImg from "@assets/6213702_1778508885407.png";
 import { cn } from "@/lib/utils";
 
 const SECTIONS = [
@@ -409,7 +410,7 @@ def drimpay_webhook():
         <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
           <ChevronRight className="w-4 h-4" />
           <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-            <ArrowDownLeft className="w-4 h-4 text-primary" /> Pay-in API
+            <img src={apiIconImg} alt="" className="w-5 h-5 object-contain" /> Pay-in API
           </span>
         </div>
         <div className="flex-1" />

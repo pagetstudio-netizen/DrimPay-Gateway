@@ -17,6 +17,7 @@ import settingsImg  from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466
 import kybImg       from "@assets/telecharger_1778149010032.png";
 import userImg      from "@assets/utilisateur_1778149009992.png";
 import logoutImg    from "@assets/46391560-se-deconnecter-icone-symbole-conception-illustration-_1778105456327.jpg";
+import apiIconImg   from "@assets/6213702_1778508885407.png";
 
 type NavItem = {
   href: string;
@@ -335,7 +336,10 @@ function SidebarNav({ onNavigate, location }: { onNavigate: () => void; location
           );
         })}
 
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2 mt-5">Documentation API</p>
+        <div className="flex items-center gap-2 px-3 mb-2 mt-5">
+          <img src={apiIconImg} alt="" className="w-4 h-4 object-contain shrink-0" />
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Documentation API</p>
+        </div>
         {apiItems.map((item) => {
           const active = location.startsWith(item.href);
           return (

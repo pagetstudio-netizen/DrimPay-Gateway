@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { KeyRound, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, Shield, ShieldOff } from "lucide-react";
+import apiIconImg from "@assets/6213702_1778508885407.png";
 import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
 
@@ -35,9 +36,12 @@ export default function AdminApiKeys() {
     <AdminLayout>
       <div className="max-w-6xl mx-auto space-y-5">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">APIs & Clés</h1>
-            <p className="text-sm text-gray-500">{total} clés API au total</p>
+          <div className="flex items-center gap-3">
+            <img src={apiIconImg} alt="" className="w-10 h-10 object-contain shrink-0" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">APIs & Clés</h1>
+              <p className="text-sm text-gray-500">{total} clés API au total</p>
+            </div>
           </div>
         </div>
 

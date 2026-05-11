@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Key, Plus, Trash2, Copy, Eye, EyeOff, CheckCircle2, AlertTriangle, Shield } from "lucide-react";
+import apiIconImg from "@assets/6213702_1778508885407.png";
 import { DashboardLayout } from "./layout";
 import { ProductionGate } from "@/components/ui/production-gate";
 import { useForm } from "react-hook-form";
@@ -86,9 +87,12 @@ export default function ApiKeys() {
     <DashboardLayout>
       <ProductionGate>
       <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Clés API</h1>
-          <p className="text-muted-foreground text-sm mt-1">Gérez vos clés d'accès à l'API DrimPay</p>
+        <div className="mb-6 flex items-center gap-3">
+          <img src={apiIconImg} alt="" className="w-10 h-10 object-contain shrink-0" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Clés API</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">Gérez vos clés d'accès à l'API DrimPay</p>
+          </div>
         </div>
 
         <div className="flex items-start gap-3 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 mb-6">

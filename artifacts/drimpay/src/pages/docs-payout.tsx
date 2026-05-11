@@ -6,6 +6,7 @@ import {
   Zap, Webhook, Code, Terminal, AlertTriangle, CheckCircle2, Clock, XCircle, Users, AlertCircle,
   Menu, X
 } from "lucide-react";
+import apiIconImg from "@assets/6213702_1778508885407.png";
 import { cn } from "@/lib/utils";
 
 const SECTIONS = [
@@ -171,7 +172,7 @@ print(data["reference"])`,
         <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
           <ChevronRight className="w-4 h-4" />
           <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-            <ArrowUpRight className="w-4 h-4 text-orange-400" /> Pay-out API
+            <img src={apiIconImg} alt="" className="w-5 h-5 object-contain" /> Pay-out API
           </span>
         </div>
         <div className="flex-1" />

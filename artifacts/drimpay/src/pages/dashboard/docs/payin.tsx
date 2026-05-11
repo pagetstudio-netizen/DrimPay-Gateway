@@ -4,6 +4,7 @@ import {
   BookOpen, KeyRound, Send, SearchCheck, List, Webhook, Activity,
   ShieldCheck, RefreshCw, Globe, Shield
 } from "lucide-react";
+import apiIconImg from "@assets/6213702_1778508885407.png";
 import { DashboardLayout } from "../layout";
 
 function CodeBlock({ code, lang = "json" }: { code: string; lang?: string }) {
@@ -57,9 +58,7 @@ export default function DocPayin() {
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <ArrowDownLeft className="w-5 h-5 text-green-500" />
-            </div>
+            <img src={apiIconImg} alt="" className="w-12 h-12 object-contain shrink-0" />
             <div>
               <h1 className="text-2xl font-bold">API Pay-in</h1>
               <p className="text-muted-foreground text-sm">Encaissements Mobile Money</p>
