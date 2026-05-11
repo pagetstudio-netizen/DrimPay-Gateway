@@ -269,7 +269,7 @@ export default function Home() {
           <motion.h1
             variants={fadeUp}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl sm:text-5xl md:text-7xl font-extrabold text-[#0f0f0f] leading-[1.02] tracking-tight mb-6 max-w-4xl mx-auto"
+            className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-[#0f0f0f] leading-[1.02] tracking-tight mb-6 max-w-4xl mx-auto"
           >
             La Plateforme de Paiement{" "}
             <span className="relative inline-block">
