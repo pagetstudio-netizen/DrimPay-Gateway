@@ -477,16 +477,16 @@ def drimpay_webhook():
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
 
             {/* Brand card */}
-            <div className="inline-flex items-center gap-4 px-5 py-3.5 rounded-2xl border border-white/10 bg-white/5 mb-10">
-              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                <img src={apiIconImg} alt="DrimPay" className="w-5 h-5 object-contain" />
+            <div className="inline-flex items-center gap-4 px-5 py-3.5 rounded-2xl border border-[#E5E3DC] bg-white shadow-sm mb-10">
+              <div className="w-10 h-10 rounded-xl bg-[#0f0f0f] flex items-center justify-center shrink-0">
+                <img src={apiIconImg} alt="DrimPay" className="w-6 h-6 object-contain" />
               </div>
               <div>
-                <p className="font-bold text-sm text-white leading-none mb-1">DrimPay</p>
-                <p className="text-xs text-white/40">Digital Reliable Infrastructure for Money</p>
+                <p className="font-extrabold text-sm text-[#0f0f0f] leading-none mb-1">DrimPay</p>
+                <p className="text-xs text-[#0f0f0f]/45 font-medium">Digital Reliable Infrastructure for Money</p>
               </div>
-              <div className="w-px h-8 bg-white/10" />
-              <span className="text-xs font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-full border border-green-500/20">API v2.0</span>
+              <div className="w-px h-8 bg-[#E5E3DC]" />
+              <span className="text-xs font-bold text-[#3a7a00] bg-[#B5F03C]/20 px-2.5 py-1 rounded-full border border-[#B5F03C]/30">API v2.0</span>
             </div>
 
             {/* Hero */}
