@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 import { ArrowRight, BookOpen, Shield, Zap, Globe } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import apiIcon from "@assets/6213702_1778508885407.png";
-import payinIcon from "@assets/2164832_1778520026076.png";
-import payoutIcon from "@assets/6213702_1778520026124.png";
+import payinIcon from "@assets/2164832_1778521327582.png";
+import payoutIcon from "@assets/6213702_1778521327626.png";
 
 const commonIcons = [Shield, Globe, Zap, BookOpen];
 
