@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowDownLeft, ArrowUpRight, ArrowRight, BookOpen, Shield, Zap, Globe } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import apiIcon from "@assets/6213702_1778508885407.png";
 
 const commonIcons = [Shield, Globe, Zap, BookOpen];
 
@@ -16,7 +17,8 @@ export default function Docs() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-6 flex items-center gap-4">
+            <img src={apiIcon} alt="API" className="w-16 h-16 object-contain drop-shadow-lg" />
             <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t.docs.badge}</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">{t.docs.title}</h1>
