@@ -5,7 +5,7 @@ import {
   usersTable, transactionsTable, walletsTable, kybSubmissionsTable,
   apiKeysTable, paymentLinksTable, operatorsTable, countriesTable,
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
-  blacklistedPhonesTable, paymentLinkAttemptsTable,
+  blacklistedPhonesTable, paymentLinkAttemptsTable, socialLinksTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
@@ -1335,6 +1335,70 @@ router.post("/admin/broadcast", requireAdmin, async (req: any, res: any) => {
 
   await logAdminAction(req.session.userId, "BROADCAST_EMAIL", "users", undefined, JSON.stringify({ subject, filter, sent, failed }), req.ip);
   res.json({ ok: true, sent, failed, errors });
+});
+
+// ── Social Links ─────────────────────────────────────────────────────────────
+
+router.get("/admin/social-links", requireAdmin, async (req: any, res: any) => {
+  const rows = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
+  res.json(rows);
+});
+
+router.post("/admin/social-links", requireAdmin, async (req: any, res: any) => {
+  const { name, platform, url, description, sortOrder } = req.body as {
+    name?: string; platform?: string; url?: string; description?: string; sortOrder?: number;
+  };
+  if (!name?.trim() || !platform?.trim() || !url?.trim()) {
+    res.status(400).json({ error: "name, platform et url sont requis" });
+    return;
+  }
+  const [row] = await db.insert(socialLinksTable).values({
+    name: name.trim(),
+    platform: platform.trim(),
+    url: url.trim(),
+    description: description?.trim() || null,
+    sortOrder: sortOrder ?? 0,
+  }).returning();
+  await logAdminAction(req.session.userId, "CREATE_SOCIAL_LINK", "social_link", String(row.id), name, req.ip);
+  res.json(row);
+});
+
+router.put("/admin/social-links/:id", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id, 10);
+  const { name, platform, url, description, sortOrder } = req.body as {
+    name?: string; platform?: string; url?: string; description?: string; sortOrder?: number;
+  };
+  if (!name?.trim() || !platform?.trim() || !url?.trim()) {
+    res.status(400).json({ error: "name, platform et url sont requis" });
+    return;
+  }
+  const [row] = await db.update(socialLinksTable)
+    .set({ name: name.trim(), platform: platform.trim(), url: url.trim(), description: description?.trim() || null, sortOrder: sortOrder ?? 0, updatedAt: new Date() })
+    .where(eq(socialLinksTable.id, id))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Non trouvé" }); return; }
+  await logAdminAction(req.session.userId, "UPDATE_SOCIAL_LINK", "social_link", String(id), name, req.ip);
+  res.json(row);
+});
+
+router.patch("/admin/social-links/:id/toggle", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id, 10);
+  const [current] = await db.select().from(socialLinksTable).where(eq(socialLinksTable.id, id));
+  if (!current) { res.status(404).json({ error: "Non trouvé" }); return; }
+  const [row] = await db.update(socialLinksTable)
+    .set({ active: !current.active, updatedAt: new Date() })
+    .where(eq(socialLinksTable.id, id))
+    .returning();
+  await logAdminAction(req.session.userId, row.active ? "ENABLE_SOCIAL_LINK" : "DISABLE_SOCIAL_LINK", "social_link", String(id), current.name, req.ip);
+  res.json(row);
+});
+
+router.delete("/admin/social-links/:id", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id, 10);
+  const [deleted] = await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id)).returning();
+  if (!deleted) { res.status(404).json({ error: "Non trouvé" }); return; }
+  await logAdminAction(req.session.userId, "DELETE_SOCIAL_LINK", "social_link", String(id), deleted.name, req.ip);
+  res.json({ ok: true });
 });
 
 router.post("/admin/telegram/save", requireAdmin, async (req: any, res: any) => {

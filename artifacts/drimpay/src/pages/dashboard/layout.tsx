@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight,
   CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal,
-  FlaskConical, Zap, AlertTriangle, ShieldX, Lock
+  FlaskConical, Zap, AlertTriangle, ShieldX, Lock, HeadphonesIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
@@ -35,6 +35,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/reversement",        label: "Reversement",          img: reversImg },
   { href: "/dashboard/kyb",                label: "Vérification KYB",     img: kybImg },
   { href: "/dashboard/settings",           label: "Paramètres",           img: settingsImg },
+  { href: "/dashboard/support",            label: "Support & Communauté", icon: HeadphonesIcon },
 ];
 
 const apiItems: NavItem[] = [

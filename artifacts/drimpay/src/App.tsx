@@ -67,8 +67,10 @@ import AdminNotifications from "@/pages/admin/notifications";
 import AdminBroadcast from "@/pages/admin/broadcast";
 import DashboardNotifications from "@/pages/dashboard/notifications";
 import DashboardVerifyCode from "@/pages/dashboard/verify-code";
+import DashboardSupport from "@/pages/dashboard/support";
 import AdminSettings from "@/pages/admin/settings";
 import AdminContract from "@/pages/admin/contract";
+import AdminSocialLinks from "@/pages/admin/social-links";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -231,6 +233,7 @@ function AdminSwitch() {
       <Route path="/admin/notifications" component={AdminNotifications} />
       <Route path="/admin/contract" component={AdminContract} />
       <Route path="/admin/settings" component={AdminSettings} />
+      <Route path="/admin/social-links" component={AdminSocialLinks} />
       <Route component={AdminDashboard} />
     </Switch>
   );
@@ -274,6 +277,7 @@ function DashboardSwitch() {
       <Route path="/dashboard/mass-payout" component={DashboardMassPayout} />
       <Route path="/dashboard/notifications" component={DashboardNotifications} />
       <Route path="/dashboard/verify-code" component={DashboardVerifyCode} />
+      <Route path="/dashboard/support" component={DashboardSupport} />
       <Route component={NotFound} />
     </Switch>
     </ModeProvider>

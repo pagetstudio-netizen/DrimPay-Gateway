@@ -373,6 +373,20 @@ export const paymentLinkAttemptsTable = pgTable("payment_link_attempts", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const socialLinksTable = pgTable("social_links", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  platform: text("platform").notNull(),
+  url: text("url").notNull(),
+  description: text("description"),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type SocialLink = typeof socialLinksTable.$inferSelect;
+
 export const insertBlogArticleSchema = createInsertSchema(blogArticlesTable).omit({ id: true });
 export const insertJobSchema = createInsertSchema(jobsTable).omit({ id: true });
 export const insertContactSchema = createInsertSchema(contactSubmissionsTable).omit({ id: true });

@@ -14,8 +14,9 @@ import {
   operatorAggregatorsTable,
   blacklistedPhonesTable,
   paymentLinkAttemptsTable,
+  socialLinksTable,
 } from "@workspace/db/schema";
-import { eq, and, desc, sum, count, sql, gte } from "drizzle-orm";
+import { eq, and, desc, sum, count, sql, gte, asc } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
@@ -1925,6 +1926,14 @@ router.get("/dashboard/notifications", requireAuth, async (req, res) => {
 
   const unreadCount = notifs.filter(n => !n.read).length;
   res.json({ notifications: notifs, unreadCount });
+});
+
+// ── Support: active social links ──────────────────────────────────────────────
+router.get("/dashboard/support/links", requireAuth, async (_req: any, res: any) => {
+  const rows = await db.select().from(socialLinksTable)
+    .where(eq(socialLinksTable.active, true))
+    .orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
+  res.json(rows);
 });
 
 export default router;
