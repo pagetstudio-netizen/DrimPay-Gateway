@@ -416,7 +416,7 @@ def drimpay_webhook():
         <div className="flex-1" />
         <Badge color="green">v2.0</Badge>
         <Link href="/signup">
-          <button className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-primary/90 transition-colors">
+          <button className="bg-[#0f0f0f] text-white text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-[#0f0f0f]/85 transition-colors">
             Get API Key
           </button>
         </Link>
@@ -815,7 +815,7 @@ def drimpay_webhook():
               <div className="flex gap-2 mb-2">
                 {LANGS.map(l => (
                   <button key={l} onClick={() => setLangTab(l)}
-                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", langTab === l ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground hover:text-foreground")}>
+                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", langTab === l ? "bg-[#0f0f0f] text-white" : "bg-muted/30 text-muted-foreground hover:text-foreground")}>
                     {l}
                   </button>
                 ))}
@@ -1024,7 +1024,7 @@ X-DrimPay-Event: payin.success`} />
               <div className="flex gap-2 mb-2">
                 {LANGS.map(l => (
                   <button key={l} onClick={() => setLangTab(l)}
-                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", langTab === l ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground hover:text-foreground")}>
+                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", langTab === l ? "bg-[#0f0f0f] text-white" : "bg-muted/30 text-muted-foreground hover:text-foreground")}>
                     {l}
                   </button>
                 ))}
@@ -1167,7 +1167,7 @@ HTTP/1.1 403 Forbidden
               <div className="flex gap-2 mb-2">
                 {LANGS.map(l => (
                   <button key={l} onClick={() => setLangTab(l)}
-                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", langTab === l ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground hover:text-foreground")}>
+                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", langTab === l ? "bg-[#0f0f0f] text-white" : "bg-muted/30 text-muted-foreground hover:text-foreground")}>
                     {l}
                   </button>
                 ))}
@@ -1210,7 +1210,7 @@ HTTP/1.1 403 Forbidden
               </div>
               <div className="flex gap-3">
                 <Link href="/signup">
-                  <button className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
+                  <button className="bg-[#0f0f0f] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f0f0f]/85 transition-colors">
                     Get API Key →
                   </button>
                 </Link>

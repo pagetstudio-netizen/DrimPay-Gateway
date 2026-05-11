@@ -180,7 +180,7 @@ print(data["reference"])`,
           <span className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">Pay-in Docs →</span>
         </Link>
         <Link href="/signup">
-          <button className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-primary/90 transition-colors">
+          <button className="bg-[#0f0f0f] text-white text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-[#0f0f0f]/85 transition-colors">
             Create Account
           </button>
         </Link>
@@ -527,7 +527,7 @@ COMMIT;`} />
               <div className="flex gap-2 mb-2">
                 {["curl", "node.js", "php", "python"].map(l => (
                   <button key={l} onClick={() => setLangTab(l)}
-                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", langTab === l ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground hover:text-foreground")}>
+                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", langTab === l ? "bg-[#0f0f0f] text-white" : "bg-muted/30 text-muted-foreground hover:text-foreground")}>
                     {l}
                   </button>
                 ))}
@@ -693,7 +693,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
               <p className="text-sm text-muted-foreground mb-4">Ready to send your first payout?</p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link href="/signup">
-                  <button className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
+                  <button className="bg-[#0f0f0f] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-[#0f0f0f]/85 transition-colors flex items-center gap-2">
                     Create your account <ChevronRight className="w-4 h-4" />
                   </button>
                 </Link>

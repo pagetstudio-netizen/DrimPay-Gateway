@@ -68,7 +68,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <LangSwitcher />
             <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">{t.nav.signin}</Link>
             <Link href="/signup">
-              <Button variant="default" className="font-semibold">
+              <Button className="font-semibold bg-[#0f0f0f] text-white hover:bg-[#0f0f0f]/85 border-0">
                 {t.nav.getApiKey} <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
@@ -95,7 +95,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <LangSwitcher />
             </div>
             <Link href="/signup">
-              <Button size="lg" className="w-full text-lg">{t.nav.getApiKey}</Button>
+              <Button size="lg" className="w-full text-lg bg-[#0f0f0f] text-white hover:bg-[#0f0f0f]/85 border-0">{t.nav.getApiKey}</Button>
             </Link>
           </div>
         </div>
