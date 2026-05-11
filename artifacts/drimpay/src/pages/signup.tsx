@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Loader2, ArrowRight, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowRight, ChevronDown, CheckCircle2, Building2, User } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -33,12 +33,20 @@ const BUSINESS_COUNTRIES = [
   { code: "OTHER", name: "Autre",      flag: "🌍" },
 ];
 
-const STEPS_INFO = [
-  "Compte créé en moins de 2 minutes",
-  "Accès immédiat au tableau de bord",
-  "Intégration API en quelques lignes",
-  "Support dédié inclus",
+const ENTERPRISE_FEATURES = [
+  "Frais de 3% par transaction",
+  "Accès Pay-in et Pay-out",
+  "API Pay-in et Pay-out complètes",
+  "KYB entreprise requis pour le live",
 ];
+const PERSONAL_FEATURES = [
+  "Frais de 5% par transaction",
+  "Accès Pay-in uniquement",
+  "API Pay-in disponible",
+  "KYC identité requis pour le live",
+];
+
+type AccountType = "enterprise" | "personal";
 
 type FormData = {
   companyName: string; firstName: string; lastName: string;
@@ -67,8 +75,103 @@ function Field({
   );
 }
 
+function AccountTypeSelector({ onSelect }: { onSelect: (type: AccountType) => void }) {
+  return (
+    <div className="min-h-screen flex" style={{ backgroundColor: "#F8F6F1" }}>
+      <div className="hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between p-12 shrink-0" style={{ backgroundColor: "#0f0f0f" }}>
+        <Link href="/">
+          <img src="/logo-drimpay.png" alt="DrimPay" className="h-10 w-auto object-contain bg-white rounded-lg px-3 py-1.5" />
+        </Link>
+        <div>
+          <p className="text-4xl font-bold text-white leading-snug mb-3">
+            Choisissez votre<br />
+            type de compte<br />
+            <span style={{ color: "#B5F03C" }}>DrimPay.</span>
+          </p>
+          <p className="text-gray-400 text-sm">
+            Compte entreprise pour les sociétés et startups. Compte personnel pour les particuliers et freelances.
+          </p>
+        </div>
+        <p className="text-xs text-gray-600">© {new Date().getFullYear()} DrimPay. Tous droits réservés.</p>
+      </div>
+
+      <div className="flex-1 flex flex-col justify-center overflow-y-auto px-6 py-12 lg:px-12 xl:px-16">
+        <div className="w-full max-w-lg mx-auto lg:mx-0">
+          <Link href="/" className="lg:hidden flex items-center gap-2.5 mb-8">
+            <img src="/logo-drimpay.png" alt="DrimPay" className="h-9 w-auto object-contain" />
+          </Link>
+
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Créer un compte</h1>
+          <p className="text-gray-500 text-sm mb-8">
+            Déjà inscrit ?{" "}
+            <Link href="/login" className="font-semibold text-gray-900 hover:underline underline-offset-2">
+              Se connecter
+            </Link>
+          </p>
+
+          <p className="text-sm font-semibold text-gray-700 mb-4">Sélectionnez votre type de compte</p>
+
+          <div className="grid grid-cols-1 gap-4">
+            <button
+              type="button"
+              onClick={() => onSelect("enterprise")}
+              className="group relative flex flex-col gap-4 p-6 rounded-2xl border-2 border-gray-200 bg-white hover:border-gray-900 hover:shadow-md transition-all text-left"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#0f0f0f" }}>
+                  <Building2 className="w-6 h-6" style={{ color: "#B5F03C" }} />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-gray-900 text-lg">Compte Entreprise</p>
+                  <p className="text-sm text-gray-500 mt-0.5">Pour sociétés, startups et organisations</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-gray-900 group-hover:translate-x-1 transition-all mt-1 shrink-0" />
+              </div>
+              <ul className="space-y-2">
+                {ENTERPRISE_FEATURES.map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "#B5F03C" }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelect("personal")}
+              className="group relative flex flex-col gap-4 p-6 rounded-2xl border-2 border-gray-200 bg-white hover:border-gray-900 hover:shadow-md transition-all text-left"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-gray-100">
+                  <User className="w-6 h-6 text-gray-700" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-gray-900 text-lg">Compte Personnel</p>
+                  <p className="text-sm text-gray-500 mt-0.5">Pour particuliers et freelances</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-gray-900 group-hover:translate-x-1 transition-all mt-1 shrink-0" />
+              </div>
+              <ul className="space-y-2">
+                {PERSONAL_FEATURES.map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-gray-400" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Signup() {
   const t = useT();
+  const [accountType, setAccountType] = useState<AccountType | null>(null);
+
   const schema = z.object({
     companyName: z.string().min(2, t.signup.errors.companyName),
     firstName:   z.string().min(1, t.signup.errors.firstName),
@@ -98,14 +201,24 @@ export default function Signup() {
     },
   });
 
+  if (!accountType) {
+    return <AccountTypeSelector onSelect={setAccountType} />;
+  }
+
+  const isPersonal = accountType === "personal";
+
   const onSubmit = async (values: FormData) => {
     setStatus("loading");
     setServerError("");
+    const displayName = isPersonal
+      ? `${values.firstName} ${values.lastName}`.trim()
+      : values.companyName;
     const { error } = await signup({
-      companyName: values.companyName,
+      companyName: displayName,
       email: values.email,
       password: values.password,
       country: values.country,
+      accountType,
     });
     if (error) { setServerError(error); setStatus("idle"); return; }
     window.location.assign("/dashboard");
@@ -121,16 +234,26 @@ export default function Signup() {
         </Link>
 
         <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-4" style={{ backgroundColor: isPersonal ? "#1a1a1a" : "#1a1a1a" }}>
+            {isPersonal ? <User className="w-4 h-4" style={{ color: "#B5F03C" }} /> : <Building2 className="w-4 h-4" style={{ color: "#B5F03C" }} />}
+            <span className="text-sm font-medium" style={{ color: "#B5F03C" }}>
+              {isPersonal ? "Compte Personnel" : "Compte Entreprise"}
+            </span>
+          </div>
           <p className="text-4xl font-bold text-white leading-snug mb-3">
-            Rejoignez des<br />
-            milliers d'entreprises<br />
-            <span style={{ color: "#B5F03C" }}>qui font confiance.</span>
+            {isPersonal ? (
+              <>Rejoignez des<br />milliers de personnes<br /><span style={{ color: "#B5F03C" }}>qui font confiance.</span></>
+            ) : (
+              <>Rejoignez des<br />milliers d'entreprises<br /><span style={{ color: "#B5F03C" }}>qui font confiance.</span></>
+            )}
           </p>
           <p className="text-gray-400 text-sm mb-8">
-            Créez votre compte et commencez à accepter des paiements partout en Afrique dès aujourd'hui.
+            {isPersonal
+              ? "Créez votre compte personnel et commencez à recevoir des paiements Mobile Money en Afrique."
+              : "Créez votre compte et commencez à accepter des paiements partout en Afrique dès aujourd'hui."}
           </p>
           <div className="space-y-3">
-            {STEPS_INFO.map((text) => (
+            {(isPersonal ? PERSONAL_FEATURES : ENTERPRISE_FEATURES).map((text) => (
               <div key={text} className="flex items-center gap-3">
                 <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "#B5F03C" }} />
                 <span className="text-sm text-gray-300">{text}</span>
@@ -148,6 +271,20 @@ export default function Signup() {
             <img src="/logo-drimpay.png" alt="DrimPay" className="h-9 w-auto object-contain" />
           </Link>
 
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => setAccountType(null)}
+              className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              ← Changer de type
+            </button>
+            <span className="text-gray-300">|</span>
+            <span className="text-sm font-medium text-gray-700">
+              {isPersonal ? "Compte Personnel" : "Compte Entreprise"}
+            </span>
+          </div>
+
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Créer un compte</h1>
           <p className="text-gray-500 text-sm mb-8">
             Déjà inscrit ?{" "}
@@ -157,15 +294,17 @@ export default function Signup() {
           </p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Field label={t.signup.companyLabel} error={errors.companyName?.message} required>
-              <input
-                type="text"
-                placeholder={t.signup.companyPlaceholder}
-                autoComplete="organization"
-                {...register("companyName")}
-                className={inputCls(!!errors.companyName)}
-              />
-            </Field>
+            {!isPersonal && (
+              <Field label="Nom de l'entreprise" error={errors.companyName?.message} required>
+                <input
+                  type="text"
+                  placeholder="ACME SARL"
+                  autoComplete="organization"
+                  {...register("companyName")}
+                  className={inputCls(!!errors.companyName)}
+                />
+              </Field>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Field label={t.signup.firstNameLabel} error={errors.firstName?.message} required>

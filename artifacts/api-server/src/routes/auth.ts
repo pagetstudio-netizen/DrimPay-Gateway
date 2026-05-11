@@ -15,6 +15,7 @@ const signupSchema = z.object({
   password: z.string().min(8),
   companyName: z.string().min(2),
   country: z.string().min(1),
+  accountType: z.enum(["enterprise", "personal"]).default("enterprise"),
 });
 
 const loginSchema = z.object({
@@ -29,7 +30,7 @@ router.post("/auth/signup", async (req, res) => {
     return;
   }
 
-  const { email, password, companyName, country } = parsed.data;
+  const { email, password, companyName, country, accountType } = parsed.data;
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
@@ -39,7 +40,7 @@ router.post("/auth/signup", async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 12);
   const merchantCode = crypto.randomBytes(3).toString("hex");
-  const [user] = await db.insert(usersTable).values({ email, passwordHash, companyName, country, merchantCode }).returning();
+  const [user] = await db.insert(usersTable).values({ email, passwordHash, companyName, country, merchantCode, accountType }).returning();
 
   req.session.userId = user.id;
   req.session.role = user.role;
@@ -73,6 +74,7 @@ router.post("/auth/signup", async (req, res) => {
     companyName: user.companyName,
     country: user.country,
     role: user.role,
+    accountType: user.accountType,
     merchantCode: user.merchantCode,
   });
 });
@@ -113,6 +115,7 @@ router.post("/auth/login", async (req, res) => {
     companyName: user.companyName,
     country: user.country,
     role: user.role,
+    accountType: user.accountType,
     merchantCode: user.merchantCode,
   });
 });
@@ -144,6 +147,7 @@ router.get("/auth/me", async (req, res) => {
     companyName: user.companyName,
     country: user.country,
     role: user.role,
+    accountType: user.accountType,
     merchantCode: user.merchantCode,
     mode: req.session.mode,
   });

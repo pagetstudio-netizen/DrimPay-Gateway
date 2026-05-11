@@ -135,7 +135,10 @@ const COUNTRIES = [
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF" },
 ];
 
-const FEE_RATE = 0.03;
+async function getUserFeeRate(userId: number): Promise<number> {
+  const [user] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
+  return user?.accountType === "personal" ? 0.05 : 0.03;
+}
 
 router.get("/dashboard/status", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
@@ -414,7 +417,8 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       .returning();
   }
 
-  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const feeRate = await getUserFeeRate(userId);
+  const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `PAY-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
@@ -445,7 +449,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
     .where(eq(walletsTable.id, wallet.id));
 
   const [updatedWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, wallet.id));
-  res.status(201).json({ transaction: tx, fee, netAmount, feeRate: "3%", walletId: wallet.id, newBalance: parseFloat(String(updatedWallet?.balance ?? 0)) });
+  res.status(201).json({ transaction: tx, fee, netAmount, feeRate: `${feeRate * 100}%`, walletId: wallet.id, newBalance: parseFloat(String(updatedWallet?.balance ?? 0)) });
 });
 
 const payoutSchema = z.object({
@@ -466,6 +470,14 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
   }
 
   const userId = req.session.userId!;
+
+  // Block payout for personal accounts
+  const [userRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
+  if (userRecord?.accountType === "personal") {
+    res.status(403).json({ error: "Les comptes personnels n'ont pas accès à l'API Pay-out. Seuls les comptes entreprise peuvent effectuer des retraits." });
+    return;
+  }
+
   const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
 
@@ -486,12 +498,13 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
     return;
   }
 
-  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const payoutFeeRate = await getUserFeeRate(userId);
+  const fee = Math.round(amount * payoutFeeRate * 100) / 100;
   const totalDebit = Math.round((amount + fee) * 100) / 100;
   const currentBalance = parseFloat(String(wallet.balance));
 
   if (currentBalance < totalDebit) {
-    res.status(400).json({ error: `Solde insuffisant. Disponible : ${currentBalance} ${currency}, Requis : ${totalDebit} ${currency} (dont frais 3% de ${fee} ${currency})` });
+    res.status(400).json({ error: `Solde insuffisant. Disponible : ${currentBalance} ${currency}, Requis : ${totalDebit} ${currency} (dont frais ${payoutFeeRate * 100}% de ${fee} ${currency})` });
     return;
   }
 
@@ -523,7 +536,7 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
     .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
     .where(eq(walletsTable.id, wallet.id));
 
-  res.status(201).json({ transaction: tx, fee, totalDebit, feeRate: "3%" });
+  res.status(201).json({ transaction: tx, fee, totalDebit, feeRate: `${payoutFeeRate * 100}%` });
 });
 
 router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
@@ -685,12 +698,13 @@ router.post("/dashboard/api-keys/regenerate", requireAuth, async (req, res) => {
 router.get("/dashboard/kyb", requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId!;
+    const [user] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
     const [kyb] = await db
       .select()
       .from(kybSubmissionsTable)
       .where(eq(kybSubmissionsTable.userId, userId));
 
-    res.json(kyb ?? { status: "pending" });
+    res.json({ ...(kyb ?? { status: "pending" }), accountType: user?.accountType ?? "enterprise" });
   } catch (err: any) {
     console.error("[KYB GET error]", err);
     res.status(500).json({ error: "Erreur serveur", details: err?.message ?? String(err) });
@@ -724,8 +738,93 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
     const body = req.body as Record<string, string>;
     const stepNum = parseInt(body.step ?? "1");
 
+    // Determine account type
+    const [userForKyb] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
+    const isPersonal = userForKyb?.accountType === "personal";
+
     let updateValues: Record<string, any> = {};
 
+    // ── Personal KYC flow (3 steps) ──────────────────────────────────────────
+    if (isPersonal) {
+      if (stepNum === 1) {
+        const schema = z.object({
+          legalRepName: z.string().min(2),
+          legalRepDob: z.string().min(1),
+          incorporationCountry: z.string().min(2),
+          businessAddress: z.string().min(5),
+          legalRepPhone: z.string().min(8),
+          legalRepEmail: z.string().email(),
+        });
+        const parsed = schema.safeParse(body);
+        if (!parsed.success) {
+          res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+          return;
+        }
+        updateValues = parsed.data;
+      } else if (stepNum === 2) {
+        const schema = z.object({
+          businessDescription: z.string().min(10),
+          fundsSource: z.string().min(1),
+          website: z.string().url().optional().or(z.literal("")).optional(),
+        });
+        const parsed = schema.safeParse(body);
+        if (!parsed.success) {
+          res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+          return;
+        }
+        updateValues = parsed.data;
+      } else if (stepNum === 3) {
+        const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+        const kycDocKeys = ["documentIdFront", "documentIdBack", "documentSelfie"];
+        await Promise.all(kycDocKeys.map(async (key) => {
+          const file = files?.[key]?.[0];
+          if (file) {
+            const storagePath = await uploadKybDocument(userId, key, file.buffer, file.mimetype, file.originalname);
+            updateValues[key] = storagePath;
+          }
+        }));
+        const hasAllDocs = kycDocKeys.every(k => updateValues[k] || existing[0]?.[k as keyof typeof existing[0]]);
+        if (!hasAllDocs) {
+          res.status(400).json({ error: "Veuillez téléverser les 3 documents d'identité obligatoires (recto, verso, selfie)." });
+          return;
+        }
+        updateValues.status = "submitted" as const;
+        updateValues.submittedAt = new Date();
+      }
+
+      let kyb;
+      if (existing.length > 0) {
+        [kyb] = await db.update(kybSubmissionsTable).set(updateValues).where(eq(kybSubmissionsTable.userId, userId)).returning();
+      } else {
+        [kyb] = await db.insert(kybSubmissionsTable).values({ userId, ...updateValues }).returning();
+      }
+
+      if (stepNum === 3 && kyb.status === "submitted") {
+        try {
+          const [userInfo] = await db.select({ email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country })
+            .from(usersTable).where(eq(usersTable.id, userId));
+          if (userInfo) {
+            notifyKybSubmitted({
+              company: (kyb as any).legalRepName ?? userInfo.companyName,
+              email: userInfo.email,
+              country: userInfo.country,
+              id: kyb.id,
+            }).catch(() => {});
+            sendKybProcessingEmail({
+              to: userInfo.email,
+              companyName: (kyb as any).legalRepName ?? userInfo.companyName,
+            }).catch((e) => console.error("[KYC] Email error:", e));
+          }
+        } catch (e) {
+          console.error("[KYC] Post-submission notifications error:", e);
+        }
+      }
+
+      res.status(201).json(kyb);
+      return;
+    }
+
+    // ── Enterprise KYB flow (4 steps) ────────────────────────────────────────
     if (stepNum === 1) {
       const schema = z.object({
         companyLegalName: z.string().min(2),

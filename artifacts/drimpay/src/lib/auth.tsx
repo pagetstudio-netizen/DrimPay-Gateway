@@ -6,6 +6,7 @@ export type User = {
   companyName: string;
   country: string;
   role: "admin" | "user";
+  accountType: "enterprise" | "personal";
   mode?: "sandbox" | "live";
 };
 
@@ -13,7 +14,7 @@ type AuthState = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ error?: string }>;
-  signup: (data: { email: string; password: string; companyName: string; country: string }) => Promise<{ error?: string }>;
+  signup: (data: { email: string; password: string; companyName: string; country: string; accountType: "enterprise" | "personal" }) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
 };
 
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   }, []);
 
-  const signup = useCallback(async (body: { email: string; password: string; companyName: string; country: string }) => {
+  const signup = useCallback(async (body: { email: string; password: string; companyName: string; country: string; accountType: "enterprise" | "personal" }) => {
     const r = await fetch("/api/auth/signup", {
       method: "POST",
       credentials: "include",

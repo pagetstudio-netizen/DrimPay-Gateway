@@ -1,0 +1,227 @@
+Je veux que tu améliores et corriges toute la documentation API DrimPay v2.0 afin qu’elle soit plus professionnelle, complète et au niveau des standards Stripe / Flutterwave / Paystack / LemonSqueezy.
+
+⚠️ IMPORTANT :
+- Ne pas casser les endpoints existants.
+- Garder toute la logique actuelle.
+- Garder tous les exemples existants.
+- Ajouter uniquement les éléments manquants.
+- Conserver le style visuel actuel de la documentation.
+- Garder le branding DrimPay.
+- Garder les APIs Pay-in et Pay-out séparées.
+- Garder le système wallet isolé par pays.
+- Garder les frais à 3%.
+
+──────────────────────────────
+1. AJOUTER LES STATUTS PAYOUT COMPLETS
+──────────────────────────────
+
+Actuellement les statuts payout ne sont pas suffisamment documentés.
+
+Ajouter officiellement cette section :
+
+# Payout Status Values
+
+queued
+→ La demande a été acceptée et mise en file d’attente.
+
+pending
+→ Le paiement est en attente de traitement par le système ou l’opérateur.
+
+processing
+→ L’opérateur Mobile Money traite actuellement la transaction.
+
+success
+→ Paiement confirmé et envoyé avec succès.
+
+failed
+→ Paiement échoué ou rejeté.
+
+reversed
+→ Paiement annulé et fonds retournés au wallet marchand.
+
+cancelled
+→ Paiement annulé avant exécution.
+
+Ajouter cette section :
+- dans Pay-out API
+- dans webhook payloads
+- dans status endpoint
+
+──────────────────────────────
+2. AJOUTER ENDPOINT WALLET BALANCE
+──────────────────────────────
+
+Créer une nouvelle section :
+
+# Wallet API
+
+Ajouter endpoint :
+
+GET /v2/wallets
+
+et aussi :
+
+GET /v2/wallets/balance
+
+Le marchand doit pouvoir voir :
+- solde disponible
+- solde en attente
+- devise
+- pays
+- statut wallet
+- date de mise à jour
+
+Exemple réponse :
+
+{
+  "wallets": [
+    {
+      "country_code": "TG",
+      "currency": "XOF",
+      "available_balance": 2500000,
+      "pending_balance": 150000,
+      "wallet_status": "active",
+      "updated_at": "2026-05-06T12:00:00.000Z"
+    }
+  ]
+}
+
+Ajouter exemples :
+- curl
+- node.js
+- php
+- python
+
+──────────────────────────────
+3. AJOUTER API KEY PERMISSIONS
+──────────────────────────────
+
+Actuellement :
+une clé = accès total.
+
+Je veux ajouter des permissions avancées comme Stripe.
+
+Créer une nouvelle section :
+
+# API Key Permissions
+
+Types :
+- read_only
+- payin_only
+- payout_only
+- webhook_only
+- full_access
+
+Ajouter tableau explicatif.
+
+Ajouter exemple JSON :
+
+{
+  "key_type": "payout_only",
+  "permissions": [
+    "payout:create",
+    "payout:read"
+  ]
+}
+
+Ajouter aussi :
+- rotation des clés
+- révocation
+- date expiration
+- dernière utilisation
+
+──────────────────────────────
+4. AJOUTER TIMESTAMPS STANDARDISÉS
+──────────────────────────────
+
+Ajouter partout dans toutes les réponses API :
+
+updated_at
+processed_at
+failed_at
+
+Exemple :
+
+{
+  "created_at": "...",
+  "updated_at": "...",
+  "processed_at": "...",
+  "failed_at": null
+}
+
+Faire ceci pour :
+- payin
+- payout
+- mass payout
+- wallet
+- webhooks
+
+──────────────────────────────
+5. AJOUTER TRAÇABILITÉ FRAUDE & RISK ENGINE
+──────────────────────────────
+
+Créer section :
+
+# Fraud & Risk Monitoring
+
+Ajouter dans certaines réponses :
+
+{
+  "risk_score": 12,
+  "risk_level": "low",
+  "ip_address": "102.xxx.xxx.xxx",
+  "device_id": "DEV-XX-7788"
+}
+
+Expliquer :
+- low
+- medium
+- high
+
+Ajouter que DrimPay peut :
+- suspendre une transaction
+- déclencher une revue manuelle
+- limiter certaines opérations
+
+⚠️ Garder un ton professionnel fintech enterprise.
+
+──────────────────────────────
+6. AJOUTER WALLET STATUS
+──────────────────────────────
+
+Créer une section :
+
+# Wallet Status
+
+Valeurs :
+
+active
+→ Wallet opérationnel.
+
+pending_kyb
+→ KYB non encore validé.
+
+suspended
+→ Wallet temporairement suspendu.
+
+restricted
+→ Wallet limité pour raisons conformité.
+
+closed
+→ Wallet fermé.
+
+Ajouter cela :
+- dans wallet endpoint
+- dans dashboard docs
+- dans réponses API concernées
+
+──────────────────────────────
+7. AMÉLIORER WEBHOOK RETRY DOCUMENTATION
+──────────────────────────────
+
+Actuellement :
+“retry 3 times”
+
+Je veux documentation complète :
+
+# Webhook Retry Policy

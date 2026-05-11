@@ -1,0 +1,140 @@
+Tentative 1 → immédiate
+Tentative 2 → après 2 secondes
+Tentative 3 → après 4 secondes
+Tentative 4 → après 8 secondes
+
+Puis marquer :
+delivery_failed
+
+Ajouter bonnes pratiques :
+- toujours retourner HTTP 200 rapidement
+- traiter async
+- stocker événements idempotents
+
+──────────────────────────────
+8. AJOUTER VERSIONING API CLAIR
+──────────────────────────────
+
+Créer section :
+
+# API Versioning
+
+Expliquer :
+- DrimPay utilise versioning REST
+- v2 compatible rétroactivement
+- breaking changes uniquement sur nouvelle version majeure
+- endpoints dépréciés restent actifs minimum 12 mois
+
+Ajouter exemple :
+
+https://api.drimpay.africa/v2/
+
+Ajouter note :
+“v1 endpoints remain available during migration period.”
+
+──────────────────────────────
+9. AMÉLIORER DOCUMENTATION ENTERPRISE
+──────────────────────────────
+
+Ajouter :
+- architecture scalable
+- high availability
+- failover operators
+- retry intelligent
+- rate limiting enterprise
+- audit logs
+- encryption
+- PCI-inspired security practices
+- monitoring temps réel
+
+Ajouter style :
+fintech enterprise moderne.
+
+──────────────────────────────
+10. AJOUTER SDK OFFICIELS
+──────────────────────────────
+
+Créer section :
+
+# Official SDKs
+
+Node.js
+PHP
+Python
+Java
+Go
+
+Ajouter exemples installation :
+
+npm install drimpay-sdk
+
+composer require drimpay/sdk
+
+pip install drimpay
+
+Même si SDK simulé pour le moment.
+
+──────────────────────────────
+11. AJOUTER PAGE “ERROR HANDLING”
+──────────────────────────────
+
+Créer section complète :
+- erreurs HTTP
+- retries
+- erreurs opérateurs
+- timeout
+- duplicate order_id
+- insufficient funds
+- webhook invalid signature
+
+Ajouter exemples réels.
+
+──────────────────────────────
+12. AJOUTER PAGE “BEST PRACTICES”
+──────────────────────────────
+
+Conseils :
+- ne jamais exposer secret key frontend
+- utiliser webhook verification
+- utiliser order_id unique
+- utiliser HTTPS
+- logs des transactions
+- retries idempotents
+
+──────────────────────────────
+13. AJOUTER “COUNTRIES & OPERATORS”
+──────────────────────────────
+
+Créer page dynamique avec :
+- pays
+- devise
+- opérateurs supportés
+- limites
+- disponibilité
+- statut live/sandbox
+
+──────────────────────────────
+14. AJOUTER PAGE “SYSTEM STATUS”
+──────────────────────────────
+
+Créer :
+status.drimpay.africa
+
+Afficher :
+- uptime
+- opérateurs actifs
+- incidents
+- maintenance
+
+──────────────────────────────
+15. GARDER COMPATIBILITÉ EXISTANTE
+──────────────────────────────
+
+⚠️ TRÈS IMPORTANT :
+- Ne pas modifier les endpoints existants.
+- Ne pas casser la logique actuelle.
+- Ne pas supprimer les exemples existants.
+- Ne pas modifier les payloads déjà utilisés.
+- Ajouter seulement les nouvelles améliorations.
+
+Le résultat final doit ressembler à une documentation fintech professionnelle internationale comme Stripe, Flutterwave ou Paystack.

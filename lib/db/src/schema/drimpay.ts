@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
+export const accountTypeEnum = pgEnum("account_type", ["enterprise", "personal"]);
 export const jobTypeEnum = pgEnum("job_type", ["full-time", "part-time", "contract", "internship"]);
 export const partnerTypeEnum = pgEnum("partner_type", ["mobile-money", "bank", "fintech", "aggregator"]);
 export const serviceStatusEnum = pgEnum("service_status", ["operational", "degraded", "outage", "maintenance"]);
@@ -21,6 +22,7 @@ export const usersTable = pgTable("users", {
   companyName: text("company_name").notNull(),
   country: text("country").notNull().default("OTHER"),
   role: userRoleEnum("role").notNull().default("user"),
+  accountType: accountTypeEnum("account_type").notNull().default("enterprise"),
   merchantCode: text("merchant_code").unique(),
   webhookUrl: text("webhook_url"),
   staticIp: text("static_ip"),
@@ -67,6 +69,9 @@ export const kybSubmissionsTable = pgTable("kyb_submissions", {
   documentStatuts: text("document_statuts"),
   documentLicense: text("document_license"),
   documentId: text("document_id"),
+
+  // Personal KYC fields
+  fundsSource: text("funds_source"),
 
   // Step 4 - Contract & Signature
   contractEmail: text("contract_email"),
