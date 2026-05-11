@@ -85,7 +85,7 @@ function OperatorBtn({ name, selected, onClick }: { name: string; selected: bool
         <img
           src={brand.logo}
           alt={brand?.label ?? name}
-          className="w-full h-full object-cover"
+          className="w-[80%] h-[80%] object-contain"
           onError={() => setImgOk(false)}
         />
       ) : (
@@ -161,7 +161,9 @@ function PayHeader({ merchantName, title, description }: { merchantName: string;
 function Logo() {
   return (
     <div className="flex items-center justify-center mb-5">
-      <img src="/logo-drimpay.png" alt="DrimPay" className="h-9 w-auto object-contain" />
+      <a href="/" target="_blank" rel="noopener noreferrer">
+        <img src="/logo-drimpay.png" alt="DrimPay" className="h-9 w-auto object-contain" />
+      </a>
     </div>
   );
 }
@@ -171,13 +173,17 @@ function Logo() {
 function Footer() {
   return (
     <div className="flex items-center justify-between mt-5 px-1">
-      <p className="text-xs text-gray-400">
+      <a
+        href="/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
+      >
         Powered By <span className="font-semibold text-blue-600">DrimPay</span>
-      </p>
-      <div className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+      </a>
+      <div className="flex items-center gap-1.5 text-xs text-gray-500 select-none">
         <Globe className="w-3.5 h-3.5" />
         <span>Français</span>
-        <ChevronDown className="w-3 h-3" />
       </div>
     </div>
   );
