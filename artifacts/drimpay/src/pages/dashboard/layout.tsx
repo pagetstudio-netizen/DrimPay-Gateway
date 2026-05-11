@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight,
   CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal,
-  FlaskConical, Zap, AlertTriangle, ShieldX, Lock, HeadphonesIcon,
+  FlaskConical, Zap, AlertTriangle, ShieldX, Lock,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
@@ -18,6 +18,7 @@ import kybImg       from "@assets/telecharger_1778149010032.png";
 import userImg      from "@assets/utilisateur_1778149009992.png";
 import logoutImg    from "@assets/46391560-se-deconnecter-icone-symbole-conception-illustration-_1778105456327.jpg";
 import apiIconImg   from "@assets/6213702_1778508885407.png";
+import supportImg   from "@assets/contact-us.1e0b8969a82ca2f9bd2d0b6df0fc7b96_1778539656598.webp";
 
 type NavItem = {
   href: string;
@@ -35,7 +36,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/reversement",        label: "Reversement",          img: reversImg },
   { href: "/dashboard/kyb",                label: "Vérification KYB",     img: kybImg },
   { href: "/dashboard/settings",           label: "Paramètres",           img: settingsImg },
-  { href: "/dashboard/support",            label: "Support & Communauté", icon: HeadphonesIcon },
+  { href: "/dashboard/support",            label: "Support & Communauté", img: supportImg },
 ];
 
 const apiItems: NavItem[] = [
