@@ -1,9 +1,50 @@
 import { Link } from "wouter";
 import { useState, type ReactNode } from "react";
 import { ArrowRight, CreditCard, LayoutGrid } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import iconMobileMoney from "@assets/10149443_1778509419659.png";
 import iconPaymentLink from "@assets/6360759_(1)_1778509419794.png";
 import iconMassPayout from "@assets/atm_1778509419824.png";
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/*  ANIMATION VARIANTS                                                         */
+/* ══════════════════════════════════════════════════════════════════════════ */
+const fadeUp = {
+  hidden:  { opacity: 0, y: 32 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const fadeIn = {
+  hidden:  { opacity: 0 },
+  visible: { opacity: 1 },
+};
+
+const stagger = {
+  hidden:  {},
+  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } },
+};
+
+const staggerFast = {
+  hidden:  {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const slideLeft = {
+  hidden:  { opacity: 0, x: -40 },
+  visible: { opacity: 1, x: 0 },
+};
+
+const slideRight = {
+  hidden:  { opacity: 0, x: 40 },
+  visible: { opacity: 1, x: 0 },
+};
+
+const scaleUp = {
+  hidden:  { opacity: 0, scale: 0.92 },
+  visible: { opacity: 1, scale: 1 },
+};
+
+const viewportConfig = { once: true, margin: "-80px" };
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 /*  DASHED GRID HERO BACKGROUND                                               */
@@ -11,17 +52,20 @@ import iconMassPayout from "@assets/atm_1778509419824.png";
 const GRID_SVG = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='60' y1='0' x2='0' y2='0' stroke='%23000' stroke-width='0.6' stroke-dasharray='3 5' stroke-opacity='0.10'/%3E%3Cline x1='0' y1='0' x2='0' y2='60' stroke='%23000' stroke-width='0.6' stroke-dasharray='3 5' stroke-opacity='0.10'/%3E%3C/svg%3E")`;
 
 /* ══════════════════════════════════════════════════════════════════════════ */
-/*  DESKTOP APP MOCKUP  (real screenshot)                                     */
+/*  DESKTOP APP MOCKUP                                                         */
 /* ══════════════════════════════════════════════════════════════════════════ */
 function DesktopMockup() {
   return (
-    <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl">
+    <motion.div
+      variants={scaleUp}
+      className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
+    >
       <img
         src="/dashboard-hero.jpg"
         alt="DrimPay Dashboard"
         className="w-full block"
       />
-    </div>
+    </motion.div>
   );
 }
 
@@ -72,24 +116,45 @@ function ProductsSection() {
   return (
     <section className="py-24 bg-[#F5F0E8]">
       <div className="max-w-6xl mx-auto px-6 md:px-10">
-        <h2 className="text-3xl md:text-5xl font-extrabold text-[#0f0f0f] mb-14 leading-tight tracking-tight">
+        <motion.h2
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="visible"
+          viewport={viewportConfig}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="text-3xl md:text-5xl font-extrabold text-[#0f0f0f] mb-14 leading-tight tracking-tight"
+        >
           Produits Prêts à l'Emploi
-        </h2>
+        </motion.h2>
         <div className="grid lg:grid-cols-2 gap-10 items-start">
-          <div className="space-y-1">
+          <motion.div
+            variants={staggerFast}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            className="space-y-1"
+          >
             {PRODUCTS.map((prod, i) => (
-              <button
+              <motion.button
                 key={i}
+                variants={fadeUp}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 onClick={() => setActive(i)}
                 className={`w-full text-left px-5 py-4 rounded-2xl font-bold text-lg transition-all ${
                   active === i ? "bg-[#0f0f0f] text-white shadow-lg" : "text-[#0f0f0f] hover:bg-white/60"
                 }`}
               >
                 {prod.label}
-              </button>
+              </motion.button>
             ))}
-          </div>
-          <div className={`rounded-3xl ${p.bg} p-8 min-h-[280px] flex flex-col justify-between shadow-xl`}>
+          </motion.div>
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className={`rounded-3xl ${p.bg} p-8 min-h-[280px] flex flex-col justify-between shadow-xl`}
+          >
             <div>
               <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6 overflow-hidden">
                 {p.imgIcon ? (
@@ -110,7 +175,7 @@ function ProductsSection() {
                 </button>
               </Link>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
@@ -143,82 +208,147 @@ export default function Home() {
           paddingBottom: "80px",
         }}
       >
-        {/* Radial glow center — light, not dark */}
-        <div
+        {/* Radial glow */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.2 }}
           className="absolute inset-0 pointer-events-none"
           style={{
             background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(181,240,60,0.18) 0%, transparent 70%)",
           }}
         />
 
-        <div className="max-w-5xl mx-auto px-6 md:px-10 relative text-center">
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+          className="max-w-5xl mx-auto px-6 md:px-10 relative text-center"
+        >
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E5E3DC] shadow-sm mb-8">
+          <motion.div
+            variants={fadeUp}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E5E3DC] shadow-sm mb-8"
+          >
             <span className="flex h-2 w-2 rounded-full bg-[#B5F03C] animate-pulse" />
             <span className="text-xs font-semibold text-[#3a7a00]">API v2.0 maintenant disponible</span>
-          </div>
+          </motion.div>
 
           {/* Title */}
-          <h1 className="text-5xl md:text-7xl font-extrabold text-[#0f0f0f] leading-[1.02] tracking-tight mb-6 max-w-4xl mx-auto">
+          <motion.h1
+            variants={fadeUp}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="text-5xl md:text-7xl font-extrabold text-[#0f0f0f] leading-[1.02] tracking-tight mb-6 max-w-4xl mx-auto"
+          >
             La Plateforme de Paiement{" "}
             <span className="relative inline-block">
               Moderne
-              <span
+              <motion.span
+                initial={{ scaleX: 0, originX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.7, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute -bottom-1 left-0 w-full h-2 rounded-full opacity-60"
                 style={{ background: "linear-gradient(90deg, #B5F03C, #5AEADC)" }}
               />
             </span>
             {" "}pour l'Afrique
-          </h1>
+          </motion.h1>
 
           {/* Subtitle */}
-          <p className="text-lg md:text-xl text-[#0f0f0f]/55 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <motion.p
+            variants={fadeUp}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            className="text-lg md:text-xl text-[#0f0f0f]/55 max-w-2xl mx-auto mb-10 leading-relaxed"
+          >
             Lancez et faites évoluer vos produits financiers sur une seule plateforme : mobile money, cartes virtuelles, paiements instantanés et ledger en temps réel. Commencez là où vous voulez, grandissez sans limites.
-          </p>
+          </motion.p>
 
-          {/* CTAs — centered */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+          {/* CTAs */}
+          <motion.div
+            variants={fadeUp}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6"
+          >
             <Link href="/signup">
-              <button className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all shadow-lg">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm shadow-lg"
+              >
                 Explorer la Plateforme
-              </button>
+              </motion.button>
             </Link>
             <Link href="/contact">
-              <button className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-white border border-[#E0DDD6] text-[#0f0f0f] font-semibold text-sm hover:shadow-md transition-all">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-white border border-[#E0DDD6] text-[#0f0f0f] font-semibold text-sm hover:shadow-md transition-all"
+              >
                 Parler à un Expert
-              </button>
+              </motion.button>
             </Link>
-          </div>
+          </motion.div>
 
           {/* Learn more */}
-          <Link href="/how-it-works">
-            <button className="text-sm text-[#0f0f0f]/45 hover:text-[#0f0f0f]/70 transition-colors flex items-center gap-1 mx-auto mb-14">
-              En savoir plus
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-          </Link>
+          <motion.div
+            variants={fadeIn}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Link href="/how-it-works">
+              <button className="text-sm text-[#0f0f0f]/45 hover:text-[#0f0f0f]/70 transition-colors flex items-center gap-1 mx-auto mb-14">
+                En savoir plus
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+            </Link>
+          </motion.div>
 
-          {/* Desktop app mockup */}
-          <DesktopMockup />
-        </div>
+          {/* Desktop mockup */}
+          <motion.div
+            variants={scaleUp}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <DesktopMockup />
+          </motion.div>
+        </motion.div>
       </section>
 
 
-      {/* ── BETTER WAY ───────────────────────────────────────────────── */}
+      {/* ── TICKER ─────────────────────────────────────────────────── */}
+      <Ticker />
+
+
+      {/* ── BETTER WAY ────────────────────────────────────────────────── */}
       <section className="py-24 bg-[#F5F0E8]">
         <div className="max-w-6xl mx-auto px-6 md:px-10">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
-            <div>
+            <motion.div
+              variants={slideLeft}
+              initial="hidden"
+              whileInView="visible"
+              viewport={viewportConfig}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            >
               <h2 className="text-4xl md:text-5xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight mb-6">
                 Une meilleure façon<br />de lancer un<br />produit de paiement
               </h2>
               <Link href="/how-it-works">
-                <button className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all shadow-md">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm shadow-md"
+                >
                   En savoir plus <ArrowRight className="w-4 h-4" />
-                </button>
+                </motion.button>
               </Link>
-            </div>
-            <div>
+            </motion.div>
+            <motion.div
+              variants={slideRight}
+              initial="hidden"
+              whileInView="visible"
+              viewport={viewportConfig}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            >
               <p className="text-base text-[#0f0f0f]/55 leading-relaxed mb-8">
                 DrimPay regroupe les intégrations aux opérateurs mobiles, la conformité et votre expérience client en un seul endroit. De la mise en service à la croissance, DrimPay vous permet de vous concentrer sur la construction de produits remarquables.
               </p>
@@ -229,7 +359,7 @@ export default function Home() {
                   className="w-full block"
                 />
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -237,21 +367,44 @@ export default function Home() {
       {/* ── MAKE IT YOUR OWN ─────────────────────────────────────────── */}
       <section className="py-24 bg-white">
         <div className="max-w-5xl mx-auto px-6 md:px-10 text-center">
-          <h2 className="text-4xl md:text-6xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight mb-4">
+          <motion.h2
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="text-4xl md:text-6xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight mb-4"
+          >
             Faites-en le Vôtre
-          </h2>
-          <p className="text-base md:text-lg text-[#0f0f0f]/55 max-w-xl mx-auto mb-14 leading-relaxed">
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="text-base md:text-lg text-[#0f0f0f]/55 max-w-xl mx-auto mb-14 leading-relaxed"
+          >
             Mettez votre marque entre les mains de vos clients. DrimPay vous permet de gérer chaque expérience de paiement — votre marque, vos couleurs, votre identité.
-          </p>
+          </motion.p>
+
           {/* Card stack */}
-          <div className="relative flex items-center justify-center h-48 mb-8">
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            className="relative flex items-center justify-center h-48 mb-8"
+          >
             {[
               { bg: "bg-[#5B5EF5]", label: "Business Premium", style: { transform: "rotate(-8deg) translateX(-80px) translateY(8px)", position: "absolute" as const } },
               { bg: "bg-[#1a6b4a]", label: "Carte Enterprise",  style: { transform: "rotate(7deg) translateX(80px) translateY(8px)", position: "absolute" as const } },
               { bg: "bg-[#B5F03C]", label: "Carte Standard",    style: { transform: "translateY(-8px)", position: "relative" as const, zIndex: 10 } },
             ].map((c, i) => (
-              <div
+              <motion.div
                 key={i}
+                variants={scaleUp}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className={`w-48 h-28 rounded-2xl ${c.bg} p-4 flex flex-col justify-between shadow-xl`}
                 style={c.style}
               >
@@ -263,20 +416,40 @@ export default function Home() {
                   <p className="text-white text-[10px] font-mono tracking-widest opacity-60">•••• 4242</p>
                   <p className="text-white text-[9px] mt-0.5 opacity-50">{c.label}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
-          <div className="inline-flex items-center gap-2 bg-[#F5F0E8] border border-[#e5e3dc] rounded-full px-4 py-2 mb-8">
-            <span className="text-lg">✋</span>
-            <span className="text-xs font-semibold text-[#0f0f0f]/60">Marque blanche disponible</span>
-          </div>
-          <div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="inline-flex items-center gap-2 bg-[#F5F0E8] border border-[#e5e3dc] rounded-full px-4 py-2 mb-8">
+              <span className="text-lg">✋</span>
+              <span className="text-xs font-semibold text-[#0f0f0f]/60">Marque blanche disponible</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          >
             <Link href="/signup">
-              <button className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all shadow-md">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm shadow-md"
+              >
                 Personnaliser votre expérience <ArrowRight className="w-4 h-4" />
-              </button>
+              </motion.button>
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -286,9 +459,20 @@ export default function Home() {
       {/* ── TWO CTA CARDS ────────────────────────────────────────────── */}
       <section className="py-24 bg-[#F5F0E8]">
         <div className="max-w-6xl mx-auto px-6 md:px-10">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col" style={{ background: "#F8F6F1" }}>
-              {/* Operators hub image */}
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            className="grid md:grid-cols-2 gap-6"
+          >
+            {/* Card 1 */}
+            <motion.div
+              variants={slideLeft}
+              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+              className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col"
+              style={{ background: "#F8F6F1" }}
+            >
               <div className="relative flex items-center justify-center overflow-hidden px-4 pt-6 pb-2" style={{ minHeight: "280px", background: "#F8F6F1" }}>
                 <img
                   src="/operators-hub.png"
@@ -297,7 +481,6 @@ export default function Home() {
                   style={{ maxWidth: "380px", maxHeight: "270px" }}
                 />
               </div>
-              {/* Text content */}
               <div className="p-8 flex flex-col flex-1" style={{ background: "#F8F6F1" }}>
                 <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#B5F03C]/30 text-[#3a7a00] text-xs font-semibold mb-4 w-fit">
                   Réseau d'opérateurs
@@ -307,14 +490,24 @@ export default function Home() {
                   Wave, Orange Money, MTN MoMo, Moov Money, Wizall, TMoney, Vodacom et Airtel — une seule intégration pour les atteindre tous.
                 </p>
                 <Link href="/signup">
-                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm"
+                  >
                     Commencer maintenant <ArrowRight className="w-4 h-4" />
-                  </button>
+                  </motion.button>
                 </Link>
               </div>
-            </div>
-            <div className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col" style={{ background: "#F0EDE6" }}>
-              {/* DrimPay network image */}
+            </motion.div>
+
+            {/* Card 2 */}
+            <motion.div
+              variants={slideRight}
+              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+              className="rounded-3xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col"
+              style={{ background: "#F0EDE6" }}
+            >
               <div className="relative flex items-center justify-center overflow-hidden px-6 pt-8" style={{ minHeight: "260px", background: "#F0EDE6" }}>
                 <img
                   src="/drimpay-network.png"
@@ -323,7 +516,6 @@ export default function Home() {
                   style={{ maxWidth: "340px", maxHeight: "240px" }}
                 />
               </div>
-              {/* Text content */}
               <div className="p-8 flex flex-col flex-1" style={{ background: "#F0EDE6" }}>
                 <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#B5F03C]/30 text-[#3a7a00] text-xs font-semibold mb-4 w-fit">
                   Tous les produits
@@ -333,46 +525,58 @@ export default function Home() {
                   API de Paiement, Mass Payments, Payment Link et Cartes Virtuelles — tout connecté sur une seule infrastructure fiable.
                 </p>
                 <Link href="/signup">
-                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm hover:bg-[#0f0f0f]/85 transition-all">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0f0f0f] text-white font-semibold text-sm"
+                  >
                     Démarrer gratuitement <ArrowRight className="w-4 h-4" />
-                  </button>
+                  </motion.button>
                 </Link>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
       {/* ── COMPLIANCE CARD ──────────────────────────────────────────── */}
       <section className="py-24 bg-white">
         <div className="max-w-6xl mx-auto px-6 md:px-10">
-          <div className="max-w-sm mx-auto md:mx-0">
-            <div
-              className="rounded-3xl overflow-hidden"
-              style={{ background: "#EDE9E1" }}
-            >
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            className="max-w-sm mx-auto md:mx-0"
+          >
+            <div className="rounded-3xl overflow-hidden" style={{ background: "#EDE9E1" }}>
               {/* Concentric circles + icon */}
               <div className="relative flex items-center justify-center pt-8 pb-4 overflow-hidden" style={{ minHeight: 220 }}>
-                {/* Circles */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   {[220, 175, 130, 88].map((size, i) => (
-                    <div
+                    <motion.div
                       key={i}
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={viewportConfig}
+                      transition={{ duration: 0.6, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
                       className="absolute rounded-full border border-[#0f0f0f]/10"
                       style={{ width: size, height: size }}
                     />
                   ))}
                 </div>
-                {/* Lock image — multiply removes black background */}
-                <img
+                <motion.img
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={viewportConfig}
+                  transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
                   src="/security-badge.png"
                   alt="Sécurité"
                   className="relative z-10 object-contain"
                   style={{ width: 160, height: 160, mixBlendMode: "multiply" }}
                 />
               </div>
-
-              {/* Text */}
               <div className="px-7 pb-8">
                 <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#0f0f0f]/8 text-[#0f0f0f]/70 text-xs font-semibold mb-4">
                   Conformité / KYB
@@ -390,12 +594,78 @@ export default function Home() {
                 </Link>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* ── TICKER ───────────────────────────────────────────────────── */}
+      {/* ── TICKER (bottom) ───────────────────────────────────────────── */}
       <Ticker />
+
+      {/* ── DARK CTA ──────────────────────────────────────────────────── */}
+      <motion.section
+        variants={fadeIn}
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        transition={{ duration: 0.7 }}
+        className="py-24 bg-[#0f0f0f]"
+      >
+        <div className="max-w-4xl mx-auto px-6 md:px-10 text-center">
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportConfig}
+          >
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="text-[#B5F03C] text-sm font-semibold uppercase tracking-widest mb-4"
+            >
+              Commencez aujourd'hui
+            </motion.p>
+            <motion.h2
+              variants={fadeUp}
+              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+              className="text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-6"
+            >
+              Prêt à transformer<br />vos paiements ?
+            </motion.h2>
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="text-lg text-white/50 max-w-xl mx-auto mb-10"
+            >
+              Rejoignez des centaines d'entreprises qui font confiance à DrimPay pour leurs paiements en Afrique.
+            </motion.p>
+            <motion.div
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col sm:flex-row gap-3 justify-center"
+            >
+              <Link href="/signup">
+                <motion.button
+                  whileHover={{ scale: 1.04, backgroundColor: "#c8ff55" }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#B5F03C] text-[#0f0f0f] font-bold text-sm shadow-lg"
+                  style={{ transition: "background-color 0.2s" }}
+                >
+                  Créer un compte gratuit <ArrowRight className="w-4 h-4" />
+                </motion.button>
+              </Link>
+              <Link href="/contact">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full border border-white/20 text-white font-semibold text-sm hover:bg-white/5 transition-colors"
+                >
+                  Contacter les ventes
+                </motion.button>
+              </Link>
+            </motion.div>
+          </motion.div>
+        </div>
+      </motion.section>
     </div>
   );
 }
