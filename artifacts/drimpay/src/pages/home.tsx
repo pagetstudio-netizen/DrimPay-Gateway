@@ -1,6 +1,9 @@
 import { Link } from "wouter";
-import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ArrowRight, CreditCard, LayoutGrid } from "lucide-react";
+import iconMobileMoney from "@assets/10149443_1778509419659.png";
+import iconPaymentLink from "@assets/6360759_(1)_1778509419794.png";
+import iconMassPayout from "@assets/atm_1778509419824.png";
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 /*  DASHED GRID HERO BACKGROUND                                               */
@@ -50,12 +53,17 @@ function Ticker() {
 /* ══════════════════════════════════════════════════════════════════════════ */
 /*  PRODUCTS TAB                                                              */
 /* ══════════════════════════════════════════════════════════════════════════ */
-const PRODUCTS = [
-  { label: "Mobile Money →", title: "Collecte Mobile Money", desc: "Acceptez des paiements depuis Orange Money, Wave, MTN, Airtel Money et bien plus. Une seule intégration, tous les opérateurs.", bg: "bg-[#FF6B35]", dark: false },
-  { label: "Cartes Virtuelles →", title: "Cartes Virtuelles Instantanées", desc: "Émettez des cartes virtuelles Visa/Mastercard liées à vos wallets DrimPay pour les achats en ligne et business.", bg: "bg-[#5B5EF5]", dark: false },
-  { label: "Paiement par lien →", title: "Liens de Paiement", desc: "Créez des liens de paiement en quelques secondes. Partagez par WhatsApp, SMS ou email. Aucun site web requis.", bg: "bg-[#B5F03C]", dark: true },
-  { label: "Mass Payout →", title: "Décaissements Massifs", desc: "Envoyez des paiements en masse à des centaines de destinataires simultanément. Parfait pour les paies et remboursements.", bg: "bg-[#0d0c18]", dark: false },
-  { label: "Voir Tout →", title: "Toute la Plateforme", desc: "Découvrez l'ensemble des produits DrimPay : wallets, KYB automatisé, webhooks temps réel, et tableau de bord no-code.", bg: "bg-[#1a6b4a]", dark: false },
+type Product = {
+  label: string; title: string; desc: string; bg: string; dark: boolean;
+  imgIcon?: string; lucideIcon?: ReactNode;
+};
+
+const PRODUCTS: Product[] = [
+  { label: "Mobile Money →", title: "Collecte Mobile Money", desc: "Acceptez des paiements depuis Orange Money, Wave, MTN, Airtel Money et bien plus. Une seule intégration, tous les opérateurs.", bg: "bg-[#FF6B35]", dark: false, imgIcon: iconMobileMoney },
+  { label: "Cartes Virtuelles →", title: "Cartes Virtuelles Instantanées", desc: "Émettez des cartes virtuelles Visa/Mastercard liées à vos wallets DrimPay pour les achats en ligne et business.", bg: "bg-[#5B5EF5]", dark: false, lucideIcon: <CreditCard className="w-6 h-6 text-white" /> },
+  { label: "Paiement par lien →", title: "Liens de Paiement", desc: "Créez des liens de paiement en quelques secondes. Partagez par WhatsApp, SMS ou email. Aucun site web requis.", bg: "bg-[#B5F03C]", dark: true, imgIcon: iconPaymentLink },
+  { label: "Mass Payout →", title: "Décaissements Massifs", desc: "Envoyez des paiements en masse à des centaines de destinataires simultanément. Parfait pour les paies et remboursements.", bg: "bg-[#0d0c18]", dark: false, imgIcon: iconMassPayout },
+  { label: "Voir Tout →", title: "Toute la Plateforme", desc: "Découvrez l'ensemble des produits DrimPay : wallets, KYB automatisé, webhooks temps réel, et tableau de bord no-code.", bg: "bg-[#1a6b4a]", dark: false, lucideIcon: <LayoutGrid className="w-6 h-6 text-white" /> },
 ];
 
 function ProductsSection() {
@@ -83,8 +91,12 @@ function ProductsSection() {
           </div>
           <div className={`rounded-3xl ${p.bg} p-8 min-h-[280px] flex flex-col justify-between shadow-xl`}>
             <div>
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-6">
-                <div className="w-5 h-5 rounded bg-white/60" />
+              <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6 overflow-hidden">
+                {p.imgIcon ? (
+                  <img src={p.imgIcon} alt={p.title} className="w-10 h-10 object-contain" />
+                ) : (
+                  p.lucideIcon
+                )}
               </div>
               <h3 className={`text-2xl md:text-3xl font-extrabold mb-4 ${p.dark ? "text-[#0f0f0f]" : "text-white"}`}>{p.title}</h3>
               <p className={`text-base leading-relaxed ${p.dark ? "text-[#0f0f0f]/70" : "text-white/70"}`}>{p.desc}</p>
