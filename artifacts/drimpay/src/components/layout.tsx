@@ -62,6 +62,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">{t.nav.pricing}</Link>
             <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">{t.nav.developers}</Link>
             <Link href="/businesses" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">{t.nav.businesses}</Link>
+            <Link href="/help" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">{t.nav.help}</Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
@@ -90,6 +91,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <Link href="/pricing" className="text-xl font-semibold border-b border-border pb-4">{t.nav.pricing}</Link>
             <Link href="/docs" className="text-xl font-semibold border-b border-border pb-4">{t.nav.developers}</Link>
             <Link href="/businesses" className="text-xl font-semibold border-b border-border pb-4">{t.nav.businesses}</Link>
+            <Link href="/help" className="text-xl font-semibold border-b border-border pb-4">{t.nav.help}</Link>
             <Link href="/login" className="text-xl font-semibold border-b border-border pb-4">{t.nav.signin}</Link>
             <div className="flex items-center gap-4">
               <LangSwitcher />

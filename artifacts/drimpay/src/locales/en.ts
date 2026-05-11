@@ -7,6 +7,7 @@ export const en: Translations = {
     pricing: "Pricing",
     developers: "Developers",
     businesses: "Businesses",
+    help: "Help",
     signin: "Sign in",
     getApiKey: "Get API Key",
   },
