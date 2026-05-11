@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Check, X } from "lucide-react";
+import { Search, Check, X, ChevronDown } from "lucide-react";
 
 export type CountryOption = {
   code: string;
@@ -14,7 +14,8 @@ interface CountryPickerProps {
   value: string;
   onChange: (code: string) => void;
   placeholder?: string;
-  label?: string;
+  title?: string;
+  searchPlaceholder?: string;
   disabled?: boolean;
   error?: boolean;
 }
@@ -23,7 +24,9 @@ export function CountryPicker({
   options,
   value,
   onChange,
-  placeholder = "Sélectionner un pays",
+  placeholder = "Sélectionner",
+  title,
+  searchPlaceholder,
   disabled,
   error,
 }: CountryPickerProps) {
@@ -53,11 +56,9 @@ export function CountryPicker({
             )}
           </>
         ) : (
-          <span>{placeholder}</span>
+          <span className="flex-1">{placeholder}</span>
         )}
-        <svg className="w-4 h-4 text-muted-foreground ml-auto shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto shrink-0" />
       </button>
 
       <CountryPickerModal
@@ -66,6 +67,8 @@ export function CountryPicker({
         options={options}
         value={value}
         onChange={(code) => { onChange(code); setOpen(false); }}
+        title={title}
+        searchPlaceholder={searchPlaceholder}
       />
     </>
   );
@@ -77,9 +80,15 @@ interface ModalProps {
   options: CountryOption[];
   value: string;
   onChange: (code: string) => void;
+  title?: string;
+  searchPlaceholder?: string;
 }
 
-export function CountryPickerModal({ open, onClose, options, value, onChange }: ModalProps) {
+export function CountryPickerModal({
+  open, onClose, options, value, onChange,
+  title = "Sélectionner",
+  searchPlaceholder = "Rechercher...",
+}: ModalProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -115,7 +124,7 @@ export function CountryPickerModal({ open, onClose, options, value, onChange }: 
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <h3 className="text-base font-bold text-foreground">Sélectionner un pays</h3>
+              <h3 className="text-base font-bold text-foreground">{title}</h3>
               <button
                 onClick={onClose}
                 className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -124,23 +133,25 @@ export function CountryPickerModal({ open, onClose, options, value, onChange }: 
               </button>
             </div>
 
-            <div className="px-4 pb-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Rechercher un pays..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-border bg-muted/30 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
+            {options.length > 5 && (
+              <div className="px-4 pb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder={searchPlaceholder}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className="w-full h-10 rounded-xl border border-border bg-muted/30 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="overflow-y-auto max-h-72 px-2 pb-3">
               {filtered.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-8">Aucun pays trouvé</p>
+                <p className="text-center text-sm text-muted-foreground py-8">Aucun résultat</p>
               ) : (
                 filtered.map((option) => {
                   const isSelected = option.code === value;

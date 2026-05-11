@@ -8,7 +8,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CountryPicker } from "@/components/ui/country-picker";
 
 const COUNTRIES = [
   { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] },
@@ -19,6 +19,16 @@ const COUNTRIES = [
   { code: "SN", name: "Sénégal",       flag: "🇸🇳", currency: "XOF", operators: ["Orange Money", "Wave"] },
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"] },
 ];
+
+const OPERATOR_FLAGS: Record<string, string> = {
+  "TMoney":           "🔴",
+  "Moov Money":       "🟢",
+  "MTN Mobile Money": "🟡",
+  "MTN MoMo":         "🟡",
+  "MTN":              "🟡",
+  "Orange Money":     "🟠",
+  "Wave":             "🔵",
+};
 
 const schema = z.object({
   amount: z.string().min(1, "Montant requis"),
@@ -32,10 +42,10 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const statusConfig: Record<string, { label: string; color: string }> = {
-  success: { label: "Succès", color: "text-green-600 bg-green-500/10" },
-  pending: { label: "En cours", color: "text-yellow-600 bg-yellow-500/10" },
+  success:    { label: "Succès",     color: "text-green-600 bg-green-500/10" },
+  pending:    { label: "En cours",   color: "text-yellow-600 bg-yellow-500/10" },
   processing: { label: "Traitement", color: "text-blue-600 bg-blue-500/10" },
-  failed: { label: "Échoué", color: "text-red-600 bg-red-500/10" },
+  failed:     { label: "Échoué",     color: "text-red-600 bg-red-500/10" },
 };
 
 function fmt(n: string | number, currency: string) {
@@ -79,6 +89,22 @@ export default function Payout() {
   };
 
   const selectedWallet = wallets.find((w) => w.countryCode === selectedCountry?.code);
+
+  const countryOptions = COUNTRIES.map(c => {
+    const w = wallets.find(w => w.countryCode === c.code);
+    return {
+      code: c.code,
+      name: c.name,
+      flag: c.flag,
+      subtitle: w ? `${parseFloat(String(w.balance)).toLocaleString("fr-FR")} ${c.currency}` : "Pas de wallet",
+    };
+  });
+
+  const operatorOptions = (selectedCountry?.operators ?? []).map(op => ({
+    code: op,
+    name: op,
+    flag: OPERATOR_FLAGS[op] ?? "📡",
+  }));
 
   const onSubmit = async (values: FormData) => {
     setSubmitting(true);
@@ -154,22 +180,21 @@ export default function Payout() {
 
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+                  {/* Pays wallet source */}
                   <FormField control={form.control} name="countryCode" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Pays (wallet source)</FormLabel>
-                      <Select onValueChange={(v) => { field.onChange(v); onCountryChange(v); }} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un pays" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {COUNTRIES.map((c) => {
-                            const w = wallets.find((w) => w.countryCode === c.code);
-                            return (
-                              <SelectItem key={c.code} value={c.code}>
-                                {c.flag} {c.name} {w ? `· ${fmt(w.balance, c.currency)}` : "· Pas de wallet"}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <CountryPicker
+                          options={countryOptions}
+                          value={field.value}
+                          onChange={(v) => { field.onChange(v); onCountryChange(v); }}
+                          placeholder="Sélectionner un pays"
+                          title="Wallet source"
+                          searchPlaceholder="Rechercher un pays..."
+                        />
+                      </FormControl>
                       {selectedWallet && (
                         <p className="text-xs text-muted-foreground">
                           Solde : <strong>{fmt(selectedWallet.balance, selectedCountry?.currency ?? "XOF")}</strong>
@@ -179,21 +204,25 @@ export default function Payout() {
                     </FormItem>
                   )} />
 
+                  {/* Opérateur */}
                   <FormField control={form.control} name="operator" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Opérateur</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCountry}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un opérateur" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {(selectedCountry?.operators ?? []).map((op) => (
-                            <SelectItem key={op} value={op}>{op}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <CountryPicker
+                          options={operatorOptions}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder={selectedCountry ? "Sélectionner un opérateur" : "Sélectionnez un pays d'abord"}
+                          title="Opérateur Mobile Money"
+                          disabled={!selectedCountry}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
 
+                  {/* Téléphone */}
                   <FormField control={form.control} name="phone" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Numéro destinataire</FormLabel>
@@ -202,6 +231,7 @@ export default function Payout() {
                     </FormItem>
                   )} />
 
+                  {/* Montant */}
                   <FormField control={form.control} name="amount" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Montant à envoyer ({selectedCountry?.currency ?? "XOF"})</FormLabel>
@@ -215,6 +245,7 @@ export default function Payout() {
                     </FormItem>
                   )} />
 
+                  {/* Description */}
                   <FormField control={form.control} name="description" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Description (optionnel)</FormLabel>

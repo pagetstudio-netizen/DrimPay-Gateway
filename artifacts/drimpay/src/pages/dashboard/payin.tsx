@@ -11,7 +11,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CountryPicker } from "@/components/ui/country-picker";
 import { cn } from "@/lib/utils";
 
 const COUNTRIES = [
@@ -24,11 +24,32 @@ const COUNTRIES = [
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"] },
 ];
 
+const OPERATOR_FLAGS: Record<string, string> = {
+  "TMoney":           "🔴",
+  "Moov Money":       "🟢",
+  "MTN Mobile Money": "🟡",
+  "MTN MoMo":         "🟡",
+  "MTN":              "🟡",
+  "MTN Ghana":        "🟡",
+  "MTN Nigeria":      "🟡",
+  "Orange Money":     "🟠",
+  "Wave":             "🔵",
+  "Vodafone Ghana":   "🔴",
+  "Airtel Nigeria":   "🔴",
+};
+
 const EXPIRY_OPTIONS = [
-  { value: "2", label: "2 minutes" },
-  { value: "5", label: "5 minutes" },
-  { value: "10", label: "10 minutes" },
+  { code: "2",  name: "2 minutes",  flag: "⏱️" },
+  { code: "5",  name: "5 minutes",  flag: "⏱️" },
+  { code: "10", name: "10 minutes", flag: "⏱️" },
 ];
+
+const COUNTRY_OPTIONS = COUNTRIES.map(c => ({
+  code: c.code,
+  name: c.name,
+  flag: c.flag,
+  subtitle: c.currency,
+}));
 
 const schema = z.object({
   amount: z.string().min(1, "Montant requis"),
@@ -94,12 +115,7 @@ function fmt(n: string | number, currency: string) {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${currency}`;
 }
 
-function PendingMonitor({
-  reference, onDone,
-}: {
-  reference: string;
-  onDone: (tx: any) => void;
-}) {
+function PendingMonitor({ reference, onDone }: { reference: string; onDone: (tx: any) => void }) {
   const [status, setStatus] = useState<TxStatus>("pending");
   const [tx, setTx] = useState<any>(null);
   const [polling, setPolling] = useState(true);
@@ -198,6 +214,12 @@ export default function Payin() {
     form.setValue("operator", "");
   };
 
+  const operatorOptions = (selectedCountry?.operators ?? []).map(op => ({
+    code: op,
+    name: op,
+    flag: OPERATOR_FLAGS[op] ?? "📡",
+  }));
+
   const onSubmit = async (values: FormData) => {
     setSubmitting(true);
     setError("");
@@ -284,36 +306,44 @@ export default function Payin() {
               {!pendingRef && (
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+                    {/* Pays */}
                     <FormField control={form.control} name="countryCode" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Pays</FormLabel>
-                        <Select onValueChange={(v) => { field.onChange(v); onCountryChange(v); }} value={field.value}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un pays" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {COUNTRIES.map((c) => (
-                              <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <CountryPicker
+                            options={COUNTRY_OPTIONS}
+                            value={field.value}
+                            onChange={(v) => { field.onChange(v); onCountryChange(v); }}
+                            placeholder="Sélectionner un pays"
+                            title="Pays de paiement"
+                            searchPlaceholder="Rechercher un pays..."
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
 
+                    {/* Opérateur */}
                     <FormField control={form.control} name="operator" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Opérateur</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCountry}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un opérateur" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {(selectedCountry?.operators ?? []).map((op) => (
-                              <SelectItem key={op} value={op}>{op}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <CountryPicker
+                            options={operatorOptions}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder={selectedCountry ? "Sélectionner un opérateur" : "Sélectionnez un pays d'abord"}
+                            title="Opérateur Mobile Money"
+                            disabled={!selectedCountry}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
 
+                    {/* Téléphone */}
                     <FormField control={form.control} name="phone" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Numéro Mobile Money</FormLabel>
@@ -322,6 +352,7 @@ export default function Payin() {
                       </FormItem>
                     )} />
 
+                    {/* Montant */}
                     <FormField control={form.control} name="amount" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Montant ({selectedCountry?.currency ?? "XOF"})</FormLabel>
@@ -335,21 +366,24 @@ export default function Payin() {
                       </FormItem>
                     )} />
 
+                    {/* Expiration */}
                     <FormField control={form.control} name="expiresInMinutes" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Expiration du paiement</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {EXPIRY_OPTIONS.map(o => (
-                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <CountryPicker
+                            options={EXPIRY_OPTIONS}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Durée d'expiration"
+                            title="Expiration du paiement"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
 
+                    {/* Description */}
                     <FormField control={form.control} name="description" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Description (optionnel)</FormLabel>

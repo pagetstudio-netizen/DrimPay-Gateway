@@ -10,8 +10,17 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CountryPicker } from "@/components/ui/country-picker";
+
+const OPERATOR_FLAGS: Record<string, string> = {
+  "TMoney":           "🔴",
+  "Moov Money":       "🟢",
+  "MTN Mobile Money": "🟡",
+  "MTN MoMo":         "🟡",
+  "MTN":              "🟡",
+  "Orange Money":     "🟠",
+  "Wave":             "🔵",
+};
 
 const COUNTRIES = [
   { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] },
@@ -186,18 +195,20 @@ export default function DashboardReversement() {
                   <FormField control={form.control} name="operator" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Opérateur de réception</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCountry}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={selectedCountry ? "Choisir un opérateur" : "Sélectionnez un pays d'abord"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {selectedCountry?.operators.map((op) => (
-                            <SelectItem key={op} value={op}>{op}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <CountryPicker
+                          options={(selectedCountry?.operators ?? []).map(op => ({
+                            code: op,
+                            name: op,
+                            flag: OPERATOR_FLAGS[op] ?? "📡",
+                          }))}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder={selectedCountry ? "Choisir un opérateur" : "Sélectionnez un pays d'abord"}
+                          title="Opérateur de réception"
+                          disabled={!selectedCountry}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

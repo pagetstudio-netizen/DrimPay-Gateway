@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, Info,
-  X, CheckCircle2, Loader2, Phone, Banknote, ChevronDown,
+  X, CheckCircle2, Loader2, Phone, Banknote,
   ArrowLeftRight, Clock
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
@@ -10,6 +10,7 @@ import { Link, useLocation } from "wouter";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProductionGate } from "@/components/ui/production-gate";
 import { Input } from "@/components/ui/input";
+import { CountryPicker } from "@/components/ui/country-picker";
 import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -28,7 +29,22 @@ function fmt(n: string | number, currency: string) {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${currency}`;
 }
 
-const COUNTRIES_LIST = Object.entries(COUNTRY_MAP).map(([code, v]) => ({ code, ...v }));
+const OPERATOR_FLAGS: Record<string, string> = {
+  "TMoney":           "🔴",
+  "Moov Money":       "🟢",
+  "MTN Mobile Money": "🟡",
+  "MTN MoMo":         "🟡",
+  "MTN":              "🟡",
+  "Orange Money":     "🟠",
+  "Wave":             "🔵",
+};
+
+const COUNTRIES_LIST = Object.entries(COUNTRY_MAP).map(([code, v]) => ({
+  code,
+  name: v.name,
+  flag: v.flag,
+  subtitle: v.currency,
+}));
 
 // ── Pay-in modal ──────────────────────────────────────────────────────────────
 interface PayinModalProps {
@@ -146,42 +162,30 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
             {/* Country selector */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Pays</label>
-              <div className="relative">
-                <select
-                  value={countryCode}
-                  onChange={e => handleCountryChange(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-border bg-muted/30 pl-4 pr-10 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
-                >
-                  {COUNTRIES_LIST.map(({ code, flag, name, currency }) => (
-                    <option key={code} value={code}>
-                      {flag} {name} — {currency}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              </div>
+              <CountryPicker
+                options={COUNTRIES_LIST}
+                value={countryCode}
+                onChange={handleCountryChange}
+                placeholder="Sélectionner un pays"
+                title="Pays du wallet"
+                searchPlaceholder="Rechercher un pays..."
+              />
             </div>
 
             {/* Operator */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Opérateur</label>
-              <div className={cn("grid gap-2", c.operators.length > 2 ? "grid-cols-2" : "grid-cols-2")}>
-                {c.operators.map(op => (
-                  <button
-                    key={op}
-                    type="button"
-                    onClick={() => setOperator(op)}
-                    className={cn(
-                      "py-2.5 px-3 rounded-xl border-2 text-sm font-medium transition-all text-center",
-                      operator === op
-                        ? "border-primary bg-primary/10 text-foreground"
-                        : "border-border bg-muted/20 text-muted-foreground hover:border-primary/40"
-                    )}
-                  >
-                    {op}
-                  </button>
-                ))}
-              </div>
+              <CountryPicker
+                options={c.operators.map(op => ({
+                  code: op,
+                  name: op,
+                  flag: OPERATOR_FLAGS[op] ?? "📡",
+                }))}
+                value={operator}
+                onChange={setOperator}
+                placeholder="Sélectionner un opérateur"
+                title="Opérateur Mobile Money"
+              />
             </div>
 
             {/* Phone */}
