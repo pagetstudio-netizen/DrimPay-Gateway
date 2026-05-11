@@ -1,0 +1,165 @@
+Corrige complètement les différences visuelles entre la version mobile et desktop de DrimPay.
+
+⚠️ PROBLÈME ACTUEL :
+Sur mobile :
+- les couleurs et le design sont modernes,
+- les boutons sont bien affichés,
+- les icônes sont propres,
+- l’interface paraît professionnelle.
+
+Mais sur ordinateur :
+- les couleurs changent,
+- certaines icônes deviennent ternes,
+- les boutons perdent leur style,
+- certains backgrounds deviennent fades,
+- le rendu global est moins professionnel.
+
+Je veux EXACTEMENT le même rendu visuel sur :
+- mobile
+- tablette
+- desktop
+
+──────────────────────────────
+🎯 OBJECTIF
+──────────────────────────────
+
+Le design desktop doit être :
+- aussi moderne que mobile,
+- aussi propre,
+- aussi fluide,
+- aussi professionnel.
+
+Style fintech premium moderne avec :
+- animations fluides,
+- bonnes ombres,
+- excellente lisibilité,
+- interface cohérente,
+- rendu premium sur tous les écrans.
+
+──────────────────────────────
+🔍 VÉRIFIER ET CORRIGER
+──────────────────────────────
+
+1. Responsive
+Vérifier tous les styles responsive :
+- lg:
+- md:
+- xl:
+- 2xl:
+
+Supprimer tous les styles desktop qui modifient :
+- les couleurs,
+- les fonds,
+- les tailles,
+- les boutons,
+- les icônes.
+
+──────────────────────────────
+2. DARK MODE & THÈMES
+──────────────────────────────
+
+Vérifier :
+- thèmes automatiques,
+- dark mode,
+- préférences système.
+
+⚠️ Désactiver toute modification automatique du rendu desktop.
+
+Le rendu doit rester identique sur tous les appareils.
+
+──────────────────────────────
+3. ICÔNES SVG
+──────────────────────────────
+
+Corriger :
+- currentColor,
+- fill,
+- stroke,
+- opacity,
+- héritage des styles.
+
+Les icônes doivent garder :
+- le même style,
+- la même saturation,
+- la même visibilité sur mobile et desktop.
+
+──────────────────────────────
+4. BOUTONS
+──────────────────────────────
+
+Uniformiser :
+- gradients,
+- hover,
+- ombres,
+- radius,
+- transitions.
+
+Les boutons desktop doivent avoir exactement le même rendu que mobile.
+
+──────────────────────────────
+5. BACKGROUNDS
+──────────────────────────────
+
+Supprimer :
+- transparence excessive,
+- opacity trop forte,
+- backdrop blur trop agressif,
+- effets qui ternissent le rendu desktop.
+
+Le fond doit rester propre et moderne.
+
+──────────────────────────────
+6. CONTAINERS & ALIGNEMENTS
+──────────────────────────────
+
+Corriger :
+- max-width,
+- spacing,
+- padding,
+- alignements,
+- espaces vides sur grand écran.
+
+Le contenu doit rester équilibré sur desktop.
+
+──────────────────────────────
+7. EFFETS VISUELS
+──────────────────────────────
+
+Ajouter ou corriger :
+- ombres modernes,
+- hover states,
+- animations fluides,
+- transitions,
+- effets premium.
+
+──────────────────────────────
+8. TEST RESPONSIVE COMPLET
+──────────────────────────────
+
+Tester :
+- mobile,
+- tablette,
+- laptop,
+- desktop large,
+- ultra wide.
+
+Le rendu doit rester cohérent partout.
+
+──────────────────────────────
+9. IMPORTANT
+──────────────────────────────
+
+⚠️ Ne pas modifier :
+- backend,
+- logique API,
+- wallets,
+- paiements,
+- KYB,
+- fonctionnalités.
+
+Corriger uniquement :
+- UI,
+- responsive,
+- rendu visuel,
+- affichage desktop/mobile,
+- cohérence graphique.
