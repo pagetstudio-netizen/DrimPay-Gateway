@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Clock, Zap, Mail, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { ExternalLink, Clock, Zap, Mail, ArrowUpRight, CheckCircle2, AlertCircle } from "lucide-react";
 import { FaWhatsapp, FaYoutube, FaFacebook, FaTelegramPlane } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { motion } from "framer-motion";
@@ -18,159 +18,174 @@ type SocialLink = {
   sortOrder: number;
 };
 
+/* ── Brand icon wrapper (react-icons compat) ────────────────────────────── */
+type BrandIconProps = { className?: string; style?: React.CSSProperties };
+
 /* ── Platform definitions ────────────────────────────────────────────────── */
 type PlatformDef = {
   key: string;
-  label: string;
-  sublabel: string;
+  defaultName: string;
+  defaultDesc: string;
   action: string;
-  Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  Icon: React.ComponentType<BrandIconProps>;
   iconColor: string;
   iconBg: string;
-  topBar: string;
-  borderColor: string;
-  bgCard: string;
+  topBarClass: string;
+  borderClass: string;
+  bgClass: string;
+  hoverBorderClass: string;
+  hoverBgClass: string;
 };
 
 const PLATFORMS: PlatformDef[] = [
   {
-    key: "whatsapp_support",
-    label: "Support WhatsApp",
-    sublabel: "Assistance technique 24h/7j",
-    action: "Contacter le support",
-    Icon: FaWhatsapp,
-    iconColor: "#25D366",
-    iconBg: "rgba(37,211,102,0.12)",
-    topBar: "bg-emerald-500",
-    borderColor: "border-emerald-500/25",
-    bgCard: "bg-emerald-500/5",
-  },
-  {
     key: "whatsapp_channel",
-    label: "Chaîne WhatsApp",
-    sublabel: "Actualités & annonces officielles",
+    defaultName: "Chaîne WhatsApp",
+    defaultDesc: "Annonces officielles & nouveautés",
     action: "Rejoindre la chaîne",
     Icon: FaWhatsapp,
     iconColor: "#25D366",
-    iconBg: "rgba(37,211,102,0.12)",
-    topBar: "bg-emerald-400",
-    borderColor: "border-emerald-400/25",
-    bgCard: "bg-emerald-400/5",
+    iconBg: "rgba(37,211,102,0.13)",
+    topBarClass: "bg-emerald-400",
+    borderClass: "border-emerald-500/20",
+    bgClass: "bg-emerald-500/[0.04]",
+    hoverBorderClass: "hover:border-emerald-500/40",
+    hoverBgClass: "hover:bg-emerald-500/[0.08]",
   },
   {
     key: "youtube",
-    label: "YouTube",
-    sublabel: "Tutoriels & démonstrations",
+    defaultName: "YouTube DrimPay",
+    defaultDesc: "Tutoriels & démonstrations",
     action: "S'abonner",
     Icon: FaYoutube,
     iconColor: "#FF0000",
     iconBg: "rgba(255,0,0,0.10)",
-    topBar: "bg-red-500",
-    borderColor: "border-red-500/25",
-    bgCard: "bg-red-500/5",
+    topBarClass: "bg-red-500",
+    borderClass: "border-red-500/20",
+    bgClass: "bg-red-500/[0.04]",
+    hoverBorderClass: "hover:border-red-500/40",
+    hoverBgClass: "hover:bg-red-500/[0.08]",
   },
   {
     key: "facebook",
-    label: "Facebook",
-    sublabel: "Communauté & mises à jour",
+    defaultName: "Facebook DrimPay",
+    defaultDesc: "Communauté & mises à jour",
     action: "Suivre la page",
     Icon: FaFacebook,
     iconColor: "#1877F2",
     iconBg: "rgba(24,119,242,0.10)",
-    topBar: "bg-blue-500",
-    borderColor: "border-blue-500/25",
-    bgCard: "bg-blue-500/5",
+    topBarClass: "bg-blue-500",
+    borderClass: "border-blue-500/20",
+    bgClass: "bg-blue-500/[0.04]",
+    hoverBorderClass: "hover:border-blue-500/40",
+    hoverBgClass: "hover:bg-blue-500/[0.08]",
   },
   {
     key: "telegram",
-    label: "Telegram",
-    sublabel: "Groupe & canal Telegram",
+    defaultName: "Telegram DrimPay",
+    defaultDesc: "Alertes & mises à jour techniques",
     action: "Rejoindre",
     Icon: FaTelegramPlane,
     iconColor: "#26A5E4",
     iconBg: "rgba(38,165,228,0.10)",
-    topBar: "bg-sky-500",
-    borderColor: "border-sky-500/25",
-    bgCard: "bg-sky-500/5",
+    topBarClass: "bg-sky-500",
+    borderClass: "border-sky-500/20",
+    bgClass: "bg-sky-500/[0.04]",
+    hoverBorderClass: "hover:border-sky-500/40",
+    hoverBgClass: "hover:bg-sky-500/[0.08]",
   },
   {
     key: "twitter",
-    label: "Twitter / X",
-    sublabel: "Suivre nos actualités",
+    defaultName: "Twitter / X",
+    defaultDesc: "Actualités & fil d'infos",
     action: "Suivre",
     Icon: FaXTwitter,
-    iconColor: "#e7e7e7",
-    iconBg: "rgba(255,255,255,0.07)",
-    topBar: "bg-slate-400",
-    borderColor: "border-slate-500/25",
-    bgCard: "bg-slate-500/5",
+    iconColor: "#e2e8f0",
+    iconBg: "rgba(226,232,240,0.07)",
+    topBarClass: "bg-slate-400",
+    borderClass: "border-slate-500/20",
+    bgClass: "bg-slate-500/[0.04]",
+    hoverBorderClass: "hover:border-slate-500/40",
+    hoverBgClass: "hover:bg-slate-500/[0.08]",
   },
 ];
 
-/* ── Social card ─────────────────────────────────────────────────────────── */
-function SocialCard({
-  platform, link, index,
+/* ── Community card ──────────────────────────────────────────────────────── */
+function CommunityCard({
+  platform,
+  link,
+  index,
 }: {
   platform: PlatformDef;
   link?: SocialLink;
   index: number;
 }) {
-  const { Icon, iconColor, iconBg, topBar, borderColor, bgCard, label, sublabel, action } = platform;
+  const {
+    Icon, iconColor, iconBg, topBarClass,
+    borderClass, bgClass, hoverBorderClass, hoverBgClass,
+    defaultName, defaultDesc, action,
+  } = platform;
+
+  const name = link?.name ?? defaultName;
+  const desc = link?.description ?? defaultDesc;
   const configured = !!link;
 
-  const content = (
+  const card = (
     <motion.div
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.06 + index * 0.06, duration: 0.38, ease: "easeOut" }}
-      className={`relative rounded-2xl border overflow-hidden transition-all duration-200 ${bgCard} ${borderColor} ${
-        configured ? "hover:shadow-lg hover:scale-[1.015] cursor-pointer" : "opacity-60"
-      }`}
+      transition={{ delay: 0.1 + index * 0.07, duration: 0.38, ease: "easeOut" }}
+      className={[
+        "relative rounded-2xl border overflow-hidden transition-all duration-200",
+        bgClass, borderClass,
+        configured ? `${hoverBorderClass} ${hoverBgClass} hover:shadow-md cursor-pointer` : "opacity-55",
+      ].join(" ")}
     >
-      {/* Color top bar */}
-      <div className={`h-1 w-full ${topBar}`} />
+      {/* Top accent bar */}
+      <div className={`h-[3px] w-full ${topBarClass}`} />
 
-      <div className="p-5 flex flex-col gap-4">
-        {/* Icon + title */}
-        <div className="flex items-center gap-3">
+      <div className="p-5">
+        {/* Platform icon + name */}
+        <div className="flex items-center gap-3 mb-4">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: iconBg }}
           >
-            <Icon className="w-6 h-6" style={{ color: iconColor }} />
+            <Icon className="w-[22px] h-[22px]" style={{ color: iconColor }} />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold tracking-tight text-foreground leading-tight">
-              {link?.name ?? label}
+          <div className="min-w-0">
+            <p className="text-sm font-bold tracking-tight text-foreground leading-snug truncate">
+              {name}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-              {link?.description ?? sublabel}
+            <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-1">
+              {desc}
             </p>
           </div>
         </div>
 
         {/* Separator */}
-        <div className="h-px bg-border/60" />
+        <div className="h-px bg-border/50 mb-4" />
 
-        {/* CTA */}
-        <div className="flex items-center justify-between">
+        {/* Status + CTA */}
+        <div className="flex items-center justify-between gap-2">
           {configured ? (
-            <>
-              <span
-                className="inline-flex items-center gap-1 text-xs font-semibold"
-                style={{ color: iconColor }}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Disponible
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground bg-background/70 border border-border px-3 py-1.5 rounded-lg">
-                {action}
-                <ArrowUpRight className="w-3 h-3" />
-              </span>
-            </>
+            <span
+              className="inline-flex items-center gap-1 text-[11px] font-semibold"
+              style={{ color: iconColor }}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Disponible
+            </span>
           ) : (
-            <span className="text-xs text-muted-foreground italic">Bientôt disponible</span>
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <AlertCircle className="w-3.5 h-3.5" />
+              Non configuré
+            </span>
           )}
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/80 border border-border text-xs font-semibold text-foreground group-hover:text-primary transition-colors whitespace-nowrap shrink-0">
+            {action}
+            <ArrowUpRight className="w-3 h-3" />
+          </span>
         </div>
       </div>
     </motion.div>
@@ -178,12 +193,23 @@ function SocialCard({
 
   if (configured && link) {
     return (
-      <a href={link.url} target="_blank" rel="noopener noreferrer" className="block">
-        {content}
+      <a href={link.url} target="_blank" rel="noopener noreferrer" className="group block">
+        {card}
       </a>
     );
   }
-  return content;
+  return card;
+}
+
+/* ── Skeleton ────────────────────────────────────────────────────────────── */
+function CardSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <>
+      {[...Array(count)].map((_, i) => (
+        <div key={i} className="h-[156px] rounded-2xl bg-muted/20 animate-pulse" />
+      ))}
+    </>
+  );
 }
 
 /* ── Main page ───────────────────────────────────────────────────────────── */
@@ -199,22 +225,16 @@ export default function DashboardSupport() {
       .finally(() => setLoading(false));
   }, []);
 
-  /* Map platform key → link */
   const linkMap = Object.fromEntries(links.map(l => [l.platform, l]));
-
-  /* Featured WhatsApp support (separate, big card) */
-  const wsLink = linkMap["whatsapp_support"];
-
-  /* Community platforms (all except whatsapp_support) */
-  const communityPlatforms = PLATFORMS.filter(p => p.key !== "whatsapp_support");
+  const wsLink  = linkMap["whatsapp_support"];
 
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-8">
 
-        {/* ── Header ───────────────────────────────────────────────────── */}
+        {/* ── Page header ──────────────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.38, ease: "easeOut" }}
           className="flex items-center gap-4"
@@ -232,35 +252,35 @@ export default function DashboardSupport() {
           </div>
         </motion.div>
 
-        {/* ── WhatsApp Support — carte principale ──────────────────────── */}
+        {/* ── Support client WhatsApp — carte principale ────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.05, ease: "easeOut" }}
+          transition={{ duration: 0.4, delay: 0.06, ease: "easeOut" }}
         >
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+            Support client
+          </p>
+
           {loading ? (
-            <div className="h-[108px] rounded-2xl bg-muted/20 animate-pulse" />
+            <div className="h-[120px] rounded-2xl bg-muted/20 animate-pulse" />
           ) : wsLink ? (
-            <a
-              href={wsLink.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group block"
-            >
-              <div className="relative rounded-2xl border border-emerald-500/25 bg-emerald-500/8 hover:bg-emerald-500/12 hover:border-emerald-500/40 hover:shadow-lg transition-all duration-200 overflow-hidden">
-                <div className="h-1 w-full bg-emerald-500" />
+            <a href={wsLink.url} target="_blank" rel="noopener noreferrer" className="group block">
+              <div className="relative rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] hover:bg-emerald-500/[0.09] hover:border-emerald-500/45 hover:shadow-lg transition-all duration-200 overflow-hidden">
+                <div className="h-[3px] w-full bg-emerald-500" />
                 <div className="p-6 flex items-center gap-5">
-                  {/* Icon */}
+                  {/* WhatsApp icon */}
                   <div
                     className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{ background: "rgba(37,211,102,0.15)" }}
+                    style={{ background: "rgba(37,211,102,0.14)" }}
                   >
                     <FaWhatsapp className="w-8 h-8" style={{ color: "#25D366" }} />
                   </div>
-                  {/* Text */}
+
+                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-base font-bold tracking-tight text-foreground">
+                      <span className="text-[15px] font-bold tracking-tight text-foreground">
                         {wsLink.name}
                       </span>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
@@ -268,8 +288,8 @@ export default function DashboardSupport() {
                         En ligne
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {wsLink.description ?? "Notre équipe répond en moins de 2h. Idéal pour l'intégration, incidents de paiement ou toute urgence."}
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                      {wsLink.description}
                     </p>
                     <div className="mt-3 flex items-center gap-5">
                       <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
@@ -282,34 +302,40 @@ export default function DashboardSupport() {
                       </span>
                     </div>
                   </div>
-                  {/* CTA button */}
-                  <div className="shrink-0">
+
+                  {/* CTA */}
+                  <div className="shrink-0 hidden sm:block">
                     <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold group-hover:bg-emerald-400 transition-colors whitespace-nowrap">
-                      Contacter
+                      Support client
                       <ArrowUpRight className="w-4 h-4" />
                     </span>
                   </div>
+                </div>
+
+                {/* Mobile CTA */}
+                <div className="sm:hidden px-6 pb-5">
+                  <span className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold">
+                    Support client
+                    <ArrowUpRight className="w-4 h-4" />
+                  </span>
                 </div>
               </div>
             </a>
           ) : (
             <div className="relative rounded-2xl border border-border bg-card overflow-hidden">
-              <div className="h-1 w-full bg-emerald-500/30" />
-              <div className="p-6 flex items-center gap-5">
+              <div className="h-[3px] w-full bg-emerald-500/30" />
+              <div className="p-6 flex items-center gap-4">
                 <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 opacity-50"
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 opacity-40"
                   style={{ background: "rgba(37,211,102,0.10)" }}
                 >
-                  <FaWhatsapp className="w-8 h-8" style={{ color: "#25D366" }} />
+                  <FaWhatsapp className="w-7 h-7" style={{ color: "#25D366" }} />
                 </div>
                 <div>
-                  <p className="text-base font-bold tracking-tight text-foreground mb-1">Support WhatsApp</p>
+                  <p className="text-sm font-bold tracking-tight text-foreground mb-1">Support WhatsApp</p>
                   <p className="text-sm text-muted-foreground">
-                    Lien de support non configuré. Contactez-nous à{" "}
-                    <a
-                      href="mailto:support@drimpay.africa"
-                      className="text-primary underline underline-offset-2"
-                    >
+                    Contactez-nous à{" "}
+                    <a href="mailto:support@drimpay.africa" className="text-primary underline underline-offset-2">
                       support@drimpay.africa
                     </a>
                   </p>
@@ -320,69 +346,72 @@ export default function DashboardSupport() {
         </motion.div>
 
         {/* ── Communauté ────────────────────────────────────────────────── */}
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, delay: 0.12, ease: "easeOut" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
             Rejoindre la communauté
-          </h2>
-
-          {loading ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-[148px] rounded-2xl bg-muted/20 animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {communityPlatforms.map((platform, i) => (
-                <SocialCard
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loading ? (
+              <CardSkeleton count={5} />
+            ) : (
+              PLATFORMS.map((platform, i) => (
+                <CommunityCard
                   key={platform.key}
                   platform={platform}
                   link={linkMap[platform.key]}
                   index={i}
                 />
-              ))}
-            </div>
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        </motion.div>
 
-        {/* ── Info cards ────────────────────────────────────────────────── */}
+        {/* ── Infos utiles ──────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.45, ease: "easeOut" }}
+          transition={{ duration: 0.38, delay: 0.5, ease: "easeOut" }}
           className="grid sm:grid-cols-3 gap-4"
         >
           {[
             {
               Icon: Clock,
-              color: "text-amber-400",
-              bg: "bg-amber-400/10",
+              colorClass: "text-amber-400",
+              bgClass: "bg-amber-400/10",
               title: "Délai de réponse",
               desc: "Moins de 2 heures en moyenne sur WhatsApp pour toute demande urgente.",
             },
             {
               Icon: Mail,
-              color: "text-primary",
-              bg: "bg-primary/10",
+              colorClass: "text-primary",
+              bgClass: "bg-primary/10",
               title: "Email support",
-              desc: "support@drimpay.africa — pour les demandes non urgentes et les rapports détaillés.",
+              desc: "support@drimpay.africa — pour les demandes détaillées et les rapports.",
             },
             {
               Icon: Zap,
-              color: "text-sky-400",
-              bg: "bg-sky-400/10",
+              colorClass: "text-sky-400",
+              bgClass: "bg-sky-400/10",
               title: "Statut plateforme",
-              desc: "Consultez le statut en temps réel sur status.drimpay.africa.",
+              desc: "Consultez l'état des services en temps réel sur status.drimpay.africa.",
             },
           ].map((item, i) => {
             const Icon = item.Icon;
             return (
               <div key={i} className="p-4 rounded-xl bg-card border border-border">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${item.bg}`}>
-                  <Icon className={`w-4 h-4 ${item.color}`} />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${item.bgClass}`}>
+                  <Icon className={`w-4 h-4 ${item.colorClass}`} />
                 </div>
-                <p className="text-sm font-semibold tracking-tight text-foreground mb-1">{item.title}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                <p className="text-sm font-semibold tracking-tight text-foreground mb-1">
+                  {item.title}
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {item.desc}
+                </p>
               </div>
             );
           })}
