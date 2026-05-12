@@ -1,56 +1,52 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
-  CheckCircle2, ArrowRight, Zap, User, Rocket, TrendingUp,
-  Building2, Globe, Shield, PhoneCall, Star,
+  CheckCircle2, XCircle, ArrowRight, Zap, User,
+  Building2, Globe, Shield, PhoneCall, TrendingUp, Star,
 } from "lucide-react";
 import { useT, useLang } from "@/lib/i18n";
 import { useSEO, webPageSchema, faqSchema, SITE_URL } from "@/lib/seo";
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
-const planIcons = [Rocket, TrendingUp, Building2];
-const planColors = [
-  { icon: "text-blue-500", iconBg: "bg-blue-500/10", border: "border-[#E5E3DC]", shadow: "" },
-  { icon: "text-[#3a7a00]", iconBg: "bg-[#B5F03C]/15", border: "border-[#B5F03C]", shadow: "shadow-xl" },
-  { icon: "text-purple-500", iconBg: "bg-purple-500/10", border: "border-[#E5E3DC]", shadow: "" },
-];
-
 export default function Pricing() {
   const t = useT();
   const lang = useLang();
   useSEO({
     title: lang === "fr"
-      ? "Tarification DrimPay — 5% Particuliers (négociable) · 3% Entreprises, Zéro Frais Cachés"
-      : "DrimPay Pricing — 5% Individuals (negotiable) · 3% Businesses, No Hidden Fees",
+      ? "Tarification DrimPay — 5% Particuliers (Payin) · 3% Entreprises (Payin & Payout)"
+      : "DrimPay Pricing — 5% Personal (Payin) · 3% Business (Payin & Payout)",
     description: lang === "fr"
-      ? "Tarification transparente DrimPay : 5% pour les particuliers sur Payin et Payout (négociable selon volume), 3% fixe pour les entreprises. Sans abonnement, sans frais cachés."
-      : "Transparent DrimPay pricing: 5% for individuals on Payin and Payout (negotiable based on volume), flat 3% for businesses. No subscription, no hidden fees.",
+      ? "Tarification transparente DrimPay : 5% pour les particuliers sur Payin uniquement, 3% fixe pour les entreprises sur Payin et Payout. Sans abonnement, sans frais cachés."
+      : "Transparent DrimPay pricing: 5% for personal accounts on Payin only, flat 3% for businesses on Payin and Payout. No subscription, no hidden fees.",
     keywords: lang === "fr"
-      ? "tarif paiement Afrique, frais Mobile Money, 5% particuliers, 3% entreprises, prix API paiement, taux négociable volume"
-      : "Africa payment pricing, Mobile Money fees, 5% individuals, 3% businesses, payment API cost, negotiable rate",
+      ? "tarif paiement Afrique, frais Mobile Money, 5% particuliers, 3% entreprises, prix API paiement"
+      : "Africa payment pricing, Mobile Money fees, 5% personal, 3% business, payment API cost",
     jsonLd: [
       webPageSchema(
         `${SITE_URL}/${lang}/pricing`,
         lang === "fr" ? "Tarification DrimPay" : "DrimPay Pricing",
-        lang === "fr" ? "5% particuliers (négociable), 3% entreprises. Frais transparents pour vos paiements Mobile Money." : "5% individuals (negotiable), 3% businesses. Transparent fees for your Mobile Money payments.",
+        lang === "fr" ? "5% particuliers (Payin uniquement), 3% entreprises (Payin & Payout). Frais transparents." : "5% personal (Payin only), 3% businesses (Payin & Payout). Transparent fees.",
         [{ name: lang === "fr" ? "Tarification" : "Pricing", url: `${SITE_URL}/${lang}/pricing` }],
       ),
       faqSchema(lang === "fr" ? [
-        { question: "Quels sont les frais DrimPay pour les particuliers ?", answer: "DrimPay applique un taux de 5% sur chaque transaction (Payin et Payout) pour les particuliers. Ce taux est négociable si vous atteignez un bon volume de transactions. Aucun frais mensuel, aucun frais caché." },
-        { question: "Quels sont les frais DrimPay pour les entreprises ?", answer: "DrimPay applique un taux fixe de 3% sur chaque transaction réussie pour les entreprises (Starter, Business). Les plans Entreprise bénéficient d'un taux négocié en dessous de 3% selon le volume." },
-        { question: "Le taux de 5% pour les particuliers est-il négociable ?", answer: "Oui. Si vous réalisez un bon volume de transactions, notre équipe peut vous proposer un taux préférentiel. Contactez-nous via la page Contact pour discuter de vos conditions." },
+        { question: "Quels sont les frais DrimPay pour les particuliers ?", answer: "DrimPay applique un taux de 5% sur le Payin pour les particuliers. Le Payout n'est pas disponible sur les comptes personnels. Ce taux est négociable selon le volume." },
+        { question: "Quels sont les frais DrimPay pour les entreprises ?", answer: "DrimPay applique un taux fixe de 3% sur chaque transaction réussie pour les entreprises, aussi bien sur le Payin que sur le Payout." },
+        { question: "Pourquoi le Payout n'est-il pas disponible pour les particuliers ?", answer: "Le Payout (décaissement) est réservé aux comptes entreprise vérifiés (KYB). Les particuliers peuvent uniquement encaisser des paiements via le Payin." },
         { question: "Y a-t-il un abonnement mensuel ?", answer: "Non. DrimPay fonctionne sur un modèle pay-as-you-go. Vous payez uniquement sur les transactions réussies." },
         { question: "DrimPay est-il disponible en mode sandbox ?", answer: "Oui. Chaque compte DrimPay inclut un environnement sandbox complet pour tester vos intégrations sans argent réel." },
       ] : [
-        { question: "What are DrimPay's fees for individuals?", answer: "DrimPay charges a 5% rate on each transaction (Payin and Payout) for individuals. This rate is negotiable if you reach a good transaction volume. No monthly fees, no hidden charges." },
-        { question: "What are DrimPay's fees for businesses?", answer: "DrimPay charges a flat 3% on every successful transaction for businesses (Starter, Business). Enterprise plans benefit from a negotiated rate below 3% based on volume." },
-        { question: "Is the 5% rate for individuals negotiable?", answer: "Yes. If you process a good volume of transactions, our team can offer you a preferential rate. Contact us via the Contact page to discuss your terms." },
+        { question: "What are DrimPay's fees for personal accounts?", answer: "DrimPay charges 5% on Payin for personal accounts. Payout is not available on personal accounts. The rate is negotiable based on volume." },
+        { question: "What are DrimPay's fees for business accounts?", answer: "DrimPay charges a flat 3% on every successful transaction for businesses, on both Payin and Payout." },
+        { question: "Why is Payout not available for personal accounts?", answer: "Payout (disbursement) is reserved for KYB-verified business accounts. Personal accounts can only collect payments via Payin." },
         { question: "Is there a monthly subscription?", answer: "No. DrimPay operates on a pay-as-you-go model. You only pay on successful transactions." },
         { question: "Is sandbox mode available?", answer: "Yes. Every DrimPay account includes a full sandbox environment for testing integrations without real money." },
       ]),
     ],
   });
+
+  const p = t.pricing.personal;
+  const b = t.pricing.businessCard;
 
   return (
     <div className="bg-[#F8F6F1]">
@@ -68,27 +64,18 @@ export default function Pricing() {
         </div>
       </div>
 
-      {/* ── PERSONAL SECTION ─────────────────────────────────────── */}
-      <div className="pb-6">
+      {/* ── TWO CARDS ─────────────────────────────────────────────── */}
+      <div className="pb-24">
         <div className="container mx-auto px-4 md:px-8">
-          <motion.div initial="hidden" animate="visible" variants={{ ...fadeUp, visible: { ...fadeUp.visible, transition: { duration: 0.5, delay: 0.1 } } }} className="mb-8 flex items-center gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <User className="w-4 h-4 text-blue-500" />
-              </div>
-              <span className="text-lg font-extrabold text-[#0f0f0f]">{t.pricing.personalLabel}</span>
-            </div>
-            <div className="flex-1 h-px bg-[#E5E3DC]" />
-          </motion.div>
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
 
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.15 } } }}
-            className="max-w-lg mx-auto"
-          >
-            <div className="rounded-2xl border border-[#E5E3DC] bg-white p-8 flex flex-col relative overflow-hidden">
-              {/* Decorative blob */}
+            {/* Personal Card */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }}
+              className="rounded-2xl border border-[#E5E3DC] bg-white p-8 flex flex-col relative overflow-hidden"
+            >
               <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-blue-500/5 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
               <div className="flex items-start justify-between mb-6">
@@ -97,32 +84,88 @@ export default function Pricing() {
                     <User className="w-6 h-6 text-blue-500" />
                   </div>
                   <div>
-                    <p className="font-extrabold text-xl text-[#0f0f0f]">{t.pricing.personal.name}</p>
-                    <p className="text-xs text-[#0f0f0f]/45 mt-0.5">{t.pricing.personal.per}</p>
+                    <p className="font-extrabold text-xl text-[#0f0f0f]">{p.name}</p>
+                    <p className="text-xs text-[#0f0f0f]/45 mt-0.5">{p.per}</p>
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 text-xs font-semibold border border-blue-500/20">
-                  <Star className="w-3 h-3" /> {t.pricing.personal.badge}
+                  <Star className="w-3 h-3" /> {p.badge}
                 </span>
               </div>
 
               <div className="mb-2">
-                <span className="text-5xl font-extrabold text-[#0f0f0f]">{t.pricing.personal.rate}</span>
-                <span className="text-[#0f0f0f]/40 text-sm ml-2">{t.pricing.personal.per}</span>
+                <span className="text-5xl font-extrabold text-[#0f0f0f]">{p.rate}</span>
+                <span className="text-[#0f0f0f]/40 text-sm ml-2">{p.per}</span>
               </div>
 
               <div className="mb-4">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold">
-                  <Zap className="w-3 h-3" /> {t.pricing.personal.negotiable}
+                  <Zap className="w-3 h-3" /> {p.negotiable}
                 </span>
               </div>
 
-              <p className="text-[#0f0f0f]/55 text-sm leading-relaxed mb-6">{t.pricing.personal.desc}</p>
+              <p className="text-[#0f0f0f]/55 text-sm leading-relaxed mb-6">{p.desc}</p>
 
-              <ul className="grid grid-cols-2 gap-2.5 mb-8">
-                {t.pricing.personal.features.map((f, i) => (
+              <ul className="space-y-2.5 mb-8 flex-1">
+                {p.features.map((f, i) => {
+                  const isRestriction = f.toLowerCase().includes("payout non disponible") || f.toLowerCase().includes("payout not available");
+                  return (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      {isRestriction
+                        ? <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                        : <CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0" />
+                      }
+                      <span className={isRestriction ? "text-[#0f0f0f]/40" : "text-[#0f0f0f]/60"}>{f}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <Link href="/signup">
+                <button className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm border border-[#E5E3DC] bg-white text-[#0f0f0f] hover:shadow-md transition-all">
+                  <User className="w-4 h-4" />
+                  {p.cta}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </motion.div>
+
+            {/* Business Card */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.2 } } }}
+              className="rounded-2xl border border-[#B5F03C] bg-white p-8 flex flex-col relative overflow-hidden shadow-xl"
+            >
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-[#B5F03C]/10 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#B5F03C]/20 text-[#3a7a00] text-xs font-semibold mb-4 w-fit border border-[#B5F03C]/30">
+                <Zap className="w-3 h-3" /> {b.badge}
+              </div>
+
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#B5F03C]/15 flex items-center justify-center shrink-0">
+                    <Building2 className="w-6 h-6 text-[#3a7a00]" />
+                  </div>
+                  <div>
+                    <p className="font-extrabold text-xl text-[#0f0f0f]">{b.name}</p>
+                    <p className="text-xs text-[#0f0f0f]/45 mt-0.5">{b.per}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <span className="text-5xl font-extrabold text-[#0f0f0f]">{b.rate}</span>
+                <span className="text-[#0f0f0f]/40 text-sm ml-2">{b.per}</span>
+              </div>
+
+              <p className="text-[#0f0f0f]/55 text-sm leading-relaxed mb-6">{b.desc}</p>
+
+              <ul className="space-y-2.5 mb-8 flex-1">
+                {b.features.map((f, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-[#3a7a00] shrink-0" />
                     <span className="text-[#0f0f0f]/60">{f}</span>
                   </li>
                 ))}
@@ -130,89 +173,13 @@ export default function Pricing() {
 
               <Link href="/signup">
                 <button className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-[#0f0f0f] text-white hover:bg-[#0f0f0f]/85 transition-all shadow-md">
-                  <User className="w-4 h-4" />
-                  {t.pricing.personal.cta}
+                  <Building2 className="w-4 h-4" />
+                  {b.cta}
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </Link>
-            </div>
-          </motion.div>
-        </div>
-      </div>
+            </motion.div>
 
-      {/* ── BUSINESS SECTION ─────────────────────────────────────── */}
-      <div className="pt-12 pb-20">
-        <div className="container mx-auto px-4 md:px-8">
-          <motion.div initial="hidden" animate="visible" variants={{ ...fadeUp, visible: { ...fadeUp.visible, transition: { duration: 0.5, delay: 0.2 } } }} className="mb-8 flex items-center gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#B5F03C]/20 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-[#3a7a00]" />
-              </div>
-              <span className="text-lg font-extrabold text-[#0f0f0f]">{t.pricing.businessLabel}</span>
-            </div>
-            <div className="flex-1 h-px bg-[#E5E3DC]" />
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {t.pricing.plans.map((plan, i) => {
-              const Icon = planIcons[i];
-              const colors = planColors[i];
-              const isPopular = i === 1;
-              return (
-                <motion.div
-                  key={i}
-                  initial="hidden"
-                  animate="visible"
-                  variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.25 + i * 0.08 } } }}
-                  className={`rounded-2xl p-8 border flex flex-col relative overflow-hidden ${colors.border} ${colors.shadow} bg-white`}
-                >
-                  {/* Decorative blob */}
-                  <div className={`absolute top-0 right-0 w-36 h-36 rounded-full ${colors.iconBg} -translate-y-1/2 translate-x-1/2 opacity-60 pointer-events-none`} />
-
-                  {isPopular && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#B5F03C]/20 text-[#3a7a00] text-xs font-semibold mb-4 w-fit border border-[#B5F03C]/30">
-                      <Zap className="w-3 h-3" /> {t.pricing.mostPopular}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className={`w-11 h-11 rounded-2xl ${colors.iconBg} flex items-center justify-center shrink-0`}>
-                      <Icon className={`w-5 h-5 ${colors.icon}`} />
-                    </div>
-                    <h2 className="text-xl font-extrabold text-[#0f0f0f]">{plan.name}</h2>
-                  </div>
-
-                  <div className="mb-1">
-                    <span className="text-4xl font-extrabold text-[#0f0f0f]">{plan.rate}</span>
-                  </div>
-                  <p className="text-xs text-[#0f0f0f]/40 mb-4">{plan.per}</p>
-                  <p className="text-[#0f0f0f]/55 text-sm leading-relaxed mb-7">{plan.desc}</p>
-
-                  <ul className="space-y-2.5 mb-10 flex-1">
-                    {plan.features.map((f, j) => (
-                      <li key={j} className="flex items-start gap-2.5 text-sm">
-                        <CheckCircle2 className={`w-4 h-4 ${colors.icon} shrink-0 mt-0.5`} />
-                        <span className="text-[#0f0f0f]/60">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link href={i === 2 ? "/contact" : "/signup"}>
-                    <button className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all ${
-                      isPopular
-                        ? "bg-[#0f0f0f] text-white hover:bg-[#0f0f0f]/85 shadow-md"
-                        : i === 2
-                        ? "bg-purple-500/10 text-purple-700 border border-purple-500/20 hover:bg-purple-500/20"
-                        : "border border-[#E5E3DC] bg-white text-[#0f0f0f] hover:shadow-md"
-                    }`}>
-                      {i === 2 ? <PhoneCall className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
-                      {plan.cta}
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </Link>
-                </motion.div>
-              );
-            })}
           </div>
         </div>
       </div>
