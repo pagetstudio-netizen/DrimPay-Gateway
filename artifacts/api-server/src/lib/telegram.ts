@@ -120,10 +120,10 @@ export async function notifyAdminLogin(email: string, ip: string) {
 export async function notifyPayin(opts: {
   company: string; amount: number; fee: number; net: number;
   currency: string; operator: string; phone: string;
-  country: string; reference: string; mode: string; source: "api" | "link";
+  country: string; reference: string; mode: string; source: "api" | "link" | "qr";
 }) {
   const large = opts.amount >= LARGE;
-  const src = opts.source === "api" ? "API" : "Lien";
+  const src = opts.source === "api" ? "API" : opts.source === "qr" ? "QR" : "Lien";
   const header = large
     ? `🚨 <b>GROS MONTANT — Paiement (${src})</b>`
     : `💰 <b>Paiement Reçu (${src})</b>`;
