@@ -22,6 +22,7 @@ import apiIconImg      from "@assets/6213702_1778508885407.png";
 import supportImg      from "@assets/contact-us.1e0b8969a82ca2f9bd2d0b6df0fc7b96_1778539656598.webp";
 import massPaiementImg from "@assets/téléchargement_(57)_1778601564265.png";
 import linkPaiementImg from "@assets/1751761_1778601564313.png";
+import apiDocImg       from "@assets/1437214_1778601764910.png";
 
 type NavItem = {
   href: string;
@@ -44,11 +45,11 @@ const navItems: NavItem[] = [
 ];
 
 const apiItems: NavItem[] = [
-  { href: "/docs/payin",                     label: "API Pay-in",           icon: ArrowDownLeft },
-  { href: "/docs/payout",                    label: "API Pay-out",          icon: ArrowUpRight },
-  { href: "/dashboard/docs/virtual-cards",   label: "Cartes Virtuelles",    icon: CreditCard },
-  { href: "/dashboard/docs/credits",         label: "Crédits Communication",icon: Radio },
-  { href: "/dashboard/docs/mass-payout",     label: "Paiement de Masse",    icon: Users },
+  { href: "/docs/payin",                     label: "API Pay-in",           img: apiDocImg },
+  { href: "/docs/payout",                    label: "API Pay-out",          img: apiDocImg },
+  { href: "/dashboard/docs/virtual-cards",   label: "Cartes Virtuelles",    img: apiDocImg },
+  { href: "/dashboard/docs/credits",         label: "Crédits Communication",img: apiDocImg },
+  { href: "/dashboard/docs/mass-payout",     label: "Paiement de Masse",    img: apiDocImg },
 ];
 
 function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
