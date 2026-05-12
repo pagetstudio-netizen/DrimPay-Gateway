@@ -153,7 +153,7 @@ export const organizationSchema = {
     height: 512,
   },
   description:
-    "Passerelle de paiement Mobile Money unifiée pour l'Afrique de l'Ouest et Centrale.",
+    "Réinventez les paiements en Afrique. Avec DrimPay, particuliers et entreprises accèdent à une infrastructure fintech puissante pour collecter, envoyer et gérer des paiements Mobile Money rapidement, en toute sécurité et à grande échelle à travers l'Afrique de l'Ouest & Centrale.",
   areaServed: [
     "Togo", "Bénin", "Sénégal", "Côte d'Ivoire",
     "Cameroun", "Mali", "Burkina Faso",
@@ -170,7 +170,7 @@ export const websiteSchema = {
   url: SITE_URL,
   name: SITE_NAME,
   description:
-    "Infrastructure de paiement API-first pour l'Afrique de l'Ouest et Centrale.",
+    "Réinventez les paiements en Afrique. Avec DrimPay, particuliers et entreprises accèdent à une infrastructure fintech puissante pour collecter, envoyer et gérer des paiements Mobile Money rapidement, en toute sécurité et à grande échelle à travers l'Afrique de l'Ouest & Centrale.",
   publisher: { "@id": `${SITE_URL}/#organization` },
   inLanguage: ["fr-FR", "en-US"],
   potentialAction: {

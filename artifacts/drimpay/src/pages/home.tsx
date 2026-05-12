@@ -195,8 +195,8 @@ export default function Home() {
       ? "DrimPay — Infrastructure de Paiement Mobile Money pour l'Afrique"
       : "DrimPay — Mobile Money Payment Infrastructure for Africa",
     description: lang === "fr"
-      ? "Intégrez Orange Money, Wave, MTN, Moov en une seule API. Encaissements, décaissements et wallets pour 7 pays d'Afrique de l'Ouest et Centrale. Frais fixes à 3%, zéro frais cachés."
-      : "Integrate Orange Money, Wave, MTN, Moov with one API. Pay-ins, pay-outs and wallets across 7 West & Central African countries. Flat 3% fee, no hidden costs.",
+      ? "Réinventez les paiements en Afrique. Avec DrimPay, particuliers et entreprises accèdent à une infrastructure fintech puissante pour collecter, envoyer et gérer des paiements Mobile Money rapidement, en toute sécurité et à grande échelle à travers l'Afrique de l'Ouest & Centrale."
+      : "Reinvent payments in Africa. With DrimPay, individuals and businesses access a powerful fintech infrastructure to collect, send and manage Mobile Money payments quickly, securely and at scale across West & Central Africa.",
     keywords: lang === "fr"
       ? "infrastructure paiement Afrique, API Mobile Money, encaissement Afrique, décaissement mobile, fintech Afrique francophone, passerelle paiement Togo Bénin Sénégal"
       : "Africa payment API, Mobile Money integration, fintech West Africa, payment gateway Africa",
