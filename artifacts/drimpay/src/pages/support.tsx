@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import {
   CreditCard, ShieldCheck, Code2, QrCode, Percent, Lock,
-  ChevronDown, ChevronRight, Clock, Mail, ExternalLink,
-  Headphones, MessageCircle, CheckCircle,
+  ChevronDown, ChevronRight, Clock, Mail, X,
+  Headphones, MessageCircle, CheckCircle, ArrowRight,
 } from "lucide-react";
 import { FaWhatsapp, FaFacebook, FaLinkedin, FaInstagram, FaYoutube } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
@@ -20,6 +20,28 @@ type SocialLink = {
   active: boolean;
 };
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const fadeIn = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+};
+
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+};
+
+const staggerFast = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07 } },
+};
+
+const viewport = { once: true, margin: "-60px" };
+
 // ── Help categories ─────────────────────────────────────────────────────────
 
 const CATEGORIES = [
@@ -29,7 +51,7 @@ const CATEGORIES = [
     iconColor: "text-blue-600",
     title: "Paiements & Transactions",
     desc: "Questions sur les paiements, retraits, statuts et remboursements.",
-    href: "#payments",
+    key: "payments",
   },
   {
     icon: ShieldCheck,
@@ -37,7 +59,7 @@ const CATEGORIES = [
     iconColor: "text-green-600",
     title: "Comptes & Vérification",
     desc: "Aide sur l'inscription, la vérification KYB/KYC et la gestion de compte.",
-    href: "#accounts",
+    key: "accounts",
   },
   {
     icon: Code2,
@@ -45,7 +67,7 @@ const CATEGORIES = [
     iconColor: "text-purple-600",
     title: "API & Intégration",
     desc: "Documentation, clés API, webhooks et intégration technique.",
-    href: "#api",
+    key: "api",
   },
   {
     icon: QrCode,
@@ -53,7 +75,7 @@ const CATEGORIES = [
     iconColor: "text-orange-600",
     title: "Pay with QR",
     desc: "Tout savoir sur la génération de QR codes et les paiements.",
-    href: "#qr",
+    key: "qr",
   },
   {
     icon: Percent,
@@ -61,7 +83,7 @@ const CATEGORIES = [
     iconColor: "text-pink-600",
     title: "Frais & Tarification",
     desc: "Comprendre nos frais, tarifs et limitations de transactions.",
-    href: "#fees",
+    key: "fees",
   },
   {
     icon: Lock,
@@ -69,7 +91,7 @@ const CATEGORIES = [
     iconColor: "text-teal-600",
     title: "Sécurité",
     desc: "Conseils de sécurité, bonnes pratiques et protection de votre compte.",
-    href: "#security",
+    key: "security",
   },
 ];
 
@@ -77,24 +99,84 @@ const CATEGORIES = [
 
 const FAQ_ITEMS = [
   {
+    category: "payments",
     q: "Quels sont les moyens de paiement acceptés par DrimPay ?",
     a: "DrimPay prend en charge MTN Mobile Money, Orange Money, Moov Money, Wave, TMoney et d'autres opérateurs dans 9 pays d'Afrique de l'Ouest et Centrale : Togo, Bénin, Cameroun, Burkina Faso, Mali, Sénégal, Côte d'Ivoire, Ghana et Nigeria.",
   },
   {
-    q: "Comment puis-je créer un compte DrimPay ?",
-    a: "Rendez-vous sur drimpay.africa, cliquez sur « Créer un compte », remplissez le formulaire avec vos informations professionnelles, puis soumettez votre dossier KYB. L'approbation se fait généralement en 24-48 heures ouvrées.",
-  },
-  {
+    category: "payments",
     q: "Combien de temps prend un paiement ?",
     a: "La grande majorité des paiements Mobile Money sont traités en moins de 60 secondes. En mode sandbox (test), les transactions sont validées instantanément. En mode live, le délai dépend de l'opérateur.",
   },
   {
+    category: "payments",
+    q: "Que faire si un paiement est en statut « pending » depuis longtemps ?",
+    a: "Si un paiement reste en attente plus de 5 minutes, contactez notre support WhatsApp avec la référence de la transaction. Notre équipe vérifiera le statut auprès de l'opérateur et vous donnera une réponse rapide.",
+  },
+  {
+    category: "accounts",
+    q: "Comment puis-je créer un compte DrimPay ?",
+    a: "Rendez-vous sur drimpay.africa, cliquez sur « Créer un compte », remplissez le formulaire avec vos informations professionnelles, puis soumettez votre dossier KYB. L'approbation se fait généralement en 24-48 heures ouvrées.",
+  },
+  {
+    category: "accounts",
+    q: "Quels documents sont nécessaires pour la vérification KYB ?",
+    a: "Pour la vérification KYB (Know Your Business), vous aurez besoin de votre RCCM ou équivalent, les statuts de l'entreprise, le numéro d'enregistrement, le type d'activité, le pays d'incorporation et l'adresse du siège social.",
+  },
+  {
+    category: "accounts",
+    q: "Puis-je utiliser DrimPay en mode sandbox sans KYB approuvé ?",
+    a: "Oui. Le mode sandbox est accessible immédiatement après la création de votre compte, sans attendre l'approbation KYB. Vous pouvez tester l'intégration API, les pay-ins et pay-outs en simulation. Le mode live nécessite un KYB approuvé.",
+  },
+  {
+    category: "api",
     q: "Comment intégrer l'API DrimPay à mon application ?",
     a: "Consultez notre documentation API disponible dans votre tableau de bord. Générez une clé API, choisissez votre endpoint (Pay-in ou Pay-out), et testez d'abord en sandbox. Nous fournissons des exemples de code en plusieurs langages.",
   },
   {
-    q: "Quels sont les frais de transaction ?",
+    category: "api",
+    q: "Comment fonctionnent les webhooks DrimPay ?",
+    a: "Configurez une URL de callback dans vos paramètres API. DrimPay envoie une requête POST vers cette URL à chaque changement de statut de transaction (pending → success ou failed). Vérifiez la signature HMAC-SHA256 pour sécuriser la réception.",
+  },
+  {
+    category: "api",
+    q: "Quelle est la différence entre une clé sandbox et une clé live ?",
+    a: "Les clés sandbox (préfixe dp_test_) permettent de tester sans traitement réel. Les clés live (dp_live_) déclenchent de vrais paiements Mobile Money. Ne partagez jamais vos clés live. Régénérez-les en cas de compromission.",
+  },
+  {
+    category: "qr",
+    q: "Comment créer un QR code de paiement ?",
+    a: "Dans votre tableau de bord, allez dans la section « Pay with QR », cliquez sur « Générer un QR », choisissez le type (montant fixe ou flexible), le pays par défaut et la devise. Téléchargez le QR en SVG, imprimez-le et affichez-le en boutique.",
+  },
+  {
+    category: "qr",
+    q: "Mon client a besoin d'une application pour scanner le QR ?",
+    a: "Non. Votre client scan le QR code avec l'appareil photo de son téléphone, ce qui ouvre la page de paiement DrimPay directement dans son navigateur. Il choisit l'opérateur, entre son numéro et confirme. Aucune application à télécharger.",
+  },
+  {
+    category: "qr",
+    q: "Puis-je définir un montant fixe sur mon QR code ?",
+    a: "Oui. Lors de la création du QR, choisissez le type « Montant fixe » et entrez le montant. Le client ne pourra pas modifier le montant lors du paiement. Idéal pour les menus du jour, les tickets d'entrée ou les services à prix fixe.",
+  },
+  {
+    category: "fees",
+    q: "Quels sont les frais de transaction DrimPay ?",
     a: "DrimPay applique des frais transparents de 3% sur chaque transaction (pay-in et pay-out). Aucun frais cachés, aucun frais d'installation. Les frais sont déduits automatiquement du montant net crédité sur votre wallet.",
+  },
+  {
+    category: "fees",
+    q: "Y a-t-il des frais d'abonnement ou d'inscription ?",
+    a: "Non. L'inscription sur DrimPay est entièrement gratuite. Aucun abonnement mensuel. Vous ne payez que 3% par transaction réussie. Si la transaction échoue, aucun frais n'est prélevé.",
+  },
+  {
+    category: "security",
+    q: "Comment DrimPay protège-t-il mes données et transactions ?",
+    a: "Toutes les communications sont chiffrées en TLS 1.3. Les clés API sont stockées sous forme hachée. Les webhooks sont signés avec HMAC-SHA256. Nous appliquons une authentification à deux facteurs et des audits de sécurité réguliers.",
+  },
+  {
+    category: "security",
+    q: "Que faire si je pense que mon compte est compromis ?",
+    a: "Révoquez immédiatement vos clés API depuis votre tableau de bord, changez votre mot de passe, puis contactez notre support en urgence sur WhatsApp. Nous bloquerons l'accès suspect et vous guiderons pour sécuriser votre compte.",
   },
 ];
 
@@ -126,7 +208,7 @@ function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.22 }}
             className="overflow-hidden"
           >
             <p className="pb-4 text-sm text-gray-600 leading-relaxed">{a}</p>
@@ -142,14 +224,14 @@ function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
 export default function SupportPage() {
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const faqRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch(`${BASE}/api/support/links`)
       .then(r => r.json())
       .then(d => setLinks(Array.isArray(d) ? d : []))
-      .catch(() => setLinks([]))
-      .finally(() => setLoading(false));
+      .catch(() => setLinks([]));
   }, []);
 
   const linkMap = Object.fromEntries(links.map(l => [l.platform, l]));
@@ -162,24 +244,63 @@ export default function SupportPage() {
     return l?.url ?? null;
   };
 
+  const handleCategoryClick = (key: string) => {
+    setActiveCategory(key);
+    setOpenFaq(0);
+    setTimeout(() => {
+      faqRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
+  const filteredFaq = activeCategory
+    ? FAQ_ITEMS.filter(f => f.category === activeCategory)
+    : FAQ_ITEMS;
+
+  const activeCat = CATEGORIES.find(c => c.key === activeCategory);
+
   return (
     <div className="bg-white text-gray-900">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#eef2ff] via-[#f8faff] to-white py-14 px-4">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center">
-          <div className="space-y-6">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold tracking-wide">
+
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="visible"
+            className="space-y-6"
+          >
+            <motion.span
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold tracking-wide"
+            >
               Support DrimPay
-            </span>
-            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight text-gray-900">
+            </motion.span>
+
+            <motion.h1
+              variants={fadeUp}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="text-4xl md:text-5xl font-extrabold leading-tight text-gray-900"
+            >
               Nous sommes là<br />
               pour <span className="text-blue-600">vous aider</span>
-            </h1>
-            <p className="text-gray-500 text-base leading-relaxed max-w-md">
+            </motion.h1>
+
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="text-gray-500 text-base leading-relaxed max-w-md"
+            >
               Notre équipe support est disponible pour vous accompagner à chaque étape. Choisissez le canal qui vous convient le mieux.
-            </p>
-            <div className="flex flex-wrap gap-3">
+            </motion.p>
+
+            <motion.div
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-wrap gap-3"
+            >
               <a
                 href={wsUrl}
                 target="_blank"
@@ -196,14 +317,24 @@ export default function SupportPage() {
                 <Mail className="w-4 h-4" />
                 Envoyer un e-mail
               </a>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            </motion.div>
+
+            <motion.div
+              variants={fadeIn}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex items-center gap-1.5 text-xs text-gray-500"
+            >
               <Clock className="w-3.5 h-3.5 text-gray-400" />
               <span>Temps de réponse moyen : moins de 15 minutes</span>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="flex justify-center md:justify-end">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.88, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+            className="flex justify-center md:justify-end"
+          >
             <div className="relative">
               <div className="w-56 h-56 md:w-72 md:h-72 rounded-full bg-blue-100/60 flex items-center justify-center">
                 <img
@@ -212,32 +343,62 @@ export default function SupportPage() {
                   className="w-48 h-48 md:w-64 md:h-64 object-contain drop-shadow-xl"
                 />
               </div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-blue-500/20" />
-              <div className="absolute top-8 -left-4 w-4 h-4 rounded-full bg-indigo-400/30" />
-              <div className="absolute -bottom-3 right-8 w-5 h-5 rounded-full bg-blue-300/40" />
+              <motion.div
+                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+                className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-blue-500/20"
+              />
+              <motion.div
+                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ delay: 0.65, type: "spring", stiffness: 200 }}
+                className="absolute top-8 -left-4 w-4 h-4 rounded-full bg-indigo-400/30"
+              />
+              <motion.div
+                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ delay: 0.8, type: "spring", stiffness: 200 }}
+                className="absolute -bottom-3 right-8 w-5 h-5 rounded-full bg-blue-300/40"
+              />
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ── Categories ────────────────────────────────────────────────────── */}
       <section className="py-16 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewport}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center mb-10"
+          >
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Comment pouvons-nous vous aider ?</h2>
             <p className="text-gray-500 mt-2 text-sm">Parcourez nos rubriques d'aide les plus populaires</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {CATEGORIES.map((cat, i) => {
+          </motion.div>
+
+          <motion.div
+            variants={staggerFast}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewport}
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"
+          >
+            {CATEGORIES.map((cat) => {
               const Icon = cat.icon;
+              const isActive = activeCategory === cat.key;
               return (
-                <motion.a
-                  key={cat.title}
-                  href={cat.href}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.06, duration: 0.35 }}
-                  className="group block p-5 rounded-2xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-md transition-all duration-200"
+                <motion.button
+                  key={cat.key}
+                  variants={fadeUp}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  onClick={() => handleCategoryClick(cat.key)}
+                  className={`group text-left p-5 rounded-2xl border transition-all duration-200 ${
+                    isActive
+                      ? "border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200"
+                      : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-md"
+                  }`}
                 >
                   <div className={`w-12 h-12 rounded-xl ${cat.bg} flex items-center justify-center mb-4`}>
                     <Icon className={`w-6 h-6 ${cat.iconColor}`} />
@@ -247,41 +408,119 @@ export default function SupportPage() {
                   <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 group-hover:gap-2 transition-all">
                     Voir les articles <ChevronRight className="w-3.5 h-3.5" />
                   </span>
-                </motion.a>
+                </motion.button>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ── FAQ + Side card ───────────────────────────────────────────────── */}
-      <section className="py-16 px-4 bg-gray-50">
+      <section ref={faqRef} className="py-16 px-4 bg-gray-50 scroll-mt-20">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-10">
 
           {/* FAQ */}
           <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Questions fréquentes</h2>
-              <a href="#faq" className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1">
-                Voir toutes les FAQ <ChevronRight className="w-3.5 h-3.5" />
-              </a>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-200 px-6 py-2 shadow-sm">
-              {FAQ_ITEMS.map((item, i) => (
-                <FaqItem
-                  key={i}
-                  q={item.q}
-                  a={item.a}
-                  isOpen={openFaq === i}
-                  onToggle={() => setOpenFaq(openFaq === i ? null : i)}
-                />
-              ))}
-            </div>
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={viewport}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="flex items-center justify-between mb-6 gap-4"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <h2 className="text-xl font-bold text-gray-900 shrink-0">Questions fréquentes</h2>
+                <AnimatePresence>
+                  {activeCategory && activeCat && (
+                    <motion.span
+                      key={activeCategory}
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold truncate max-w-[180px]"
+                    >
+                      {activeCat.title}
+                      <button
+                        onClick={() => { setActiveCategory(null); setOpenFaq(0); }}
+                        className="ml-0.5 hover:text-blue-900 transition-colors shrink-0"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+              <Link href="/blog">
+                <span className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer">
+                  Voir le blog <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+              </Link>
+            </motion.div>
+
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={viewport}
+              transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-white rounded-2xl border border-gray-200 px-6 py-2 shadow-sm"
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeCategory ?? "all"}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {filteredFaq.length === 0 ? (
+                    <p className="py-6 text-sm text-gray-400 text-center">Aucune question dans cette rubrique.</p>
+                  ) : (
+                    filteredFaq.map((item, i) => (
+                      <FaqItem
+                        key={`${activeCategory}-${i}`}
+                        q={item.q}
+                        a={item.a}
+                        isOpen={openFaq === i}
+                        onToggle={() => setOpenFaq(openFaq === i ? null : i)}
+                      />
+                    ))
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
+
+            {activeCategory && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.15 }}
+                className="mt-4 flex justify-center"
+              >
+                <button
+                  onClick={() => { setActiveCategory(null); setOpenFaq(0); }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" /> Voir toutes les questions
+                </button>
+              </motion.div>
+            )}
           </div>
 
           {/* Besoin d'aide card */}
-          <div className="lg:col-span-1 flex flex-col gap-4">
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col items-center text-center gap-4">
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewport}
+            className="lg:col-span-1 flex flex-col gap-4"
+          >
+            <motion.div
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col items-center text-center gap-4"
+            >
               <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
                 <Headphones className="w-8 h-8 text-orange-500" />
               </div>
@@ -300,9 +539,13 @@ export default function SupportPage() {
                 <FaWhatsapp className="w-4 h-4" />
                 Contacter sur WhatsApp
               </a>
-            </div>
+            </motion.div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <motion.div
+              variants={fadeUp}
+              transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm"
+            >
               <h4 className="font-semibold text-gray-900 text-sm mb-3">Informations utiles</h4>
               <div className="space-y-2.5 text-xs text-gray-600">
                 {[
@@ -317,48 +560,82 @@ export default function SupportPage() {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
+            </motion.div>
+
+            <motion.div
+              variants={fadeUp}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-blue-600 rounded-2xl p-5 text-white"
+            >
+              <h4 className="font-bold text-sm mb-1.5">Ressources développeurs</h4>
+              <p className="text-xs text-blue-100 mb-3 leading-relaxed">Documentations, exemples de code et guide d'intégration API.</p>
+              <Link href="/dashboard/docs/payin">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white hover:text-blue-200 transition-colors cursor-pointer">
+                  Voir la doc API <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </Link>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
       {/* ── Social ──────────────────────────────────────────────────────────── */}
       <section className="py-16 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewport}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center mb-10"
+          >
             <h2 className="text-2xl font-bold text-gray-900">Restons connectés</h2>
             <p className="text-gray-500 mt-2 text-sm">Suivez-nous sur nos réseaux sociaux pour rester informé des nouveautés</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+          </motion.div>
+
+          <motion.div
+            variants={staggerFast}
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewport}
+            className="flex flex-wrap justify-center gap-4 md:gap-6"
+          >
             {SOCIAL_NETWORKS.map(({ key, label, handle, Icon, color, bg }) => {
-              const url = getSocialUrl(key) ?? `/social/${key}`;
+              const url = getSocialUrl(key) ?? null;
               return (
-                <a
+                <motion.a
                   key={key}
-                  href={url}
-                  target={url.startsWith("http") ? "_blank" : "_self"}
+                  variants={fadeUp}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  href={url ?? "#"}
+                  target={url ? "_blank" : "_self"}
                   rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-2 px-6 py-5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200 min-w-[120px] group"
+                  className={`flex flex-col items-center gap-2 px-6 py-5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200 min-w-[120px] group ${!url ? "opacity-60 cursor-default pointer-events-none" : ""}`}
                 >
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: bg }}
-                  >
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: bg }}>
                     <Icon className="w-6 h-6" style={{ color }} />
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-semibold text-gray-900">{label}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{handle}</p>
                   </div>
-                </a>
+                </motion.a>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ── Contact bottom banner ────────────────────────────────────────── */}
-      <section className="py-12 px-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+      <motion.section
+        variants={fadeIn}
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewport}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="py-12 px-4 bg-gradient-to-r from-blue-600 to-indigo-600"
+      >
         <div className="max-w-3xl mx-auto text-center text-white space-y-4">
           <h2 className="text-2xl font-bold">Vous n'avez pas trouvé votre réponse ?</h2>
           <p className="text-blue-100 text-sm">
@@ -383,7 +660,7 @@ export default function SupportPage() {
             </a>
           </div>
         </div>
-      </section>
+      </motion.section>
 
     </div>
   );
