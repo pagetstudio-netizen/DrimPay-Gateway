@@ -1,0 +1,38 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "zNi-I_A2FlxNUZPEZBTjr"
+uri = "file://artifacts/drimpay/public/blog/integrer-mobile-money-api.png"
+type = "image"
+title = "developer mobile money api"
+
+[[generated]]
+id = "hEzUWbd3sbZQeDXIgdVrw"
+uri = "file://artifacts/drimpay/public/blog/orange-money-vs-wave.png"
+type = "image"
+title = "mobile money operator comparison"
+
+[[generated]]
+id = "qim4gDPRHi3K3uNVif3fl"
+uri = "file://artifacts/drimpay/public/blog/essor-mobile-money-afrique.png"
+type = "image"
+title = "africa mobile money growth map"
+
+[[generated]]
+id = "SVxDaYrFj25OugoyDdvqD"
+uri = "file://artifacts/drimpay/public/blog/kyb-verification-entreprise.png"
+type = "image"
+title = "kyb business verification"
+
+[[generated]]
+id = "9qiiwoj-SX2Xw0If-Eqc0"
+uri = "file://artifacts/drimpay/public/blog/paiements-bceao-beac.png"
+type = "image"
+title = "bceao beac payment zones africa"
+
+[[generated]]
+id = "tg-VH9mj8kyiwlsOhPBhn"
+uri = "file://artifacts/drimpay/public/blog/securiser-integrations-paiement.png"
+type = "image"
+title = "payment security api protection"
