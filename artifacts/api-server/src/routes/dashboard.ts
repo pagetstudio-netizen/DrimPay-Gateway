@@ -686,11 +686,12 @@ router.post("/dashboard/api-keys/regenerate", requireAuth, async (req, res) => {
 
   const [key] = await db
     .insert(apiKeysTable)
-    .values({ userId, name, keyHash, prefix, env: env as any })
+    .values({ userId, name, keyHash, rawKey, prefix, env: env as any })
     .returning({
       id: apiKeysTable.id,
       name: apiKeysTable.name,
       prefix: apiKeysTable.prefix,
+      rawKey: apiKeysTable.rawKey,
       env: apiKeysTable.env,
       status: apiKeysTable.status,
       createdAt: apiKeysTable.createdAt,

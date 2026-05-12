@@ -201,7 +201,11 @@ export default function ApiKeys() {
                           )}
                         </div>
                         <p className="font-mono text-xs text-muted-foreground break-all">
-                          {revealedIds.has(key.id) && key.rawKey ? key.rawKey : `${key.prefix}••••••••••••••••••••••••`}
+                          {revealedIds.has(key.id) && key.rawKey
+                            ? key.rawKey
+                            : key.rawKey
+                              ? `${key.prefix}••••••••••••••••••••••••`
+                              : <span className="text-yellow-500 not-italic text-[10px]">Régénérez cette clé pour l'afficher</span>}
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
                           Créée le {new Date(key.createdAt).toLocaleDateString("fr-FR")}
@@ -210,16 +214,18 @@ export default function ApiKeys() {
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => toggleReveal(key.id)}
-                          title={revealedIds.has(key.id) ? "Masquer" : "Afficher la clé"}
-                          className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
+                          onClick={() => key.rawKey && toggleReveal(key.id)}
+                          title={!key.rawKey ? "Régénérez la clé pour l'afficher" : revealedIds.has(key.id) ? "Masquer" : "Afficher la clé"}
+                          disabled={!key.rawKey}
+                          className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           {revealedIds.has(key.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                         <button
-                          onClick={() => copy(revealedIds.has(key.id) && key.rawKey ? key.rawKey : (key.rawKey ?? `${key.prefix}••••••••••••••••••••••••`), `key-${key.id}`)}
-                          title="Copier la clé"
-                          className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
+                          onClick={() => key.rawKey && copy(key.rawKey, `key-${key.id}`)}
+                          title={key.rawKey ? "Copier la clé complète" : "Régénérez la clé pour la copier"}
+                          disabled={!key.rawKey}
+                          className="text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           {copiedId === `key-${key.id}` ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                         </button>
