@@ -67,7 +67,7 @@ export default function Pricing() {
       {/* ── TWO CARDS ─────────────────────────────────────────────── */}
       <div className="pb-24">
         <div className="container mx-auto px-4 md:px-8">
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="flex flex-col gap-8 max-w-2xl mx-auto">
 
             {/* Personal Card */}
             <motion.div
