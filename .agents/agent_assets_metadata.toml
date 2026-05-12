@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "zNi-I_A2FlxNUZPEZBTjr"
@@ -36,3 +35,15 @@ id = "tg-VH9mj8kyiwlsOhPBhn"
 uri = "file://artifacts/drimpay/public/blog/securiser-integrations-paiement.png"
 type = "image"
 title = "payment security api protection"
+
+[[generated]]
+id = "DlKkXilut-JZGzYfu61fj"
+uri = "file://artifacts/drimpay/public/blog-qr-restaurant.png"
+type = "image"
+title = "restaurant qr drimpay wall"
+
+[[outputs]]
+id = "lpHSkSlV_OmPw3aEEClSE"
+uri = "file://artifacts/drimpay/public/blog-qr-restaurant.png"
+type = "image"
+title = "Photo blog — Restaurant avec QR DrimPay"

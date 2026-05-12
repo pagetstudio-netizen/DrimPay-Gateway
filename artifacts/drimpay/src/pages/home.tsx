@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useState, type ReactNode } from "react";
-import { ArrowRight, CreditCard, LayoutGrid } from "lucide-react";
+import { ArrowRight, CreditCard, LayoutGrid, QrCode } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useSEO, organizationSchema, websiteSchema, webPageSchema, SITE_URL } from "@/lib/seo";
 import { useLang } from "@/lib/i18n";
@@ -109,6 +109,7 @@ const PRODUCTS: Product[] = [
   { label: "Cartes Virtuelles →", title: "Cartes Virtuelles Instantanées", desc: "Émettez des cartes virtuelles Visa/Mastercard liées à vos wallets DrimPay pour les achats en ligne et business.", bg: "bg-[#5B5EF5]", dark: false, lucideIcon: <CreditCard className="w-6 h-6 text-white" /> },
   { label: "Paiement par lien →", title: "Liens de Paiement", desc: "Créez des liens de paiement en quelques secondes. Partagez par WhatsApp, SMS ou email. Aucun site web requis.", bg: "bg-[#B5F03C]", dark: true, imgIcon: iconPaymentLink },
   { label: "Mass Payout →", title: "Décaissements Massifs", desc: "Envoyez des paiements en masse à des centaines de destinataires simultanément. Parfait pour les paies et remboursements.", bg: "bg-[#0d0c18]", dark: false, imgIcon: iconMassPayout },
+  { label: "Pay with QR →", title: "Paiement par QR Code", desc: "Imprimez un QR code, collez-le en boutique ou au restaurant. Vos clients paient par Mobile Money en scannant — sans application, sans terminal.", bg: "bg-[#0F766E]", dark: false, lucideIcon: <QrCode className="w-6 h-6 text-white" /> },
   { label: "Voir Tout →", title: "Toute la Plateforme", desc: "Découvrez l'ensemble des produits DrimPay : wallets, KYB automatisé, webhooks temps réel, et tableau de bord no-code.", bg: "bg-[#1a6b4a]", dark: false, lucideIcon: <LayoutGrid className="w-6 h-6 text-white" /> },
 ];
 
