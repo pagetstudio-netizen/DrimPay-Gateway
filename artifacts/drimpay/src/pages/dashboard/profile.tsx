@@ -5,7 +5,6 @@ import { useAuth } from "@/lib/auth";
 import {
   User, Building2, Shield, Camera, CheckCircle2, AlertCircle,
   Loader2, Key, Eye, EyeOff, Copy, RefreshCw, AlertTriangle, Lock,
-  Monitor, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import userImg from "@assets/20260125_232710_1771507041579-BmqaXdG3_1778105456352.png";
@@ -41,7 +40,6 @@ function ApiKeyCard({ env, keyData, onRegen }: { env: "sandbox" | "live"; keyDat
   const label = isLive ? "Clé Live" : "Clé Sandbox";
   const dot = isLive ? "bg-green-400" : "bg-yellow-400";
   const badge = isLive ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600";
-  const maskedKey = prefix ? `${prefix}${"•".repeat(24)}` : null;
   const handleCopy = () => {
     if (!prefix) return;
     navigator.clipboard.writeText(prefix + "•".repeat(24));
@@ -49,20 +47,20 @@ function ApiKeyCard({ env, keyData, onRegen }: { env: "sandbox" | "live"; keyDat
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <div className="rounded-xl border border-border bg-muted/10 p-5 flex flex-col gap-4">
+    <div className="rounded-xl border border-border bg-muted/10 p-4 sm:p-5 flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${dot}`} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badge}`}>{isLive ? "LIVE" : "SANDBOX"}</span>
           <span className="text-sm font-semibold">{label}</span>
         </div>
-        <button onClick={() => onRegen(env)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors font-medium">
+        <button onClick={() => onRegen(env)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors font-medium shrink-0 ml-2">
           <RefreshCw className="w-3.5 h-3.5" />{keyData ? "Régénérer" : "Générer"}
         </button>
       </div>
       {keyData ? (
-        <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2.5 font-mono text-xs">
-          <span className="flex-1 truncate text-foreground">{visible ? maskedKey : `${prefix}${"•".repeat(24)}`}</span>
+        <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2.5 font-mono text-xs min-w-0">
+          <span className="flex-1 truncate text-foreground">{prefix}{"•".repeat(24)}</span>
           <button onClick={() => setVisible(v => !v)} className="text-muted-foreground hover:text-foreground shrink-0">
             {visible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </button>
@@ -85,9 +83,8 @@ function ApiKeyCard({ env, keyData, onRegen }: { env: "sandbox" | "live"; keyDat
   );
 }
 
-
 const MENU_ITEMS = [
-  { key: "profil", label: "Mon Profil", icon: Building2 },
+  { key: "profil", label: "Profil", icon: Building2 },
   { key: "api", label: "Clés API", icon: Key },
   { key: "securite", label: "Sécurité", icon: Shield },
   { key: "compte", label: "Identifiant", icon: User },
@@ -96,7 +93,7 @@ const MENU_ITEMS = [
 export default function DashboardProfile() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [activeSection, setActiveSection] = useState("api");
+  const [activeSection, setActiveSection] = useState("profil");
 
   const [infoForm, setInfoForm] = useState({ companyName: user?.companyName ?? "", email: user?.email ?? "", country: user?.country ?? "" });
   const [infoStatus, setInfoStatus] = useState<Status>("idle");
@@ -146,55 +143,73 @@ export default function DashboardProfile() {
   };
 
   const countryLabel = (code: string) => {
-    const map: Record<string, string> = { TG: "🇹🇬 Togo", BJ: "🇧🇯 Bénin", CM: "🇨🇲 Cameroun", SN: "🇸🇳 Sénégal", CI: "🇨🇮 Côte d'Ivoire", ML: "🇲🇱 Mali", BF: "🇧🇫 Burkina Faso" };
+    const map: Record<string, string> = { TG: "Togo", BJ: "Bénin", CM: "Cameroun", SN: "Sénégal", CI: "Côte d'Ivoire", ML: "Mali", BF: "Burkina Faso" };
     return map[code] ?? code;
-  };
-
-  const [bannerDismissed, setBannerDismissed] = useState(
-    () => localStorage.getItem("profile-desktop-banner") === "1"
-  );
-  const dismissBanner = () => {
-    setBannerDismissed(true);
-    localStorage.setItem("profile-desktop-banner", "1");
   };
 
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-5">
 
-        {!bannerDismissed && (
-          <div className="relative flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 pr-10">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Monitor className="w-4.5 h-4.5 text-primary" style={{ width: 18, height: 18 }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground leading-tight">
-                Meilleure expérience sur ordinateur
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                Cette page contient de nombreuses informations. Nous vous recommandons de l'utiliser depuis un <span className="font-medium text-foreground">ordinateur ou une tablette</span> pour une navigation optimale.
-              </p>
-            </div>
-            <button
-              onClick={dismissBanner}
-              className="absolute top-3 right-3 w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
+        {/* Page header */}
         <div>
-          <h1 className="text-2xl font-bold">Mon Profil</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Mon Profil</h1>
           <p className="text-muted-foreground text-sm mt-1">Gérez vos informations personnelles et la sécurité de votre compte.</p>
         </div>
 
-        <div className="flex gap-5">
-          {/* Left sidebar */}
-          <div className="w-52 shrink-0 space-y-1">
-            <div className="rounded-2xl border border-border bg-card overflow-hidden p-2">
-              {/* Avatar card */}
+        {/* Mobile: avatar card compact */}
+        <div className="flex md:hidden items-center gap-3 p-3 rounded-2xl border border-border bg-card">
+          <div className="relative shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <img src={userImg} alt="" className="w-6 h-6 object-contain" style={{ filter: "brightness(0) opacity(0.6)" }} />
+            </div>
+            <button className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-md">
+              <Camera className="w-2.5 h-2.5 text-primary-foreground" style={{ filter: "brightness(0)" }} />
+            </button>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold truncate">{user?.companyName ?? "—"}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email ?? "—"}</p>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase">{user?.role ?? "user"}</span>
+          </div>
+          {(user as any)?.merchantCode && (
+            <button
+              onClick={() => navigator.clipboard.writeText((user as any).merchantCode)}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-muted hover:bg-muted/80 transition-colors shrink-0"
+            >
+              <span className="font-mono text-[11px] font-bold tracking-widest">{(user as any).merchantCode}</span>
+              <Copy className="w-2.5 h-2.5 text-muted-foreground" />
+            </button>
+          )}
+        </div>
+
+        {/* Layout: stacked on mobile, side-by-side on desktop */}
+        <div className="flex flex-col md:flex-row gap-4 md:gap-5">
+
+          {/* Sidebar / Tab strip */}
+          <div className="md:w-52 md:shrink-0">
+
+            {/* Mobile: horizontal scrollable tabs */}
+            <div className="flex md:hidden gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+              {MENU_ITEMS.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveSection(key)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-colors border",
+                    activeSection === key
+                      ? "bg-primary/10 text-primary border-primary/30 font-semibold"
+                      : "text-muted-foreground border-border hover:bg-muted"
+                  )}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop: sidebar card with avatar */}
+            <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden p-2">
               <div className="flex flex-col items-center px-3 py-4 mb-1">
                 <div className="relative mb-3">
                   <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -204,7 +219,7 @@ export default function DashboardProfile() {
                     <Camera className="w-3 h-3 text-primary-foreground" style={{ filter: "brightness(0)" }} />
                   </button>
                 </div>
-                <p className="text-xs font-bold text-center truncate w-full text-center">{user?.companyName ?? "—"}</p>
+                <p className="text-xs font-bold text-center truncate w-full">{user?.companyName ?? "—"}</p>
                 <p className="text-[10px] text-muted-foreground truncate w-full text-center">{user?.email ?? "—"}</p>
                 <span className="mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase">{user?.role ?? "user"}</span>
                 {(user as any)?.merchantCode && (
@@ -237,30 +252,30 @@ export default function DashboardProfile() {
             </div>
           </div>
 
-          {/* Right content panel */}
-          <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          {/* Content panel */}
+          <div className="flex-1 min-w-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
 
             {activeSection === "profil" && (
-              <div className="p-6">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5 text-primary" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-base">Informations du compte</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">Mettez à jour le nom de votre entreprise et votre email.</p>
+                    <h2 className="font-semibold text-sm sm:text-base">Informations du compte</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Mettez à jour le nom de votre entreprise et votre email.</p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   {(user as any)?.merchantCode && (
-                    <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/50 border border-border">
-                      <div>
+                    <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/50 border border-border gap-3">
+                      <div className="min-w-0">
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Code marchand</p>
-                        <p className="font-mono text-sm font-bold tracking-widest">{(user as any).merchantCode}</p>
+                        <p className="font-mono text-sm font-bold tracking-widest truncate">{(user as any).merchantCode}</p>
                       </div>
                       <button
                         onClick={() => navigator.clipboard.writeText((user as any).merchantCode)}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors font-medium"
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors font-medium shrink-0"
                       >
                         <Copy className="w-3 h-3" /> Copier
                       </button>
@@ -278,10 +293,10 @@ export default function DashboardProfile() {
                     <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Pays</label>
                     <select className={inputCls} value={infoForm.country} onChange={e => setInfoForm(f => ({ ...f, country: e.target.value }))}>
                       {[
-                        { code: "TG", label: "🇹🇬 Togo" }, { code: "BJ", label: "🇧🇯 Bénin" },
-                        { code: "CM", label: "🇨🇲 Cameroun" }, { code: "SN", label: "🇸🇳 Sénégal" },
-                        { code: "CI", label: "🇨🇮 Côte d'Ivoire" }, { code: "ML", label: "🇲🇱 Mali" },
-                        { code: "BF", label: "🇧🇫 Burkina Faso" },
+                        { code: "TG", label: "Togo" }, { code: "BJ", label: "Bénin" },
+                        { code: "CM", label: "Cameroun" }, { code: "SN", label: "Sénégal" },
+                        { code: "CI", label: "Côte d'Ivoire" }, { code: "ML", label: "Mali" },
+                        { code: "BF", label: "Burkina Faso" },
                       ].map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
                     </select>
                   </div>
@@ -299,14 +314,14 @@ export default function DashboardProfile() {
             )}
 
             {activeSection === "api" && (
-              <div className="p-6">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Key className="w-5 h-5 text-primary" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Key className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-base">Configuration des clés API</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">Une clé unique par environnement. La régénération révoque immédiatement l'ancienne clé.</p>
+                    <h2 className="font-semibold text-sm sm:text-base">Configuration des clés API</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Une clé unique par environnement. La régénération révoque immédiatement l'ancienne clé.</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -323,14 +338,14 @@ export default function DashboardProfile() {
             )}
 
             {activeSection === "securite" && (
-              <div className="p-6">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Shield className="w-5 h-5 text-primary" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-base">Sécurité — Mot de passe</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">Modifiez votre mot de passe. Utilisez au moins 8 caractères.</p>
+                    <h2 className="font-semibold text-sm sm:text-base">Sécurité — Mot de passe</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Modifiez votre mot de passe. Utilisez au moins 8 caractères.</p>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -360,14 +375,14 @@ export default function DashboardProfile() {
             )}
 
             {activeSection === "compte" && (
-              <div className="p-6">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
-                    <User className="w-5 h-5 text-muted-foreground" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-base">Identifiant compte</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">Référence unique de votre compte DrimPay.</p>
+                    <h2 className="font-semibold text-sm sm:text-base">Identifiant compte</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Référence unique de votre compte DrimPay.</p>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -376,20 +391,20 @@ export default function DashboardProfile() {
                     <span className="font-mono text-sm font-semibold text-foreground">#{user?.id ?? "—"}</span>
                   </div>
                   <div className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Entreprise</span>
-                      <span className="font-semibold">{user?.companyName ?? "—"}</span>
+                    <div className="flex items-start justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground shrink-0">Entreprise</span>
+                      <span className="font-semibold text-right truncate">{user?.companyName ?? "—"}</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Email</span>
-                      <span className="font-semibold">{user?.email ?? "—"}</span>
+                    <div className="flex items-start justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground shrink-0">Email</span>
+                      <span className="font-semibold text-right truncate">{user?.email ?? "—"}</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Pays</span>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground shrink-0">Pays</span>
                       <span className="font-semibold">{countryLabel(user?.country ?? "")}</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Rôle</span>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground shrink-0">Rôle</span>
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase">{user?.role ?? "user"}</span>
                     </div>
                   </div>
@@ -399,7 +414,6 @@ export default function DashboardProfile() {
           </div>
         </div>
       </div>
-
     </DashboardLayout>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "./layout";
-import { Webhook, Lock, Wifi, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Save, Monitor, X } from "lucide-react";
+import { Webhook, Lock, Wifi, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Save } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -36,27 +36,24 @@ const inputCls = (hasError?: boolean) => cn(
 );
 
 const MENU_ITEMS = [
-  { key: "webhook", label: "URL de Webhook", icon: Webhook },
+  { key: "webhook", label: "Webhook", icon: Webhook },
   { key: "ip", label: "IP Statique", icon: Wifi },
   { key: "password", label: "Mot de passe", icon: Lock },
 ];
 
 export default function DashboardSettings() {
   const { user } = useAuth();
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const [, setSettings] = useState<Settings | null>(null);
   const [activeSection, setActiveSection] = useState("webhook");
 
-  // Webhook
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookStatus, setWebhookStatus] = useState<Status>("idle");
   const [webhookError, setWebhookError] = useState("");
 
-  // Static IP
   const [staticIp, setStaticIp] = useState("");
   const [ipStatus, setIpStatus] = useState<Status>("idle");
   const [ipError, setIpError] = useState("");
 
-  // Password
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -126,50 +123,42 @@ export default function DashboardSettings() {
     setTimeout(() => setPwStatus("idle"), 3000);
   };
 
-  const [bannerDismissed, setBannerDismissed] = useState(
-    () => localStorage.getItem("settings-desktop-banner") === "1"
-  );
-  const dismissBanner = () => {
-    setBannerDismissed(true);
-    localStorage.setItem("settings-desktop-banner", "1");
-  };
-
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-5">
 
-        {!bannerDismissed && (
-          <div className="relative flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 pr-10">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Monitor className="w-4.5 h-4.5 text-primary" style={{ width: 18, height: 18 }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground leading-tight">
-                Meilleure expérience sur ordinateur
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                Cette page contient de nombreuses configurations. Nous vous recommandons de l'utiliser depuis un <span className="font-medium text-foreground">ordinateur ou une tablette</span> pour une navigation optimale.
-              </p>
-            </div>
-            <button
-              onClick={dismissBanner}
-              className="absolute top-3 right-3 w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
+        {/* Page header */}
         <div>
-          <h1 className="text-2xl font-bold">Paramètres</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Paramètres</h1>
           <p className="text-muted-foreground text-sm mt-1">Configurez votre compte et vos intégrations.</p>
         </div>
 
-        <div className="flex gap-5">
-          {/* Left sidebar */}
-          <div className="w-52 shrink-0 space-y-1">
-            <div className="rounded-2xl border border-border bg-card overflow-hidden p-2">
+        {/* Mobile: horizontal tab strip — Desktop: sidebar + panel */}
+        <div className="flex flex-col md:flex-row gap-4 md:gap-5">
+
+          {/* Sidebar / Tab strip */}
+          <div className="md:w-52 md:shrink-0">
+            {/* Mobile tabs — horizontal scrollable strip */}
+            <div className="flex md:hidden gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+              {MENU_ITEMS.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveSection(key)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-colors border",
+                    activeSection === key
+                      ? "bg-primary/10 text-primary border-primary/30 font-semibold"
+                      : "text-muted-foreground border-border hover:bg-muted"
+                  )}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop sidebar card */}
+            <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden p-2">
               <div className="px-3 py-2 mb-1">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm shrink-0">
@@ -200,17 +189,18 @@ export default function DashboardSettings() {
             </div>
           </div>
 
-          {/* Right content panel */}
-          <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          {/* Content panel */}
+          <div className="flex-1 min-w-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+
             {activeSection === "webhook" && (
-              <div className="p-6">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Webhook className="w-5 h-5 text-primary" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Webhook className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-base">URL de Webhook</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">DrimPay envoie une notification POST à cette URL à chaque changement d'état d'une transaction.</p>
+                    <h2 className="font-semibold text-sm sm:text-base">URL de Webhook</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">DrimPay envoie une notification POST à cette URL à chaque changement d'état d'une transaction.</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -227,7 +217,7 @@ export default function DashboardSettings() {
                   <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 text-xs text-muted-foreground leading-relaxed">
                     <span className="text-primary font-semibold">Conseil :</span> Votre endpoint doit répondre avec un statut <code className="text-primary font-mono">200</code> pour confirmer la réception. DrimPay signe chaque requête avec un header <code className="text-primary font-mono">X-DrimPay-Signature</code>.
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <button
                       onClick={saveWebhook}
                       disabled={webhookStatus === "loading"}
@@ -248,14 +238,14 @@ export default function DashboardSettings() {
             )}
 
             {activeSection === "ip" && (
-              <div className="p-6">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Wifi className="w-5 h-5 text-primary" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Wifi className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-base">Adresse IP Statique</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">Configurez votre IP statique pour que vos retraits (reversements) soient autorisés sans blocage de sécurité.</p>
+                    <h2 className="font-semibold text-sm sm:text-base">Adresse IP Statique</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Configurez votre IP statique pour que vos retraits soient autorisés sans blocage de sécurité.</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -272,7 +262,7 @@ export default function DashboardSettings() {
                   <div className="rounded-xl bg-amber-500/5 border border-amber-500/20 px-4 py-3 text-xs text-amber-400/90 leading-relaxed">
                     <span className="font-semibold">Note :</span> Si vous disposez d'une adresse IP statique, configurez-la ici. Cela permet que vos reversements passent sans friction supplémentaire côté sécurité.
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <button
                       onClick={saveIp}
                       disabled={ipStatus === "loading"}
@@ -293,14 +283,14 @@ export default function DashboardSettings() {
             )}
 
             {activeSection === "password" && (
-              <div className="p-6">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Lock className="w-5 h-5 text-primary" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-base">Modifier le mot de passe</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">Choisissez un mot de passe fort d'au moins 8 caractères.</p>
+                    <h2 className="font-semibold text-sm sm:text-base">Modifier le mot de passe</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Choisissez un mot de passe fort d'au moins 8 caractères.</p>
                   </div>
                 </div>
                 <div className="space-y-3">
