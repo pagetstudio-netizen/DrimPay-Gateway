@@ -79,6 +79,23 @@ Commandes: /stats | /ip | /help
   );
 }
 
+export async function notifyContactForm(opts: {
+  name: string; email: string; company?: string; subject: string; message: string;
+}) {
+  await send(
+`📬 <b>Nouveau Message — Formulaire Contact</b>
+
+👤 Nom: ${opts.name}
+📧 Email: ${opts.email}${opts.company ? `\n🏢 Entreprise: ${opts.company}` : ""}
+📌 Sujet: ${opts.subject}
+
+💬 Message:
+${opts.message}
+
+📅 ${dt()}`
+  );
+}
+
 export async function notifyNewUser(email: string, company: string, country: string) {
   await send(
 `👤 <b>Nouveau Marchand</b>

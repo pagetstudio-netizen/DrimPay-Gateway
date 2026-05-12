@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { contactSubmissionsTable } from "@workspace/db";
 import { z } from "zod";
+import { notifyContactForm } from "../lib/telegram";
 
 const router = Router();
 
@@ -27,6 +28,14 @@ router.post("/contact", async (req, res) => {
       subject: parsed.data.subject,
       message: parsed.data.message,
     });
+
+    notifyContactForm({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      company: parsed.data.company,
+      subject: parsed.data.subject,
+      message: parsed.data.message,
+    }).catch(() => {});
 
     res.json({ success: true, message: "Your message has been received. Our team will get back to you within 24 hours." });
   } catch (err) {
