@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const CURRENCIES = ["XOF", "XAF", "GHS", "NGN"];
+const CURRENCIES = ["XOF", "XAF"];
 const COUNTRIES = [
   { code: "TG", name: "Togo" },
   { code: "BJ", name: "Bénin" },
@@ -22,8 +22,6 @@ const COUNTRIES = [
   { code: "ML", name: "Mali" },
   { code: "SN", name: "Sénégal" },
   { code: "CI", name: "Côte d'Ivoire" },
-  { code: "GH", name: "Ghana" },
-  { code: "NG", name: "Nigeria" },
 ];
 
 type QrCodeData = {
