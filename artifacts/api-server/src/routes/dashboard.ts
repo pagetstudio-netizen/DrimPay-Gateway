@@ -2145,30 +2145,49 @@ router.post("/qr/:reference", async (req, res) => {
     res.status(opCheck.status).json({ error: opCheck.error }); return;
   }
 
+  // Determine merchant mode from KYB status
+  const [merchantInfo] = await db
+    .select({ companyName: usersTable.companyName })
+    .from(usersTable)
+    .where(eq(usersTable.id, qr.userId));
+  const [kybInfo] = await db
+    .select({ status: kybSubmissionsTable.status })
+    .from(kybSubmissionsTable)
+    .where(eq(kybSubmissionsTable.userId, qr.userId));
+  const merchantMode: "sandbox" | "live" = kybInfo?.status === "approved" ? "live" : "sandbox";
+
   const amount = qr.type === "fixed" && qr.amount ? parseFloat(String(qr.amount)) : reqAmount;
   const qrFeeRate = await getUserFeeRate(qr.userId);
   const fee = Math.round(amount * qrFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const txReference = `QR-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
+  // Use wallet scoped to the merchant's current mode
   let [wallet] = await db
     .select()
     .from(walletsTable)
-    .where(and(eq(walletsTable.userId, qr.userId), eq(walletsTable.countryCode, effectiveCountry)));
+    .where(and(
+      eq(walletsTable.userId, qr.userId),
+      eq(walletsTable.countryCode, effectiveCountry),
+      eq(walletsTable.mode, merchantMode),
+    ));
 
   if (!wallet) {
     [wallet] = await db
       .insert(walletsTable)
-      .values({ userId: qr.userId, countryCode: effectiveCountry, currency: effectiveCurrency })
+      .values({ userId: qr.userId, countryCode: effectiveCountry, currency: effectiveCurrency, mode: merchantMode })
       .returning();
   }
+
+  // Sandbox: simulate success immediately. Live: record as pending (aggregator webhook will confirm).
+  const txStatus = merchantMode === "sandbox" ? "success" : "pending";
 
   await db.insert(transactionsTable).values({
     userId: qr.userId,
     walletId: wallet.id,
     reference: txReference,
     type: "payin",
-    status: "success",
+    status: txStatus,
     amount: String(amount),
     fee: String(fee),
     netAmount: String(netAmount),
@@ -2177,11 +2196,15 @@ router.post("/qr/:reference", async (req, res) => {
     operator: effectiveOperator,
     phone,
     description: `QR payment: ${qr.name}`,
+    mode: merchantMode,
   });
 
-  await db.update(walletsTable)
-    .set({ balance: sql`${walletsTable.balance} + ${netAmount}` })
-    .where(eq(walletsTable.id, wallet.id));
+  // Credit wallet immediately only in sandbox (live mode waits for aggregator webhook)
+  if (merchantMode === "sandbox") {
+    await db.update(walletsTable)
+      .set({ balance: sql`${walletsTable.balance} + ${netAmount}` })
+      .where(eq(walletsTable.id, wallet.id));
+  }
 
   await db.update(qrCodesTable)
     .set({
@@ -2193,10 +2216,8 @@ router.post("/qr/:reference", async (req, res) => {
 
   // Telegram notification
   try {
-    const [merchant] = await db.select({ companyName: usersTable.companyName })
-      .from(usersTable).where(eq(usersTable.id, qr.userId));
     notifyPayin({
-      company: merchant?.companyName ?? "?",
+      company: merchantInfo?.companyName ?? "?",
       amount,
       fee,
       net: netAmount,
@@ -2205,12 +2226,12 @@ router.post("/qr/:reference", async (req, res) => {
       phone,
       country: effectiveCountry,
       reference: txReference,
-      mode: "live",
+      mode: merchantMode,
       source: "qr",
     }).catch(() => {});
   } catch {}
 
-  res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency });
+  res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency, _sandbox: merchantMode === "sandbox" });
 });
 
 export default router;

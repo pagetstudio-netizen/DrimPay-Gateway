@@ -86,12 +86,14 @@ function QrModal({
     const clone = svg.cloneNode(true) as SVGElement;
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     const blob = new Blob([clone.outerHTML], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
+    a.href = objectUrl;
     a.download = `drimpay-qr-${qr.reference}.svg`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
   };
 
   return (

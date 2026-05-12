@@ -169,6 +169,7 @@ export default function QrPayPage() {
   const [amount, setAmount]                 = useState("");
   const [error, setError]                   = useState("");
   const [txRef, setTxRef]                   = useState("");
+  const [isSandbox, setIsSandbox]           = useState(false);
 
   useEffect(() => {
     if (!reference) return;
@@ -222,6 +223,7 @@ export default function QrPayPage() {
         return;
       }
       setTxRef(data.reference);
+      setIsSandbox(!!data._sandbox);
       setStep("success");
     } catch {
       setError("Erreur réseau. Veuillez réessayer.");
@@ -429,7 +431,14 @@ export default function QrPayPage() {
                     <CheckCircle2 className="w-8 h-8 text-green-500" />
                   </div>
                   <h2 className="text-lg font-bold text-gray-900">Paiement réussi !</h2>
-                  <p className="text-sm text-gray-500">Votre paiement a été traité avec succès.</p>
+                  {isSandbox && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold border border-amber-200">
+                      MODE TEST — Paiement simulé
+                    </span>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    {isSandbox ? "Paiement simulé en mode sandbox." : "Votre paiement a été traité avec succès."}
+                  </p>
                   <div className="w-full rounded-xl border border-gray-200 divide-y divide-gray-100 mt-2 text-left">
                     {[
                       { label: "Référence",  value: txRef },
