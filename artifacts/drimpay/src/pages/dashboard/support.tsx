@@ -244,7 +244,7 @@ export default function DashboardSupport() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Support & Communauté
+              Support Client
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               Contactez notre équipe ou rejoignez la communauté DrimPay

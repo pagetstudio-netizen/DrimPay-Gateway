@@ -1941,6 +1941,15 @@ router.get("/dashboard/support/links", requireAuth, async (_req: any, res: any) 
   res.json(rows);
 });
 
+// ─── Public: Support social links ────────────────────────────────────────────
+
+router.get("/support/links", async (_req, res) => {
+  const rows = await db.select().from(socialLinksTable)
+    .where(eq(socialLinksTable.active, true))
+    .orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
+  res.json(rows);
+});
+
 // ─── QR Codes ────────────────────────────────────────────────────────────────
 
 function generateQrReference(): string {

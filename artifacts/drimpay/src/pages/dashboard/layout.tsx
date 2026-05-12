@@ -37,7 +37,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/reversement",        label: "Reversement",          img: reversImg },
   { href: "/dashboard/kyb",                label: "Vérification KYB",     img: kybImg },
   { href: "/dashboard/settings",           label: "Paramètres",           img: settingsImg },
-  { href: "/dashboard/support",            label: "Support & Communauté", img: supportImg },
+  { href: "/support",                       label: "Support Client",        img: supportImg },
 ];
 
 const apiItems: NavItem[] = [

@@ -73,6 +73,8 @@ import DashboardSupport from "@/pages/dashboard/support";
 import AdminSettings from "@/pages/admin/settings";
 import AdminContract from "@/pages/admin/contract";
 import AdminSocialLinks from "@/pages/admin/social-links";
+import SupportPage from "@/pages/support";
+import SocialRedirect from "@/pages/social-redirect";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -188,6 +190,14 @@ function PublicSwitch() {
             <Route path="/dashboard-preview" component={DashboardPreview} />
             <Route path="/docs/payin" component={DocsPayin} />
             <Route path="/docs/payout" component={DocsPayout} />
+            <Route path="/support" component={SupportPage} />
+            <Route path="/faq" component={SupportPage} />
+            <Route path="/help-center" component={SupportPage} />
+            <Route path="/community" component={SupportPage} />
+            <Route path="/report-issue" component={SupportPage} />
+            <Route path="/api-docs" component={Docs} />
+            <Route path="/status" component={SupportPage} />
+            <Route path="/social/:platform" component={SocialRedirect} />
             <Route component={NotFound} />
           </Switch>
         </Layout>
