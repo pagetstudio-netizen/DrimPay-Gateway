@@ -15,24 +15,14 @@ export const supabaseAdmin = serviceRoleKey
 
 const KYB_BUCKET = "kyb-documents";
 
-// Local fallback directory when Supabase Storage is unavailable
-const LOCAL_UPLOADS_DIR = path.join(process.cwd(), "uploads", "kyb");
-
-function ensureLocalDir(dir: string) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-
-// Path within kyb-documents bucket for the contract template
-const CONTRACT_TEMPLATE_PATH = "_template/contrat-drimpay.docx";
-const CONTRACT_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
 // ── Bucket bootstrap ──────────────────────────────────────────────────────────
 
 export async function ensureKybBucket(): Promise<void> {
   if (!serviceRoleKey) {
-    console.warn("[Storage] SUPABASE_SERVICE_ROLE_KEY not set — using local disk fallback for KYB documents");
-    ensureLocalDir(LOCAL_UPLOADS_DIR);
-    return;
+    throw new Error(
+      "[Storage] SUPABASE_SERVICE_ROLE_KEY is required for KYB document storage. " +
+      "Set this variable in your Plesk environment variables."
+    );
   }
   try {
     const { data: buckets } = await supabaseAdmin.storage.listBuckets();
@@ -48,27 +38,28 @@ export async function ensureKybBucket(): Promise<void> {
         ],
       });
       if (error) throw error;
-      console.log(`[Storage] Bucket '${KYB_BUCKET}' created`);
+      console.log(`[Storage] Bucket '${KYB_BUCKET}' created in Supabase`);
     } else {
-      console.log(`[Storage] Bucket '${KYB_BUCKET}' ready`);
+      console.log(`[Storage] Bucket '${KYB_BUCKET}' ready in Supabase`);
     }
   } catch (err: any) {
-    console.error("[Storage] Failed to ensure bucket:", err?.message ?? err);
-    ensureLocalDir(LOCAL_UPLOADS_DIR);
+    console.error("[Storage] Failed to ensure Supabase bucket:", err?.message ?? err);
+    throw err;
   }
 }
 
 // ── Contract template ─────────────────────────────────────────────────────────
 
+const CONTRACT_TEMPLATE_PATH = "_template/contrat-drimpay.docx";
+const CONTRACT_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
 export async function uploadContractTemplateBuffer(buffer: Buffer): Promise<void> {
+  if (!serviceRoleKey) throw new Error("[Storage] SUPABASE_SERVICE_ROLE_KEY required");
   const { error } = await supabaseAdmin.storage
     .from(KYB_BUCKET)
-    .upload(CONTRACT_TEMPLATE_PATH, buffer, {
-      contentType: CONTRACT_MIME,
-      upsert: true,
-    });
+    .upload(CONTRACT_TEMPLATE_PATH, buffer, { contentType: CONTRACT_MIME, upsert: true });
   if (error) throw new Error(`Contract upload failed: ${error.message}`);
-  console.log("[Storage] Contract template replaced by admin");
+  console.log("[Storage] Contract template uploaded to Supabase");
 }
 
 export async function getContractTemplateInfo(): Promise<{ size: number; updatedAt: string } | null> {
@@ -100,10 +91,7 @@ export async function ensureContractTemplate(): Promise<void> {
     const buffer = fs.readFileSync(localPath);
     const { error } = await supabaseAdmin.storage
       .from(KYB_BUCKET)
-      .upload(CONTRACT_TEMPLATE_PATH, buffer, {
-        contentType: CONTRACT_MIME,
-        upsert: true,
-      });
+      .upload(CONTRACT_TEMPLATE_PATH, buffer, { contentType: CONTRACT_MIME, upsert: true });
     if (error) throw error;
     console.log("[Storage] Contract template uploaded to Supabase");
   } catch (err: any) {
@@ -129,7 +117,7 @@ export async function downloadContractTemplate(): Promise<Buffer> {
   return fs.readFileSync(localPath);
 }
 
-// ── KYB documents ─────────────────────────────────────────────────────────────
+// ── KYB documents — Supabase Storage ONLY ────────────────────────────────────
 
 export async function uploadKybDocument(
   userId: number,
@@ -138,38 +126,31 @@ export async function uploadKybDocument(
   mimetype: string,
   originalName: string,
 ): Promise<string> {
+  if (!serviceRoleKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is not configured. " +
+      "KYB documents must be stored in Supabase Storage. " +
+      "Please set this environment variable on your server."
+    );
+  }
+
   const ext = originalName.split(".").pop()?.toLowerCase() ?? "bin";
   const filename = `${fieldName}_${Date.now()}.${ext}`;
   const storagePath = `${userId}/${filename}`;
 
-  // Try Supabase Storage first (when service role key is available)
-  if (serviceRoleKey) {
-    const { error } = await supabaseAdmin.storage
-      .from(KYB_BUCKET)
-      .upload(storagePath, buffer, { contentType: mimetype, upsert: true });
+  const { error } = await supabaseAdmin.storage
+    .from(KYB_BUCKET)
+    .upload(storagePath, buffer, { contentType: mimetype, upsert: true });
 
-    if (!error) return storagePath;
-    console.warn(`[Storage] Supabase upload failed (${error.message}), falling back to local disk`);
+  if (error) {
+    throw new Error(`[Storage] Supabase upload failed: ${error.message}`);
   }
 
-  // Local disk fallback
-  const userDir = path.join(LOCAL_UPLOADS_DIR, String(userId));
-  ensureLocalDir(userDir);
-  const localFilePath = path.join(userDir, filename);
-  fs.writeFileSync(localFilePath, buffer);
-  console.log(`[Storage] Document saved locally: ${localFilePath}`);
-  return `local:${storagePath}`;
+  console.log(`[Storage] KYB document uploaded to Supabase: ${storagePath}`);
+  return storagePath;
 }
 
 export async function downloadKybDocument(storagePath: string): Promise<Buffer> {
-  // Local fallback
-  if (storagePath.startsWith("local:")) {
-    const relativePath = storagePath.slice("local:".length);
-    const localFilePath = path.join(LOCAL_UPLOADS_DIR, relativePath);
-    if (!fs.existsSync(localFilePath)) throw new Error(`Local file not found: ${localFilePath}`);
-    return fs.readFileSync(localFilePath);
-  }
-
   const { data, error } = await supabaseAdmin.storage.from(KYB_BUCKET).download(storagePath);
   if (error || !data) throw new Error(`Storage download failed: ${error?.message ?? "no data"}`);
   const arrayBuffer = await data.arrayBuffer();
@@ -177,11 +158,5 @@ export async function downloadKybDocument(storagePath: string): Promise<Buffer> 
 }
 
 export async function deleteKybDocument(storagePath: string): Promise<void> {
-  if (storagePath.startsWith("local:")) {
-    const relativePath = storagePath.slice("local:".length);
-    const localFilePath = path.join(LOCAL_UPLOADS_DIR, relativePath);
-    if (fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
-    return;
-  }
   await supabaseAdmin.storage.from(KYB_BUCKET).remove([storagePath]);
 }

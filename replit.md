@@ -10,9 +10,10 @@ DrimPay is a complete fintech platform — a public marketing/developer site plu
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
-Required env vars: `SUPABASE_DATABASE_URL`, `SESSION_SECRET`
+Required env vars: `SUPABASE_DATABASE_URL`, `SESSION_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`
 
 > The app uses `SUPABASE_DATABASE_URL` (primary) with `DATABASE_URL` as fallback. Always set `SUPABASE_DATABASE_URL` on any deployment (Plesk, production, etc.).
+> `SUPABASE_SERVICE_ROLE_KEY` is mandatory for KYB document uploads — files are stored exclusively in Supabase Storage (bucket `kyb-documents`). Without it the server will reject document uploads with a 500 error.
 
 ## Stack
 
@@ -70,6 +71,7 @@ Required env vars: `SUPABASE_DATABASE_URL`, `SESSION_SECRET`
    - `SUPABASE_DATABASE_URL` — URL complète Supabase PostgreSQL (Settings > Database)
    - `SESSION_SECRET` — clé secrète aléatoire longue
    - `NODE_ENV=production`
+   - `SUPABASE_SERVICE_ROLE_KEY` — clé service role Supabase (Settings > API > service_role). **Obligatoire** pour le stockage des documents KYB dans Supabase Storage. Sans cette clé les dépôts de documents KYB échouent.
 4. Schema DB : `pnpm --filter @workspace/db run push` (depuis Plesk ou CI, pointe vers Supabase)
 5. Commande de démarrage : `node artifacts/api-server/dist/index.mjs`
 6. Répertoire statique frontend : `artifacts/drimpay/dist/public/`
