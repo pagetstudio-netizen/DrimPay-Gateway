@@ -10,7 +10,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PopupSelect } from "@/components/ui/popup-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 const schema = z.object({
@@ -145,27 +145,18 @@ export default function ApiKeys() {
                   <FormField control={form.control} name="env" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Environnement</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="sandbox">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-yellow-400" />
-                              Sandbox (test)
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="live">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-green-400" />
-                              Live (production)
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <PopupSelect
+                          options={[
+                            { value: "sandbox", label: "Sandbox (test)", icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> },
+                            { value: "live", label: "Live (production)", icon: <div className="w-2.5 h-2.5 rounded-full bg-green-400" /> },
+                          ]}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Environnement"
+                          title="Environnement"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

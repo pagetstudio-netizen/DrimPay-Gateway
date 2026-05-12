@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowDownLeft, ArrowUpRight, CheckCircle2, Clock,
   XCircle, AlertCircle, X, RefreshCw, ChevronLeft, ChevronRight,
-  Filter, Copy, Check, ExternalLink, MousePointerClick, MessageSquare,
+  Copy, Check, ExternalLink, MousePointerClick, MessageSquare,
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PopupSelect } from "@/components/ui/popup-select";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -397,26 +397,32 @@ export default function DashboardPayments() {
                 <Input placeholder="Search by reference, order ID, phone number..." className="pl-9"
                   value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
               </div>
-              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
-                <SelectTrigger className="w-36">
-                  <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" /><SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  <SelectItem value="payin">Pay-in</SelectItem>
-                  <SelectItem value="payout">Pay-out</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="success">Success</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="w-36">
+                <PopupSelect
+                  options={[
+                    { value: "all", label: "All types" },
+                    { value: "payin", label: "Pay-in" },
+                    { value: "payout", label: "Pay-out" },
+                  ]}
+                  value={typeFilter}
+                  onChange={(v) => { setTypeFilter(v); setPage(1); }}
+                  title="Type de transaction"
+                />
+              </div>
+              <div className="w-36">
+                <PopupSelect
+                  options={[
+                    { value: "all", label: "All statuses" },
+                    { value: "success", label: "Success" },
+                    { value: "pending", label: "Pending" },
+                    { value: "processing", label: "Processing" },
+                    { value: "failed", label: "Failed" },
+                  ]}
+                  value={statusFilter}
+                  onChange={(v) => { setStatusFilter(v); setPage(1); }}
+                  title="Statut"
+                />
+              </div>
             </div>
 
             <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -494,17 +500,21 @@ export default function DashboardPayments() {
         {mainTab === "attempts" && (
           <>
             <div className="flex flex-col sm:flex-row gap-3 mb-5">
-              <Select value={attemptsStatus} onValueChange={(v) => { setAttemptsStatus(v); setAttemptsPage(1); }}>
-                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="initiated">Initié</SelectItem>
-                  <SelectItem value="confirmed">Confirmé</SelectItem>
-                  <SelectItem value="success">Réussi</SelectItem>
-                  <SelectItem value="failed">Échoué</SelectItem>
-                  <SelectItem value="abandoned">Abandonné</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="w-44">
+                <PopupSelect
+                  options={[
+                    { value: "all", label: "Tous les statuts" },
+                    { value: "initiated", label: "Initié" },
+                    { value: "confirmed", label: "Confirmé" },
+                    { value: "success", label: "Réussi" },
+                    { value: "failed", label: "Échoué" },
+                    { value: "abandoned", label: "Abandonné" },
+                  ]}
+                  value={attemptsStatus}
+                  onChange={(v) => { setAttemptsStatus(v); setAttemptsPage(1); }}
+                  title="Statut des tentatives"
+                />
+              </div>
               <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => loadAttempts()}>
                 <RefreshCw className={cn("w-3.5 h-3.5", attemptsLoading && "animate-spin")} /> Actualiser
               </Button>

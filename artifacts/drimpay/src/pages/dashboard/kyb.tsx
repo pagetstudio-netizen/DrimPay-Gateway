@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CountryPicker } from "@/components/ui/country-picker";
+import { PopupSelect } from "@/components/ui/popup-select";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const KYB_COUNTRY_OPTIONS = [
@@ -578,16 +578,16 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
                     <FormField control={form2.control} name="fundsSource" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Source principale des fonds <span className="text-red-500">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!isEditable}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner la source" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {FUNDS_SOURCES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <PopupSelect
+                            options={FUNDS_SOURCES.map(s => ({ value: s, label: s }))}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Sélectionner la source"
+                            title="Source principale des fonds"
+                            disabled={!isEditable}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -958,12 +958,16 @@ export default function Kyb() {
                               <FormField control={form1.control} name="businessType" render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Type d'entreprise <span className="text-red-500">*</span></FormLabel>
-                                  <Select onValueChange={field.onChange} value={field.value} disabled={!isEditable}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                      {BUSINESS_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
+                                  <FormControl>
+                                    <PopupSelect
+                                      options={BUSINESS_TYPES.map(t => ({ value: t, label: t }))}
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      placeholder="Sélectionner"
+                                      title="Type d'entreprise"
+                                      disabled={!isEditable}
+                                    />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )} />
@@ -1155,12 +1159,16 @@ export default function Kyb() {
                               <FormField control={form2.control} name="legalRepIdType" render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Type de document <span className="text-red-500">*</span></FormLabel>
-                                  <Select onValueChange={field.onChange} value={field.value} disabled={!isEditable}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                      {ID_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
+                                  <FormControl>
+                                    <PopupSelect
+                                      options={ID_TYPES.map(t => ({ value: t, label: t }))}
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      placeholder="Sélectionner"
+                                      title="Type de document"
+                                      disabled={!isEditable}
+                                    />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )} />
