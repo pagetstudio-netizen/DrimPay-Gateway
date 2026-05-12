@@ -1,0 +1,128 @@
+IMPORTANT : Reproduire exactement la même interface, structure, disposition, style visuel, tailles, espacements, cartes, sections, icônes et logique visibles sur la maquette/image fournie pour la page support DrimPay.
+
+Le rendu final doit être presque identique à la maquette tout en restant connecté au système actuel de la plateforme.
+
+⚠️ Ne pas modifier :
+- le système automatique de paiement
+- les APIs
+- les crédits automatiques
+- les transactions
+- la logique backend existante
+
+━━━━━━━━━━━━━━━━━━
+📌 MENU DASHBOARD
+━━━━━━━━━━━━━━━━━━
+
+Dans le dashboard administrateur et utilisateur :
+
+REMPLACER le bouton :
+❌ “Support & Communauté”
+
+PAR :
+✅ “Support Client”
+
+Le bouton “Support Client” doit ouvrir directement :
+/support
+
+━━━━━━━━━━━━━━━━━━
+📌 LOGIQUE À RESPECTER
+━━━━━━━━━━━━━━━━━━
+
+- Garder la logique actuelle entre administrateurs, marchands et utilisateurs.
+- Tous les boutons doivent fonctionner.
+- Tous les liens doivent être connectés.
+- Toutes les pages liées aux boutons doivent être créées automatiquement.
+- Les routes doivent fonctionner correctement sans erreur 404.
+- Les permissions admin/utilisateur doivent rester intactes.
+- Aucun conflit avec les systèmes existants.
+
+━━━━━━━━━━━━━━━━━━
+📌 PAGES À CRÉER AUTOMATIQUEMENT
+━━━━━━━━━━━━━━━━━━
+
+Créer toutes les pages nécessaires reliées aux boutons présents sur la maquette :
+
+- /support
+- /contact
+- /faq
+- /help-center
+- /security
+- /api-docs
+- /community
+- /status
+- /report-issue
+
+Créer également les pages pour les réseaux sociaux :
+
+- /social/facebook
+- /social/telegram
+- /social/whatsapp
+- /social/linkedin
+- /social/x
+
+━━━━━━━━━━━━━━━━━━
+📌 ARTICLES & CENTRE D’AIDE
+━━━━━━━━━━━━━━━━━━
+
+Créer une vraie section articles/support comme une plateforme fintech professionnelle.
+
+Ajouter :
+- articles populaires
+- catégories
+- recherche d’articles
+- guides API
+- tutoriels
+- documentation
+- FAQ
+- sécurité
+- KYB/KYC
+- liens de paiement
+- Pay with QR
+- webhooks
+- payouts
+- gestion des comptes
+
+━━━━━━━━━━━━━━━━━━
+📌 INTERFACE
+━━━━━━━━━━━━━━━━━━
+
+Respecter exactement :
+- la disposition de la maquette
+- les cartes
+- les blocs
+- les espacements
+- les icônes
+- les boutons
+- les tailles
+- la structure mobile et desktop
+
+Le design doit être :
+- moderne
+- fluide
+- responsive
+- professionnel
+- premium fintech
+
+━━━━━━━━━━━━━━━━━━
+📌 FONCTIONS À AJOUTER
+━━━━━━━━━━━━━━━━━━
+
+Ajouter :
+- bouton WhatsApp flottant
+- système de notifications support
+- badge “Support 24/7”
+- indicateur statut système
+- animations fluides
+- transitions modernes
+- chargement skeleton
+- support dark mode
+
+━━━━━━━━━━━━━━━━━━
+📌 IMPORTANT
+━━━━━━━━━━━━━━━━━━
+
+Le résultat final doit ressembler presque exactement à la maquette envoyée.
+
+Ne pas improviser un autre design.
+Ne pas changer la logique actuelle.
+Simplement transformer l’interface existante pour qu’elle corresponde à la maquette tout en gardant tout le système fonctionnel.

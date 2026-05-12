@@ -1,0 +1,137 @@
+Corriger complètement les problèmes de la page KYC/KYB sur DrimPay sans modifier la logique actuelle du système.
+
+━━━━━━━━━━━━━━━━━━
+📌 PROBLÈMES À CORRIGER
+━━━━━━━━━━━━━━━━━━
+
+1. Le bouton “Suivant” devient noir.
+2. Certains textes deviennent invisibles ou noirs.
+3. Les couleurs ne s’affichent pas correctement.
+4. Lors du passage à l’étape suivante :
+→ erreur serveur affichée.
+5. Certaines étapes KYC/KYB ne chargent pas correctement.
+6. Le responsive mobile et desktop est incohérent.
+7. Les inputs et boutons perdent leur style après interaction.
+
+━━━━━━━━━━━━━━━━━━
+📌 OBJECTIF
+━━━━━━━━━━━━━━━━━━
+
+Stabiliser entièrement :
+- le design
+- les couleurs
+- les boutons
+- les transitions
+- la navigation entre étapes
+- les requêtes frontend/backend
+
+sans casser le système KYC/KYB existant.
+
+━━━━━━━━━━━━━━━━━━
+📌 DESIGN À CORRIGER
+━━━━━━━━━━━━━━━━━━
+
+- Garder les styles cohérents sur desktop et mobile.
+- Les boutons doivent conserver leur apparence normale au hover, focus, active et disabled.
+- Aucun bouton ne doit devenir noir.
+- Les textes doivent toujours rester lisibles.
+- Vérifier les classes CSS conflictuelles.
+- Vérifier les variables globales de thème.
+- Vérifier dark mode/light mode.
+- Vérifier Tailwind classes conditionnelles.
+- Vérifier conflits CSS entre dashboard et formulaire KYC/KYB.
+
+━━━━━━━━━━━━━━━━━━
+📌 NAVIGATION ENTRE ÉTAPES
+━━━━━━━━━━━━━━━━━━
+
+Corriger :
+- bouton “Suivant”
+- bouton “Retour”
+- progression des étapes
+- sauvegarde des données
+- validation des champs
+
+Le passage entre les étapes doit fonctionner sans rechargement cassé ni erreur serveur.
+
+━━━━━━━━━━━━━━━━━━
+📌 ERREUR SERVEUR
+━━━━━━━━━━━━━━━━━━
+
+Diagnostiquer et corriger :
+- routes API cassées
+- erreurs validation backend
+- problèmes de session/auth
+- erreurs upload documents
+- erreurs base de données
+- erreurs state management frontend
+
+Ajouter :
+- logs propres
+- gestion erreurs utilisateur
+- messages clairs
+- fallback loading states
+
+━━━━━━━━━━━━━━━━━━
+📌 KYC/KYB FLOW
+━━━━━━━━━━━━━━━━━━
+
+Le flow doit fonctionner parfaitement :
+
+ÉTAPE 1
+Informations personnelles ou entreprise
+
+ÉTAPE 2
+Documents identité / entreprise
+
+ÉTAPE 3
+Uploads & vérifications
+
+ÉTAPE 4
+Contrat & signature
+
+Puis :
+→ soumission finale
+→ statut pending review
+
+━━━━━━━━━━━━━━━━━━
+📌 CONTRAT & SIGNATURE
+━━━━━━━━━━━━━━━━━━
+
+Corriger :
+- chargement contrat
+- signature
+- validation checkbox
+- email professionnel
+- envoi document
+- soumission finale
+
+━━━━━━━━━━━━━━━━━━
+📌 RESPONSIVE
+━━━━━━━━━━━━━━━━━━
+
+Optimiser :
+- mobile
+- tablette
+- desktop
+
+Le rendu desktop doit être identique en qualité au mobile.
+
+━━━━━━━━━━━━━━━━━━
+📌 IMPORTANT
+━━━━━━━━━━━━━━━━━━
+
+Ne pas modifier :
+- système API
+- logique wallet
+- paiements
+- crédits automatiques
+- transactions
+- sécurité existante
+
+Le but est uniquement :
+- corriger les bugs
+- stabiliser l’interface
+- réparer la navigation
+- réparer le style
+- réparer les erreurs serveur.

@@ -1,0 +1,278 @@
+Create a complete new merchant dashboard feature called “Pay with QR” inside DrimPay.
+
+IMPORTANT:
+- Do NOT modify the existing payment engine.
+- Do NOT modify the automatic credit system.
+- Do NOT modify the current payin logic, wallets, webhook flow, transaction system, or payment links system.
+- This QR system must reuse the existing payin infrastructure and existing checkout page.
+
+════════════════════════════
+FEATURE OVERVIEW
+════════════════════════════
+
+Add a new sidebar menu item:
+
+→ Pay with QR
+
+The purpose of this feature is to allow merchants to generate static QR payment codes linked to their DrimPay account.
+
+When customers scan the QR code:
+→ it opens the DrimPay payment page
+→ the customer selects country
+→ selects operator
+→ enters phone number
+→ enters amount (if amount is not fixed)
+→ completes payment using the existing payin system.
+
+The QR system must behave like payment links but in QR format.
+
+════════════════════════════
+MERCHANT DASHBOARD PAGE
+════════════════════════════
+
+Create a modern responsive page for merchants.
+
+Page title:
+→ Pay with QR
+
+Subtitle:
+→ Generate static QR payment codes and receive payments instantly.
+
+Add a button:
+→ Generate QR
+
+════════════════════════════
+QR CREATION FORM
+════════════════════════════
+
+Fields:
+
+1. QR Name
+Example:
+- Main Store
+- Restaurant
+- Shop Counter
+
+2. Description (optional)
+
+3. Default Country (optional dropdown)
+
+4. Currency
+- XOF
+- XAF
+
+5. QR Type
+Options:
+- Fixed Amount
+- Flexible Amount
+
+If “Fixed Amount”:
+show amount field.
+
+If “Flexible Amount”:
+customer enters amount during payment.
+
+6. Expiration (optional)
+- Never expire
+- Custom expiration date
+
+7. Status
+- Active
+- Inactive
+
+════════════════════════════
+QR GENERATION
+════════════════════════════
+
+When merchant clicks “Generate QR”:
+
+Generate:
+- unique QR reference
+- unique payment URL
+- QR code image
+
+Example reference:
+DRM-QR-8S7D9F
+
+Example URL:
+https://pay.drimpay.africa/qr/DRM-QR-8S7D9F
+
+Store everything in database.
+
+════════════════════════════
+QR DISPLAY CARD
+════════════════════════════
+
+After generation display:
+
+- Large QR code
+- QR reference
+- Creation date
+- QR type
+- Status
+- Transaction count
+
+Buttons:
+- Download PNG
+- Copy Link
+- Disable QR
+- Delete QR
+
+════════════════════════════
+CUSTOMER PAYMENT FLOW
+════════════════════════════
+
+When customer scans QR:
+open the existing DrimPay checkout/payment page.
+
+IMPORTANT:
+Reuse the current payment page design and payin system.
+
+Step 1:
+Customer selects:
+- country
+- operator
+- mobile money number
+- amount (only if flexible amount QR)
+
+Operators must dynamically change based on country.
+
+Examples:
+Togo:
+- TMoney
+- Moov
+
+Cameroon:
+- MTN
+- Orange
+
+Senegal:
+- Orange
+- Wave
+- Free
+
+Step 2:
+Show payment summary:
+- Merchant name
+- Amount
+- Fees
+- Operator
+- Phone number
+
+Button:
+→ Pay Now
+
+════════════════════════════
+PAYMENT PROCESSING
+════════════════════════════
+
+The QR system MUST use:
+- existing payin API
+- existing wallets
+- existing webhook system
+- existing transaction history
+- existing automatic merchant credit logic
+
+DO NOT create a new payment engine.
+
+After successful payment:
+redirect to success page.
+
+════════════════════════════
+SUCCESS PAGE
+════════════════════════════
+
+Show:
+- Payment successful
+- Transaction reference
+- Amount
+- Date
+- Merchant name
+
+════════════════════════════
+MERCHANT QR MANAGEMENT TABLE
+════════════════════════════
+
+Create a table listing all merchant QR codes.
+
+Columns:
+- QR Name
+- QR Reference
+- Type
+- Status
+- Transactions Count
+- Total Collected
+- Created At
+
+Actions:
+- View
+- Download
+- Copy Link
+- Disable
+- Delete
+
+════════════════════════════
+ADMIN DASHBOARD SUPPORT
+════════════════════════════
+
+Admin dashboard must include:
+
+New menu:
+→ QR Payments
+
+Admin can:
+- view all QR codes
+- disable suspicious QR codes
+- delete QR codes
+- view total QR transactions
+- view merchant using QR
+- filter by country
+- filter by status
+
+════════════════════════════
+SECURITY
+════════════════════════════
+
+Add:
+- rate limiting
+- anti-spam protection
+- QR ownership verification
+- secure public QR routes
+- transaction validation
+- webhook verification
+
+════════════════════════════
+MOBILE EXPERIENCE
+════════════════════════════
+
+Optimize heavily for mobile.
+
+Requirements:
+- large buttons
+- touch friendly inputs
+- responsive checkout
+- fast QR loading
+- mobile-first layout
+
+════════════════════════════
+UI / DESIGN
+════════════════════════════
+
+Modern fintech design:
+- clean layout
+- rounded cards
+- soft shadows
+- smooth animations
+- modern typography
+- professional payment experience
+
+Do not break the current platform structure.
+
+Reuse existing:
+- auth system
+- payin infrastructure
+- wallets
+- merchant system
+- transaction logic
+- webhook system
+- payment checkout flow
