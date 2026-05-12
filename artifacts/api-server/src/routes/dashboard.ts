@@ -892,8 +892,12 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
           updateValues[key] = storagePath;
         }
       }));
-      if (Object.keys(updateValues).length === 0) {
-        res.status(400).json({ error: "Aucun document reçu. Veuillez téléverser les documents obligatoires." });
+      const requiredDocKeys = ["documentRccm", "documentCertificate", "documentProofAddress", "documentBankStatement"];
+      const hasAllRequired = requiredDocKeys.every(k =>
+        updateValues[k] || existing[0]?.[k as keyof typeof existing[0]]
+      );
+      if (!hasAllRequired) {
+        res.status(400).json({ error: "Veuillez téléverser les 4 documents obligatoires : RCCM, Certificat d'entreprise, Preuve d'adresse et Relevé bancaire." });
         return;
       }
     } else if (stepNum === 4) {

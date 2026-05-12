@@ -334,7 +334,7 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
     setUploadedFiles(prev => ({ ...prev, [key]: file }));
 
   const kycDocsReady = KYC_ID_DOCS.filter(d => d.required).every(d =>
-    uploadedFiles[d.key] !== null || (kyb?.[d.key] && !isEditable)
+    uploadedFiles[d.key] !== null || !!kyb?.[d.key]
   );
 
   const saveStep = async (stepNum: number, data: Record<string, any>, fileKeys?: string[]) => {
@@ -378,8 +378,7 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
   const handleStep3Submit = async () => {
     if (submitting) return;
     setError("");
-    const allReady = KYC_ID_DOCS.filter(d => d.required).every(d => uploadedFiles[d.key] !== null);
-    if (!allReady) {
+    if (!kycDocsReady) {
       setError("Veuillez téléverser les 3 documents d'identité obligatoires.");
       return;
     }
@@ -542,7 +541,7 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <Button type="submit" className="text-black gap-2" disabled={submitting}>
+                  <Button type="submit" className="bg-primary text-black gap-2" disabled={submitting}>
                     {submitting ? "Enregistrement…" : <><span>Suivant</span><ChevronRight className="w-4 h-4" /></>}
                   </Button>
                 </div>
@@ -610,7 +609,7 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
                   <Button type="button" variant="outline" onClick={() => setStep(1)} className="gap-2" disabled={submitting}>
                     <ChevronLeft className="w-4 h-4" /> Retour
                   </Button>
-                  <Button type="submit" className="text-black gap-2" disabled={submitting}>
+                  <Button type="submit" className="bg-primary text-black gap-2" disabled={submitting}>
                     {submitting ? "Enregistrement…" : <><span>Suivant</span><ChevronRight className="w-4 h-4" /></>}
                   </Button>
                 </div>
@@ -663,7 +662,7 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
               <Button
                 type="button"
                 onClick={handleStep3Submit}
-                className="text-black gap-2"
+                className="bg-primary text-black gap-2"
                 disabled={submitting || !kycDocsReady}
               >
                 {submitting ? (
@@ -738,8 +737,8 @@ export default function Kyb() {
   const setFile = (key: string) => (file: File | null) =>
     setUploadedFiles(prev => ({ ...prev, [key]: file }));
 
-  const step2RequiredDocs = STEP2_DOCS.filter(d => d.required).every(d => uploadedFiles[d.key] !== null);
-  const step3RequiredDocs = STEP3_DOCS.filter(d => d.required).every(d => uploadedFiles[d.key] !== null);
+  const step2RequiredDocs = STEP2_DOCS.filter(d => d.required).every(d => uploadedFiles[d.key] !== null || !!kyb?.[d.key]);
+  const step3RequiredDocs = STEP3_DOCS.filter(d => d.required).every(d => uploadedFiles[d.key] !== null || !!kyb?.[d.key]);
 
   const accountType: "enterprise" | "personal" = kyb?.accountType ?? "enterprise";
   const status = kyb?.status ?? "pending";
@@ -1056,7 +1055,7 @@ export default function Kyb() {
                             </div>
                           </div>
                           <div className="flex justify-end">
-                            <Button type="submit" className="text-black gap-2" disabled={submitting}>
+                            <Button type="submit" className="bg-primary text-black gap-2" disabled={submitting}>
                               {submitting ? "Enregistrement…" : <><span>Suivant</span><ChevronRight className="w-4 h-4" /></>}
                             </Button>
                           </div>
@@ -1210,7 +1209,7 @@ export default function Kyb() {
                             <Button type="button" variant="outline" onClick={() => setStep(1)} className="gap-2" disabled={submitting}>
                               <ChevronLeft className="w-4 h-4" /> Retour
                             </Button>
-                            <Button type="submit" className="text-black gap-2" disabled={submitting}>
+                            <Button type="submit" className="bg-primary text-black gap-2" disabled={submitting}>
                               {submitting ? "Enregistrement…" : <><span>Suivant</span><ChevronRight className="w-4 h-4" /></>}
                             </Button>
                           </div>
@@ -1255,7 +1254,7 @@ export default function Kyb() {
                         <Button type="button" variant="outline" onClick={() => setStep(2)} className="gap-2">
                           <ChevronLeft className="w-4 h-4" /> Retour
                         </Button>
-                        <Button type="button" onClick={handleStep3Next} className="text-black gap-2" disabled={submitting}>
+                        <Button type="button" onClick={handleStep3Next} className="bg-primary text-black gap-2" disabled={submitting}>
                           {submitting ? "Enregistrement…" : <><span>Suivant</span><ChevronRight className="w-4 h-4" /></>}
                         </Button>
                       </div>
@@ -1336,7 +1335,7 @@ export default function Kyb() {
                             <Button type="button" variant="outline" onClick={() => setStep(3)} className="gap-2">
                               <ChevronLeft className="w-4 h-4" /> Retour
                             </Button>
-                            <Button type="submit" className="text-black gap-2" disabled={submitting}>
+                            <Button type="submit" className="bg-primary text-black gap-2" disabled={submitting}>
                               {submitting ? (
                                 <><span className="animate-spin inline-block w-4 h-4 border-2 border-black/30 border-t-black rounded-full" /> Soumission...</>
                               ) : (
