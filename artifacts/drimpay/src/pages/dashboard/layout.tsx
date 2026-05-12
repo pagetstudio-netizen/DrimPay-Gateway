@@ -12,14 +12,16 @@ import { useMode } from "@/lib/mode-context";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/ui/notification-bell";
 
-import walletImg    from "@assets/10149443_1778149009900.png";
-import reversImg    from "@assets/6360759_(1)_1778149009839.png";
-import settingsImg  from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466c-8a76-4127fc639_1778149010010.png";
-import kybImg       from "@assets/telecharger_1778149010032.png";
-import userImg      from "@assets/utilisateur_1778149009992.png";
-import logoutImg    from "@assets/46391560-se-deconnecter-icone-symbole-conception-illustration-_1778105456327.jpg";
-import apiIconImg   from "@assets/6213702_1778508885407.png";
-import supportImg   from "@assets/contact-us.1e0b8969a82ca2f9bd2d0b6df0fc7b96_1778539656598.webp";
+import walletImg       from "@assets/10149443_1778149009900.png";
+import reversImg       from "@assets/téléchargement_(58)_1778601564225.png";
+import settingsImg     from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466c-8a76-4127fc639_1778149010010.png";
+import kybImg          from "@assets/telecharger_1778149010032.png";
+import userImg         from "@assets/utilisateur_1778149009992.png";
+import logoutImg       from "@assets/3240728_1778601564288.png";
+import apiIconImg      from "@assets/6213702_1778508885407.png";
+import supportImg      from "@assets/contact-us.1e0b8969a82ca2f9bd2d0b6df0fc7b96_1778539656598.webp";
+import massPaiementImg from "@assets/téléchargement_(57)_1778601564265.png";
+import linkPaiementImg from "@assets/1751761_1778601564313.png";
 
 type NavItem = {
   href: string;
@@ -32,9 +34,9 @@ const navItems: NavItem[] = [
   { href: "/dashboard",                    label: "Vue d'ensemble",      icon: LayoutDashboard },
   { href: "/dashboard/wallets",            label: "Wallets",              img: walletImg },
   { href: "/dashboard/payments",           label: "Historique",           icon: History },
-  { href: "/dashboard/payment-links",      label: "Liens de Paiement",    icon: Link2 },
+  { href: "/dashboard/payment-links",      label: "Liens de Paiement",    img: linkPaiementImg },
   { href: "/dashboard/qr-codes",           label: "Pay with QR",          icon: QrCode },
-  { href: "/dashboard/mass-payout",        label: "Paiement de Masse",    icon: SendHorizonal },
+  { href: "/dashboard/mass-payout",        label: "Paiement de Masse",    img: massPaiementImg },
   { href: "/dashboard/reversement",        label: "Reversement",          img: reversImg },
   { href: "/dashboard/kyb",                label: "Vérification KYB",     img: kybImg },
   { href: "/dashboard/settings",           label: "Paramètres",           img: settingsImg },
@@ -376,7 +378,7 @@ function SidebarNav({ onNavigate, location }: { onNavigate: () => void; location
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all"
         >
-          <img src={logoutImg} alt="" className="w-[18px] h-[18px] shrink-0 object-contain" style={{ filter: "brightness(0) saturate(0) opacity(0.5)" }} />
+          <img src={logoutImg} alt="" className="w-[22px] h-[22px] shrink-0 object-contain" />
           Déconnexion
         </button>
       </div>
