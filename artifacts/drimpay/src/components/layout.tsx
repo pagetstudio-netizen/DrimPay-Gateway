@@ -150,7 +150,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
 
           <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} DrimPay — Ashtech Sarl. {t.footer.rights}</p>
+            <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} DrimPay. {t.footer.rights}</p>
             <div className="flex gap-6 items-center">
               <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">{t.footer.terms}</Link>
               <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">{t.footer.privacy}</Link>
@@ -172,11 +172,11 @@ export function Layout({ children }: { children: ReactNode }) {
                   En utilisant les plateformes web, applications mobiles, APIs et services associés de DrimPay, vous reconnaissez et acceptez que DrimPay n'est pas une banque. Toutes les transactions financières, opérations de paiement, de retrait, de collecte ou de transfert sont fournies directement ou indirectement via des partenaires tiers autorisés.
                 </p>
                 <p>
-                  <strong className="text-foreground/80">"DrimPay"</strong> est le nom commercial de <strong className="text-foreground/80">ASHTECH SARL</strong> ainsi que de ses sociétés affiliées, filiales et partenaires associés. ASHTECH SARL est une société technologique privée spécialisée dans les infrastructures de paiement numérique et les solutions fintech destinées à l'Afrique de l'Ouest et Centrale.
+                  <strong className="text-foreground/80">DrimPay</strong> est une société technologique privée spécialisée dans les infrastructures de paiement numérique et les solutions fintech destinées à l'Afrique de l'Ouest et Centrale.
                 </p>
                 <p>Les services proposés peuvent inclure : collecte de paiements Mobile Money, envoi de paiements (Pay-out), liens de paiement, APIs de paiement, outils marchands et solutions fintech. Toutes les opérations sont soumises aux réglementations locales applicables, aux politiques de lutte contre le blanchiment d'argent (AML), de lutte contre le financement du terrorisme (CFT) ainsi qu'aux procédures de vérification KYC/KYB.</p>
                 <p>
-                  En utilisant DrimPay, vous acceptez les Conditions Générales d'Utilisation, la Politique de Confidentialité, les politiques AML/KYC/KYB ainsi que les règles de conformité et de sécurité de la plateforme. ASHTECH SARL se réserve le droit de suspendre, limiter ou refuser tout compte ou transaction suspecte afin de garantir la sécurité de son infrastructure et la conformité réglementaire.
+                  En utilisant DrimPay, vous acceptez les Conditions Générales d'Utilisation, la Politique de Confidentialité, les politiques AML/KYC/KYB ainsi que les règles de conformité et de sécurité de la plateforme. DrimPay se réserve le droit de suspendre, limiter ou refuser tout compte ou transaction suspecte afin de garantir la sécurité de son infrastructure et la conformité réglementaire.
                 </p>
               </div>
             </div>

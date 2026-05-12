@@ -107,7 +107,7 @@ export async function sendContractEmail(opts: {
         <tr>
           <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06<br>
+              DrimPay<br>
               Cet email et ses pièces jointes sont confidentiels et destinés uniquement au destinataire.
             </p>
           </td>
@@ -195,7 +195,7 @@ export async function sendKybApprovedEmail(opts: {
         <tr>
           <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06
+              DrimPay
             </p>
           </td>
         </tr>
@@ -279,7 +279,7 @@ export async function sendKybRejectedEmail(opts: {
         <tr>
           <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06
+              DrimPay
             </p>
           </td>
         </tr>
@@ -358,7 +358,7 @@ export async function sendWelcomeEmail(opts: {
         <tr>
           <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06<br>
+              DrimPay<br>
               Cet email vous est envoyé suite à votre inscription sur DrimPay.
             </p>
           </td>
@@ -441,7 +441,7 @@ export async function sendKybProcessingEmail(opts: {
         <tr>
           <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06<br>
+              DrimPay<br>
               Cet email fait suite à votre soumission de dossier KYB sur DrimPay.
             </p>
           </td>
@@ -507,7 +507,7 @@ export async function sendBroadcastEmail(opts: {
         <tr>
           <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay — Ashtech Sarl | Foumbot, Cameroun | RCCM RC/FBOT/2026/B/06<br>
+              DrimPay<br>
               Cet email est destiné uniquement au destinataire.
             </p>
           </td>

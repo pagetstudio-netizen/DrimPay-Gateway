@@ -61,12 +61,12 @@ const STATS = [
   { value: "7", label: "Pays couverts", icon: <MapPin className="w-4 h-4" /> },
   { value: "20+", label: "Opérateurs intégrés", icon: <Globe className="w-4 h-4" /> },
   { value: "3%", label: "Frais flat transparents", icon: <TrendingUp className="w-4 h-4" /> },
-  { value: "2023", label: "Année de fondation", icon: <Star className="w-4 h-4" /> },
+  { value: "99.9%", label: "Disponibilité garantie", icon: <Star className="w-4 h-4" /> },
 ];
 
 /* ── milestones ─────────────────────────────────────────────────────────── */
 const MILESTONES = [
-  { year: "2023", title: "Fondation d'ASHTECH SARL", desc: "Naissance de DrimPay à Lomé, Togo. Première intégration TMoney & Moov Money." },
+  { year: "J1", title: "Fondation de DrimPay", desc: "Naissance de DrimPay. Premières intégrations TMoney & Moov Money." },
   { year: "2024", title: "Expansion régionale", desc: "Lancement au Bénin, Sénégal et Côte d'Ivoire. Intégration Orange Money, Wave et MTN MoMo." },
   { year: "2024", title: "API v2.0", desc: "Refonte complète de l'infrastructure API. Support multi-pays unifié, webhooks temps réel et dashboard marchand." },
   { year: "2025", title: "Prochaine étape", desc: "Expansion vers le Nigeria et le Ghana. Lancement des cartes virtuelles et du Mass Payout automatisé." },
@@ -86,7 +86,7 @@ export default function About() {
       ? "DrimPay a été fondé pour unifier les systèmes de paiement fragmentés d'Afrique de l'Ouest et Centrale. Découvrez notre mission, notre vision et l'équipe derrière l'infrastructure."
       : "DrimPay was founded to unify fragmented payment systems across West & Central Africa. Learn about our mission, vision and the team behind the infrastructure.",
     keywords: lang === "fr"
-      ? "DrimPay à propos, fintech Afrique, ASHTECH SARL, paiement mobile Afrique, infrastructure financière"
+      ? "DrimPay à propos, fintech Afrique, paiement mobile Afrique, infrastructure financière"
       : "DrimPay about, Africa fintech, payment infrastructure, mobile money Africa",
     jsonLd: [
       organizationSchema,
@@ -118,7 +118,7 @@ export default function About() {
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#B5F03C]/20 border border-[#B5F03C]/30 mb-7"
             >
               <Users className="w-3.5 h-3.5 text-[#3a7a00]" />
-              <span className="text-xs font-semibold text-[#3a7a00]">ASHTECH SARL — DrimPay</span>
+              <span className="text-xs font-semibold text-[#3a7a00]">À propos de DrimPay</span>
             </motion.div>
 
             {/* Title */}

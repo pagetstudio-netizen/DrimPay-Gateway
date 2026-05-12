@@ -76,12 +76,6 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
     // ── 1. AGRÉGATEUR ─────────────────────────────────────────────────────────
     section("1. IDENTIFICATION DE L'AGRÉGATEUR DE PAIEMENT");
     line("Nom commercial", "DrimPay");
-    line("Entreprise", "Ashtech Sarl");
-    line("Pays d'enregistrement", "Cameroun");
-    line("Ville", "Foumbot");
-    line("Adresse", "Foumbot, derrière le lycée bilingue");
-    line("Numéro RCCM", "RC/FBOT/2026/B/06");
-    line("Numéro fiscal", "MO22618405800Y");
     line("Représentant légal", "Mr. Mfoupon Alassa Assan — Gérant");
     y += 6;
 
