@@ -42,6 +42,48 @@ uri = "file://artifacts/drimpay/public/blog-qr-restaurant.png"
 type = "image"
 title = "restaurant qr drimpay wall"
 
+[[generated]]
+id = "5rcA35hXMCWPmG-jqguwO"
+uri = "file://attached_assets/icon3d_webhook.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kMoVV9YKHvD8xkoEifGCL"
+uri = "file://attached_assets/icon3d_ip_statique.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3Hh1Hl0q9FZMs4fE6EiFs"
+uri = "file://attached_assets/icon3d_password.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "olh061v50S6Tp2z0Hd5_S"
+uri = "file://attached_assets/icon3d_company.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "OZ9TTqHMr9Qh0TRxEHOjP"
+uri = "file://attached_assets/icon3d_api_key.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "xZpTvwaToPKn7n7saFnmx"
+uri = "file://attached_assets/icon3d_security.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "vhlLxZOCfovE9LxinqUNE"
+uri = "file://attached_assets/icon3d_identity.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "lpHSkSlV_OmPw3aEEClSE"
 uri = "file://artifacts/drimpay/public/blog-qr-restaurant.png"

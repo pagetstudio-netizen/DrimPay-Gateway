@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "./layout";
-import { Webhook, Lock, Wifi, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Save } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Save } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import webhookImg  from "@assets/icon3d_webhook.png";
+import ipImg       from "@assets/icon3d_ip_statique.png";
+import passwordImg from "@assets/icon3d_password.png";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -30,15 +33,15 @@ function Feedback({ status, error }: { status: Status; error: string }) {
 }
 
 const inputCls = (hasError?: boolean) => cn(
-  "w-full h-11 rounded-xl border bg-muted/20 px-4 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all",
+  "w-full h-11 rounded-xl border bg-gray-50 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all",
   "focus:border-primary focus:ring-2 focus:ring-primary/20",
-  hasError ? "border-red-400" : "border-border"
+  hasError ? "border-red-400" : "border-gray-200"
 );
 
 const MENU_ITEMS = [
-  { key: "webhook", label: "Webhook", icon: Webhook },
-  { key: "ip", label: "IP Statique", icon: Wifi },
-  { key: "password", label: "Mot de passe", icon: Lock },
+  { key: "webhook", label: "Webhook",       img: webhookImg },
+  { key: "ip",      label: "IP Statique",   img: ipImg },
+  { key: "password",label: "Mot de passe",  img: passwordImg },
 ];
 
 export default function DashboardSettings() {
@@ -123,66 +126,67 @@ export default function DashboardSettings() {
     setTimeout(() => setPwStatus("idle"), 3000);
   };
 
+  const active = (key: string) => activeSection === key;
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-5">
 
-        {/* Page header */}
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Paramètres</h1>
-          <p className="text-muted-foreground text-sm mt-1">Configurez votre compte et vos intégrations.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Paramètres</h1>
+          <p className="text-gray-500 text-sm mt-1">Configurez votre compte et vos intégrations.</p>
         </div>
 
-        {/* Mobile: horizontal tab strip — Desktop: sidebar + panel */}
         <div className="flex flex-col md:flex-row gap-4 md:gap-5">
 
           {/* Sidebar / Tab strip */}
           <div className="md:w-52 md:shrink-0">
-            {/* Mobile tabs — horizontal scrollable strip */}
+
+            {/* Mobile tabs */}
             <div className="flex md:hidden gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-              {MENU_ITEMS.map(({ key, label, icon: Icon }) => (
+              {MENU_ITEMS.map(({ key, label, img }) => (
                 <button
                   key={key}
                   onClick={() => setActiveSection(key)}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-colors border",
-                    activeSection === key
-                      ? "bg-primary/10 text-primary border-primary/30 font-semibold"
-                      : "text-muted-foreground border-border hover:bg-muted"
+                    active(key)
+                      ? "bg-primary/10 text-gray-900 border-primary/30 font-semibold"
+                      : "text-gray-500 border-gray-100 hover:bg-gray-50"
                   )}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <img src={img} alt="" className="w-5 h-5 object-contain shrink-0" />
                   {label}
                 </button>
               ))}
             </div>
 
             {/* Desktop sidebar card */}
-            <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden p-2">
+            <div className="hidden md:block rounded-2xl border border-gray-100 bg-white overflow-hidden p-2 shadow-sm">
               <div className="px-3 py-2 mb-1">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm shrink-0">
                     {user?.companyName?.[0]?.toUpperCase() ?? "?"}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold truncate">{user?.companyName ?? "—"}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{user?.email ?? "—"}</p>
+                    <p className="text-xs font-semibold text-gray-900 truncate">{user?.companyName ?? "—"}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{user?.email ?? "—"}</p>
                   </div>
                 </div>
               </div>
-              <div className="h-px bg-border mx-1 mb-2" />
-              {MENU_ITEMS.map(({ key, label, icon: Icon }) => (
+              <div className="h-px bg-gray-100 mx-1 mb-2" />
+              {MENU_ITEMS.map(({ key, label, img }) => (
                 <button
                   key={key}
                   onClick={() => setActiveSection(key)}
                   className={cn(
                     "w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                    activeSection === key
-                      ? "bg-primary/10 text-primary font-semibold"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    active(key)
+                      ? "bg-primary/10 text-gray-900 font-semibold border-l-[3px] border-primary"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   )}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <img src={img} alt="" className="w-6 h-6 object-contain shrink-0" />
                   {label}
                 </button>
               ))}
@@ -190,22 +194,22 @@ export default function DashboardSettings() {
           </div>
 
           {/* Content panel */}
-          <div className="flex-1 min-w-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="flex-1 min-w-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
             {activeSection === "webhook" && (
               <div className="p-4 sm:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Webhook className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                  <div className="w-12 h-12 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center shrink-0">
+                    <img src={webhookImg} alt="" className="w-8 h-8 object-contain" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-sm sm:text-base">URL de Webhook</h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">DrimPay envoie une notification POST à cette URL à chaque changement d'état d'une transaction.</p>
+                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">URL de Webhook</h2>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">DrimPay envoie une notification POST à cette URL à chaque changement d'état d'une transaction.</p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">URL de callback</label>
+                    <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">URL de callback</label>
                     <input
                       type="url"
                       placeholder="https://votreapp.com/webhook/drimpay"
@@ -214,20 +218,20 @@ export default function DashboardSettings() {
                       className={inputCls(webhookStatus === "error")}
                     />
                   </div>
-                  <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 text-xs text-muted-foreground leading-relaxed">
+                  <div className="rounded-xl bg-primary/5 border border-primary/15 px-4 py-3 text-xs text-gray-500 leading-relaxed">
                     <span className="text-primary font-semibold">Conseil :</span> Votre endpoint doit répondre avec un statut <code className="text-primary font-mono">200</code> pour confirmer la réception. DrimPay signe chaque requête avec un header <code className="text-primary font-mono">X-DrimPay-Signature</code>.
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       onClick={saveWebhook}
                       disabled={webhookStatus === "loading"}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-black text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                     >
                       {webhookStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                       Sauvegarder
                     </button>
                     {webhookUrl && (
-                      <button onClick={() => setWebhookUrl("")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      <button onClick={() => setWebhookUrl("")} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
                         Effacer
                       </button>
                     )}
@@ -240,17 +244,17 @@ export default function DashboardSettings() {
             {activeSection === "ip" && (
               <div className="p-4 sm:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Wifi className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                  <div className="w-12 h-12 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center shrink-0">
+                    <img src={ipImg} alt="" className="w-8 h-8 object-contain" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-sm sm:text-base">Adresse IP Statique</h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Configurez votre IP statique pour que vos retraits soient autorisés sans blocage de sécurité.</p>
+                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">Adresse IP Statique</h2>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Configurez votre IP statique pour que vos retraits soient autorisés sans blocage de sécurité.</p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Adresse IP (optionnel)</label>
+                    <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Adresse IP (optionnel)</label>
                     <input
                       type="text"
                       placeholder="192.168.1.1"
@@ -259,20 +263,20 @@ export default function DashboardSettings() {
                       className={inputCls(ipStatus === "error")}
                     />
                   </div>
-                  <div className="rounded-xl bg-amber-500/5 border border-amber-500/20 px-4 py-3 text-xs text-amber-400/90 leading-relaxed">
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-700 leading-relaxed">
                     <span className="font-semibold">Note :</span> Si vous disposez d'une adresse IP statique, configurez-la ici. Cela permet que vos reversements passent sans friction supplémentaire côté sécurité.
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       onClick={saveIp}
                       disabled={ipStatus === "loading"}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-black text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                     >
                       {ipStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                       Sauvegarder
                     </button>
                     {staticIp && (
-                      <button onClick={() => setStaticIp("")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      <button onClick={() => setStaticIp("")} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
                         Effacer
                       </button>
                     )}
@@ -285,17 +289,17 @@ export default function DashboardSettings() {
             {activeSection === "password" && (
               <div className="p-4 sm:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                  <div className="w-12 h-12 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center shrink-0">
+                    <img src={passwordImg} alt="" className="w-8 h-8 object-contain" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-sm sm:text-base">Modifier le mot de passe</h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Choisissez un mot de passe fort d'au moins 8 caractères.</p>
+                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">Modifier le mot de passe</h2>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Choisissez un mot de passe fort d'au moins 8 caractères.</p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Mot de passe actuel</label>
+                    <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Mot de passe actuel</label>
                     <div className="relative">
                       <input
                         type={showCurrent ? "text" : "password"}
@@ -305,13 +309,13 @@ export default function DashboardSettings() {
                         className={cn(inputCls(pwStatus === "error" && !currentPassword), "pr-11")}
                       />
                       <button type="button" tabIndex={-1} onClick={() => setShowCurrent(v => !v)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                         {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Nouveau mot de passe</label>
+                    <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Nouveau mot de passe</label>
                     <div className="relative">
                       <input
                         type={showNew ? "text" : "password"}
@@ -321,13 +325,13 @@ export default function DashboardSettings() {
                         className={cn(inputCls(), "pr-11")}
                       />
                       <button type="button" tabIndex={-1} onClick={() => setShowNew(v => !v)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                         {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Confirmer le nouveau mot de passe</label>
+                    <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Confirmer le nouveau mot de passe</label>
                     <input
                       type="password"
                       placeholder="••••••••"
@@ -342,9 +346,9 @@ export default function DashboardSettings() {
                   <button
                     onClick={savePassword}
                     disabled={pwStatus === "loading" || !currentPassword || !newPassword || newPassword !== confirmPassword}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 mt-1"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-black text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 mt-1"
                   >
-                    {pwStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                    {pwStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                     Changer le mot de passe
                   </button>
                   <Feedback status={pwStatus} error={pwError} />
