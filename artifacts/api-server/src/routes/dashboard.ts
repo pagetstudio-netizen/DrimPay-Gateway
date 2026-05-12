@@ -1038,7 +1038,8 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
     return;
   }
 
-  const fee = +(amount * FEE_RATE).toFixed(2);
+  const reversementFeeRate = await getUserFeeRate(userId);
+  const fee = +(amount * reversementFeeRate).toFixed(2);
   const net = +(amount - fee).toFixed(2);
 
   if (currentMode === "live") {
@@ -1407,7 +1408,8 @@ router.post("/pay/:token", async (req, res) => {
   }
 
   const amount = link.fixedAmount && link.amount ? parseFloat(String(link.amount)) : reqAmount;
-  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const linkFeeRate = await getUserFeeRate(link.userId);
+  const fee = Math.round(amount * linkFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `LNK-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
@@ -1653,6 +1655,14 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   }
 
   const userId = req.session.userId!;
+
+  // Block mass payout for personal accounts
+  const [massPayoutUserRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
+  if (massPayoutUserRecord?.accountType === "personal") {
+    res.status(403).json({ error: "Les comptes personnels n'ont pas accès au Paiement de Masse. Seuls les comptes entreprise peuvent utiliser cette fonctionnalité." });
+    return;
+  }
+
   const currentMode = req.session.mode ?? "sandbox";
   const { description, recipients } = parsed.data;
 
@@ -2136,7 +2146,8 @@ router.post("/qr/:reference", async (req, res) => {
   }
 
   const amount = qr.type === "fixed" && qr.amount ? parseFloat(String(qr.amount)) : reqAmount;
-  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const qrFeeRate = await getUserFeeRate(qr.userId);
+  const fee = Math.round(amount * qrFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const txReference = `QR-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CountryPicker } from "@/components/ui/country-picker";
+import { useAuth } from "@/lib/auth";
 
 const OPERATOR_FLAGS: Record<string, string> = {
   "TMoney":           "🔴",
@@ -99,9 +100,13 @@ export default function DashboardReversement() {
       .finally(() => setLoadingHistory(false));
   }, []);
 
+  const { user } = useAuth();
+  const isPersonal = (user as any)?.accountType === "personal";
+  const feeRate = isPersonal ? 0.05 : 0.03;
+
   const walletForCountry = wallets.find((w) => w.countryCode === watchCountry);
   const amount = parseFloat(form.watch("amount") || "0");
-  const fee = isNaN(amount) ? 0 : +(amount * 0.03).toFixed(2);
+  const fee = isNaN(amount) ? 0 : +(amount * feeRate).toFixed(2);
   const net = isNaN(amount) ? 0 : +(amount - fee).toFixed(2);
 
   const onSubmit = async (values: FormValues) => {

@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Upload, Plus, Trash2, Send, CheckCircle2,
-  AlertTriangle, Download, FileText, ChevronDown, AlertCircle, Wallet
+  AlertTriangle, Download, FileText, ChevronDown, AlertCircle, Wallet, Lock
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
 
 const COUNTRIES = [
   { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF", dialCode: "+228", phoneDigits: 8,  operators: ["TMoney", "Moov Money"] },
@@ -336,6 +337,33 @@ export default function MassPayout() {
       setSubmitting(false);
     }
   };
+
+  const { user } = useAuth();
+  const isPersonal = (user as any)?.accountType === "personal";
+
+  if (isPersonal) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto mt-12">
+          <div className="flex flex-col items-center text-center gap-4 p-8 rounded-2xl border border-red-500/20 bg-red-500/5">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
+              <Lock className="w-7 h-7 text-red-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold mb-2">Fonctionnalité réservée aux Entreprises</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
+                Le Paiement de Masse est exclusivement disponible pour les <strong className="text-foreground">comptes Entreprise</strong>.
+                Les comptes personnels peuvent retirer leurs fonds via la fonctionnalité <strong className="text-foreground">Reversement</strong> (frais : 5%).
+              </p>
+            </div>
+            <a href="/dashboard/reversement" className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-black text-sm font-semibold hover:bg-primary/90 transition-colors">
+              Aller au Reversement
+            </a>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

@@ -183,7 +183,7 @@ export default function DashboardOverview() {
       imgSrc: "/stat-fees.png",
       color: "bg-violet-500",
       trend: "neutral" as const,
-      trendLabel: "3%/tx",
+      trendLabel: (user as any)?.accountType === "personal" ? "5%/tx" : "3%/tx",
     },
     {
       label: "Transactions",
@@ -200,14 +200,25 @@ export default function DashboardOverview() {
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6">
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Bonjour, {user?.companyName} 👋
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+                Bonjour, {user?.companyName}
+              </h1>
+              {(user as any)?.accountType === "personal" ? (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 border border-orange-500/20 uppercase tracking-wide">
+                  Compte Personnel · 5%
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 uppercase tracking-wide">
+                  Compte Entreprise · 3%
+                </span>
+              )}
+            </div>
             <p className="text-muted-foreground text-sm mt-0.5">Vue d'ensemble de votre activité</p>
           </div>
-          <button onClick={load} className="p-2 rounded-xl border border-border bg-card hover:bg-muted transition-colors">
+          <button onClick={load} className="p-2 rounded-xl border border-border bg-card hover:bg-muted transition-colors shrink-0">
             <RefreshCw className={`w-4 h-4 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>

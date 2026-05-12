@@ -61,9 +61,21 @@ export default function DocPayout() {
               <p className="text-muted-foreground text-sm">Transferts Mobile Money</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 font-semibold">Frais : 3%</span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 font-semibold">Frais Entreprise : 3%</span>
             <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-mono">v2.0</span>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 mb-4">
+          <Lock className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-400">Compte Entreprise uniquement</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              L'API Pay-out est <strong className="text-foreground">exclusivement réservée aux comptes Entreprise</strong> vérifiés (KYB approuvé).
+              Les comptes personnels ne peuvent pas utiliser cette API. Pour retirer des fonds depuis un compte personnel,
+              utilisez la fonctionnalité <strong className="text-foreground">Reversement</strong> depuis votre dashboard (frais : 5%).
+            </p>
           </div>
         </div>
 
@@ -285,9 +297,10 @@ COMMIT;`} />
         <Section title="Calcul des frais" icon={Calculator}>
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-muted-foreground mb-4">
-              Les frais de <strong className="text-foreground">3%</strong> sont calculés sur le montant brut et déduits de votre wallet.
+              Les frais de <strong className="text-foreground">3% (Compte Entreprise)</strong> sont calculés sur le montant brut et déduits de votre wallet.
+              Les comptes personnels ne peuvent pas accéder à l'API Pay-out — ils utilisent le Reversement dashboard (5%).
             </p>
-            <CodeBlock code={`// Exemple : pay-out de 25 000 XOF
+            <CodeBlock code={`// Exemple : pay-out de 25 000 XOF (compte entreprise)
 amount       = 25 000 XOF
 fee (3%)     =    750 XOF
 total_debit  = 25 750 XOF  // Montant prélevé sur votre wallet
