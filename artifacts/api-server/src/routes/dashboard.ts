@@ -15,6 +15,7 @@ import {
   blacklistedPhonesTable,
   paymentLinkAttemptsTable,
   socialLinksTable,
+  qrCodesTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql, gte, asc } from "drizzle-orm";
 import crypto from "crypto";
@@ -1938,6 +1939,258 @@ router.get("/dashboard/support/links", requireAuth, async (_req: any, res: any) 
     .where(eq(socialLinksTable.active, true))
     .orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
+});
+
+// ─── QR Codes ────────────────────────────────────────────────────────────────
+
+function generateQrReference(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let ref = "DRM-QR-";
+  for (let i = 0; i < 6; i++) {
+    ref += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return ref;
+}
+
+const createQrCodeSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(300).optional(),
+  defaultCountry: z.string().length(2).optional(),
+  currency: z.string().min(3).max(4).default("XOF"),
+  type: z.enum(["fixed", "flexible"]).default("flexible"),
+  amount: z.number().positive().optional(),
+  expiresAt: z.string().optional(),
+  status: z.enum(["active", "inactive"]).default("active"),
+});
+
+router.get("/dashboard/qr-codes", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const rows = await db
+    .select()
+    .from(qrCodesTable)
+    .where(eq(qrCodesTable.userId, userId))
+    .orderBy(desc(qrCodesTable.createdAt));
+  res.json(rows);
+});
+
+router.post("/dashboard/qr-codes", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const parsed = createQrCodeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+    return;
+  }
+  const { name, description, defaultCountry, currency, type, amount, expiresAt, status } = parsed.data;
+
+  // Ensure unique reference
+  let reference = generateQrReference();
+  let attempts = 0;
+  while (attempts < 5) {
+    const [existing] = await db.select({ id: qrCodesTable.id }).from(qrCodesTable).where(eq(qrCodesTable.reference, reference));
+    if (!existing) break;
+    reference = generateQrReference();
+    attempts++;
+  }
+
+  const [qr] = await db
+    .insert(qrCodesTable)
+    .values({
+      userId,
+      reference,
+      name,
+      description,
+      defaultCountry,
+      currency,
+      type,
+      amount: amount ? String(amount) : null,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      status,
+    })
+    .returning();
+
+  res.status(201).json(qr);
+});
+
+router.patch("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
+
+  const [qr] = await db
+    .select()
+    .from(qrCodesTable)
+    .where(and(eq(qrCodesTable.id, id), eq(qrCodesTable.userId, userId)));
+  if (!qr) { res.status(404).json({ error: "QR code introuvable" }); return; }
+
+  const { status, name, description } = req.body as { status?: string; name?: string; description?: string };
+  const updates: Record<string, any> = { updatedAt: new Date() };
+  if (status === "active" || status === "inactive") updates.status = status;
+  if (name && typeof name === "string") updates.name = name.trim();
+  if (typeof description === "string") updates.description = description.trim();
+
+  await db.update(qrCodesTable).set(updates).where(eq(qrCodesTable.id, id));
+  res.json({ ok: true });
+});
+
+router.delete("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
+  await db.delete(qrCodesTable).where(and(eq(qrCodesTable.id, id), eq(qrCodesTable.userId, userId)));
+  res.json({ ok: true });
+});
+
+// ─── Public: QR payment ───────────────────────────────────────────────────────
+
+router.get("/qr/:reference", async (req, res) => {
+  const { reference } = req.params;
+  const [qr] = await db
+    .select()
+    .from(qrCodesTable)
+    .where(eq(qrCodesTable.reference, reference));
+
+  if (!qr) { res.status(404).json({ error: "QR code introuvable" }); return; }
+
+  if (qr.expiresAt && new Date(qr.expiresAt) < new Date()) {
+    await db.update(qrCodesTable).set({ status: "inactive", updatedAt: new Date() }).where(eq(qrCodesTable.id, qr.id));
+    res.status(410).json({ error: "Ce QR code a expiré." }); return;
+  }
+
+  if (qr.status !== "active") {
+    res.status(410).json({ error: "Ce QR code est désactivé." }); return;
+  }
+
+  const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, qr.userId));
+
+  const allCountryCodes = Object.keys(COUNTRY_OPERATORS);
+  const filteredCodes = qr.defaultCountry ? [qr.defaultCountry, ...allCountryCodes.filter(c => c !== qr.defaultCountry)] : allCountryCodes;
+
+  const countries = filteredCodes.map(code => ({
+    code,
+    currency: COUNTRY_CURRENCY[code] ?? qr.currency,
+    operators: (COUNTRY_OPERATORS[code] ?? []).map(op => op.name),
+  }));
+
+  res.json({
+    reference: qr.reference,
+    name: qr.name,
+    description: qr.description,
+    merchantName: merchant?.companyName ?? "Marchand",
+    currency: qr.currency,
+    type: qr.type,
+    amount: qr.amount,
+    status: qr.status,
+    defaultCountry: qr.defaultCountry,
+    countries,
+  });
+});
+
+router.post("/qr/:reference", async (req, res) => {
+  const { reference } = req.params;
+  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator } = req.body as {
+    phone: string; amount: number; countryCode?: string; operator?: string;
+  };
+
+  if (!phone || !reqAmount || reqAmount <= 0) {
+    res.status(400).json({ error: "Téléphone et montant requis." }); return;
+  }
+  if (!chosenCountry || !chosenOperator) {
+    res.status(400).json({ error: "Veuillez sélectionner un pays et un opérateur." }); return;
+  }
+
+  // Blacklist check
+  const normalizedPhone = String(phone).replace(/\s+/g, "").trim();
+  const [blockedPhone] = await db
+    .select({ id: blacklistedPhonesTable.id })
+    .from(blacklistedPhonesTable)
+    .where(eq(blacklistedPhonesTable.phone, normalizedPhone));
+  if (blockedPhone) {
+    res.status(403).json({ error: "Ce numéro de téléphone est bloqué." }); return;
+  }
+
+  const [qr] = await db.select().from(qrCodesTable).where(eq(qrCodesTable.reference, reference));
+  if (!qr || qr.status !== "active") {
+    res.status(410).json({ error: "QR code invalide ou inactif." }); return;
+  }
+  if (qr.expiresAt && new Date(qr.expiresAt) < new Date()) {
+    res.status(410).json({ error: "Ce QR code a expiré." }); return;
+  }
+
+  const effectiveCountry = chosenCountry;
+  const effectiveOperator = chosenOperator;
+  const effectiveCurrency = COUNTRY_CURRENCY[chosenCountry] ?? qr.currency;
+
+  // Check operator availability
+  const opCheck = await checkOperatorAvailable(effectiveCountry, effectiveOperator, "paymentLinks");
+  if (!opCheck.ok) {
+    res.status(opCheck.status).json({ error: opCheck.error }); return;
+  }
+
+  const amount = qr.type === "fixed" && qr.amount ? parseFloat(String(qr.amount)) : reqAmount;
+  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const netAmount = Math.round((amount - fee) * 100) / 100;
+  const txReference = `QR-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+  let [wallet] = await db
+    .select()
+    .from(walletsTable)
+    .where(and(eq(walletsTable.userId, qr.userId), eq(walletsTable.countryCode, effectiveCountry)));
+
+  if (!wallet) {
+    [wallet] = await db
+      .insert(walletsTable)
+      .values({ userId: qr.userId, countryCode: effectiveCountry, currency: effectiveCurrency })
+      .returning();
+  }
+
+  await db.insert(transactionsTable).values({
+    userId: qr.userId,
+    walletId: wallet.id,
+    reference: txReference,
+    type: "payin",
+    status: "success",
+    amount: String(amount),
+    fee: String(fee),
+    netAmount: String(netAmount),
+    currency: effectiveCurrency,
+    countryCode: effectiveCountry,
+    operator: effectiveOperator,
+    phone,
+    description: `QR payment: ${qr.name}`,
+  });
+
+  await db.update(walletsTable)
+    .set({ balance: sql`${walletsTable.balance} + ${netAmount}` })
+    .where(eq(walletsTable.id, wallet.id));
+
+  await db.update(qrCodesTable)
+    .set({
+      transactionCount: sql`${qrCodesTable.transactionCount} + 1`,
+      totalCollected: sql`${qrCodesTable.totalCollected} + ${netAmount}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(qrCodesTable.id, qr.id));
+
+  // Telegram notification
+  try {
+    const [merchant] = await db.select({ companyName: usersTable.companyName })
+      .from(usersTable).where(eq(usersTable.id, qr.userId));
+    notifyPayin({
+      company: merchant?.companyName ?? "?",
+      amount,
+      fee,
+      net: netAmount,
+      currency: effectiveCurrency,
+      operator: effectiveOperator,
+      phone,
+      country: effectiveCountry,
+      reference: txReference,
+      mode: "live",
+      source: "qr",
+    }).catch(() => {});
+  } catch {}
+
+  res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency });
 });
 
 export default router;

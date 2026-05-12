@@ -48,8 +48,10 @@ import DocCredits from "@/pages/dashboard/docs/credits";
 import DocMassPayout from "@/pages/dashboard/docs/mass-payout";
 import DashboardPaymentLinks from "@/pages/dashboard/payment-links";
 import DashboardPaymentLinksCreate from "@/pages/dashboard/payment-links-create";
+import DashboardQrCodes from "@/pages/dashboard/qr-codes";
 import DashboardMassPayout from "@/pages/dashboard/mass-payout";
 import PayPage from "@/pages/pay";
+import QrPayPage from "@/pages/qr-pay";
 
 import AdminDashboard from "@/pages/admin/index";
 import AdminMerchants from "@/pages/admin/merchants";
@@ -274,6 +276,7 @@ function DashboardSwitch() {
       <Route path="/dashboard/docs/mass-payout" component={DocMassPayout} />
       <Route path="/dashboard/payment-links" component={DashboardPaymentLinks} />
       <Route path="/dashboard/payment-links/create" component={DashboardPaymentLinksCreate} />
+      <Route path="/dashboard/qr-codes" component={DashboardQrCodes} />
       <Route path="/dashboard/mass-payout" component={DashboardMassPayout} />
       <Route path="/dashboard/notifications" component={DashboardNotifications} />
       <Route path="/dashboard/verify-code" component={DashboardVerifyCode} />
@@ -310,6 +313,17 @@ function Router() {
   const payMatch = location.match(/^\/(fr|en)\/pay\/(.+)/);
   if (payMatch) {
     return <PayPage />;
+  }
+
+  // QR payment public page — standalone, no layout wrapper
+  const qrMatch = location.match(/^\/(fr|en)\/qr\/(.+)/);
+  if (qrMatch) {
+    return <QrPayPage />;
+  }
+
+  // QR payment without lang prefix
+  if (location.startsWith("/qr/")) {
+    return <QrPayPage />;
   }
 
   if (location.startsWith("/fr") || location.startsWith("/en")) {

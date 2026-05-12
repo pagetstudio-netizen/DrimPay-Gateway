@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight,
   CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal,
-  FlaskConical, Zap, AlertTriangle, ShieldX, Lock,
+  FlaskConical, Zap, AlertTriangle, ShieldX, Lock, QrCode,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
@@ -32,6 +32,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/wallets",            label: "Wallets",              img: walletImg },
   { href: "/dashboard/payments",           label: "Historique",           icon: History },
   { href: "/dashboard/payment-links",      label: "Liens de Paiement",    icon: Link2 },
+  { href: "/dashboard/qr-codes",           label: "Pay with QR",          icon: QrCode },
   { href: "/dashboard/mass-payout",        label: "Paiement de Masse",    icon: SendHorizonal },
   { href: "/dashboard/reversement",        label: "Reversement",          img: reversImg },
   { href: "/dashboard/kyb",                label: "Vérification KYB",     img: kybImg },

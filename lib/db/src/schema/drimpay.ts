@@ -413,3 +413,26 @@ export type Transaction = typeof transactionsTable.$inferSelect;
 export type ApiKey = typeof apiKeysTable.$inferSelect;
 export type Reversement = typeof reversementsTable.$inferSelect;
 export type BlacklistedPhone = typeof blacklistedPhonesTable.$inferSelect;
+
+export const qrCodeStatusEnum = pgEnum("qr_code_status", ["active", "inactive"]);
+export const qrCodeTypeEnum = pgEnum("qr_code_type", ["fixed", "flexible"]);
+
+export const qrCodesTable = pgTable("qr_codes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  reference: text("reference").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  defaultCountry: text("default_country"),
+  currency: text("currency").notNull().default("XOF"),
+  type: qrCodeTypeEnum("type").notNull().default("flexible"),
+  amount: numeric("amount", { precision: 18, scale: 2 }),
+  expiresAt: timestamp("expires_at"),
+  status: qrCodeStatusEnum("status").notNull().default("active"),
+  transactionCount: integer("transaction_count").notNull().default(0),
+  totalCollected: numeric("total_collected", { precision: 18, scale: 2 }).notNull().default("0"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type QrCode = typeof qrCodesTable.$inferSelect;
