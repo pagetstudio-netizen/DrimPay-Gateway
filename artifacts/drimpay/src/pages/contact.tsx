@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
-import { Mail, Phone, MapPin, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Mail, Phone, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -139,7 +139,6 @@ export default function Contact() {
               {[
                 { icon: Mail, title: t.contact.emailLabel, details: ["support@drimpay.io", "enterprise@drimpay.io"] },
                 { icon: Phone, title: t.contact.phoneLabel, details: ["+228 22 00 11 22", "+237 699 001 122"] },
-                { icon: MapPin, title: t.contact.hqLabel, details: ["Lomé, Togo"] },
               ].map((item, i) => (
                 <div key={i} className="p-6 rounded-xl border border-[#E5E3DC] bg-white">
                   <div className="flex items-center gap-3 mb-4">
