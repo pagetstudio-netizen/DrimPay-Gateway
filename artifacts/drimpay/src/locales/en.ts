@@ -126,7 +126,7 @@ export const en: Translations = {
       features: [
         "5% on collection (Payin)",
         "Payin only — Payout not available",
-        "1 country included",
+        "All countries included",
         "Email support",
         "T+1 settlement",
         "Negotiable rate on volume",

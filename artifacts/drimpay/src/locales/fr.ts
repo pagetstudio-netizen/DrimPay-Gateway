@@ -124,7 +124,7 @@ export const fr = {
       features: [
         "5% sur encaissement (Payin)",
         "Payin uniquement — Payout non disponible",
-        "1 pays inclus",
+        "Tous les pays inclus",
         "Support par email",
         "Règlement T+1",
         "Taux négociable sur volume",
