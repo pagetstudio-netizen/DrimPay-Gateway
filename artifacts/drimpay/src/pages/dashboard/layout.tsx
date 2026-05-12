@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -150,133 +151,139 @@ function ModeSwitcher() {
       </div>
 
       {/* Confirmation dialog (sandbox ↔ live for approved accounts) */}
-      <AnimatePresence>
-        {confirming && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center">
-            <motion.div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={cancel}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 16 }}
-              transition={{ type: "spring", stiffness: 340, damping: 28 }}
-              className="relative bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
-            >
-              <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4",
-                pending === "live" ? "bg-emerald-100" : "bg-amber-100"
-              )}>
-                {pending === "live"
-                  ? <Zap className="w-6 h-6 text-emerald-600" />
-                  : <FlaskConical className="w-6 h-6 text-amber-600" />
-                }
-              </div>
-              <h3 className="text-base font-bold text-gray-900 text-center mb-2">
-                Passer en mode {pending === "live" ? "Live" : "Sandbox"} ?
-              </h3>
-              <p className="text-sm text-gray-500 text-center leading-relaxed mb-5">
-                {pending === "live"
-                  ? "En mode Live, les paiements et payouts sont réels. L'argent sera réellement débité et crédité."
-                  : "En mode Sandbox, toutes les transactions sont simulées. Aucun argent réel ne sera traité."
-                }
-              </p>
-              {pending === "live" && (
-                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-800">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-                  <span>Assurez-vous que votre intégration est prête avant de passer en production.</span>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={cancel}
-                  disabled={switching}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={confirm}
-                  disabled={switching}
-                  className={cn(
-                    "flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-60",
-                    pending === "live"
-                      ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                      : "bg-amber-400 hover:bg-amber-500 text-amber-900"
-                  )}
-                >
-                  {switching ? "..." : "Confirmer"}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* KYB blocked dialog */}
-      <AnimatePresence>
-        {kybBlocked && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={cancel}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 20 }}
-              transition={{ type: "spring", stiffness: 340, damping: 28 }}
-              className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-auto z-10"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
-                <ShieldX className="w-6 h-6 text-red-600" />
-              </div>
-              <h3 className="text-base font-bold text-gray-900 text-center mb-2">
-                Compte non approuvé
-              </h3>
-              <p className="text-sm text-gray-500 text-center leading-relaxed mb-4">
-                Le mode Live est réservé aux comptes dont le dossier KYB a été{" "}
-                <strong className="text-gray-700">validé et approuvé</strong> par notre équipe.
-              </p>
-              <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mb-5 text-xs text-blue-800">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
-                <span>
-                  {kybStatus === "submitted" || kybStatus === "under_review"
-                    ? "Votre dossier est en cours d'examen. Vous serez notifié dès que la validation sera effectuée (24–72h)."
-                    : "Complétez votre vérification KYB et attendez la validation (24–72h). Une fois approuvé, vous pourrez activer le mode Live."
+      {createPortal(
+        <AnimatePresence>
+          {confirming && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+              <motion.div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={cancel}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 16 }}
+                transition={{ type: "spring", stiffness: 340, damping: 28 }}
+                className="relative bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+              >
+                <div className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4",
+                  pending === "live" ? "bg-emerald-100" : "bg-amber-100"
+                )}>
+                  {pending === "live"
+                    ? <Zap className="w-6 h-6 text-emerald-600" />
+                    : <FlaskConical className="w-6 h-6 text-amber-600" />
                   }
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={cancel}
-                  className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  Fermer
-                </button>
-                <Link href="/dashboard/kyb" className="block">
+                </div>
+                <h3 className="text-base font-bold text-gray-900 text-center mb-2">
+                  Passer en mode {pending === "live" ? "Live" : "Sandbox"} ?
+                </h3>
+                <p className="text-sm text-gray-500 text-center leading-relaxed mb-5">
+                  {pending === "live"
+                    ? "En mode Live, les paiements et payouts sont réels. L'argent sera réellement débité et crédité."
+                    : "En mode Sandbox, toutes les transactions sont simulées. Aucun argent réel ne sera traité."
+                  }
+                </p>
+                {pending === "live" && (
+                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-800">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                    <span>Assurez-vous que votre intégration est prête avant de passer en production.</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
                   <button
                     onClick={cancel}
-                    className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
+                    disabled={switching}
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
-                    {kybStatus === "submitted" || kybStatus === "under_review"
-                      ? "Voir le statut"
-                      : "Démarrer le KYB"
-                    }
+                    Annuler
                   </button>
-                </Link>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                  <button
+                    onClick={confirm}
+                    disabled={switching}
+                    className={cn(
+                      "flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-60",
+                      pending === "live"
+                        ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                        : "bg-amber-400 hover:bg-amber-500 text-amber-900"
+                    )}
+                  >
+                    {switching ? "..." : "Confirmer"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* KYB blocked dialog */}
+      {createPortal(
+        <AnimatePresence>
+          {kybBlocked && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+              <motion.div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={cancel}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 20 }}
+                transition={{ type: "spring", stiffness: 340, damping: 28 }}
+                className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+                  <ShieldX className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900 text-center mb-2">
+                  Compte non approuvé
+                </h3>
+                <p className="text-sm text-gray-500 text-center leading-relaxed mb-4">
+                  Le mode Live est réservé aux comptes dont le dossier KYB a été{" "}
+                  <strong className="text-gray-700">validé et approuvé</strong> par notre équipe.
+                </p>
+                <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mb-5 text-xs text-blue-800">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
+                  <span>
+                    {kybStatus === "submitted" || kybStatus === "under_review"
+                      ? "Votre dossier est en cours d'examen. Vous serez notifié dès que la validation sera effectuée (24–72h)."
+                      : "Complétez votre vérification KYB et attendez la validation (24–72h). Une fois approuvé, vous pourrez activer le mode Live."
+                    }
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={cancel}
+                    className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Fermer
+                  </button>
+                  <Link href="/dashboard/kyb" className="block">
+                    <button
+                      onClick={cancel}
+                      className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
+                    >
+                      {kybStatus === "submitted" || kybStatus === "under_review"
+                        ? "Voir le statut"
+                        : "Démarrer le KYB"
+                      }
+                    </button>
+                  </Link>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }
