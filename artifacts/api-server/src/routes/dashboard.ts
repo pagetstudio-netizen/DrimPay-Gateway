@@ -16,6 +16,7 @@ import {
   paymentLinkAttemptsTable,
   socialLinksTable,
   qrCodesTable,
+  adminSettingsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql, gte, asc } from "drizzle-orm";
 import crypto from "crypto";
@@ -1950,6 +1951,19 @@ router.get("/dashboard/support/links", requireAuth, async (_req: any, res: any) 
     .where(eq(socialLinksTable.active, true))
     .orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
+});
+
+// ─── Public: Contact info (emails + phones) ──────────────────────────────────
+
+router.get("/support/contact-info", async (_req, res) => {
+  const settings = await db.select().from(adminSettingsTable)
+    .where(sql`${adminSettingsTable.key} IN ('contact_emails', 'contact_phones')`);
+  const map = Object.fromEntries(settings.map((s: any) => [s.key, s.value]));
+  let emails: string[] = ["support@drimpay.com"];
+  let phones: string[] = [];
+  try { if (map["contact_emails"]) emails = JSON.parse(map["contact_emails"]); } catch {}
+  try { if (map["contact_phones"]) phones = JSON.parse(map["contact_phones"]); } catch {}
+  res.json({ emails, phones });
 });
 
 // ─── Public: Support social links ────────────────────────────────────────────

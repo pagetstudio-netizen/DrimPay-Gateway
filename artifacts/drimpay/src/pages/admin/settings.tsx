@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Settings, Save, RefreshCw, AlertTriangle, CheckCircle2,
   Send, Bot, Eye, EyeOff, Zap, Search, Mail, MessageCircle,
+  Phone, Plus, Trash2,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
@@ -419,6 +420,148 @@ function TelegramSection({ allValues }: { allValues: Record<string, string> }) {
   );
 }
 
+function ContactInfoSection() {
+  const [emails, setEmails] = useState<string[]>([]);
+  const [phones, setPhones] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+
+  const load = async () => {
+    const r = await fetch(`${BASE}/api/support/contact-info`);
+    const d = await r.json();
+    if (Array.isArray(d.emails)) setEmails(d.emails);
+    if (Array.isArray(d.phones)) setPhones(d.phones);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const save = async (nextEmails: string[], nextPhones: string[]) => {
+    setSaving(true); setStatus(null);
+    try {
+      const r = await fetch(`${BASE}/api/admin/settings`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contact_emails: JSON.stringify(nextEmails), contact_phones: JSON.stringify(nextPhones) }),
+      });
+      if (r.ok) setStatus({ type: "ok", msg: "Coordonnées mises à jour !" });
+      else setStatus({ type: "err", msg: "Erreur lors de la sauvegarde" });
+    } catch {
+      setStatus({ type: "err", msg: "Erreur réseau" });
+    }
+    setSaving(false);
+  };
+
+  const addEmail = () => {
+    const v = newEmail.trim();
+    if (!v || emails.includes(v)) return;
+    const next = [...emails, v];
+    setEmails(next);
+    setNewEmail("");
+    save(next, phones);
+  };
+
+  const removeEmail = (i: number) => {
+    const next = emails.filter((_, idx) => idx !== i);
+    setEmails(next);
+    save(next, phones);
+  };
+
+  const addPhone = () => {
+    const v = newPhone.trim();
+    if (!v || phones.includes(v)) return;
+    const next = [...phones, v];
+    setPhones(next);
+    setNewPhone("");
+    save(emails, next);
+  };
+
+  const removePhone = (i: number) => {
+    const next = phones.filter((_, idx) => idx !== i);
+    setPhones(next);
+    save(emails, next);
+  };
+
+  return (
+    <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+      <h2 className="font-bold text-gray-900">Coordonnées de contact</h2>
+      <p className="text-xs text-gray-400">Ces informations sont affichées sur la page /contact du site public.</p>
+
+      {/* Emails */}
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-3 flex items-center gap-2">
+          <Mail className="w-4 h-4 text-emerald-600" /> Adresses e-mail
+        </label>
+        <div className="space-y-2 mb-3">
+          {emails.length === 0 && <p className="text-xs text-gray-400 italic">Aucune adresse configurée</p>}
+          {emails.map((e, i) => (
+            <div key={i} className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+              <span className="text-gray-800">{e}</span>
+              <button onClick={() => removeEmail(i)} className="text-red-400 hover:text-red-600 transition-colors p-1">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addEmail()}
+            placeholder="email@drimpay.com"
+            className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <button onClick={addEmail} disabled={!newEmail.trim() || saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50">
+            <Plus className="w-4 h-4" /> Ajouter
+          </button>
+        </div>
+      </div>
+
+      {/* Phones */}
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-3 flex items-center gap-2">
+          <Phone className="w-4 h-4 text-emerald-600" /> Numéros de téléphone
+        </label>
+        <div className="space-y-2 mb-3">
+          {phones.length === 0 && <p className="text-xs text-gray-400 italic">Aucun numéro configuré</p>}
+          {phones.map((p, i) => (
+            <div key={i} className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+              <span className="text-gray-800">{p}</span>
+              <button onClick={() => removePhone(i)} className="text-red-400 hover:text-red-600 transition-colors p-1">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newPhone}
+            onChange={e => setNewPhone(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addPhone()}
+            placeholder="+228 22 00 11 22"
+            className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <button onClick={addPhone} disabled={!newPhone.trim() || saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50">
+            <Plus className="w-4 h-4" /> Ajouter
+          </button>
+        </div>
+      </div>
+
+      {status && (
+        <div className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium", status.type === "ok" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800")}>
+          {status.type === "ok" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+          {status.msg}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -465,7 +608,7 @@ export default function AdminSettings() {
                 <CheckCircle2 className="w-4 h-4" /> Enregistré !
               </div>
             )}
-            {activeGroup !== "telegram" && (
+            {activeGroup !== "telegram" && activeGroup !== "contact-info" && (
               <button onClick={save} disabled={saving || loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 shadow-sm">
                 <Save className="w-4 h-4" /> {saving ? "Enregistrement..." : "Enregistrer"}
               </button>
@@ -500,6 +643,10 @@ export default function AdminSettings() {
               className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "whatsapp" ? "bg-green-50 text-green-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
               <MessageCircle className="w-4 h-4" /> WhatsApp
             </button>
+            <button onClick={() => setActiveGroup("contact-info")}
+              className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "contact-info" ? "bg-emerald-50 text-emerald-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
+              <Phone className="w-4 h-4" /> Coordonnées
+            </button>
           </div>
 
           {activeGroup === "telegram" ? (
@@ -508,6 +655,8 @@ export default function AdminSettings() {
             <SmtpSection allValues={values} />
           ) : activeGroup === "whatsapp" ? (
             <WhatsAppSection allValues={values} />
+          ) : activeGroup === "contact-info" ? (
+            <ContactInfoSection />
           ) : (
             <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="font-bold text-gray-900 mb-5">{currentGroup.title}</h2>

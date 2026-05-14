@@ -9,8 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useT, useLang } from "@/lib/i18n";
+import { FaWhatsapp } from "react-icons/fa";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+type SocialLink = { id: number; platform: string; url: string; active: boolean; sortOrder: number };
 
 const makeSchema = (t: ReturnType<typeof useT>) =>
   z.object({
@@ -53,6 +58,29 @@ export default function Contact() {
   });
   const [submitted, setSubmitted] = useState(false);
   const mutation = useSubmitContact();
+
+  const [emails, setEmails] = useState<string[]>([]);
+  const [phones, setPhones] = useState<string[]>([]);
+  const [wsUrl, setWsUrl] = useState("https://wa.me/22892123456");
+
+  useEffect(() => {
+    fetch(`${BASE}/api/support/contact-info`)
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d.emails)) setEmails(d.emails);
+        if (Array.isArray(d.phones)) setPhones(d.phones);
+      })
+      .catch(() => {});
+
+    fetch(`${BASE}/api/support/links`)
+      .then(r => r.json())
+      .then((links: SocialLink[]) => {
+        const map = Object.fromEntries(links.map(l => [l.platform, l]));
+        const ws = map["whatsapp_support"] ?? map["whatsapp"];
+        if (ws?.url) setWsUrl(ws.url);
+      })
+      .catch(() => {});
+  }, []);
 
   const form = useForm<FormData>({
     resolver: zodResolver(makeSchema(t)),
@@ -136,26 +164,56 @@ export default function Contact() {
 
             {/* ── SIDEBAR ───────────────────────────────────────── */}
             <div className="flex flex-col gap-6">
-              {[
-                { icon: Mail, title: t.contact.emailLabel, details: ["support@drimpay.io", "enterprise@drimpay.io"] },
-                { icon: Phone, title: t.contact.phoneLabel, details: ["+228 22 00 11 22", "+237 699 001 122"] },
-              ].map((item, i) => (
-                <div key={i} className="p-6 rounded-xl border border-[#E5E3DC] bg-white">
+
+              {/* WhatsApp */}
+              <div className="p-6 rounded-xl border border-[#B5F03C]/30 bg-[#B5F03C]/8 flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-[#25D366]/15 flex items-center justify-center">
+                  <FaWhatsapp className="w-6 h-6 text-[#25D366]" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-[#0f0f0f] mb-1">Support WhatsApp</h3>
+                  <p className="text-sm text-[#0f0f0f]/55">Contactez directement notre équipe</p>
+                </div>
+                <a
+                  href={wsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#25D366] text-white font-semibold text-sm hover:bg-green-500 transition-colors"
+                >
+                  <FaWhatsapp className="w-4 h-4" />
+                  Contacter sur WhatsApp
+                </a>
+              </div>
+
+              {emails.length > 0 && (
+                <div className="p-6 rounded-xl border border-[#E5E3DC] bg-white">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-9 h-9 rounded-lg bg-[#B5F03C]/20 flex items-center justify-center">
-                      <item.icon className="w-4 h-4 text-[#3a7a00]" />
+                      <Mail className="w-4 h-4 text-[#3a7a00]" />
                     </div>
-                    <h3 className="font-extrabold text-[#0f0f0f]">{item.title}</h3>
+                    <h3 className="font-extrabold text-[#0f0f0f]">{t.contact.emailLabel}</h3>
                   </div>
-                  {item.details.map((d, j) => <p key={j} className="text-sm text-[#0f0f0f]/55">{d}</p>)}
+                  {emails.map((e, i) => <p key={i} className="text-sm text-[#0f0f0f]/55">{e}</p>)}
                 </div>
-              ))}
+              )}
+
+              {phones.length > 0 && (
+                <div className="p-6 rounded-xl border border-[#E5E3DC] bg-white">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-9 h-9 rounded-lg bg-[#B5F03C]/20 flex items-center justify-center">
+                      <Phone className="w-4 h-4 text-[#3a7a00]" />
+                    </div>
+                    <h3 className="font-extrabold text-[#0f0f0f]">{t.contact.phoneLabel}</h3>
+                  </div>
+                  {phones.map((p, i) => <p key={i} className="text-sm text-[#0f0f0f]/55">{p}</p>)}
+                </div>
+              )}
 
               <div className="p-6 rounded-xl border border-[#B5F03C]/30 bg-[#B5F03C]/8">
                 <h3 className="font-extrabold mb-2 text-[#0f0f0f]">{t.contact.supportHoursTitle}</h3>
                 <p className="text-sm text-[#0f0f0f]/55">{t.contact.supportHours1}</p>
-                <p className="text-sm text-[#0f0f0f]/55">{t.contact.supportHours2}</p>
-                <p className="text-sm text-[#0f0f0f]/55 mt-2">{t.contact.supportHours3}</p>
+                {t.contact.supportHours2 && <p className="text-sm text-[#0f0f0f]/55">{t.contact.supportHours2}</p>}
+                {t.contact.supportHours3 && <p className="text-sm text-[#0f0f0f]/55 mt-2">{t.contact.supportHours3}</p>}
               </div>
             </div>
 
