@@ -22,7 +22,7 @@ async function getSmtpConfig(): Promise<SmtpConfig | null> {
     const host = m["smtp_host"] ?? "";
     const user = m["smtp_user"] ?? "";
     const pass = m["smtp_pass"] ?? "";
-    const from = m["smtp_from"] || m["smtp_user"] || "noreply@drimpay.africa";
+    const from = m["smtp_from"] || m["smtp_user"] || "noreply@drimpay.com";
     if (!host || !user || !pass) return null;
     const cfg: SmtpConfig = { host, port: parseInt(m["smtp_port"] ?? "587"), user, pass, from };
     _smtpCache = { ...cfg, at: now };
@@ -88,7 +88,7 @@ export async function sendContractEmail(opts: {
                 1. Téléchargez et imprimez le contrat en pièce jointe<br>
                 2. Signez le document (représentant légal)<br>
                 3. Scannez ou photographiez le contrat signé<br>
-                4. Envoyez-le à notre service client : <a href="mailto:support@drimpay.africa" style="color:#92400e;font-weight:bold;">support@drimpay.africa</a><br>
+                4. Envoyez-le à notre service client : <a href="mailto:support@drimpay.com" style="color:#92400e;font-weight:bold;">support@drimpay.com</a><br>
                 5. Votre compte production sera activé après validation par notre équipe
               </p>
             </div>
@@ -99,7 +99,7 @@ export async function sendContractEmail(opts: {
               </p>
             </div>
             <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
-              Des questions ? Contactez notre support : <a href="mailto:support@drimpay.africa" style="color:#1a7a3c;">support@drimpay.africa</a>
+              Des questions ? Contactez notre support : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
             </p>
           </td>
         </tr>
@@ -188,7 +188,7 @@ export async function sendKybApprovedEmail(opts: {
               </p>
             </div>
             <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
-              Des questions ? Contactez notre équipe : <a href="mailto:support@drimpay.africa" style="color:#1a7a3c;">support@drimpay.africa</a>
+              Des questions ? Contactez notre équipe : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
             </p>
           </td>
         </tr>
@@ -272,7 +272,7 @@ export async function sendKybRejectedEmail(opts: {
               </p>
             </div>
             <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
-              Besoin d'aide ? Contactez notre équipe KYB : <a href="mailto:support@drimpay.africa" style="color:#1a7a3c;">support@drimpay.africa</a>
+              Besoin d'aide ? Contactez notre équipe KYB : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
             </p>
           </td>
         </tr>
@@ -351,7 +351,7 @@ export async function sendWelcomeEmail(opts: {
               En attendant, votre environnement <strong>sandbox</strong> est déjà disponible pour tester votre intégration.
             </p>
             <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
-              Des questions ? Contactez notre support : <a href="mailto:support@drimpay.africa" style="color:#1a7a3c;">support@drimpay.africa</a>
+              Des questions ? Contactez notre support : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
             </p>
           </td>
         </tr>
@@ -434,7 +434,7 @@ export async function sendKybProcessingEmail(opts: {
               </p>
             </div>
             <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
-              Des questions ? Contactez notre équipe KYB : <a href="mailto:support@drimpay.africa" style="color:#1a7a3c;">support@drimpay.africa</a>
+              Des questions ? Contactez notre équipe KYB : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
             </p>
           </td>
         </tr>

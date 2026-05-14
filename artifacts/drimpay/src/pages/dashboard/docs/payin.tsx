@@ -91,7 +91,7 @@ export default function DocPayin() {
           </p>
           <div className="rounded-xl border border-border bg-card p-4 font-mono text-sm">
             <span className="text-muted-foreground">Base URL : </span>
-            <span className="text-primary">https://api.drimpay.africa/v2</span>
+            <span className="text-primary">https://api.drimpay.com/v2</span>
           </div>
         </Section>
 
@@ -121,7 +121,7 @@ export default function DocPayin() {
           </div>
 
           <h3 className="text-sm font-semibold mb-3">Exemple de requête</h3>
-          <CodeBlock lang="curl" code={`curl -X POST https://api.drimpay.africa/v2/payin/initiate \\
+          <CodeBlock lang="curl" code={`curl -X POST https://api.drimpay.com/v2/payin/initiate \\
   -H "Authorization: Bearer dp_live_xxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -162,7 +162,7 @@ export default function DocPayin() {
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 font-bold font-mono">GET</span>
             <code className="text-sm font-mono text-muted-foreground">/payin/{"{reference}"}</code>
           </div>
-          <CodeBlock lang="curl" code={`curl -X GET https://api.drimpay.africa/v2/payin/PAY-1715000000-A1B2C3D4 \\
+          <CodeBlock lang="curl" code={`curl -X GET https://api.drimpay.com/v2/payin/PAY-1715000000-A1B2C3D4 \\
   -H "Authorization: Bearer dp_live_xxxx"`} />
           <h3 className="text-sm font-semibold mt-6 mb-3">Réponse</h3>
           <CodeBlock code={`{
@@ -186,7 +186,7 @@ export default function DocPayin() {
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 font-bold font-mono">GET</span>
             <code className="text-sm font-mono text-muted-foreground">/payin?page=1&limit=20&status=success&country_code=TG</code>
           </div>
-          <CodeBlock lang="curl" code={`curl "https://api.drimpay.africa/v2/payin?page=1&limit=20&status=success" \\
+          <CodeBlock lang="curl" code={`curl "https://api.drimpay.com/v2/payin?page=1&limit=20&status=success" \\
   -H "Authorization: Bearer dp_live_xxxx"`} />
         </Section>
 
@@ -284,7 +284,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
   if (tentatives >= 3) throw new Error("Nombre max de tentatives atteint");
 
   try {
-    const res = await fetch("https://api.drimpay.africa/v2/payin/initiate", {
+    const res = await fetch("https://api.drimpay.com/v2/payin/initiate", {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + process.env.DRIMPAY_SECRET_KEY,

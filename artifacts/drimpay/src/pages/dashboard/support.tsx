@@ -335,8 +335,8 @@ export default function DashboardSupport() {
                   <p className="text-sm font-bold tracking-tight text-foreground mb-1">Support WhatsApp</p>
                   <p className="text-sm text-muted-foreground">
                     Contactez-nous à{" "}
-                    <a href="mailto:support@drimpay.africa" className="text-primary underline underline-offset-2">
-                      support@drimpay.africa
+                    <a href="mailto:support@drimpay.com" className="text-primary underline underline-offset-2">
+                      support@drimpay.com
                     </a>
                   </p>
                 </div>
@@ -390,14 +390,14 @@ export default function DashboardSupport() {
               colorClass: "text-primary",
               bgClass: "bg-primary/10",
               title: "Email support",
-              desc: "support@drimpay.africa — pour les demandes détaillées et les rapports.",
+              desc: "support@drimpay.com — pour les demandes détaillées et les rapports.",
             },
             {
               Icon: Zap,
               colorClass: "text-sky-400",
               bgClass: "bg-sky-400/10",
               title: "Statut plateforme",
-              desc: "Consultez l'état des services en temps réel sur status.drimpay.africa.",
+              desc: "Consultez l'état des services en temps réel sur status.drimpay.com.",
             },
           ].map((item, i) => {
             const Icon = item.Icon;

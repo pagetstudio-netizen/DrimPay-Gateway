@@ -116,7 +116,7 @@ const FAQ_ITEMS = [
   {
     category: "accounts",
     q: "Comment puis-je créer un compte DrimPay ?",
-    a: "Rendez-vous sur drimpay.africa, cliquez sur « Créer un compte », remplissez le formulaire avec vos informations professionnelles, puis soumettez votre dossier KYB. L'approbation se fait généralement en 24-48 heures ouvrées.",
+    a: "Rendez-vous sur drimpay.com, cliquez sur « Créer un compte », remplissez le formulaire avec vos informations professionnelles, puis soumettez votre dossier KYB. L'approbation se fait généralement en 24-48 heures ouvrées.",
   },
   {
     category: "accounts",
@@ -237,7 +237,7 @@ export default function SupportPage() {
   const linkMap = Object.fromEntries(links.map(l => [l.platform, l]));
   const wsLink = linkMap["whatsapp_support"] ?? linkMap["whatsapp"];
   const wsUrl = wsLink?.url ?? "https://wa.me/22892123456";
-  const emailLink = "mailto:support@drimpay.africa";
+  const emailLink = "mailto:support@drimpay.com";
 
   const getSocialUrl = (key: string) => {
     const l = linkMap[key] ?? linkMap[`${key}_channel`] ?? linkMap[`${key}_page`];
@@ -553,7 +553,7 @@ export default function SupportPage() {
                   { icon: CheckCircle, color: "text-[#3a7a00]", text: "Support 24h/7j disponible" },
                   { icon: Clock, color: "text-[#0f0f0f]", text: "Réponse en moins de 15 min" },
                   { icon: MessageCircle, color: "text-[#0f0f0f]", text: "Chat WhatsApp & Email" },
-                  { icon: Mail, color: "text-[#3a7a00]", text: "support@drimpay.africa" },
+                  { icon: Mail, color: "text-[#3a7a00]", text: "support@drimpay.com" },
                 ].map(({ icon: Icon, color, text }) => (
                   <div key={text} className="flex items-center gap-2">
                     <Icon className={`w-3.5 h-3.5 shrink-0 ${color}`} />

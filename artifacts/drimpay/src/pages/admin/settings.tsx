@@ -121,7 +121,7 @@ function SmtpSection({ allValues }: { allValues: Record<string, string> }) {
       </div>
       <div>
         <label className="text-sm font-semibold text-gray-700 block mb-1.5">Utilisateur SMTP (email)</label>
-        <input value={user} onChange={e => setUser(e.target.value)} placeholder="noreply@drimpay.africa" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400" />
+        <input value={user} onChange={e => setUser(e.target.value)} placeholder="noreply@drimpay.com" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400" />
       </div>
       <div>
         <label className="text-sm font-semibold text-gray-700 block mb-1.5">Mot de passe SMTP</label>
@@ -135,7 +135,7 @@ function SmtpSection({ allValues }: { allValues: Record<string, string> }) {
       </div>
       <div>
         <label className="text-sm font-semibold text-gray-700 block mb-1.5">Email expéditeur (from)</label>
-        <input value={from} onChange={e => setFrom(e.target.value)} placeholder="DrimPay <noreply@drimpay.africa>" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+        <input value={from} onChange={e => setFrom(e.target.value)} placeholder="DrimPay <noreply@drimpay.com>" className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
       </div>
 
       {status && (

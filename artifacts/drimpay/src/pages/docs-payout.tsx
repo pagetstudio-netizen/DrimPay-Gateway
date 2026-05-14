@@ -104,7 +104,7 @@ export default function DocsPayout() {
   };
 
   const sendExamples: Record<string, string> = {
-    "curl": `curl -X POST https://api.drimpay.africa/v2/payout/send \\
+    "curl": `curl -X POST https://api.drimpay.com/v2/payout/send \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -118,7 +118,7 @@ export default function DocsPayout() {
     "description": "Supplier payment May 2026"
   }'`,
     "node.js": `const response = await fetch(
-  "https://api.drimpay.africa/v2/payout/send",
+  "https://api.drimpay.com/v2/payout/send",
   {
     method: "POST",
     headers: {
@@ -140,7 +140,7 @@ export default function DocsPayout() {
 const data = await response.json();
 console.log(data.reference); // SN-X9Y8Z7W6V5U4...`,
     "php": `<?php
-$ch = curl_init("https://api.drimpay.africa/v2/payout/send");
+$ch = curl_init("https://api.drimpay.com/v2/payout/send");
 curl_setopt_array($ch, [
   CURLOPT_POST => true,
   CURLOPT_RETURNTRANSFER => true,
@@ -164,7 +164,7 @@ echo $response["reference"];`,
     "python": `import requests
 
 response = requests.post(
-    "https://api.drimpay.africa/v2/payout/send",
+    "https://api.drimpay.com/v2/payout/send",
     headers={
         "Authorization": "Bearer dp_live_sk_xxxxxxxxxxxxxxxx",
         "Content-Type": "application/json",
@@ -360,12 +360,12 @@ print(data["reference"])`,
                   <tbody>
                     <tr className="border-b border-border/50">
                       <td className="px-4 py-3"><Badge color="yellow">sandbox</Badge></td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://sandbox.drimpay.africa/v2</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://sandbox.drimpay.com/v2</td>
                       <td className="px-4 py-3 font-mono text-xs"><code className="text-primary">dp_sandbox_sk_</code></td>
                     </tr>
                     <tr>
                       <td className="px-4 py-3"><Badge color="green">live</Badge></td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://api.drimpay.africa/v2</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://api.drimpay.com/v2</td>
                       <td className="px-4 py-3 font-mono text-xs"><code className="text-primary">dp_live_sk_</code></td>
                     </tr>
                   </tbody>
@@ -574,7 +574,7 @@ COMMIT;`} />
                 <code className="text-sm font-mono text-muted-foreground">/v2/payout/{"{reference}"}</code>
               </div>
               <p className="text-muted-foreground mb-4">Poll the status of a payout by its reference. Use as a fallback if your webhook wasn't received.</p>
-              <CodeBlock lang="bash" code={`curl https://api.drimpay.africa/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8 \\
+              <CodeBlock lang="bash" code={`curl https://api.drimpay.com/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8 \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
             </section>
 
@@ -585,7 +585,7 @@ COMMIT;`} />
                 <code className="text-sm font-mono text-muted-foreground">/v2/payout/transactions</code>
               </div>
               <p className="text-muted-foreground mb-4">Returns a paginated list of all your outgoing transactions with filters.</p>
-              <CodeBlock lang="bash" code={`curl "https://api.drimpay.africa/v2/payout/transactions?page=1&limit=20&country_code=SN&status=success" \\
+              <CodeBlock lang="bash" code={`curl "https://api.drimpay.com/v2/payout/transactions?page=1&limit=20&country_code=SN&status=success" \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
             </section>
 
@@ -596,7 +596,7 @@ COMMIT;`} />
                 <code className="text-sm font-mono text-muted-foreground">/v2/payout/mass</code>
               </div>
               <p className="text-muted-foreground mb-5">Send to up to 50,000 recipients in a single request. The job processes asynchronously — you receive webhook updates per recipient and a final summary webhook.</p>
-              <CodeBlock lang="bash" code={`curl -X POST https://api.drimpay.africa/v2/payout/mass \\
+              <CodeBlock lang="bash" code={`curl -X POST https://api.drimpay.com/v2/payout/mass \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -690,7 +690,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
                 <code className="text-sm font-mono text-muted-foreground">/v2/payout/{"{reference}"}/resend-webhook</code>
               </div>
               <p className="text-muted-foreground mb-4">Re-trigger the webhook notification for any payout. Also available directly from your <Link href="/dashboard/payments" className="text-primary hover:underline">Payment History dashboard</Link>.</p>
-              <CodeBlock lang="bash" code={`curl -X POST https://api.drimpay.africa/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8/resend-webhook \\
+              <CodeBlock lang="bash" code={`curl -X POST https://api.drimpay.com/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8/resend-webhook \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
             </section>
 
@@ -703,7 +703,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
   if (attempts >= 3) throw new Error("Max retries reached");
 
   try {
-    const res = await fetch("https://api.drimpay.africa/v2/payout/send", {
+    const res = await fetch("https://api.drimpay.com/v2/payout/send", {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + process.env.DRIMPAY_SECRET_KEY,
