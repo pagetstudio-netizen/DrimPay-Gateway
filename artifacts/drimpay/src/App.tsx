@@ -53,6 +53,13 @@ import DashboardMassPayout from "@/pages/dashboard/mass-payout";
 import PayPage from "@/pages/pay";
 import QrPayPage from "@/pages/qr-pay";
 
+import SupportAdminLogin from "@/pages/support-admin/login";
+import SupportAdminChangePassword from "@/pages/support-admin/change-password";
+import SupportAdminDashboard from "@/pages/support-admin/index";
+import SupportAdminMessages from "@/pages/support-admin/messages";
+import SupportAdminMessageDetail from "@/pages/support-admin/message-detail";
+import SupportAdminSettings from "@/pages/support-admin/settings";
+
 import AdminDashboard from "@/pages/admin/index";
 import AdminMerchants from "@/pages/admin/merchants";
 import AdminKyb from "@/pages/admin/kyb";
@@ -309,6 +316,19 @@ function Router() {
   const langAdminMatch = location.match(/^\/(fr|en)(\/admin.*)/);
   if (langAdminMatch) {
     return <Redirect to={langAdminMatch[2]} />;
+  }
+
+  if (location.startsWith("/support-admin")) {
+    return (
+      <Switch>
+        <Route path="/support-admin/login" component={SupportAdminLogin} />
+        <Route path="/support-admin/change-password" component={SupportAdminChangePassword} />
+        <Route path="/support-admin/messages/:id" component={SupportAdminMessageDetail} />
+        <Route path="/support-admin/messages" component={SupportAdminMessages} />
+        <Route path="/support-admin/settings" component={SupportAdminSettings} />
+        <Route component={SupportAdminDashboard} />
+      </Switch>
+    );
   }
 
   if (isAdminPath(location)) {
