@@ -4,25 +4,22 @@ import path from "path";
 
 const supabaseUrl = process.env.SUPABASE_URL || "https://zbootwjgztirlixmaclu.supabase.co";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = process.env.SUPABASE_ANON_KEY!;
-
-if (!anonKey) throw new Error("SUPABASE_ANON_KEY must be set");
+const anonKey = process.env.SUPABASE_ANON_KEY;
 
 // Admin client (service role) — bypasses RLS, used for bucket management and file operations
-export const supabaseAdmin = serviceRoleKey
-  ? createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
-  : createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+// If neither key is set, supabaseAdmin will be null and storage operations will gracefully fail
+export const supabaseAdmin = (serviceRoleKey || anonKey)
+  ? createClient(supabaseUrl, serviceRoleKey ?? anonKey!, { auth: { persistSession: false } })
+  : null;
 
 const KYB_BUCKET = "kyb-documents";
 
 // ── Bucket bootstrap ──────────────────────────────────────────────────────────
 
 export async function ensureKybBucket(): Promise<void> {
-  if (!serviceRoleKey) {
-    throw new Error(
-      "[Storage] SUPABASE_SERVICE_ROLE_KEY is required for KYB document storage. " +
-      "Set this variable in your Plesk environment variables."
-    );
+  if (!serviceRoleKey || !supabaseAdmin) {
+    console.warn("[Storage] SUPABASE_SERVICE_ROLE_KEY not set — skipping KYB bucket setup");
+    return;
   }
   try {
     const { data: buckets } = await supabaseAdmin.storage.listBuckets();
@@ -54,7 +51,7 @@ const CONTRACT_TEMPLATE_PATH = "_template/contrat-drimpay.docx";
 const CONTRACT_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 export async function uploadContractTemplateBuffer(buffer: Buffer): Promise<void> {
-  if (!serviceRoleKey) throw new Error("[Storage] SUPABASE_SERVICE_ROLE_KEY required");
+  if (!serviceRoleKey || !supabaseAdmin) throw new Error("[Storage] SUPABASE_SERVICE_ROLE_KEY required");
   const { error } = await supabaseAdmin.storage
     .from(KYB_BUCKET)
     .upload(CONTRACT_TEMPLATE_PATH, buffer, { contentType: CONTRACT_MIME, upsert: true });
@@ -63,6 +60,7 @@ export async function uploadContractTemplateBuffer(buffer: Buffer): Promise<void
 }
 
 export async function getContractTemplateInfo(): Promise<{ size: number; updatedAt: string } | null> {
+  if (!supabaseAdmin) return null;
   try {
     const folder = CONTRACT_TEMPLATE_PATH.split("/")[0];
     const filename = CONTRACT_TEMPLATE_PATH.split("/").pop()!;
@@ -78,7 +76,7 @@ export async function getContractTemplateInfo(): Promise<{ size: number; updated
 }
 
 export async function ensureContractTemplate(): Promise<void> {
-  if (!serviceRoleKey) {
+  if (!serviceRoleKey || !supabaseAdmin) {
     console.warn("[Storage] SUPABASE_SERVICE_ROLE_KEY not set — skipping contract template upload");
     return;
   }
@@ -100,7 +98,7 @@ export async function ensureContractTemplate(): Promise<void> {
 }
 
 export async function downloadContractTemplate(): Promise<Buffer> {
-  if (serviceRoleKey) {
+  if (serviceRoleKey && supabaseAdmin) {
     try {
       const { data, error } = await supabaseAdmin.storage
         .from(KYB_BUCKET)
@@ -126,11 +124,11 @@ export async function uploadKybDocument(
   mimetype: string,
   originalName: string,
 ): Promise<string> {
-  if (!serviceRoleKey) {
+  if (!serviceRoleKey || !supabaseAdmin) {
     throw new Error(
       "SUPABASE_SERVICE_ROLE_KEY is not configured. " +
       "KYB documents must be stored in Supabase Storage. " +
-      "Please set this environment variable on your server."
+      "Please set this environment variable in your Replit secrets."
     );
   }
 
@@ -151,6 +149,7 @@ export async function uploadKybDocument(
 }
 
 export async function downloadKybDocument(storagePath: string): Promise<Buffer> {
+  if (!supabaseAdmin) throw new Error("[Storage] Supabase not configured");
   const { data, error } = await supabaseAdmin.storage.from(KYB_BUCKET).download(storagePath);
   if (error || !data) throw new Error(`Storage download failed: ${error?.message ?? "no data"}`);
   const arrayBuffer = await data.arrayBuffer();
@@ -158,5 +157,6 @@ export async function downloadKybDocument(storagePath: string): Promise<Buffer> 
 }
 
 export async function deleteKybDocument(storagePath: string): Promise<void> {
+  if (!supabaseAdmin) throw new Error("[Storage] Supabase not configured");
   await supabaseAdmin.storage.from(KYB_BUCKET).remove([storagePath]);
 }
