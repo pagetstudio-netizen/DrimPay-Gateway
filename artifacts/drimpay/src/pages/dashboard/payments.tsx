@@ -143,22 +143,6 @@ function WebhookModal({ tx, onClose }: { tx: Tx; onClose: () => void }) {
 function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
   const [showWebhook, setShowWebhook] = useState(false);
 
-  const additionalInfo = JSON.stringify({
-    country_code: tx.countryCode,
-    phone_number: tx.phone,
-    network: tx.operator.toLowerCase().replace(/\s/g, ""),
-    fixed_fee: "0.00",
-    percentage_fee: "3.00",
-    ...(tx.webhookLastStatusCode ? {
-      last_webhook_response: {
-        status_code: tx.webhookLastStatusCode,
-        body: tx.webhookLastBody,
-        sent_at: tx.webhookLastSentAt,
-      }
-    } : {}),
-    ...(tx.failureReason ? { failure_reason: tx.failureReason } : {}),
-  }, null, 2);
-
   return (
     <>
       <AnimatePresence>
@@ -238,41 +222,35 @@ function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
             </div>
           )}
 
-          <div className="py-3 border-b border-border/50">
-            <p className="text-xs text-muted-foreground mb-2">Additional Information</p>
-            <pre className="bg-muted/30 border border-border rounded-lg p-3 text-xs font-mono text-foreground overflow-x-auto whitespace-pre-wrap break-all">
-              {additionalInfo}
-            </pre>
-          </div>
-
-          {(tx.webhookLastStatusCode || tx.webhookLastBody) && (
-            <div className="py-3">
-              <p className="text-xs text-muted-foreground mb-2">Last Webhook Response</p>
-              <div className="bg-muted/30 border border-border rounded-lg p-3 space-y-1.5 text-sm">
-                {tx.webhookLastStatusCode && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Status Code:</span>
-                    <span className={cn("px-1.5 py-0.5 rounded text-xs font-bold", tx.webhookLastStatusCode === 200 ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400")}>
-                      {tx.webhookLastStatusCode}
-                    </span>
-                  </div>
-                )}
+          {tx.webhookLastStatusCode && (
+            <div className="py-3 border-b border-border/50">
+              <p className="text-xs text-muted-foreground mb-2">Dernier envoi webhook</p>
+              <div className="flex items-center gap-3">
+                <span className={cn(
+                  "px-2 py-0.5 rounded text-xs font-bold",
+                  tx.webhookLastStatusCode >= 200 && tx.webhookLastStatusCode < 300
+                    ? "bg-green-500/20 text-green-400"
+                    : "bg-red-500/20 text-red-400"
+                )}>
+                  HTTP {tx.webhookLastStatusCode}
+                </span>
                 {tx.webhookLastSentAt && (
-                  <div><span className="text-muted-foreground">Sent At: </span>{new Date(tx.webhookLastSentAt).toLocaleString("en-US")}</div>
-                )}
-                {tx.webhookLastBody && (
-                  <div><span className="text-muted-foreground">Body: </span><code className="font-mono text-xs">{tx.webhookLastBody}</code></div>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(tx.webhookLastSentAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                  </span>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-border shrink-0">
-          <Button variant="primary" className="w-full" onClick={() => setShowWebhook(true)}>
-            <RefreshCw className="w-4 h-4 mr-2" /> Resend Webhook
-          </Button>
-        </div>
+        {tx.webhookUrl && (
+          <div className="px-6 py-4 border-t border-border shrink-0">
+            <Button variant="primary" className="w-full" onClick={() => setShowWebhook(true)}>
+              <RefreshCw className="w-4 h-4 mr-2" /> Resend Webhook
+            </Button>
+          </div>
+        )}
       </motion.div>
     </>
   );
