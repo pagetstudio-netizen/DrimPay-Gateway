@@ -570,7 +570,7 @@ export default function SupportPage() {
             >
               <h4 className="font-bold text-sm mb-1.5">Ressources développeurs</h4>
               <p className="text-xs text-white/60 mb-3 leading-relaxed">Documentations, exemples de code et guide d'intégration API.</p>
-              <Link href="/dashboard/docs/payin">
+              <Link href="/docs">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#B5F03C] hover:text-[#B5F03C]/80 transition-colors cursor-pointer">
                   Voir la doc API <ArrowRight className="w-3.5 h-3.5" />
                 </span>
