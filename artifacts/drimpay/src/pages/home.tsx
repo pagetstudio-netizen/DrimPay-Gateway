@@ -536,9 +536,12 @@ export default function Home() {
             ].map((c, i) => (
               <motion.div
                 key={i}
-                variants={scaleUp}
+                variants={{
+                  hidden:  { opacity: 0, scale: 0.88, x: c.tx, y: c.ty, rotate: c.rotate },
+                  visible: { opacity: 1, scale: 1,    x: c.tx, y: c.ty, rotate: c.rotate },
+                }}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute rounded-2xl p-3 sm:p-4 flex flex-col justify-between shadow-xl"
+                className="absolute rounded-2xl p-3 flex flex-col justify-between shadow-xl"
                 style={{
                   backgroundColor: c.bg,
                   width: 152,
@@ -547,17 +550,16 @@ export default function Home() {
                   left: "50%",
                   marginTop: -48,
                   marginLeft: -76,
-                  transform: `rotate(${c.rotate}deg) translate(${c.tx}px, ${c.ty}px)`,
                   zIndex: c.z,
                 }}
               >
                 <div className="flex justify-between items-start">
-                  <div className="w-5 h-3.5 sm:w-6 sm:h-4 rounded bg-white/30" />
-                  <span className="text-white/70 text-[8px] sm:text-[9px] font-bold tracking-widest">DRIMPAY</span>
+                  <div className="w-5 h-3.5 rounded bg-white/30" />
+                  <span className="text-white/70 text-[8px] font-bold tracking-widest">DRIMPAY</span>
                 </div>
                 <div>
-                  <p className="text-white text-[9px] sm:text-[10px] font-mono tracking-widest opacity-60">•••• 4242</p>
-                  <p className="text-white text-[8px] sm:text-[9px] mt-0.5 opacity-50">{c.label}</p>
+                  <p className="text-white text-[9px] font-mono tracking-widest opacity-60">•••• 4242</p>
+                  <p className="text-white text-[8px] mt-0.5 opacity-50">{c.label}</p>
                 </div>
               </motion.div>
             ))}
