@@ -525,19 +525,31 @@ export default function Home() {
             initial="hidden"
             whileInView="visible"
             viewport={viewportConfig}
-            className="relative flex items-center justify-center h-44 sm:h-48 mb-8 overflow-hidden w-full max-w-xs sm:max-w-sm mx-auto"
+            className="flex items-center justify-center mb-8"
           >
+            {/* Fixed-size inner wrapper — all 3 cards centered from same origin */}
+            <div className="relative" style={{ width: 300, height: 180 }}>
             {[
-              { bg: "bg-[#5B5EF5]", label: "Business Premium", style: { transform: "rotate(-8deg) translateX(-44px) translateY(8px)", position: "absolute" as const } },
-              { bg: "bg-[#1a6b4a]", label: "Carte Enterprise",  style: { transform: "rotate(7deg) translateX(44px) translateY(8px)", position: "absolute" as const } },
-              { bg: "bg-[#B5F03C]", label: "Carte Standard",    style: { transform: "translateY(-8px)", position: "relative" as const, zIndex: 10 } },
+              { bg: "#5B5EF5", label: "Business Premium", tx: -52, ty: 10, rotate: -8, z: 1 },
+              { bg: "#1a6b4a", label: "Carte Enterprise",  tx:  52, ty: 10, rotate:  7, z: 1 },
+              { bg: "#B5F03C", label: "Carte Standard",    tx:   0, ty: -8, rotate:  0, z: 10 },
             ].map((c, i) => (
               <motion.div
                 key={i}
                 variants={scaleUp}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className={`w-36 h-22 sm:w-44 sm:h-26 rounded-2xl ${c.bg} p-3 sm:p-4 flex flex-col justify-between shadow-xl`}
-                style={c.style}
+                className="absolute rounded-2xl p-3 sm:p-4 flex flex-col justify-between shadow-xl"
+                style={{
+                  backgroundColor: c.bg,
+                  width: 152,
+                  height: 96,
+                  top: "50%",
+                  left: "50%",
+                  marginTop: -48,
+                  marginLeft: -76,
+                  transform: `rotate(${c.rotate}deg) translate(${c.tx}px, ${c.ty}px)`,
+                  zIndex: c.z,
+                }}
               >
                 <div className="flex justify-between items-start">
                   <div className="w-5 h-3.5 sm:w-6 sm:h-4 rounded bg-white/30" />
@@ -549,6 +561,7 @@ export default function Home() {
                 </div>
               </motion.div>
             ))}
+            </div>
           </motion.div>
 
           <motion.div
