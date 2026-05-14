@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Building2, CheckCircle2, FileText, Clock, ArrowRight, Star } from "lucide-react";
+import { Building2, CheckCircle2, FileText, Clock, ArrowRight, Star, User, CreditCard } from "lucide-react";
 import { useT, useLang } from "@/lib/i18n";
 import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
@@ -64,23 +64,56 @@ export default function Businesses() {
           <div className="grid lg:grid-cols-2 gap-12">
             <div>
               <h2 className="text-2xl font-extrabold mb-8 text-[#0f0f0f]">{t.businesses.docsTitle}</h2>
-              <div className="flex flex-col gap-4">
-                {t.businesses.docs.map((doc, i) => (
-                  <div key={i} className="flex items-start gap-4 p-5 rounded-xl border border-[#E5E3DC] bg-[#F8F6F1]">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${doc.required ? "bg-[#B5F03C]/30" : "bg-[#F5F0E8]"}`}>
-                      <FileText className={`w-3 h-3 ${doc.required ? "text-[#3a7a00]" : "text-[#0f0f0f]/40"}`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-sm text-[#0f0f0f]">{doc.name}</h3>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${doc.required ? "bg-[#B5F03C]/20 text-[#3a7a00]" : "bg-[#F5F0E8] text-[#0f0f0f]/45"}`}>
-                          {doc.required ? t.businesses.required : t.businesses.optional}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#0f0f0f]/50">{doc.desc}</p>
+
+              {/* ── Personal account ──────────────────────────────── */}
+              <div className="mb-6 p-5 rounded-2xl border border-[#B5F03C]/40 bg-[#B5F03C]/8">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#B5F03C]/30 flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4 text-[#3a7a00]" />
+                  </div>
+                  <h3 className="font-extrabold text-[#0f0f0f]">{t.businesses.personalAccountTitle}</h3>
+                </div>
+                <p className="text-sm text-[#0f0f0f]/60 mb-4 leading-relaxed">{t.businesses.personalAccountDesc}</p>
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-white border border-[#B5F03C]/30">
+                  <div className="w-6 h-6 rounded-full bg-[#B5F03C]/30 flex items-center justify-center shrink-0 mt-0.5">
+                    <CreditCard className="w-3 h-3 text-[#3a7a00]" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-sm text-[#0f0f0f]">{t.businesses.personalAccountDoc}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[#B5F03C]/20 text-[#3a7a00]">{t.businesses.required}</span>
                     </div>
                   </div>
-                ))}
+                </div>
+              </div>
+
+              {/* ── Business account (KYB) ────────────────────────── */}
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-[#0f0f0f]/8 flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4 text-[#0f0f0f]/60" />
+                  </div>
+                  <h3 className="font-extrabold text-[#0f0f0f]">{t.businesses.businessAccountTitle}</h3>
+                </div>
+                <p className="text-sm text-[#0f0f0f]/55 mb-4">{t.businesses.businessAccountDesc}</p>
+                <div className="flex flex-col gap-3">
+                  {t.businesses.docs.map((doc, i) => (
+                    <div key={i} className="flex items-start gap-4 p-5 rounded-xl border border-[#E5E3DC] bg-[#F8F6F1]">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${doc.required ? "bg-[#B5F03C]/30" : "bg-[#F5F0E8]"}`}>
+                        <FileText className={`w-3 h-3 ${doc.required ? "text-[#3a7a00]" : "text-[#0f0f0f]/40"}`} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-semibold text-sm text-[#0f0f0f]">{doc.name}</h3>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${doc.required ? "bg-[#B5F03C]/20 text-[#3a7a00]" : "bg-[#F5F0E8] text-[#0f0f0f]/45"}`}>
+                            {doc.required ? t.businesses.required : t.businesses.optional}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#0f0f0f]/50">{doc.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
