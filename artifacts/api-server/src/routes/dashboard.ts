@@ -140,9 +140,20 @@ const COUNTRIES = [
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF" },
 ];
 
-async function getUserFeeRate(userId: number): Promise<number> {
-  const [user] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
-  return user?.accountType === "personal" ? 0.05 : 0.03;
+async function getUserFeeRate(userId: number, type: "payin" | "payout" = "payin"): Promise<number> {
+  const [user] = await db.select({
+    accountType: usersTable.accountType,
+    payinFeePercent: usersTable.payinFeePercent,
+    payoutFeePercent: usersTable.payoutFeePercent,
+  }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) return 0.03;
+  if (type === "payin" && user.payinFeePercent !== null && user.payinFeePercent !== undefined) {
+    return parseFloat(String(user.payinFeePercent)) / 100;
+  }
+  if (type === "payout" && user.payoutFeePercent !== null && user.payoutFeePercent !== undefined) {
+    return parseFloat(String(user.payoutFeePercent)) / 100;
+  }
+  return user.accountType === "personal" ? 0.05 : 0.03;
 }
 
 router.get("/dashboard/status", requireAuth, async (req, res) => {
@@ -422,7 +433,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       .returning();
   }
 
-  const feeRate = await getUserFeeRate(userId);
+  const feeRate = await getUserFeeRate(userId, "payin");
   const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `PAY-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
@@ -503,7 +514,7 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
     return;
   }
 
-  const payoutFeeRate = await getUserFeeRate(userId);
+  const payoutFeeRate = await getUserFeeRate(userId, "payout");
   const fee = Math.round(amount * payoutFeeRate * 100) / 100;
   const totalDebit = Math.round((amount + fee) * 100) / 100;
   const currentBalance = parseFloat(String(wallet.balance));
@@ -1040,24 +1051,21 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
     return;
   }
 
-  const reversementFeeRate = await getUserFeeRate(userId);
+  const reversementFeeRate = await getUserFeeRate(userId, "payout");
   const fee = +(amount * reversementFeeRate).toFixed(2);
   const net = +(amount - fee).toFixed(2);
 
-  if (currentMode === "live") {
-    // Live mode: check balance and deduct
-    const balance = parseFloat(wallet.balance as string);
-    if (amount > balance) {
-      res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
-      return;
-    }
-    const newBalance = +(balance - amount).toFixed(2);
-    await db
-      .update(walletsTable)
-      .set({ balance: String(newBalance) })
-      .where(eq(walletsTable.id, wallet.id));
+  // Always check balance and deduct (both sandbox and live)
+  const balance = parseFloat(wallet.balance as string);
+  if (amount > balance) {
+    res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
+    return;
   }
-  // Sandbox mode: record the reversement but do NOT deduct from wallet
+  const newBalance = +(balance - amount).toFixed(2);
+  await db
+    .update(walletsTable)
+    .set({ balance: String(newBalance) })
+    .where(eq(walletsTable.id, wallet.id));
 
   const [reversement] = await db
     .insert(reversementsTable)
@@ -1410,7 +1418,7 @@ router.post("/pay/:token", async (req, res) => {
   }
 
   const amount = link.fixedAmount && link.amount ? parseFloat(String(link.amount)) : reqAmount;
-  const linkFeeRate = await getUserFeeRate(link.userId);
+  const linkFeeRate = await getUserFeeRate(link.userId, "payin");
   const fee = Math.round(amount * linkFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `LNK-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
@@ -2172,7 +2180,7 @@ router.post("/qr/:reference", async (req, res) => {
   const merchantMode: "sandbox" | "live" = kybInfo?.status === "approved" ? "live" : "sandbox";
 
   const amount = qr.type === "fixed" && qr.amount ? parseFloat(String(qr.amount)) : reqAmount;
-  const qrFeeRate = await getUserFeeRate(qr.userId);
+  const qrFeeRate = await getUserFeeRate(qr.userId, "payin");
   const fee = Math.round(amount * qrFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const txReference = `QR-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;

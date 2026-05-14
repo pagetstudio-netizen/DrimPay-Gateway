@@ -26,6 +26,8 @@ export const usersTable = pgTable("users", {
   merchantCode: text("merchant_code").unique(),
   webhookUrl: text("webhook_url"),
   staticIp: text("static_ip"),
+  payinFeePercent: numeric("payin_fee_percent", { precision: 5, scale: 2 }),
+  payoutFeePercent: numeric("payout_fee_percent", { precision: 5, scale: 2 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

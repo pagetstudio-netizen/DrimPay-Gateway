@@ -295,12 +295,18 @@ router.get("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
 
 router.put("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
-  const { companyName, email, country, role } = req.body;
+  const { companyName, email, country, role, payinFeePercent, payoutFeePercent } = req.body;
   const updateData: any = {};
   if (companyName) updateData.companyName = companyName;
   if (email) updateData.email = email;
   if (country) updateData.country = country;
   if (role && ["admin", "user"].includes(role)) updateData.role = role;
+  if (payinFeePercent !== undefined) {
+    updateData.payinFeePercent = payinFeePercent === null || payinFeePercent === "" ? null : String(payinFeePercent);
+  }
+  if (payoutFeePercent !== undefined) {
+    updateData.payoutFeePercent = payoutFeePercent === null || payoutFeePercent === "" ? null : String(payoutFeePercent);
+  }
   await db.update(usersTable).set(updateData).where(eq(usersTable.id, id));
   await logAdminAction(req.session.userId, "UPDATE_MERCHANT", "user", String(id), JSON.stringify(updateData), req.ip);
   res.json({ ok: true });

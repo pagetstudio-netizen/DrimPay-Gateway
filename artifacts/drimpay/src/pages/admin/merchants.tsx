@@ -4,7 +4,7 @@ import {
   Users, Search, RefreshCw, Edit2, Trash2, KeyRound,
   ShieldCheck, UserX, ChevronLeft, ChevronRight, X, Check,
   Download, Wallet, ShieldOff, AlertTriangle, Save, UserCheck,
-  Building2, Mail, Globe2, BadgeCheck, Copy,
+  Building2, Mail, Globe2, BadgeCheck, Copy, Percent,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
@@ -39,6 +39,8 @@ function MerchantPanel({
     companyName: merchant.companyName,
     email: merchant.email,
     country: merchant.country,
+    payinFeePercent: merchant.payinFeePercent != null ? String(merchant.payinFeePercent) : "",
+    payoutFeePercent: merchant.payoutFeePercent != null ? String(merchant.payoutFeePercent) : "",
   });
   const [savingInfo, setSavingInfo] = useState(false);
   const [savedInfo, setSavedInfo] = useState(false);
@@ -221,6 +223,44 @@ function MerchantPanel({
                 </label>
                 <input value={form.country} onChange={e => setForm({ ...form, country: e.target.value })}
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+
+              {/* ── Frais personnalisés ── */}
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1">
+                  <Percent className="w-3 h-3" /> Frais personnalisés (laisser vide = taux global)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Frais Pay-in (%)</label>
+                    <div className="relative">
+                      <input
+                        type="number" min="0" max="100" step="0.1"
+                        value={form.payinFeePercent}
+                        onChange={e => setForm({ ...form, payinFeePercent: e.target.value })}
+                        placeholder="ex: 3"
+                        className="w-full px-3 py-2 pr-7 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Frais Pay-out / Reversement (%)</label>
+                    <div className="relative">
+                      <input
+                        type="number" min="0" max="100" step="0.1"
+                        value={form.payoutFeePercent}
+                        onChange={e => setForm({ ...form, payoutFeePercent: e.target.value })}
+                        placeholder="ex: 3"
+                        className="w-full px-3 py-2 pr-7 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1.5">
+                  Taux global actuel : 3% (entreprise) · 5% (personnel). Les frais personnalisés prennent le dessus.
+                </p>
               </div>
             </div>
 
