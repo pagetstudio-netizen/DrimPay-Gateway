@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Check, X, ChevronDown } from "lucide-react";
 
 export type CountryOption = {
   code: string;
   name: string;
-  flag: string;
+  flag: ReactNode;
   subtitle?: string;
 };
 

@@ -12,6 +12,7 @@ import { ProductionGate } from "@/components/ui/production-gate";
 import { Input } from "@/components/ui/input";
 import { CountryPicker } from "@/components/ui/country-picker";
 import { cn } from "@/lib/utils";
+import { getOperatorLogo } from "@/lib/operator-logos";
 import { useAuth } from "@/lib/auth";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -30,15 +31,6 @@ function fmt(n: string | number, currency: string) {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${currency}`;
 }
 
-const OPERATOR_FLAGS: Record<string, string> = {
-  "TMoney":           "🔴",
-  "Moov Money":       "🟢",
-  "MTN Mobile Money": "🟡",
-  "MTN MoMo":         "🟡",
-  "MTN":              "🟡",
-  "Orange Money":     "🟠",
-  "Wave":             "🔵",
-};
 
 const COUNTRIES_LIST = Object.entries(COUNTRY_MAP).map(([code, v]) => ({
   code,
@@ -181,7 +173,7 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
                 options={c.operators.map(op => ({
                   code: op,
                   name: op,
-                  flag: OPERATOR_FLAGS[op] ?? "📡",
+                  flag: getOperatorLogo(op, 28),
                 }))}
                 value={operator}
                 onChange={setOperator}

@@ -128,7 +128,7 @@ function WebhookModal({ tx, onClose }: { tx: Tx; onClose: () => void }) {
             </p>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-              <Button className="flex-1 text-primary-foreground font-semibold" onClick={resend} disabled={sending}>
+              <Button variant="primary" className="flex-1" onClick={resend} disabled={sending}>
                 <RefreshCw className={cn("w-4 h-4 mr-2", sending && "animate-spin")} />
                 {sending ? "Sending..." : "Resend Webhook"}
               </Button>
@@ -269,7 +269,7 @@ function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
         </div>
 
         <div className="px-6 py-4 border-t border-border shrink-0">
-          <Button className="w-full text-primary-foreground font-semibold" onClick={() => setShowWebhook(true)}>
+          <Button variant="primary" className="w-full" onClick={() => setShowWebhook(true)}>
             <RefreshCw className="w-4 h-4 mr-2" /> Resend Webhook
           </Button>
         </div>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CountryPicker } from "@/components/ui/country-picker";
+import { getOperatorLogo } from "@/lib/operator-logos";
 
 const COUNTRIES = [
   { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] },
@@ -20,15 +21,6 @@ const COUNTRIES = [
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"] },
 ];
 
-const OPERATOR_FLAGS: Record<string, string> = {
-  "TMoney":           "🔴",
-  "Moov Money":       "🟢",
-  "MTN Mobile Money": "🟡",
-  "MTN MoMo":         "🟡",
-  "MTN":              "🟡",
-  "Orange Money":     "🟠",
-  "Wave":             "🔵",
-};
 
 const schema = z.object({
   amount: z.string().min(1, "Montant requis"),
@@ -103,7 +95,7 @@ export default function Payout() {
   const operatorOptions = (selectedCountry?.operators ?? []).map(op => ({
     code: op,
     name: op,
-    flag: OPERATOR_FLAGS[op] ?? "📡",
+    flag: getOperatorLogo(op, 28),
   }));
 
   const onSubmit = async (values: FormData) => {
@@ -254,7 +246,7 @@ export default function Payout() {
                     </FormItem>
                   )} />
 
-                  <Button type="submit" className="w-full text-primary-foreground" disabled={submitting}>
+                  <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
                     {submitting ? "Traitement..." : <><ArrowUpRight className="w-4 h-4 mr-2" />Initier le Pay-out</>}
                   </Button>
                 </form>

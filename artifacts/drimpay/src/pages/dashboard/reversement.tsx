@@ -12,16 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CountryPicker } from "@/components/ui/country-picker";
 import { useAuth } from "@/lib/auth";
+import { getOperatorLogo } from "@/lib/operator-logos";
 
-const OPERATOR_FLAGS: Record<string, string> = {
-  "TMoney":           "🔴",
-  "Moov Money":       "🟢",
-  "MTN Mobile Money": "🟡",
-  "MTN MoMo":         "🟡",
-  "MTN":              "🟡",
-  "Orange Money":     "🟠",
-  "Wave":             "🔵",
-};
 
 const COUNTRIES = [
   { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] },
@@ -205,7 +197,7 @@ export default function DashboardReversement() {
                           options={(selectedCountry?.operators ?? []).map(op => ({
                             code: op,
                             name: op,
-                            flag: OPERATOR_FLAGS[op] ?? "📡",
+                            flag: getOperatorLogo(op, 28),
                           }))}
                           value={field.value}
                           onChange={field.onChange}
@@ -271,7 +263,8 @@ export default function DashboardReversement() {
 
                   <Button
                     type="submit"
-                    className="w-full text-primary-foreground font-semibold"
+                    variant="primary"
+                    className="w-full"
                     disabled={status === "loading"}
                   >
                     {status === "loading" ? "Traitement..." : "Demander le reversement"}

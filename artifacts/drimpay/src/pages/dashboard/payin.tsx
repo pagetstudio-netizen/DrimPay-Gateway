@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CountryPicker } from "@/components/ui/country-picker";
 import { cn } from "@/lib/utils";
+import { getOperatorLogo } from "@/lib/operator-logos";
 
 const COUNTRIES = [
   { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF", operators: ["TMoney", "Moov Money"] },
@@ -25,19 +26,6 @@ const COUNTRIES = [
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"] },
 ];
 
-const OPERATOR_FLAGS: Record<string, string> = {
-  "TMoney":           "🔴",
-  "Moov Money":       "🟢",
-  "MTN Mobile Money": "🟡",
-  "MTN MoMo":         "🟡",
-  "MTN":              "🟡",
-  "MTN Ghana":        "🟡",
-  "MTN Nigeria":      "🟡",
-  "Orange Money":     "🟠",
-  "Wave":             "🔵",
-  "Vodafone Ghana":   "🔴",
-  "Airtel Nigeria":   "🔴",
-};
 
 const EXPIRY_OPTIONS = [
   { code: "2",  name: "2 minutes",  flag: "⏱️" },
@@ -218,7 +206,7 @@ export default function Payin() {
   const operatorOptions = (selectedCountry?.operators ?? []).map(op => ({
     code: op,
     name: op,
-    flag: OPERATOR_FLAGS[op] ?? "📡",
+    flag: getOperatorLogo(op, 28),
   }));
 
   const onSubmit = async (values: FormData) => {
@@ -393,7 +381,7 @@ export default function Payin() {
                       </FormItem>
                     )} />
 
-                    <Button type="submit" className="w-full text-primary-foreground" disabled={submitting}>
+                    <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
                       {submitting ? (
                         <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Traitement...</>
                       ) : (
