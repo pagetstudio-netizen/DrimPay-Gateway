@@ -7,11 +7,13 @@ import {
   Loader2, Eye, EyeOff, Copy, RefreshCw, AlertTriangle, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import companyImg  from "@assets/icon3d_company.png";
-import apiKeyImg   from "@assets/icon3d_api_key.png";
-import securityImg from "@assets/icon3d_security.png";
-import identityImg from "@assets/icon3d_identity.png";
-import userImg     from "@assets/20260125_232710_1771507041579-BmqaXdG3_1778105456352.png";
+import companyImg   from "@assets/icon3d_company.png";
+import apiKeyImg    from "@assets/icon3d_api_key.png";
+import identityImg  from "@assets/icon3d_identity.png";
+import userImg      from "@assets/20260125_232710_1771507041579-BmqaXdG3_1778105456352.png";
+import passwordImg  from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466c-8a76-4127fc639_1778791973301.png";
+import webhookImg   from "@assets/17496245_1778791973344.png";
+import ipImg        from "@assets/6146731_1778791973372.png";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -84,10 +86,12 @@ function ApiKeyCard({ env, keyData, onRegen }: { env: "sandbox" | "live"; keyDat
 }
 
 const MENU_ITEMS = [
-  { key: "profil",   label: "Profil",      img: companyImg },
-  { key: "api",      label: "Clés API",    img: apiKeyImg },
-  { key: "securite", label: "Sécurité",    img: securityImg },
-  { key: "compte",   label: "Identifiant", img: identityImg },
+  { key: "profil",   label: "Profil",       img: companyImg,  imgClass: "" },
+  { key: "api",      label: "Clés API",     img: apiKeyImg,   imgClass: "" },
+  { key: "securite", label: "Mot de passe", img: passwordImg, imgClass: "" },
+  { key: "webhook",  label: "Webhook",      img: webhookImg,  imgClass: "opacity-90" },
+  { key: "ip",       label: "Adresse IP",   img: ipImg,       imgClass: "" },
+  { key: "compte",   label: "Identifiant",  img: identityImg, imgClass: "" },
 ];
 
 export default function DashboardProfile() {
@@ -107,6 +111,14 @@ export default function DashboardProfile() {
   const [sandboxKey, setSandboxKey] = useState<any>(null);
   const [liveKey, setLiveKey] = useState<any>(null);
 
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookStatus, setWebhookStatus] = useState<Status>("idle");
+  const [webhookError, setWebhookError] = useState("");
+
+  const [staticIp, setStaticIp] = useState("");
+  const [ipStatus, setIpStatus] = useState<Status>("idle");
+  const [ipError, setIpError] = useState("");
+
   useEffect(() => {
     fetch(`${BASE}/api/dashboard/api-keys`, { credentials: "include" })
       .then(r => r.json())
@@ -115,6 +127,14 @@ export default function DashboardProfile() {
         const activeKeys = keys.filter(k => k.status === "active");
         setSandboxKey(activeKeys.find(k => k.env === "sandbox") ?? null);
         setLiveKey(activeKeys.find(k => k.env === "live") ?? null);
+      })
+      .catch(console.error);
+
+    fetch(`${BASE}/api/dashboard/settings`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        if (d.webhookUrl) setWebhookUrl(d.webhookUrl);
+        if (d.staticIp) setStaticIp(d.staticIp);
       })
       .catch(console.error);
   }, []);
@@ -137,6 +157,24 @@ export default function DashboardProfile() {
       if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? "Échec du changement de mot de passe."); }
       setPwStatus("success"); setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); setTimeout(() => setPwStatus("idle"), 3000);
     } catch (e: any) { setPwError(e.message); setPwStatus("error"); }
+  };
+
+  const handleWebhookSave = async () => {
+    setWebhookStatus("loading"); setWebhookError("");
+    try {
+      const r = await fetch(`${BASE}/api/dashboard/settings/webhook`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webhookUrl }) });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? "URL invalide."); }
+      setWebhookStatus("success"); setTimeout(() => setWebhookStatus("idle"), 3000);
+    } catch (e: any) { setWebhookError(e.message); setWebhookStatus("error"); }
+  };
+
+  const handleIpSave = async () => {
+    setIpStatus("loading"); setIpError("");
+    try {
+      const r = await fetch(`${BASE}/api/dashboard/settings/ip`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ staticIp }) });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? "Adresse IP invalide."); }
+      setIpStatus("success"); setTimeout(() => setIpStatus("idle"), 3000);
+    } catch (e: any) { setIpError(e.message); setIpStatus("error"); }
   };
 
   const openRegen = (env: "sandbox" | "live") => {
@@ -192,7 +230,7 @@ export default function DashboardProfile() {
 
             {/* Mobile tabs */}
             <div className="flex md:hidden gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-              {MENU_ITEMS.map(({ key, label, img }) => (
+              {MENU_ITEMS.map(({ key, label, img, imgClass }) => (
                 <button
                   key={key}
                   onClick={() => setActiveSection(key)}
@@ -203,7 +241,7 @@ export default function DashboardProfile() {
                       : "text-gray-500 border-gray-100 hover:bg-gray-50"
                   )}
                 >
-                  <img src={img} alt="" className="w-5 h-5 object-contain shrink-0" />
+                  <img src={img} alt="" className={cn("w-5 h-5 object-contain shrink-0", imgClass)} />
                   {label}
                 </button>
               ))}
@@ -235,7 +273,7 @@ export default function DashboardProfile() {
                 )}
               </div>
               <div className="h-px bg-gray-100 mx-1 mb-2" />
-              {MENU_ITEMS.map(({ key, label, img }) => (
+              {MENU_ITEMS.map(({ key, label, img, imgClass }) => (
                 <button
                   key={key}
                   onClick={() => setActiveSection(key)}
@@ -246,7 +284,7 @@ export default function DashboardProfile() {
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   )}
                 >
-                  <img src={img} alt="" className="w-6 h-6 object-contain shrink-0" />
+                  <img src={img} alt="" className={cn("w-6 h-6 object-contain shrink-0", imgClass)} />
                   {label}
                 </button>
               ))}
@@ -256,6 +294,7 @@ export default function DashboardProfile() {
           {/* Content panel */}
           <div className="flex-1 min-w-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
+            {/* ── Profil ─────────────────────────────────────── */}
             {activeSection === "profil" && (
               <div className="p-4 sm:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
@@ -314,6 +353,7 @@ export default function DashboardProfile() {
               </div>
             )}
 
+            {/* ── Clés API ───────────────────────────────────── */}
             {activeSection === "api" && (
               <div className="p-4 sm:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
@@ -338,14 +378,15 @@ export default function DashboardProfile() {
               </div>
             )}
 
+            {/* ── Mot de passe ───────────────────────────────── */}
             {activeSection === "securite" && (
               <div className="p-4 sm:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
                   <div className="w-12 h-12 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center shrink-0">
-                    <img src={securityImg} alt="" className="w-8 h-8 object-contain" />
+                    <img src={passwordImg} alt="" className="w-8 h-8 object-contain" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">Sécurité — Mot de passe</h2>
+                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">Mot de passe</h2>
                     <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Modifiez votre mot de passe. Utilisez au moins 8 caractères.</p>
                   </div>
                 </div>
@@ -388,6 +429,118 @@ export default function DashboardProfile() {
               </div>
             )}
 
+            {/* ── Webhook ────────────────────────────────────── */}
+            {activeSection === "webhook" && (
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                    <img src={webhookImg} alt="" className="w-7 h-7 object-contain opacity-90" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">URL Webhook</h2>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">DrimPay envoie les événements de paiement en temps réel à cette URL via HTTP POST.</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
+                    <AlertTriangle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700">
+                      Votre endpoint doit répondre avec un <span className="font-mono font-bold">HTTP 200</span> dans les 5 secondes. En cas d'échec, DrimPay effectue 3 nouvelles tentatives automatiques.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">URL de réception des événements</label>
+                    <input
+                      className={inputCls}
+                      value={webhookUrl}
+                      onChange={e => setWebhookUrl(e.target.value)}
+                      placeholder="https://votre-serveur.com/webhook/drimpay"
+                      type="url"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1.5">
+                      Laisser vide pour désactiver les notifications webhook.
+                    </p>
+                  </div>
+                  {webhookUrl && (
+                    <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 space-y-1.5">
+                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Événements envoyés</p>
+                      {["payment.success", "payment.failed", "payout.success", "payout.failed", "reversement.created"].map(ev => (
+                        <div key={ev} className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                          <span className="font-mono text-xs text-gray-600">{ev}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleWebhookSave}
+                    disabled={webhookStatus === "loading"}
+                    className="flex items-center gap-2 bg-primary text-black text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60"
+                  >
+                    {webhookStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    Enregistrer l'URL
+                  </button>
+                  <Feedback status={webhookStatus} error={webhookError} />
+                </div>
+              </div>
+            )}
+
+            {/* ── Adresse IP ─────────────────────────────────── */}
+            {activeSection === "ip" && (
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0">
+                    <img src={ipImg} alt="" className="w-8 h-8 object-contain" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">IP statique autorisée</h2>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Restreignez les appels API à une seule adresse IP pour renforcer la sécurité.</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-pink-50 border border-pink-100">
+                    <AlertTriangle className="w-4 h-4 text-pink-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-pink-700">
+                      Si vous définissez une IP, toute requête API provenant d'une autre adresse sera automatiquement rejetée. Assurez-vous que votre serveur dispose d'une IP fixe.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Adresse IPv4 autorisée</label>
+                    <input
+                      className={inputCls}
+                      value={staticIp}
+                      onChange={e => setStaticIp(e.target.value)}
+                      placeholder="Ex : 41.74.15.200"
+                      type="text"
+                      maxLength={15}
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1.5">
+                      Format : <span className="font-mono">xxx.xxx.xxx.xxx</span> · Laisser vide pour désactiver la restriction IP.
+                    </p>
+                  </div>
+                  {staticIp && (
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                      <img src={ipImg} alt="" className="w-6 h-6 object-contain shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">IP enregistrée</p>
+                        <p className="font-mono text-sm font-bold text-gray-900">{staticIp}</p>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleIpSave}
+                    disabled={ipStatus === "loading"}
+                    className="flex items-center gap-2 bg-primary text-black text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60"
+                  >
+                    {ipStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    Enregistrer l'adresse IP
+                  </button>
+                  <Feedback status={ipStatus} error={ipError} />
+                </div>
+              </div>
+            )}
+
+            {/* ── Identifiant ────────────────────────────────── */}
             {activeSection === "compte" && (
               <div className="p-4 sm:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
@@ -428,6 +581,7 @@ export default function DashboardProfile() {
                 </div>
               </div>
             )}
+
           </div>
         </div>
       </div>
