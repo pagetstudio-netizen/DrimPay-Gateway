@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight, CheckCircle2, Clock, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Clock, XCircle, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -136,7 +136,7 @@ export default function Payout() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Pay-out</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Transferts Mobile Money · Frais : <strong>3%</strong> par transaction (comptes entreprises uniquement)
+            Transferts Mobile Money
           </p>
         </div>
 
@@ -257,9 +257,6 @@ export default function Payout() {
           <div className="lg:col-span-3 rounded-xl border border-border bg-card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="font-semibold text-sm">Historique Pay-out</h2>
-              <button onClick={fetchData} className="text-muted-foreground hover:text-foreground transition-colors">
-                <RefreshCw className="w-4 h-4" />
-              </button>
             </div>
             <div className="overflow-x-auto">
               {loading ? (

@@ -255,7 +255,7 @@ export default function Payin() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Pay-in</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Encaissements Mobile Money · Frais : <strong>5% Particuliers · 3% Entreprises</strong> · <span className="font-mono text-xs text-primary">POST /v2/payin/initiate</span>
+            Encaissements Mobile Money · <span className="font-mono text-xs text-primary">POST /v2/payin/initiate</span>
           </p>
         </div>
 
@@ -398,9 +398,6 @@ export default function Payin() {
           <div className="lg:col-span-3 rounded-xl border border-border bg-card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="font-semibold text-sm">Historique Pay-in</h2>
-              <button onClick={fetchTransactions} className="text-muted-foreground hover:text-foreground transition-colors" title="Rafraîchir">
-                <RefreshCw className="w-4 h-4" />
-              </button>
             </div>
             <div className="overflow-x-auto">
               {loading ? (
