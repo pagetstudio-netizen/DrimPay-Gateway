@@ -238,7 +238,33 @@ export const contactSubmissionsTable = pgTable("contact_submissions", {
   company: text("company"),
   subject: text("subject").notNull(),
   message: text("message").notNull(),
+  source: text("source").notNull().default("contact"),
+  ticketStatus: text("ticket_status").notNull().default("unread"),
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+});
+
+export const supportUsersTable = pgTable("support_users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull().default("Support Agent"),
+  mustChangePassword: boolean("must_change_password").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const supportRepliesTable = pgTable("support_replies", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contact_id").notNull().references(() => contactSubmissionsTable.id),
+  supportUserId: integer("support_user_id").notNull().references(() => supportUsersTable.id),
+  body: text("body").notNull(),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+});
+
+export const supportSettingsTable = pgTable("support_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const serviceStatusesTable = pgTable("service_statuses", {

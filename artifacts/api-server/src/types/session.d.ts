@@ -5,5 +5,6 @@ declare module "express-session" {
     userId: number;
     role: "admin" | "user";
     mode: "sandbox" | "live";
+    supportAdminId: number;
   }
 }

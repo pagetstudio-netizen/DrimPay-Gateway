@@ -524,3 +524,56 @@ export async function sendBroadcastEmail(opts: {
     return { ok: false, error: e?.message ?? String(e) };
   }
 }
+
+export async function sendSupportReplyEmail(opts: {
+  to: string;
+  recipientName: string;
+  subject: string;
+  replyBody: string;
+  agentName: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const cfg = await getSmtpConfig();
+  if (!cfg) {
+    console.warn("[Mailer] SMTP non configuré — email support ignoré.");
+    return { ok: false, error: "SMTP non configuré" };
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.port === 465,
+      auth: { user: cfg.user, pass: cfg.pass },
+    });
+    const bodyHtml = opts.replyBody.replace(/\n/g, "<br>");
+    await transporter.sendMail({
+      from: `"Support DrimPay" <${cfg.from}>`,
+      to: opts.to,
+      subject: `Re: ${opts.subject}`,
+      html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#111827;padding:24px 36px;">
+          <span style="font-size:22px;font-weight:bold;color:#ffffff;">Drim<span style="color:#C5FF4A;">Pay</span></span>
+          <span style="font-size:12px;color:#9ca3af;margin-left:10px;">Support</span>
+        </td></tr>
+        <tr><td style="padding:32px 36px;">
+          <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 12px;">Bonjour <strong>${opts.recipientName}</strong>,</p>
+          <p style="color:#374151;font-size:14px;margin:0 0 6px;">En réponse à votre message : <strong>${opts.subject}</strong></p>
+          <div style="background:#f9fafb;border-left:3px solid #C5FF4A;border-radius:4px;padding:16px 20px;margin:20px 0;color:#374151;font-size:14px;line-height:1.8;">${bodyHtml}</div>
+          <p style="color:#6b7280;font-size:13px;margin:24px 0 0;">— ${opts.agentName}<br><span style="color:#9ca3af;">Équipe Support DrimPay</span></p>
+        </td></tr>
+        <tr><td style="background:#f8f9fa;padding:18px 36px;border-top:1px solid #eeeeee;">
+          <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">DrimPay · support@drimpay.com · Cet email est destiné uniquement au destinataire.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`,
+    });
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
