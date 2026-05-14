@@ -161,12 +161,12 @@ const FAQ_ITEMS = [
   {
     category: "fees",
     q: "Quels sont les frais de transaction DrimPay ?",
-    a: "DrimPay applique des frais transparents de 3% sur chaque transaction (pay-in et pay-out). Aucun frais cachés, aucun frais d'installation. Les frais sont déduits automatiquement du montant net crédité sur votre wallet.",
+    a: "DrimPay applique des frais transparents selon le type de compte : 5% sur le Pay-in pour les comptes particuliers (le Pay-out n'est pas disponible aux particuliers) ; 3% fixe sur chaque transaction réussie (Pay-in et Pay-out) pour les comptes entreprises. Aucun frais cachés, aucun frais d'installation. Les frais sont déduits automatiquement du montant net crédité sur votre wallet.",
   },
   {
     category: "fees",
     q: "Y a-t-il des frais d'abonnement ou d'inscription ?",
-    a: "Non. L'inscription sur DrimPay est entièrement gratuite. Aucun abonnement mensuel. Vous ne payez que 3% par transaction réussie. Si la transaction échoue, aucun frais n'est prélevé.",
+    a: "Non. L'inscription sur DrimPay est entièrement gratuite. Aucun abonnement mensuel. Vous ne payez que 5% (particuliers, Pay-in) ou 3% (entreprises, Pay-in & Pay-out) par transaction réussie. Si la transaction échoue, aucun frais n'est prélevé.",
   },
   {
     category: "security",

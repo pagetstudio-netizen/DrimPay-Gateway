@@ -245,7 +245,7 @@ export default function DashboardReversement() {
                         <span>{amount.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>Frais DrimPay (3%)</span>
+                        <span>Frais DrimPay ({(feeRate * 100).toFixed(0)}%)</span>
                         <span>— {fee.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
                       <div className="flex justify-between font-semibold text-foreground border-t border-border pt-2 mt-2">
@@ -333,7 +333,7 @@ export default function DashboardReversement() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>
-                  Frais de reversement : <span className="font-semibold text-foreground">3%</span> du montant brut.
+                  Frais de reversement : <span className="font-semibold text-foreground">{(feeRate * 100).toFixed(0)}%</span> du montant brut.
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>

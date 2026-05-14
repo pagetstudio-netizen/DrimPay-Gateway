@@ -214,7 +214,7 @@ export default function Home() {
         name: "DrimPay API",
         applicationCategory: "FinanceApplication",
         operatingSystem: "Web",
-        offers: { "@type": "Offer", price: "0", priceCurrency: "XOF", description: "3% par transaction réussie" },
+        offers: { "@type": "Offer", price: "0", priceCurrency: "XOF", description: "5% particuliers (Payin) · 3% entreprises (Payin & Payout)" },
         provider: { "@id": `${SITE_URL}/#organization` },
       },
     ],

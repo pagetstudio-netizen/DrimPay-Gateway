@@ -144,7 +144,7 @@ export default function Payout() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Pay-out</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Transferts Mobile Money · Frais : <strong>3%</strong> par transaction
+            Transferts Mobile Money · Frais : <strong>3%</strong> par transaction (comptes entreprises uniquement)
           </p>
         </div>
 
@@ -169,7 +169,7 @@ export default function Payout() {
                   </div>
                   <p className="text-xs text-muted-foreground">Ref : <span className="font-mono">{success.transaction?.reference}</span></p>
                   <p className="text-xs text-muted-foreground">Montant envoyé : {fmt(success.transaction?.amount, success.transaction?.currency)}</p>
-                  <p className="text-xs text-muted-foreground">Frais (3%) : {fmt(success.fee, success.transaction?.currency)}</p>
+                  <p className="text-xs text-muted-foreground">Frais : {fmt(success.fee, success.transaction?.currency)}</p>
                   <p className="text-xs text-muted-foreground">Total débité : {fmt(success.totalDebit, success.transaction?.currency)}</p>
                 </motion.div>
               )}

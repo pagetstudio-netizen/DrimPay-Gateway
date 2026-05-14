@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownLeft, CheckCircle2, Clock, XCircle, RefreshCw,
@@ -177,7 +178,7 @@ function PendingMonitor({ reference, onDone }: { reference: string; onDone: (tx:
       {tx && TERMINAL_STATUSES.includes(status) && (
         <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
           <p>Montant net : <strong className="text-foreground">{fmt(tx.net_amount, tx.currency)}</strong></p>
-          <p>Frais (3%) : {fmt(tx.fee, tx.currency)}</p>
+          <p>Frais : {fmt(tx.fee, tx.currency)}</p>
         </div>
       )}
     </motion.div>
@@ -266,7 +267,7 @@ export default function Payin() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Pay-in</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Encaissements Mobile Money · Frais : <strong>3%</strong> · <span className="font-mono text-xs text-primary">POST /v2/payin/initiate</span>
+            Encaissements Mobile Money · Frais : <strong>5% Particuliers · 3% Entreprises</strong> · <span className="font-mono text-xs text-primary">POST /v2/payin/initiate</span>
           </p>
         </div>
 

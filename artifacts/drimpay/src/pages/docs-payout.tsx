@@ -314,7 +314,7 @@ print(data["reference"])`,
                 The DrimPay Pay-out API enables you to push money directly to any Mobile Money wallet. This is ideal for supplier payments, agent commissions, salary disbursements, customer refunds, and mass payroll.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Funds are debited from your <strong className="text-foreground">country-specific wallet</strong>. You must have an active wallet with sufficient balance in the destination country before initiating a pay-out. DrimPay charges a flat <strong className="text-foreground">3% fee</strong> per transaction — the total deducted from your wallet is <strong className="text-foreground">amount + fee</strong>.
+                Funds are debited from your <strong className="text-foreground">country-specific wallet</strong>. You must have an active wallet with sufficient balance in the destination country before initiating a pay-out. Pay-out is available to <strong className="text-foreground">business accounts only</strong>. DrimPay charges a flat <strong className="text-foreground">3% fee</strong> per transaction — the total deducted from your wallet is <strong className="text-foreground">amount + fee</strong>.
               </p>
               <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 mb-6 flex gap-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />

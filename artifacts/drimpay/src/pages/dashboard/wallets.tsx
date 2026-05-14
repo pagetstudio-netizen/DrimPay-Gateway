@@ -12,6 +12,7 @@ import { ProductionGate } from "@/components/ui/production-gate";
 import { Input } from "@/components/ui/input";
 import { CountryPicker } from "@/components/ui/country-picker";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -65,7 +66,8 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
   const [successNet, setSuccessNet] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const feeRate = 0.03;
+  const { user } = useAuth();
+  const feeRate = (user as any)?.accountType === "personal" ? 0.05 : 0.03;
   const amountNum = parseFloat(amount) || 0;
   const fee = +(amountNum * feeRate).toFixed(2);
   const net = +(amountNum - fee).toFixed(2);
@@ -236,7 +238,7 @@ function PayinModal({ wallet, onClose, onSuccess }: PayinModalProps) {
                   <span className="font-medium text-foreground">{fmt(amountNum, c.currency)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Frais DrimPay (3%)</span>
+                  <span>Frais DrimPay ({(feeRate * 100).toFixed(0)}%)</span>
                   <span className="text-red-400">− {fmt(fee, c.currency)}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1.5 mt-1">
