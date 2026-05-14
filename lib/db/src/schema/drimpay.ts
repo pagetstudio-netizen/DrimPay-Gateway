@@ -438,3 +438,15 @@ export const qrCodesTable = pgTable("qr_codes", {
 });
 
 export type QrCode = typeof qrCodesTable.$inferSelect;
+
+export const notificationsTable = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  type: text("type").notNull().default("info"),
+  category: text("category").notNull().default("activite"),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  href: text("href").notNull().default("/dashboard"),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

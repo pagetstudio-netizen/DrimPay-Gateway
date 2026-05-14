@@ -6,6 +6,7 @@ import {
   apiKeysTable, paymentLinksTable, operatorsTable, countriesTable,
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
   blacklistedPhonesTable, paymentLinkAttemptsTable, socialLinksTable,
+  notificationsTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
@@ -494,6 +495,16 @@ router.put("/admin/kyb/:id/approve", requireAdmin, async (req: any, res: any) =>
     const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
 
     if (kyb) {
+      // Notification in-app au marchand
+      db.insert(notificationsTable).values({
+        userId: kyb.userId,
+        type: "success",
+        category: "kyb",
+        title: "KYB approuvé — Compte Live activé",
+        body: "Votre dossier KYB a été approuvé. Votre compte est maintenant en mode Live et vous pouvez recevoir de vrais paiements.",
+        href: "/dashboard/kyb",
+      }).catch(() => {});
+
       // Telegram
       notifyKybDecision({ company: kyb.company ?? "?", email: kyb.contractEmail ?? "?", decision: "approved", adminEmail: admin?.email ?? "?" }).catch(() => {});
 
@@ -528,6 +539,16 @@ router.put("/admin/kyb/:id/reject", requireAdmin, async (req: any, res: any) => 
     const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
 
     if (kyb) {
+      // Notification in-app au marchand
+      db.insert(notificationsTable).values({
+        userId: kyb.userId,
+        type: "error",
+        category: "kyb",
+        title: "KYB refusé — Action requise",
+        body: `Votre dossier KYB a été refusé. Motif : ${reason.trim()}. Veuillez soumettre à nouveau avec les documents corrects.`,
+        href: "/dashboard/kyb",
+      }).catch(() => {});
+
       // Telegram
       notifyKybDecision({ company: kyb.company ?? "?", email: kyb.contractEmail ?? "?", decision: "rejected", reason, adminEmail: admin?.email ?? "?" }).catch(() => {});
 

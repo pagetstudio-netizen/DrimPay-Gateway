@@ -17,6 +17,7 @@ import {
   socialLinksTable,
   qrCodesTable,
   adminSettingsTable,
+  notificationsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql, gte, asc } from "drizzle-orm";
 import crypto from "crypto";
@@ -139,6 +140,19 @@ const COUNTRIES = [
   { code: "SN", name: "Sénégal", flag: "🇸🇳", currency: "XOF" },
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF" },
 ];
+
+async function createNotification(
+  userId: number,
+  type: "success" | "error" | "warning" | "info",
+  category: "transaction" | "kyb" | "wallet" | "activite" | "securite",
+  title: string,
+  body: string,
+  href: string = "/dashboard",
+): Promise<void> {
+  try {
+    await db.insert(notificationsTable).values({ userId, type, category, title, body, href });
+  } catch {}
+}
 
 async function getUserFeeRate(userId: number, type: "payin" | "payout" = "payin"): Promise<number> {
   const [user] = await db.select({
@@ -465,6 +479,12 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
     .where(eq(walletsTable.id, wallet.id));
 
   const [updatedWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, wallet.id));
+  createNotification(
+    userId, "success", "transaction",
+    `Pay-in reçu — ${amount.toLocaleString("fr-FR")} ${currency}`,
+    `Paiement de ${amount.toLocaleString("fr-FR")} ${currency} via ${operator} (${countryCode}). Net crédité : ${netAmount.toLocaleString("fr-FR")} ${currency}. Réf : ${reference}.`,
+    "/dashboard/payments",
+  ).catch(() => {});
   res.status(201).json({ transaction: tx, fee, netAmount, feeRate: `${feeRate * 100}%`, walletId: wallet.id, newBalance: parseFloat(String(updatedWallet?.balance ?? 0)) });
 });
 
@@ -552,6 +572,12 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
     .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
     .where(eq(walletsTable.id, wallet.id));
 
+  createNotification(
+    userId, "success", "transaction",
+    `Pay-out effectué — ${amount.toLocaleString("fr-FR")} ${currency}`,
+    `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}). Total débité : ${totalDebit.toLocaleString("fr-FR")} ${currency}. Réf : ${reference}.`,
+    "/dashboard/payments",
+  ).catch(() => {});
   res.status(201).json({ transaction: tx, fee, totalDebit, feeRate: `${payoutFeeRate * 100}%` });
 });
 
@@ -607,6 +633,12 @@ router.post("/dashboard/api-keys", requireAuth, async (req, res) => {
       createdAt: apiKeysTable.createdAt,
     });
 
+  createNotification(
+    userId, "info", "securite",
+    `Nouvelle clé API créée — ${name}`,
+    `Une clé API ${env === "sandbox" ? "Sandbox" : "Live"} nommée "${name}" a été générée. Conservez-la en lieu sûr.`,
+    "/dashboard/api-keys",
+  ).catch(() => {});
   res.status(201).json({ ...key, warning: "Store this key securely." });
 });
 
@@ -629,6 +661,12 @@ router.delete("/dashboard/api-keys/:id", requireAuth, async (req, res) => {
     .set({ status: "revoked" })
     .where(eq(apiKeysTable.id, keyId));
 
+  createNotification(
+    userId, "warning", "securite",
+    `Clé API révoquée — ${key.name}`,
+    `La clé API "${key.name}" (${key.prefix}...) a été révoquée et ne peut plus être utilisée.`,
+    "/dashboard/api-keys",
+  ).catch(() => {});
   res.json({ ok: true });
 });
 
@@ -817,6 +855,12 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
       }
 
       if (stepNum === 3 && kyb.status === "submitted") {
+        createNotification(
+          userId, "info", "kyb",
+          "Dossier KYB soumis — En cours d'examen",
+          "Votre dossier KYB a été soumis avec succès. Notre équipe l'examinera sous 1 à 2 jours ouvrables.",
+          "/dashboard/kyb",
+        ).catch(() => {});
         try {
           const [userInfo] = await db.select({ email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country })
             .from(usersTable).where(eq(usersTable.id, userId));
@@ -1084,6 +1128,13 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
       mode: currentMode,
     })
     .returning();
+
+  createNotification(
+    userId, "info", "wallet",
+    `Demande de reversement — ${amount.toLocaleString("fr-FR")} ${countryMeta.currency}`,
+    `Reversement de ${amount.toLocaleString("fr-FR")} ${countryMeta.currency} vers ${phone} (${operator}, ${countryCode}). Frais : ${fee.toLocaleString("fr-FR")} ${countryMeta.currency}. Net : ${net.toLocaleString("fr-FR")} ${countryMeta.currency}.`,
+    "/dashboard/reversement",
+  ).catch(() => {});
 
   // Telegram: notify withdrawal request
   try {
@@ -1785,172 +1836,58 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
 });
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+const relTime = (d: Date | string) => {
+  const diff = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2) return "À l'instant";
+  if (mins < 60) return `Il y a ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Il y a ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `Il y a ${days}j`;
+  return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+};
+
 router.get("/dashboard/notifications", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
-  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
+  const rows = await db
+    .select()
+    .from(notificationsTable)
+    .where(eq(notificationsTable.userId, userId))
+    .orderBy(desc(notificationsTable.createdAt))
+    .limit(80);
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const notifications = rows.map(n => ({
+    ...n,
+    time: relTime(n.createdAt),
+  }));
+  const unreadCount = notifications.filter(n => !n.read).length;
+  res.json({ notifications, unreadCount });
+});
 
-  const [recentTxRows, kybRows, walletRows] = await Promise.all([
-    db.select().from(transactionsTable)
-      .where(and(
-        eq(transactionsTable.userId, userId),
-        eq(transactionsTable.mode, currentMode),
-        sql`${transactionsTable.createdAt} >= ${sevenDaysAgo.toISOString()}`
-      ))
-      .orderBy(desc(transactionsTable.createdAt))
-      .limit(50),
-    db.select().from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, userId)).limit(1),
-    db.select().from(walletsTable).where(and(eq(walletsTable.userId, userId), eq(walletsTable.mode, currentMode))),
-  ]);
+router.patch("/dashboard/notifications/:id/read", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const id = parseInt(req.params.id);
+  await db.update(notificationsTable)
+    .set({ read: true })
+    .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, userId)));
+  res.json({ ok: true });
+});
 
-  const notifs: any[] = [];
-  let idCtr = 1;
+router.patch("/dashboard/notifications/read-all", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  await db.update(notificationsTable)
+    .set({ read: true })
+    .where(eq(notificationsTable.userId, userId));
+  res.json({ ok: true });
+});
 
-  const relTime = (d: Date | string) => {
-    const diff = Date.now() - new Date(d).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `Il y a ${mins} min`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `Il y a ${hrs}h`;
-    return `Il y a ${Math.floor(hrs / 24)}j`;
-  };
-
-  const failedTx = recentTxRows.filter(t => t.status === "failed");
-  const successTx = recentTxRows.filter(t => t.status === "success");
-  const pendingTx = recentTxRows.filter(t => t.status === "pending");
-
-  for (const tx of failedTx.slice(0, 3)) {
-    notifs.push({
-      id: idCtr++,
-      type: "error",
-      category: "transaction",
-      title: `Transaction échouée — ${tx.type === "payin" ? "Pay-in" : "Pay-out"}`,
-      body: `Transaction ${tx.reference} de ${parseFloat(String(tx.amount)).toLocaleString("fr-FR")} ${tx.currency} a échoué sur ${tx.countryCode}.`,
-      time: relTime(tx.createdAt),
-      read: false,
-      href: "/dashboard/payments",
-      createdAt: tx.createdAt,
-    });
-  }
-
-  if (successTx.length > 0) {
-    const latest = successTx[0];
-    notifs.push({
-      id: idCtr++,
-      type: "success",
-      category: "transaction",
-      title: `Paiement réussi — ${latest.type === "payin" ? "Pay-in" : "Pay-out"}`,
-      body: `${parseFloat(String(latest.amount)).toLocaleString("fr-FR")} ${latest.currency} reçu via ${latest.countryCode}. Réf: ${latest.reference}.`,
-      time: relTime(latest.createdAt),
-      read: successTx.length <= 1,
-      href: "/dashboard/payments",
-      createdAt: latest.createdAt,
-    });
-  }
-
-  if (successTx.length >= 5) {
-    const totalVol = successTx.reduce((s, t) => s + parseFloat(String(t.amount)), 0);
-    notifs.push({
-      id: idCtr++,
-      type: "info",
-      category: "activite",
-      title: `${successTx.length} transactions réussies cette semaine`,
-      body: `Volume total de ${totalVol.toLocaleString("fr-FR")} XOF traité avec succès ces 7 derniers jours.`,
-      time: "Cette semaine",
-      read: true,
-      href: "/dashboard/payments",
-      createdAt: sevenDaysAgo,
-    });
-  }
-
-  if (pendingTx.length > 0) {
-    notifs.push({
-      id: idCtr++,
-      type: "warning",
-      category: "transaction",
-      title: `${pendingTx.length} transaction(s) en attente`,
-      body: `${pendingTx.length} transaction(s) sont en cours de traitement sur votre compte.`,
-      time: relTime(pendingTx[0].createdAt),
-      read: false,
-      href: "/dashboard/payments",
-      createdAt: pendingTx[0].createdAt,
-    });
-  }
-
-  const kyb = kybRows[0];
-  if (kyb) {
-    if (kyb.status === "approved") {
-      notifs.push({
-        id: idCtr++,
-        type: "success",
-        category: "kyb",
-        title: "Vérification KYB approuvée",
-        body: "Votre dossier KYB a été approuvé. Votre compte Live est maintenant actif.",
-        time: kyb.reviewedAt ? relTime(kyb.reviewedAt) : "Récemment",
-        read: true,
-        href: "/dashboard/kyb",
-        createdAt: kyb.reviewedAt ?? kyb.createdAt,
-      });
-    } else if (kyb.status === "submitted" || kyb.status === "under_review") {
-      notifs.push({
-        id: idCtr++,
-        type: "warning",
-        category: "kyb",
-        title: "KYB en cours d'examen",
-        body: "Votre dossier KYB est entre les mains de notre équipe. Traitement sous 1 à 2 jours ouvrables.",
-        time: kyb.submittedAt ? relTime(kyb.submittedAt) : "Récemment",
-        read: false,
-        href: "/dashboard/kyb",
-        createdAt: kyb.submittedAt ?? kyb.createdAt,
-      });
-    } else if (kyb.status === "rejected") {
-      notifs.push({
-        id: idCtr++,
-        type: "error",
-        category: "kyb",
-        title: "KYB refusé — Action requise",
-        body: "Votre dossier KYB a été refusé. Veuillez soumettre à nouveau avec les documents corrects.",
-        time: kyb.reviewedAt ? relTime(kyb.reviewedAt) : "Récemment",
-        read: false,
-        href: "/dashboard/kyb",
-        createdAt: kyb.reviewedAt ?? kyb.createdAt,
-      });
-    } else {
-      notifs.push({
-        id: idCtr++,
-        type: "info",
-        category: "kyb",
-        title: "Vérification KYB requise",
-        body: "Complétez votre vérification KYB pour débloquer toutes les fonctionnalités de votre compte.",
-        time: "Aujourd'hui",
-        read: false,
-        href: "/dashboard/kyb",
-        createdAt: new Date(),
-      });
-    }
-  }
-
-  const lowBalanceWallets = walletRows.filter(w => parseFloat(String(w.balance)) < 1000 && parseFloat(String(w.balance)) > 0);
-  for (const w of lowBalanceWallets.slice(0, 2)) {
-    notifs.push({
-      id: idCtr++,
-      type: "warning",
-      category: "wallet",
-      title: `Solde faible — Wallet ${w.countryCode}`,
-      body: `Votre wallet ${w.countryCode} affiche un solde de ${parseFloat(String(w.balance)).toLocaleString("fr-FR")} ${w.currency}.`,
-      time: "Aujourd'hui",
-      read: false,
-      href: "/dashboard/wallets",
-      createdAt: new Date(),
-    });
-  }
-
-  notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  const unreadCount = notifs.filter(n => !n.read).length;
-  res.json({ notifications: notifs, unreadCount });
+router.delete("/dashboard/notifications/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const id = parseInt(req.params.id);
+  await db.delete(notificationsTable)
+    .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, userId)));
+  res.json({ ok: true });
 });
 
 // ── Support: active social links ──────────────────────────────────────────────

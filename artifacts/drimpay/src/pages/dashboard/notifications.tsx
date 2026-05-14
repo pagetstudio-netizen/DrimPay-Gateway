@@ -68,18 +68,21 @@ export default function DashboardNotifications() {
 
   useEffect(() => { load(); }, []);
 
-  const markRead = (id: number) => {
+  const markRead = async (id: number) => {
     setNotifs(ns => ns.map(n => n.id === id ? { ...n, read: true } : n));
     setUnreadCount(c => Math.max(0, c - 1));
+    fetch(`${BASE}/api/dashboard/notifications/${id}/read`, { method: "PATCH", credentials: "include" }).catch(() => {});
   };
-  const markAllRead = () => {
+  const markAllRead = async () => {
     setNotifs(ns => ns.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
+    fetch(`${BASE}/api/dashboard/notifications/read-all`, { method: "PATCH", credentials: "include" }).catch(() => {});
   };
-  const dismiss = (id: number) => {
+  const dismiss = async (id: number) => {
     const n = notifs.find(n => n.id === id);
     if (n && !n.read) setUnreadCount(c => Math.max(0, c - 1));
     setNotifs(ns => ns.filter(n => n.id !== id));
+    fetch(`${BASE}/api/dashboard/notifications/${id}`, { method: "DELETE", credentials: "include" }).catch(() => {});
   };
 
   const categories = ["all", ...Array.from(new Set(notifs.map(n => n.category)))];
