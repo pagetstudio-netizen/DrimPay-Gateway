@@ -139,7 +139,7 @@ router.get("/support-admin/messages", requireSupportAuth, requirePasswordChanged
 });
 
 router.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const [msg] = await db.select().from(contactSubmissionsTable).where(eq(contactSubmissionsTable.id, id));
   if (!msg) { res.status(404).json({ error: "Not found" }); return; }
   const replies = await db.select({
@@ -157,7 +157,7 @@ router.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordCha
 });
 
 router.patch("/support-admin/messages/:id/status", requireSupportAuth, requirePasswordChanged, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const schema = z.object({ status: z.enum(["unread", "in_progress", "replied", "closed"]) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Statut invalide" }); return; }
@@ -166,7 +166,7 @@ router.patch("/support-admin/messages/:id/status", requireSupportAuth, requirePa
 });
 
 router.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePasswordChanged, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const schema = z.object({ body: z.string().min(1, "Le message ne peut pas être vide") });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0]?.message }); return; }
@@ -220,7 +220,7 @@ router.get("/support-admin/socials", requireSupportAuth, requirePasswordChanged,
 });
 
 router.patch("/support-admin/socials/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const schema = z.object({ url: z.string(), active: z.boolean().optional() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalide" }); return; }
