@@ -369,7 +369,7 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
     notifyPayin({
       company: merchantInfo?.companyName ?? "?",
       amount, fee, net: netAmount, currency, operator, phone,
-      country: countryCode, reference, mode: "live", source: "payment-link",
+      country: countryCode, reference, mode: "live", source: "link",
     }).catch(() => {});
 
     res.status(201).json({
