@@ -14,6 +14,7 @@ import adminRouter from "./admin";
 import clapayWebhookRouter from "./clapay-webhook";
 import paydunyaWebhookRouter from "./paydunya-webhook";
 import supportAdminRouter from "./support-admin";
+import payRouter from "./pay";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(adminRouter);
 router.use(clapayWebhookRouter);
 router.use(paydunyaWebhookRouter);
 router.use(supportAdminRouter);
+router.use(payRouter);
 
 export default router;

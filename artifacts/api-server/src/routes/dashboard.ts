@@ -2388,4 +2388,116 @@ router.post("/qr/:reference", async (req, res) => {
   res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency, _sandbox: merchantMode === "sandbox" });
 });
 
+// ─── Payment Links CRUD ───────────────────────────────────────────────────────
+
+router.get("/dashboard/payment-links", requireAuth, async (req: any, res: any) => {
+  const userId = req.session.userId!;
+  const links = await db
+    .select()
+    .from(paymentLinksTable)
+    .where(eq(paymentLinksTable.userId, userId))
+    .orderBy(desc(paymentLinksTable.createdAt));
+  res.json(links);
+});
+
+const createLinkSchema = z.object({
+  title: z.string().min(1).max(120),
+  description: z.string().max(500).optional(),
+  countryCodes: z.array(z.string().length(2)).min(1),
+  fixedAmount: z.boolean().default(false),
+  amount: z.number().positive().optional(),
+  maxUses: z.number().int().positive().optional(),
+  redirectUrl: z.string().url().optional(),
+  notifEmail: z.string().email().optional(),
+  confirmMsg: z.string().max(255).optional(),
+  collectBilling: z.boolean().default(false),
+  displayShare: z.boolean().default(true),
+});
+
+router.post("/dashboard/payment-links", requireAuth, async (req: any, res: any) => {
+  const userId = req.session.userId!;
+  const parsed = createLinkSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INVALID_REQUEST", details: parsed.error.flatten() });
+    return;
+  }
+
+  const { title, description, countryCodes, fixedAmount, amount, maxUses } = parsed.data;
+
+  const CURRENCY_MAP: Record<string, string> = {
+    TG: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", SN: "XOF", CI: "XOF",
+    CM: "XAF", GH: "GHS", NG: "NGN",
+  };
+
+  const primaryCountry = countryCodes[0];
+  const currency = CURRENCY_MAP[primaryCountry] ?? "XOF";
+  const token = crypto.randomBytes(16).toString("hex");
+  const isMultiCountry = countryCodes.length > 1;
+
+  const [link] = await db.insert(paymentLinksTable).values({
+    userId,
+    token,
+    title,
+    description: description ?? undefined,
+    amount: amount ? String(amount) : undefined,
+    currency,
+    countryCode: countryCodes.join(","),
+    operator: "all",
+    fixedAmount,
+    maxUses: maxUses ?? undefined,
+    status: "active",
+  }).returning();
+
+  res.status(201).json(link);
+});
+
+router.patch("/dashboard/payment-links/:id", requireAuth, async (req: any, res: any) => {
+  const userId = req.session.userId!;
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [link] = await db
+    .select({ userId: paymentLinksTable.userId })
+    .from(paymentLinksTable)
+    .where(eq(paymentLinksTable.id, id));
+
+  if (!link || link.userId !== userId) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  const { status } = req.body;
+  const allowed = ["active", "inactive", "expired"];
+  if (status && !allowed.includes(status)) {
+    res.status(400).json({ error: "Invalid status" });
+    return;
+  }
+
+  const [updated] = await db.update(paymentLinksTable)
+    .set({ status: status ?? undefined })
+    .where(eq(paymentLinksTable.id, id))
+    .returning();
+
+  res.json(updated);
+});
+
+router.delete("/dashboard/payment-links/:id", requireAuth, async (req: any, res: any) => {
+  const userId = req.session.userId!;
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [link] = await db
+    .select({ userId: paymentLinksTable.userId })
+    .from(paymentLinksTable)
+    .where(eq(paymentLinksTable.id, id));
+
+  if (!link || link.userId !== userId) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  await db.delete(paymentLinksTable).where(eq(paymentLinksTable.id, id));
+  res.json({ ok: true });
+});
+
 export default router;
