@@ -790,57 +790,14 @@ router.delete("/dashboard/api-keys/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── In-memory code store for API key regeneration (TTL: 10 min) ──────────────
-const apiKeyRegenCodes = new Map<string, { code: string; exp: number }>();
-
-router.post("/dashboard/api-keys/send-code", requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
-  const env = req.body?.env as string;
-  if (!["sandbox", "live"].includes(env)) {
-    res.status(400).json({ error: "env must be sandbox or live" });
-    return;
-  }
-
-  const [user] = await db
-    .select({ email: usersTable.email })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId));
-
-  if (!user) { res.status(404).json({ error: "User not found" }); return; }
-
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  const storeKey = `${userId}:${env}`;
-  apiKeyRegenCodes.set(storeKey, { code, exp: Date.now() + 10 * 60 * 1000 });
-
-  // In production replace this with a real email provider
-  console.log(`[DrimPay] API key regen code for ${user.email} (${env}): ${code}`);
-
-  const masked = user.email.replace(/(.{2}).+(@.+)/, "$1***$2");
-  res.json({ ok: true, email: masked });
-});
-
 router.post("/dashboard/api-keys/regenerate", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
-  const { env, code } = req.body as { env: string; code: string };
+  const { env } = req.body as { env: string };
 
-  if (!["sandbox", "live"].includes(env) || !code) {
+  if (!["sandbox", "live"].includes(env)) {
     res.status(400).json({ error: "Paramètres invalides" });
     return;
   }
-
-  const storeKey = `${userId}:${env}`;
-  const stored = apiKeyRegenCodes.get(storeKey);
-
-  if (!stored || Date.now() > stored.exp) {
-    res.status(400).json({ error: "Code expiré. Veuillez en demander un nouveau." });
-    return;
-  }
-  if (stored.code !== String(code).trim()) {
-    res.status(400).json({ error: "Code incorrect." });
-    return;
-  }
-
-  apiKeyRegenCodes.delete(storeKey);
 
   // Revoke all existing active keys for this env
   await db
@@ -866,6 +823,13 @@ router.post("/dashboard/api-keys/regenerate", requireAuth, async (req, res) => {
       status: apiKeysTable.status,
       createdAt: apiKeysTable.createdAt,
     });
+
+  createNotification(
+    userId, "warning", "securite",
+    `Clé ${env === "live" ? "Live" : "Sandbox"} régénérée`,
+    `Votre clé API ${env === "live" ? "live" : "sandbox"} a été régénérée. L'ancienne clé a été révoquée.`,
+    "/dashboard/api-keys",
+  ).catch(() => {});
 
   res.status(201).json({ ...key, rawKey });
 });

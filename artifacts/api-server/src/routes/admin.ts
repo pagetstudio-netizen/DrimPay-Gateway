@@ -98,7 +98,7 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
       fees: sum(transactionsTable.fee),
       cnt: count(),
     }).from(transactionsTable)
-      .where(and(gte(transactionsTable.createdAt, today), lt(transactionsTable.createdAt, tomorrow)))
+      .where(and(gte(transactionsTable.createdAt, today), lt(transactionsTable.createdAt, tomorrow), eq(transactionsTable.mode, "live")))
       .groupBy(transactionsTable.type),
     db.select({
       type: transactionsTable.type,
@@ -107,9 +107,9 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
       total: sum(transactionsTable.amount),
       fees: sum(transactionsTable.fee),
       cnt: count(),
-    }).from(transactionsTable).groupBy(transactionsTable.type, transactionsTable.status, transactionsTable.mode),
+    }).from(transactionsTable).where(eq(transactionsTable.mode, "live")).groupBy(transactionsTable.type, transactionsTable.status, transactionsTable.mode),
     db.select().from(transactionsTable)
-      .where(sql`${transactionsTable.amount}::numeric > 60000`)
+      .where(and(sql`${transactionsTable.amount}::numeric > 60000`, eq(transactionsTable.mode, "live")))
       .orderBy(desc(transactionsTable.createdAt)).limit(5),
     db.select({
       id: transactionsTable.id,
@@ -124,7 +124,7 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
       phone: transactionsTable.phone,
       createdAt: transactionsTable.createdAt,
       userId: transactionsTable.userId,
-    }).from(transactionsTable).orderBy(desc(transactionsTable.createdAt)).limit(10),
+    }).from(transactionsTable).where(eq(transactionsTable.mode, "live")).orderBy(desc(transactionsTable.createdAt)).limit(10),
     db.selectDistinct({ domain: transactionsTable.webhookUrl })
       .from(transactionsTable)
       .where(sql`${transactionsTable.webhookUrl} IS NOT NULL AND ${transactionsTable.webhookUrl} != ''`),
@@ -230,7 +230,7 @@ router.get("/admin/chart-data", requireAdmin, async (_req: any, res: any) => {
       total: sum(transactionsTable.amount),
       cnt: count(),
     }).from(transactionsTable)
-      .where(and(gte(transactionsTable.createdAt, d), lt(transactionsTable.createdAt, next), eq(transactionsTable.status, "success")))
+      .where(and(gte(transactionsTable.createdAt, d), lt(transactionsTable.createdAt, next), eq(transactionsTable.status, "success"), eq(transactionsTable.mode, "live")))
       .groupBy(transactionsTable.type);
 
     const payin = rows.find(r => r.type === "payin");
