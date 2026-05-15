@@ -327,7 +327,7 @@ export default function PayPage() {
       const data = await r.json();
       if (!r.ok) {
         if (attemptId) await updateAttempt(attemptId, "failed");
-        setError(data.error ?? "Paiement échoué");
+        setError(data.message ?? data.error ?? "Paiement échoué");
         setStep("error");
         return;
       }

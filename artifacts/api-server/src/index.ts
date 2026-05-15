@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { notifyStartup, startDailyReport, startPolling } from "./lib/telegram";
 import { ensureKybBucket, ensureContractTemplate } from "./lib/storage";
+import { logClapayConfig } from "./lib/clapay";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -17,6 +18,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  logClapayConfig();
 
   // Supabase Storage — ensure KYB bucket exists and upload contract template
   ensureKybBucket()

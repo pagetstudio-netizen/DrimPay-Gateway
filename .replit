@@ -42,8 +42,6 @@ externalPort = 80
 [userenv]
 
 [userenv.shared]
-CLAPAY_BASE_URL = "https://api.clapay.io/v1"
-CLAPAY_WEBHOOK_SECRET = "to-be-configured"
 PAYDUNYA_BASE_URL = "https://app.paydunya.com/api/v1"
 PAYDUNYA_WEBHOOK_SECRET = "to-be-configured"
 SUPABASE_DATABASE_URL = "postgresql://postgres.zbootwjgztirlixmaclu:3eBukKGhKGFG1ycO@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
@@ -54,3 +52,4 @@ SUPABASE_URL = "https://zbootwjgztirlixmaclu.supabase.co"
 PORT = "8080"
 LOG_LEVEL = "info"
 ACTIVE_AGGREGATOR = "clapay"
+CLAPAY_BASE_URL = "https://nw-api.clapay.app/nowallet/api"

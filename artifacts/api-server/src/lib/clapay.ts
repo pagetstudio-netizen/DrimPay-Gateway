@@ -2,10 +2,15 @@
  * ─── Clapay API Client ────────────────────────────────────────────────────────
  *
  * Variables d'environnement :
- *   CLAPAY_BASE_URL       → URL de base (ex: https://api.clapay.io/v1)
- *   CLAPAY_API_TOKEN      → Jeton API Clapay (long token hexadécimal)
- *   CLAPAY_SECRET_KEY     → Clé secrète (nowallet_sk_...) pour signer les requêtes
- *   CLAPAY_WEBHOOK_SECRET → Secret de vérification des webhooks entrants (nowallet uk...)
+ *   CLAPAY_BASE_URL       → URL de base : https://nw-api.clapay.app/nowallet/api
+ *   CLAPAY_API_TOKEN      → Jeton API Clapay (Bearer token)
+ *   CLAPAY_SECRET_KEY     → Clé secrète optionnelle
+ *   CLAPAY_WEBHOOK_SECRET → Secret de vérification des webhooks entrants
+ *
+ * Endpoints :
+ *   POST /init/payment    → initier un pay-in
+ *   POST /init/payout     → initier un pay-out
+ *   GET  /transaction/:ref → statut d'une transaction
  */
 
 import crypto from "crypto";
@@ -129,8 +134,9 @@ export class ClapayClient {
   }
 
   // ─── Initiate Pay-In (Mobile Money collection) ────────────────────────────
+  // Endpoint Nowallet V3 : POST /init/payment
   async initiatePayin(params: ClapayPayinRequest): Promise<ClapayPayinResponse> {
-    const raw = await this.request<any>("POST", "/payments/collect", {
+    const raw = await this.request<any>("POST", "/init/payment", {
       amount: params.amount,
       currency: params.currency,
       country: params.country_code,
@@ -142,23 +148,37 @@ export class ClapayClient {
       description: params.description,
     });
 
-    // Normalize response — Clapay peut renvoyer success ou data.success
-    const success = raw?.success ?? raw?.data?.success ?? raw?.status === "success";
-    const ref = raw?.reference ?? raw?.clapay_reference ?? raw?.data?.reference ?? raw?.id ?? "";
+    // Normalise la réponse Nowallet V3
+    // Réponse type : { status_code, status_payment, transaction_id, message, ... }
+    const statusPayment = raw?.status_payment ?? raw?.status ?? "";
+    const isSuccess = statusPayment === "PENDING" ||
+      statusPayment === "SUCCESS" ||
+      statusPayment === "PROCESSING" ||
+      raw?.success === true ||
+      raw?.data?.success === true;
+
+    const ref = raw?.transaction_id ?? raw?.reference ?? raw?.clapay_reference ??
+      raw?.data?.reference ?? raw?.data?.transaction_id ?? raw?.id ?? "";
+
+    const failed = statusPayment === "TOKEN_ERROR_EXCEPTION" ||
+      statusPayment === "ERROR" ||
+      statusPayment === "FAILED" ||
+      (raw?.status_code && raw.status_code >= 400 && !isSuccess);
 
     return {
-      success,
+      success: isSuccess && !failed,
       clapay_reference: ref,
-      status: raw?.status ?? (success ? "processing" : "failed"),
+      status: failed ? "failed" : (isSuccess ? "processing" : "pending"),
       payment_url: raw?.payment_url ?? raw?.data?.payment_url ?? undefined,
       ussd_code: raw?.ussd_code ?? raw?.data?.ussd_code ?? undefined,
-      message: raw?.message ?? raw?.data?.message ?? undefined,
+      message: raw?.message ?? raw?.data?.message ?? statusPayment ?? undefined,
     };
   }
 
   // ─── Initiate Pay-Out (Mobile Money disbursement) ─────────────────────────
+  // Endpoint Nowallet V3 : POST /init/payout
   async initiatePayout(params: ClapayPayoutRequest): Promise<ClapayPayoutResponse> {
-    const raw = await this.request<any>("POST", "/payments/disburse", {
+    const raw = await this.request<any>("POST", "/init/payout", {
       amount: params.amount,
       currency: params.currency,
       country: params.country_code,
@@ -169,20 +189,28 @@ export class ClapayClient {
       description: params.description,
     });
 
-    const success = raw?.success ?? raw?.data?.success ?? raw?.status === "success";
-    const ref = raw?.reference ?? raw?.clapay_reference ?? raw?.data?.reference ?? raw?.id ?? "";
+    const statusPayment = raw?.status_payment ?? raw?.status ?? "";
+    const isSuccess = statusPayment === "PENDING" ||
+      statusPayment === "SUCCESS" ||
+      statusPayment === "PROCESSING" ||
+      raw?.success === true;
+    const failed = !isSuccess;
+
+    const ref = raw?.transaction_id ?? raw?.reference ?? raw?.clapay_reference ??
+      raw?.data?.reference ?? raw?.id ?? "";
 
     return {
-      success,
+      success: isSuccess,
       clapay_reference: ref,
-      status: raw?.status ?? (success ? "processing" : "failed"),
-      message: raw?.message ?? raw?.data?.message ?? undefined,
+      status: failed ? "failed" : "processing",
+      message: raw?.message ?? raw?.data?.message ?? statusPayment ?? undefined,
     };
   }
 
   // ─── Check transaction status ─────────────────────────────────────────────
+  // Endpoint Nowallet V3 : GET /transaction/:ref
   async getStatus(clapayReference: string): Promise<ClapayStatusResponse> {
-    return this.request<ClapayStatusResponse>("GET", `/payments/${clapayReference}`);
+    return this.request<ClapayStatusResponse>("GET", `/transaction/${clapayReference}`);
   }
 
   // ─── Verify incoming webhook signature from Clapay ────────────────────────
@@ -273,4 +301,11 @@ export function isClapayConfigured(): boolean {
 // Reset singleton (utile si les secrets changent à chaud)
 export function resetClapayClient(): void {
   _client = null;
+}
+
+// Log la config au démarrage pour débogage
+export function logClapayConfig(): void {
+  const baseUrl = process.env.CLAPAY_BASE_URL ?? "(non défini)";
+  const hasToken = !!(process.env.CLAPAY_API_TOKEN);
+  console.log(`[Clapay] Base URL: ${baseUrl} | Token: ${hasToken ? "✓" : "✗"}`);
 }
