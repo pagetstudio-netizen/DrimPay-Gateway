@@ -1,18 +1,19 @@
 /**
  * ─── Clapay API Client ────────────────────────────────────────────────────────
  *
- * Ce fichier est le client HTTP officiel pour l'intégration Clapay.
- * Les sections marquées TODO seront complétées dès réception des informations API.
- *
- * Variables d'environnement requises (à configurer dans Replit Secrets) :
- *   CLAPAY_BASE_URL      → URL de base de l'API Clapay  (ex: https://api.clapay.io/v1)
- *   CLAPAY_API_TOKEN     → Token d'authentification Clapay
- *   CLAPAY_WEBHOOK_SECRET → Secret pour vérifier les callbacks entrants de Clapay
+ * Variables d'environnement :
+ *   CLAPAY_BASE_URL       → URL de base (ex: https://api.clapay.io/v1)
+ *   CLAPAY_API_TOKEN      → Jeton API Clapay (long token hexadécimal)
+ *   CLAPAY_SECRET_KEY     → Clé secrète (nowallet_sk_...) pour signer les requêtes
+ *   CLAPAY_WEBHOOK_SECRET → Secret de vérification des webhooks entrants (nowallet uk...)
  */
+
+import crypto from "crypto";
 
 export interface ClapayConfig {
   baseUrl: string;
   apiToken: string;
+  secretKey: string;
   webhookSecret: string;
 }
 
@@ -22,18 +23,18 @@ export interface ClapayPayinRequest {
   country_code: string;
   operator: string;
   phone: string;
-  reference: string;       // Notre référence interne DrimPay
+  reference: string;
   order_id: string;
-  callback_url: string;    // URL que Clapay appelle en retour
+  callback_url: string;
   description?: string;
 }
 
 export interface ClapayPayinResponse {
   success: boolean;
-  clapay_reference: string;   // Référence côté Clapay
+  clapay_reference: string;
   status: "pending" | "processing" | "success" | "failed";
-  payment_url?: string;        // URL de paiement si applicable
-  ussd_code?: string;          // Code USSD si applicable
+  payment_url?: string;
+  ussd_code?: string;
   message?: string;
 }
 
@@ -91,16 +92,12 @@ export class ClapayClient {
   }
 
   // ─── Build auth headers ───────────────────────────────────────────────────
+  // Clapay utilise Bearer token + X-Secret-Key header
   private headers(): Record<string, string> {
-    // TODO: Adapter selon le schéma d'auth Clapay fourni
-    // Exemples possibles selon ce que Clapay utilise :
-    //   Bearer token  → { Authorization: `Bearer ${this.config.apiToken}` }
-    //   API-Key header → { "X-Api-Key": this.config.apiToken }
-    //   Basic auth    → { Authorization: `Basic ${Buffer.from(apiToken+":").toString("base64")}` }
     return {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${this.config.apiToken}`,
-      // TODO: Ajouter tout header supplémentaire requis par Clapay
+      "X-Secret-Key": this.config.secretKey,
     };
   }
 
@@ -133,10 +130,7 @@ export class ClapayClient {
 
   // ─── Initiate Pay-In (Mobile Money collection) ────────────────────────────
   async initiatePayin(params: ClapayPayinRequest): Promise<ClapayPayinResponse> {
-    // TODO: Adapter le nom de l'endpoint et le format du body selon la doc Clapay
-    // Exemple probable : POST /payments/collect  ou  POST /payin/initiate
-    return this.request<ClapayPayinResponse>("POST", "/payments/collect", {
-      // TODO: Mapper nos paramètres vers les noms de champs exacts de Clapay
+    const raw = await this.request<any>("POST", "/payments/collect", {
       amount: params.amount,
       currency: params.currency,
       country: params.country_code,
@@ -147,12 +141,24 @@ export class ClapayClient {
       callback_url: params.callback_url,
       description: params.description,
     });
+
+    // Normalize response — Clapay peut renvoyer success ou data.success
+    const success = raw?.success ?? raw?.data?.success ?? raw?.status === "success";
+    const ref = raw?.reference ?? raw?.clapay_reference ?? raw?.data?.reference ?? raw?.id ?? "";
+
+    return {
+      success,
+      clapay_reference: ref,
+      status: raw?.status ?? (success ? "processing" : "failed"),
+      payment_url: raw?.payment_url ?? raw?.data?.payment_url ?? undefined,
+      ussd_code: raw?.ussd_code ?? raw?.data?.ussd_code ?? undefined,
+      message: raw?.message ?? raw?.data?.message ?? undefined,
+    };
   }
 
   // ─── Initiate Pay-Out (Mobile Money disbursement) ─────────────────────────
   async initiatePayout(params: ClapayPayoutRequest): Promise<ClapayPayoutResponse> {
-    // TODO: Adapter le nom de l'endpoint et le format du body selon la doc Clapay
-    return this.request<ClapayPayoutResponse>("POST", "/payments/disburse", {
+    const raw = await this.request<any>("POST", "/payments/disburse", {
       amount: params.amount,
       currency: params.currency,
       country: params.country_code,
@@ -162,41 +168,66 @@ export class ClapayClient {
       callback_url: params.callback_url,
       description: params.description,
     });
+
+    const success = raw?.success ?? raw?.data?.success ?? raw?.status === "success";
+    const ref = raw?.reference ?? raw?.clapay_reference ?? raw?.data?.reference ?? raw?.id ?? "";
+
+    return {
+      success,
+      clapay_reference: ref,
+      status: raw?.status ?? (success ? "processing" : "failed"),
+      message: raw?.message ?? raw?.data?.message ?? undefined,
+    };
   }
 
   // ─── Check transaction status ─────────────────────────────────────────────
   async getStatus(clapayReference: string): Promise<ClapayStatusResponse> {
-    // TODO: Adapter l'endpoint selon la doc Clapay
-    // Exemple : GET /payments/{clapay_reference}  ou  GET /transactions/{ref}/status
     return this.request<ClapayStatusResponse>("GET", `/payments/${clapayReference}`);
   }
 
   // ─── Verify incoming webhook signature from Clapay ────────────────────────
+  // Clapay signe avec HMAC-SHA256 du payload (signature dans body.signature ou header)
   verifyWebhookSignature(payload: string, receivedSignature: string, timestamp: number): boolean {
-    // TODO: Adapter selon la méthode de signature exacte de Clapay (HMAC-SHA256, etc.)
-    // Exemple avec HMAC-SHA256 :
-    const { createHmac } = require("crypto");
-    const expectedSig = createHmac("sha256", this.config.webhookSecret)
+    // Méthode 1 : HMAC-SHA256(webhookSecret, timestamp + "." + payload)
+    const expected1 = crypto
+      .createHmac("sha256", this.config.webhookSecret)
       .update(`${timestamp}.${payload}`)
       .digest("hex");
-    return expectedSig === receivedSignature;
+    if (expected1 === receivedSignature) return true;
+
+    // Méthode 2 : HMAC-SHA256(webhookSecret, payload) sans timestamp
+    const expected2 = crypto
+      .createHmac("sha256", this.config.webhookSecret)
+      .update(payload)
+      .digest("hex");
+    if (expected2 === receivedSignature) return true;
+
+    // Méthode 3 : comparaison base64
+    try {
+      const expected3 = crypto
+        .createHmac("sha256", this.config.webhookSecret)
+        .update(payload)
+        .digest("base64");
+      if (expected3 === receivedSignature) return true;
+    } catch {}
+
+    return false;
   }
 
   // ─── Parse webhook event from Clapay ─────────────────────────────────────
   parseWebhookEvent(body: any): ClapayWebhookPayload {
-    // TODO: Adapter le mapping selon la structure exacte du webhook Clapay
     return {
-      event: body.event ?? body.type,
-      clapay_reference: body.clapay_reference ?? body.transaction_id ?? body.reference,
-      our_reference: body.external_reference ?? body.our_reference ?? body.order_id,
-      status: body.status,
-      amount: body.amount,
-      currency: body.currency,
-      operator: body.operator,
-      phone: body.phone_number ?? body.phone,
-      country_code: body.country ?? body.country_code,
-      failure_reason: body.failure_reason ?? body.error_message,
-      completed_at: body.completed_at ?? body.updated_at,
+      event: body.event ?? body.type ?? body.event_type,
+      clapay_reference: body.clapay_reference ?? body.reference ?? body.transaction_id ?? body.id ?? "",
+      our_reference: body.external_reference ?? body.our_reference ?? body.order_id ?? "",
+      status: body.status ?? "",
+      amount: body.amount ?? 0,
+      currency: body.currency ?? "XOF",
+      operator: body.operator ?? body.payment_method ?? "unknown",
+      phone: body.phone_number ?? body.phone ?? "",
+      country_code: body.country ?? body.country_code ?? "",
+      failure_reason: body.failure_reason ?? body.error_message ?? undefined,
+      completed_at: body.completed_at ?? body.updated_at ?? undefined,
       timestamp: body.timestamp ?? Math.floor(Date.now() / 1000),
       signature: body.signature ?? "",
     };
@@ -221,7 +252,8 @@ export function getClapayClient(): ClapayClient {
   if (!_client) {
     const baseUrl = process.env.CLAPAY_BASE_URL;
     const apiToken = process.env.CLAPAY_API_TOKEN;
-    const webhookSecret = process.env.CLAPAY_WEBHOOK_SECRET ?? "placeholder-secret";
+    const secretKey = process.env.CLAPAY_SECRET_KEY ?? "";
+    const webhookSecret = process.env.CLAPAY_WEBHOOK_SECRET ?? "";
 
     if (!baseUrl || !apiToken) {
       throw new Error(
@@ -229,11 +261,16 @@ export function getClapayClient(): ClapayClient {
       );
     }
 
-    _client = new ClapayClient({ baseUrl, apiToken, webhookSecret });
+    _client = new ClapayClient({ baseUrl, apiToken, secretKey, webhookSecret });
   }
   return _client;
 }
 
 export function isClapayConfigured(): boolean {
   return !!(process.env.CLAPAY_BASE_URL && process.env.CLAPAY_API_TOKEN);
+}
+
+// Reset singleton (utile si les secrets changent à chaud)
+export function resetClapayClient(): void {
+  _client = null;
 }

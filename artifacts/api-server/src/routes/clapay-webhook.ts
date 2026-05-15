@@ -1,15 +1,13 @@
 /**
  * ─── Clapay → DrimPay Callback Webhook ───────────────────────────────────────
  *
- * Clapay appelle POST /webhooks/clapay quand le statut d'un paiement change.
+ * Clapay appelle POST /api/webhooks/clapay quand le statut d'un paiement change.
  * Ce handler :
  *   1. Vérifie la signature Clapay
  *   2. Retrouve la transaction via notre référence interne
  *   3. Met à jour le statut en DB
- *   4. Crédite le wallet si succès
+ *   4. Crédite le wallet si payin succès
  *   5. Déclenche le webhook marchand
- *
- * TODO: Adapter les champs selon la documentation exacte de Clapay
  */
 
 import { Router } from "express";
@@ -29,9 +27,27 @@ function signMerchantPayload(payload: string, secret: string, timestamp: number)
     .digest("hex");
 }
 
-// ─── POST /webhooks/clapay ────────────────────────────────────────────────────
+// ─── Statut mapping Clapay → DrimPay ─────────────────────────────────────────
+const STATUS_MAP: Record<string, string> = {
+  "success":    "success",
+  "successful": "success",
+  "completed":  "success",
+  "paid":       "success",
+  "failed":     "failed",
+  "error":      "failed",
+  "rejected":   "failed",
+  "declined":   "failed",
+  "cancelled":  "cancelled",
+  "canceled":   "cancelled",
+  "expired":    "expired",
+  "pending":    "pending",
+  "processing": "processing",
+  "initiated":  "processing",
+};
+
+// ─── POST /api/webhooks/clapay ────────────────────────────────────────────────
 router.post("/webhooks/clapay", async (req: any, res: any) => {
-  // 1. Répondre 200 immédiatement pour éviter les retries Clapay pendant le traitement
+  // Répondre 200 immédiatement pour éviter les retries Clapay pendant le traitement
   res.status(200).json({ received: true });
 
   try {
@@ -43,12 +59,7 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
     const client = getClapayClient();
     const rawBody = JSON.stringify(req.body);
 
-    // 2. Vérifier la signature Clapay
-    // TODO: Adapter selon comment Clapay envoie la signature
-    // Exemples possibles :
-    //   Header : X-Clapay-Signature  → req.headers["x-clapay-signature"]
-    //   Header : X-Signature         → req.headers["x-signature"]
-    //   Body field                   → req.body.signature
+    // Vérifier la signature Clapay
     const receivedSig = (
       req.headers["x-clapay-signature"] ??
       req.headers["x-signature"] ??
@@ -60,17 +71,24 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
       (req.headers["x-clapay-timestamp"] ?? req.body?.timestamp ?? "0") as string
     );
 
-    // TODO: Décommenter quand le secret webhook est configuré
-    // if (!client.verifyWebhookSignature(rawBody, receivedSig, timestamp)) {
-    //   console.warn("[Clapay Webhook] Signature invalide — rejeté");
-    //   return;
-    // }
+    // Si un secret est configuré, vérifier la signature
+    if (receivedSig && process.env.CLAPAY_WEBHOOK_SECRET) {
+      if (!client.verifyWebhookSignature(rawBody, receivedSig, timestamp)) {
+        console.warn("[Clapay Webhook] Signature invalide — rejeté");
+        return;
+      }
+    }
 
-    // 3. Parser l'événement
+    // Parser l'événement
     const event: ClapayWebhookPayload = client.parseWebhookEvent(req.body);
-    console.log(`[Clapay Webhook] Événement reçu: ${event.event} | ref: ${event.our_reference}`);
+    console.log(`[Clapay Webhook] Événement: ${event.event} | clapay_ref: ${event.clapay_reference} | our_ref: ${event.our_reference}`);
 
-    // 4. Retrouver la transaction via notre référence
+    if (!event.our_reference) {
+      console.warn("[Clapay Webhook] our_reference manquant — ignoré");
+      return;
+    }
+
+    // Retrouver la transaction via notre référence
     const [tx] = await db
       .select()
       .from(transactionsTable)
@@ -81,29 +99,16 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
       return;
     }
 
-    // 5. Mapper le statut Clapay → statut DrimPay
-    const statusMap: Record<string, string> = {
-      // TODO: Adapter les valeurs selon les statuts exacts retournés par Clapay
-      "success": "success",
-      "completed": "success",
-      "paid": "success",
-      "failed": "failed",
-      "error": "failed",
-      "rejected": "failed",
-      "cancelled": "cancelled",
-      "expired": "expired",
-      "pending": "pending",
-      "processing": "processing",
-    };
-    const newStatus = statusMap[event.status?.toLowerCase()] ?? "failed";
+    // Mapper le statut
+    const newStatus = STATUS_MAP[event.status?.toLowerCase()] ?? "failed";
 
-    // Éviter les mises à jour inutiles (idempotence)
+    // Idempotence — éviter les mises à jour redondantes
     if (tx.status === newStatus) {
       console.log(`[Clapay Webhook] Statut déjà à jour: ${newStatus} — ignoré`);
       return;
     }
 
-    // 6. Mettre à jour le statut en DB
+    // Mettre à jour le statut en DB
     await db
       .update(transactionsTable)
       .set({
@@ -114,7 +119,7 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
       })
       .where(eq(transactionsTable.id, tx.id));
 
-    // 7. Créditer le wallet si payin succès
+    // Créditer le wallet si payin succès
     if (newStatus === "success" && tx.type === "payin") {
       await db
         .update(walletsTable)
@@ -123,10 +128,21 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
       console.log(`[Clapay Webhook] Wallet ${tx.walletId} crédité de ${tx.netAmount} ${tx.currency}`);
     }
 
-    // 8. Déclencher le webhook marchand
+    // Si payout échoue → rembourser le solde (le montant a été pré-déduit)
+    if ((newStatus === "failed" || newStatus === "cancelled") && tx.type === "payout") {
+      const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
+      await db
+        .update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+        .where(eq(walletsTable.id, tx.walletId));
+      console.log(`[Clapay Webhook] Payout échoué — wallet ${tx.walletId} remboursé de ${totalDebit} ${tx.currency}`);
+    }
+
+    // Déclencher le webhook marchand si configuré
     if (tx.webhookUrl && tx.webhookSignatureKey) {
+      const eventType = tx.type === "payout" ? `payout.${newStatus}` : `payin.${newStatus}`;
       const payload = {
-        event: `payin.${newStatus}`,
+        event: eventType,
         reference: tx.reference,
         order_id: tx.orderId,
         status: newStatus,
@@ -156,7 +172,7 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
             "Content-Type": "application/json",
             "X-DrimPay-Signature": `t=${ts},v1=${sig}`,
             "X-DrimPay-Timestamp": String(ts),
-            "X-DrimPay-Event": payload.event,
+            "X-DrimPay-Event": eventType,
           },
           body,
           signal: AbortSignal.timeout(10_000),
@@ -185,8 +201,7 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
   }
 });
 
-// ─── GET /webhooks/clapay/test ────────────────────────────────────────────────
-// Endpoint de vérification (Clapay peut l'appeler pour valider l'URL)
+// ─── GET /api/webhooks/clapay — vérification d'URL ───────────────────────────
 router.get("/webhooks/clapay", (_req: any, res: any) => {
   res.json({
     service: "DrimPay",

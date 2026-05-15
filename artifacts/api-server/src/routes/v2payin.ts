@@ -11,8 +11,9 @@ import {
 import { eq, and, desc, sql, gte, count } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { getClapayClient, isClapayConfigured, ClapayError } from "../lib/clapay";
-import { getPayDunyaClient, isPayDunyaConfigured, PayDunyaError } from "../lib/paydunya";
+import { ClapayError } from "../lib/clapay";
+import { PayDunyaError } from "../lib/paydunya";
+import { resolveAggregator, AggregatorNotConfiguredError } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam } from "../lib/telegram";
 
 const router = Router();
@@ -348,141 +349,94 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
     }
   })();
 
-  // ── LIVE mode: route through the configured aggregator (Clapay or PayDunya) ─
+  // ── LIVE mode: route through the correct aggregator per operator ─────────────
   if (mode === "live") {
-    // Aggregator priority: env var ACTIVE_AGGREGATOR → clapay → paydunya → error
-    // Admin can override by setting ACTIVE_AGGREGATOR=clapay|paydunya
-    const preferred = (process.env.ACTIVE_AGGREGATOR ?? "").toLowerCase();
-    const useClapay   = preferred === "clapay"   || (preferred !== "paydunya" && isClapayConfigured());
-    const usePayDunya = preferred === "paydunya" || (!useClapay && isPayDunyaConfigured());
-
-    if (!useClapay && !usePayDunya) {
-      await db
-        .update(transactionsTable)
-        .set({ status: "failed", failureReason: "Aucun agrégateur configuré (Clapay / PayDunya)", updatedAt: new Date() })
-        .where(eq(transactionsTable.id, tx.id));
-      res.status(503).json({
-        error: "AGGREGATOR_NOT_CONFIGURED",
-        message: "Aucun agrégateur de paiement n'est encore configuré. Contactez votre administrateur.",
-      });
-      return;
-    }
-
     const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       : "https://api.drimpay.com";
 
-    // ── Via Clapay ────────────────────────────────────────────────────────
-    if (useClapay) {
-      try {
-        const clapay = getClapayClient();
-        const clapayGatewayPayload = {
-          amount, currency, country_code, operator, phone,
-          reference, order_id,
-          callback_url: `${baseCallbackUrl}/api/webhooks/clapay`,
-          description,
-          gateway: "clapay",
-        };
-        await db.update(transactionsTable)
-          .set({ gatewayPayload: JSON.stringify(clapayGatewayPayload), updatedAt: new Date() })
-          .where(eq(transactionsTable.id, tx.id));
+    try {
+      // Resolve aggregator from operator_aggregators table (per-operator routing)
+      const { aggregator, client } = await resolveAggregator(country_code, operator);
 
-        const clapayRes = await clapay.initiatePayin({
+      const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
+      const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
+
+      const gatewayPayload = {
+        amount, currency, country_code, operator, phone,
+        reference, order_id,
+        callback_url: callbackUrl,
+        description,
+        gateway: aggregator,
+      };
+      await db.update(transactionsTable)
+        .set({ gatewayPayload: JSON.stringify(gatewayPayload), updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+
+      // Call aggregator payin
+      let externalRef: string;
+      let paymentUrl: string | null = null;
+      let ussdCode: string | null = null;
+
+      if (aggregator === "clapay") {
+        const { ClapayClient } = await import("../lib/clapay");
+        const clapayRes = await (client as InstanceType<typeof ClapayClient>).initiatePayin({
           amount, currency, country_code, operator, phone, reference, order_id,
-          callback_url: `${baseCallbackUrl}/api/webhooks/clapay`,
-          description,
+          callback_url: callbackUrl, description,
         });
-
         if (!clapayRes.success) {
-          await db.update(transactionsTable)
-            .set({ status: "failed", failureReason: clapayRes.message ?? "Échec Clapay", updatedAt: new Date() })
-            .where(eq(transactionsTable.id, tx.id));
-          res.status(502).json({ error: "GATEWAY_ERROR", message: clapayRes.message ?? "Erreur Clapay", reference });
-          return;
+          throw new ClapayError(clapayRes.message ?? "Échec Clapay", 502, clapayRes);
         }
-
-        await db.update(transactionsTable)
-          .set({ status: "processing", externalRef: clapayRes.clapay_reference, updatedAt: new Date() })
-          .where(eq(transactionsTable.id, tx.id));
-
-        res.status(201).json({
-          reference, order_id, status: "processing",
-          amount, fee, net_amount: netAmount, currency, country_code, operator, phone, mode,
-          expires_at: expiresAt.toISOString(),
-          webhook_url: webhook_url ?? null,
-          payment_url: clapayRes.payment_url ?? null,
-          ussd_code: clapayRes.ussd_code ?? null,
-          message: "Prompt de paiement envoyé au téléphone du client",
-          gateway: "clapay",
-          clapay_reference: clapayRes.clapay_reference,
-          created_at: tx.createdAt.toISOString(),
-        });
-        return;
-
-      } catch (err: any) {
-        const message = err instanceof ClapayError ? `Clapay: ${err.message}` : `Erreur interne: ${err.message}`;
-        await db.update(transactionsTable)
-          .set({ status: "failed", failureReason: message, updatedAt: new Date() })
-          .where(eq(transactionsTable.id, tx.id));
-        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
-        return;
-      }
-    }
-
-    // ── Via PayDunya ──────────────────────────────────────────────────────
-    if (usePayDunya) {
-      try {
-        const paydunya = getPayDunyaClient();
-        const pdGatewayPayload = {
-          amount, currency, country_code, operator, phone,
-          reference, order_id,
-          callback_url: `${baseCallbackUrl}/api/webhooks/paydunya`,
-          description,
-          gateway: "paydunya",
-        };
-        await db.update(transactionsTable)
-          .set({ gatewayPayload: JSON.stringify(pdGatewayPayload), updatedAt: new Date() })
-          .where(eq(transactionsTable.id, tx.id));
-
-        const pdRes = await paydunya.initiatePayin({
+        externalRef = clapayRes.clapay_reference;
+        paymentUrl = clapayRes.payment_url ?? null;
+        ussdCode = clapayRes.ussd_code ?? null;
+      } else {
+        const { PayDunyaClient } = await import("../lib/paydunya");
+        const pdRes = await (client as InstanceType<typeof PayDunyaClient>).initiatePayin({
           amount, currency, country_code, operator, phone, reference, order_id,
-          callback_url: `${baseCallbackUrl}/api/webhooks/paydunya`,
-          description,
+          callback_url: callbackUrl, description,
         });
-
         if (!pdRes.success) {
-          await db.update(transactionsTable)
-            .set({ status: "failed", failureReason: pdRes.message ?? "Échec PayDunya", updatedAt: new Date() })
-            .where(eq(transactionsTable.id, tx.id));
-          res.status(502).json({ error: "GATEWAY_ERROR", message: pdRes.message ?? "Erreur PayDunya", reference });
-          return;
+          throw new PayDunyaError(pdRes.message ?? "Échec PayDunya", 502, pdRes);
         }
-
-        await db.update(transactionsTable)
-          .set({ status: "processing", externalRef: pdRes.paydunya_reference, updatedAt: new Date() })
-          .where(eq(transactionsTable.id, tx.id));
-
-        res.status(201).json({
-          reference, order_id, status: "processing",
-          amount, fee, net_amount: netAmount, currency, country_code, operator, phone, mode,
-          expires_at: expiresAt.toISOString(),
-          webhook_url: webhook_url ?? null,
-          payment_url: pdRes.payment_url ?? null,
-          message: "Prompt de paiement envoyé au téléphone du client",
-          gateway: "paydunya",
-          paydunya_reference: pdRes.paydunya_reference,
-          created_at: tx.createdAt.toISOString(),
-        });
-        return;
-
-      } catch (err: any) {
-        const message = err instanceof PayDunyaError ? `PayDunya: ${err.message}` : `Erreur interne: ${err.message}`;
-        await db.update(transactionsTable)
-          .set({ status: "failed", failureReason: message, updatedAt: new Date() })
-          .where(eq(transactionsTable.id, tx.id));
-        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
-        return;
+        externalRef = pdRes.paydunya_reference;
+        paymentUrl = pdRes.payment_url ?? null;
       }
+
+      await db.update(transactionsTable)
+        .set({ status: "processing", externalRef, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+
+      res.status(201).json({
+        reference, order_id, status: "processing",
+        amount, fee, net_amount: netAmount, currency, country_code, operator, phone, mode,
+        expires_at: expiresAt.toISOString(),
+        webhook_url: webhook_url ?? null,
+        payment_url: paymentUrl,
+        ussd_code: ussdCode,
+        message: "Prompt de paiement envoyé au téléphone du client",
+        gateway: aggregator,
+        gateway_reference: externalRef,
+        created_at: tx.createdAt.toISOString(),
+      });
+      return;
+
+    } catch (err: any) {
+      let message: string;
+      if (err instanceof AggregatorNotConfiguredError) {
+        message = err.message;
+        res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message, reference });
+      } else if (err instanceof ClapayError || err instanceof PayDunyaError) {
+        message = err.message;
+        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+      } else {
+        message = err?.message ?? String(err);
+        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+      }
+      await db.update(transactionsTable)
+        .set({ status: "failed", failureReason: message, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+      return;
     }
   }
 

@@ -27,6 +27,9 @@ import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam }
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
+import { resolveAggregator, AggregatorNotConfiguredError } from "../lib/aggregator-router";
+import { ClapayClient, ClapayError } from "../lib/clapay";
+import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -452,24 +455,69 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `PAY-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
+  // LIVE mode: call real aggregator per operator routing
+  if (currentMode === "live") {
+    const [tx] = await db
+      .insert(transactionsTable)
+      .values({
+        userId, walletId: wallet.id, reference, type: "payin", status: "pending",
+        amount: String(amount), fee: String(fee), netAmount: String(netAmount),
+        currency, countryCode, operator, phone, description, externalRef, mode: currentMode,
+      })
+      .returning();
+
+    try {
+      const { aggregator, client } = await resolveAggregator(countryCode, operator);
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+      const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+
+      let gatewayRef: string;
+      if (aggregator === "clapay") {
+        const r = await (client as ClapayClient).initiatePayin({
+          amount, currency, country_code: countryCode, operator, phone, reference,
+          order_id: reference, callback_url: callbackUrl, description,
+        });
+        if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
+        gatewayRef = r.clapay_reference;
+      } else {
+        const r = await (client as PayDunyaClient).initiatePayin({
+          amount, currency, country_code: countryCode, operator, phone, reference,
+          order_id: reference, callback_url: callbackUrl, description,
+        });
+        if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
+        gatewayRef = r.paydunya_reference;
+      }
+
+      await db.update(transactionsTable)
+        .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+
+      res.status(201).json({
+        transaction: { ...tx, status: "processing" },
+        fee, netAmount, feeRate: `${feeRate * 100}%`,
+        walletId: wallet.id,
+        gateway: aggregator, gateway_reference: gatewayRef,
+        message: "Prompt de paiement envoyé au téléphone du client. Le wallet sera crédité après confirmation.",
+      });
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      await db.update(transactionsTable)
+        .set({ status: "failed", failureReason: msg, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+      const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
+      res.status(statusCode).json({ error: msg, reference });
+    }
+    return;
+  }
+
+  // SANDBOX mode: immediate success simulation
   const [tx] = await db
     .insert(transactionsTable)
     .values({
-      userId,
-      walletId: wallet.id,
-      reference,
-      type: "payin",
-      status: "success",
-      amount: String(amount),
-      fee: String(fee),
-      netAmount: String(netAmount),
-      currency,
-      countryCode,
-      operator,
-      phone,
-      description,
-      externalRef,
-      mode: currentMode,
+      userId, walletId: wallet.id, reference, type: "payin", status: "success",
+      amount: String(amount), fee: String(fee), netAmount: String(netAmount),
+      currency, countryCode, operator, phone, description, externalRef, mode: currentMode,
     })
     .returning();
 
@@ -546,6 +594,78 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
 
   const reference = `OUT-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
+  // LIVE mode: call real aggregator per operator routing, mark pending (webhook confirms)
+  if (currentMode === "live") {
+    // Pre-deduct balance (held until webhook confirms or fails)
+    await db.update(walletsTable)
+      .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
+      .where(eq(walletsTable.id, wallet.id));
+
+    const [tx] = await db
+      .insert(transactionsTable)
+      .values({
+        userId, walletId: wallet.id, reference, type: "payout", status: "pending",
+        amount: String(amount), fee: String(fee), netAmount: String(amount),
+        currency, countryCode, operator, phone, description, externalRef, mode: currentMode,
+      })
+      .returning();
+
+    try {
+      const { aggregator, client } = await resolveAggregator(countryCode, operator);
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+      const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+
+      let gatewayRef: string;
+      if (aggregator === "clapay") {
+        const r = await (client as ClapayClient).initiatePayout({
+          amount, currency, country_code: countryCode, operator, phone,
+          reference, callback_url: callbackUrl, description,
+        });
+        if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
+        gatewayRef = r.clapay_reference;
+      } else {
+        const r = await (client as PayDunyaClient).initiatePayout({
+          amount, currency, country_code: countryCode, operator, phone,
+          reference, callback_url: callbackUrl, description,
+        });
+        if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
+        gatewayRef = r.paydunya_reference;
+      }
+
+      await db.update(transactionsTable)
+        .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+
+      createNotification(
+        userId, "info", "transaction",
+        `Pay-out en cours — ${amount.toLocaleString("fr-FR")} ${currency}`,
+        `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. Réf : ${reference}.`,
+        "/dashboard/payments",
+      ).catch(() => {});
+
+      res.status(201).json({
+        transaction: { ...tx, status: "processing" },
+        fee, totalDebit, feeRate: `${payoutFeeRate * 100}%`,
+        gateway: aggregator, gateway_reference: gatewayRef,
+        message: "Payout en cours de traitement. Le statut sera mis à jour via webhook.",
+      });
+    } catch (err: any) {
+      // Rollback balance on failure
+      await db.update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+        .where(eq(walletsTable.id, wallet.id));
+      const msg = err?.message ?? String(err);
+      await db.update(transactionsTable)
+        .set({ status: "failed", failureReason: msg, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+      const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
+      res.status(statusCode).json({ error: msg, reference });
+    }
+    return;
+  }
+
+  // SANDBOX mode: immediate simulation
   const [tx] = await db
     .insert(transactionsTable)
     .values({
@@ -1124,10 +1244,39 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
       fee: String(fee),
       net: String(net),
       note: note ?? null,
-      status: currentMode === "sandbox" ? "completed" : "pending",
+      status: "pending",
       mode: currentMode,
     })
     .returning();
+
+  // LIVE mode: dispatch real payout via aggregator
+  if (currentMode === "live") {
+    ;(async () => {
+      try {
+        const { aggregator, client } = await resolveAggregator(countryCode, operator);
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+        const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+        const txRef = `REV-${reversement.id}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+        if (aggregator === "clapay") {
+          await (client as ClapayClient).initiatePayout({
+            amount: net, currency: countryMeta.currency, country_code: countryCode,
+            operator, phone, reference: txRef, callback_url: callbackUrl,
+            description: note ?? `Reversement DrimPay`,
+          });
+        } else {
+          await (client as PayDunyaClient).initiatePayout({
+            amount: net, currency: countryMeta.currency, country_code: countryCode,
+            operator, phone, reference: txRef, callback_url: callbackUrl,
+            description: note ?? `Reversement DrimPay`,
+          });
+        }
+      } catch (e: any) {
+        console.error(`[Reversement] Erreur agrégateur: ${e?.message}`);
+      }
+    })();
+  }
 
   createNotification(
     userId, "info", "wallet",
@@ -1486,12 +1635,14 @@ router.post("/pay/:token", async (req, res) => {
       .returning();
   }
 
-  await db.insert(transactionsTable).values({
+  // Determine the current mode for this merchant (links are always live)
+  // We treat payment links as "live" — they collect real money
+  const [tx] = await db.insert(transactionsTable).values({
     userId: link.userId,
     walletId: wallet.id,
     reference,
     type: "payin",
-    status: "success",
+    status: "pending",
     amount: String(amount),
     fee: String(fee),
     netAmount: String(netAmount),
@@ -1500,36 +1651,69 @@ router.post("/pay/:token", async (req, res) => {
     operator: effectiveOperator,
     phone,
     description: `Payment link: ${link.title}`,
-  });
+    mode: "live",
+  }).returning();
 
-  await db.update(walletsTable)
-    .set({ balance: sql`${walletsTable.balance} + ${netAmount}` })
-    .where(eq(walletsTable.id, wallet.id));
-
-  await db.update(paymentLinksTable)
-    .set({ uses: sql`${paymentLinksTable.uses} + 1` })
-    .where(eq(paymentLinksTable.id, link.id));
-
-  // Telegram: notify payment received via link
+  // Call real aggregator (payment links are always live)
   try {
-    const [merchant] = await db.select({ companyName: usersTable.companyName })
-      .from(usersTable).where(eq(usersTable.id, link.userId));
-    notifyPayin({
-      company: merchant?.companyName ?? "?",
-      amount,
-      fee,
-      net: netAmount,
-      currency: effectiveCurrency,
-      operator: effectiveOperator,
-      phone,
-      country: effectiveCountry,
-      reference,
-      mode: "live",
-      source: "link",
-    }).catch(() => {});
-  } catch {}
+    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+    const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
 
-  res.status(201).json({ reference, amount, fee, netAmount, currency: effectiveCurrency });
+    let gatewayRef: string;
+    if (aggregator === "clapay") {
+      const r = await (client as ClapayClient).initiatePayin({
+        amount, currency: effectiveCurrency, country_code: effectiveCountry,
+        operator: effectiveOperator, phone, reference, order_id: reference,
+        callback_url: callbackUrl, description: `Payment link: ${link.title}`,
+      });
+      if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
+      gatewayRef = r.clapay_reference;
+    } else {
+      const r = await (client as PayDunyaClient).initiatePayin({
+        amount, currency: effectiveCurrency, country_code: effectiveCountry,
+        operator: effectiveOperator, phone, reference, order_id: reference,
+        callback_url: callbackUrl, description: `Payment link: ${link.title}`,
+      });
+      if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
+      gatewayRef = r.paydunya_reference;
+    }
+
+    await db.update(transactionsTable)
+      .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+      .where(eq(transactionsTable.id, tx.id));
+
+    await db.update(paymentLinksTable)
+      .set({ uses: sql`${paymentLinksTable.uses} + 1` })
+      .where(eq(paymentLinksTable.id, link.id));
+
+    // Telegram: notify
+    try {
+      const [merchant] = await db.select({ companyName: usersTable.companyName })
+        .from(usersTable).where(eq(usersTable.id, link.userId));
+      notifyPayin({
+        company: merchant?.companyName ?? "?",
+        amount, fee, net: netAmount,
+        currency: effectiveCurrency,
+        operator: effectiveOperator,
+        phone, country: effectiveCountry,
+        reference, mode: "live", source: "link",
+      }).catch(() => {});
+    } catch {}
+
+    res.status(201).json({
+      reference, amount, fee, netAmount, currency: effectiveCurrency,
+      status: "processing", gateway: aggregator,
+      message: "Prompt de paiement envoyé. Confirmez sur votre téléphone.",
+    });
+  } catch (err: any) {
+    await db.update(transactionsTable)
+      .set({ status: "failed", failureReason: err?.message ?? "Erreur agrégateur", updatedAt: new Date() })
+      .where(eq(transactionsTable.id, tx.id));
+    const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
+    res.status(statusCode).json({ error: err?.message ?? "Erreur de paiement", reference });
+  }
 });
 
 // ─── Payment link attempts (public — log every payer action) ─────────────────
@@ -1779,9 +1963,12 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
     mode: currentMode,
   }).returning();
 
-  // ── 4. Process recipients — deduct balance in both sandbox and live ────────
+  // ── 4. Process recipients — deduct balance + call aggregator in live ─────────
   let successCount = 0;
   let failedCount = 0;
+
+  const baseUrl = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
 
   for (const r of recipients) {
     try {
@@ -1798,12 +1985,20 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
       ));
       if (currentBalance < totalDebit) { failedCount++; continue; }
 
-      await db.insert(transactionsTable).values({
+      // Pre-deduct balance
+      await db.update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
+        .where(eq(walletsTable.id, wallet.id));
+
+      // Status: pending for live, success for sandbox
+      const txStatus = currentMode === "live" ? "pending" : "success";
+
+      const [insertedTx] = await db.insert(transactionsTable).values({
         userId,
         walletId: wallet.id,
         reference: txRef,
         type: "payout",
-        status: "success",
+        status: txStatus,
         amount: String(r.amount),
         fee: String(fee),
         netAmount: String(r.amount),
@@ -1813,11 +2008,46 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
         phone: r.phone,
         description: r.note ?? description ?? `Mass payout: ${reference}`,
         mode: currentMode,
-      });
+      }).returning();
 
-      await db.update(walletsTable)
-        .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
-        .where(eq(walletsTable.id, wallet.id));
+      // LIVE: call aggregator (fire-and-forget per recipient)
+      if (currentMode === "live") {
+        ;(async () => {
+          try {
+            const { aggregator, client } = await resolveAggregator(r.countryCode, r.operator);
+            const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+            let gatewayRef: string;
+            if (aggregator === "clapay") {
+              const resp = await (client as ClapayClient).initiatePayout({
+                amount: r.amount, currency: countryCurrency, country_code: r.countryCode,
+                operator: r.operator, phone: r.phone, reference: txRef,
+                callback_url: callbackUrl, description: r.note ?? description ?? `Mass payout: ${reference}`,
+              });
+              if (!resp.success) throw new Error(resp.message ?? "Clapay failed");
+              gatewayRef = resp.clapay_reference;
+            } else {
+              const resp = await (client as PayDunyaClient).initiatePayout({
+                amount: r.amount, currency: countryCurrency, country_code: r.countryCode,
+                operator: r.operator, phone: r.phone, reference: txRef,
+                callback_url: callbackUrl, description: r.note ?? description ?? `Mass payout: ${reference}`,
+              });
+              if (!resp.success) throw new Error(resp.message ?? "PayDunya failed");
+              gatewayRef = resp.paydunya_reference;
+            }
+            await db.update(transactionsTable)
+              .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+              .where(eq(transactionsTable.id, insertedTx.id));
+          } catch (e: any) {
+            // Rollback balance on failure
+            await db.update(walletsTable)
+              .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+              .where(eq(walletsTable.id, wallet.id));
+            await db.update(transactionsTable)
+              .set({ status: "failed", failureReason: e?.message ?? "Erreur agrégateur", updatedAt: new Date() })
+              .where(eq(transactionsTable.id, insertedTx.id));
+          }
+        })();
+      }
 
       successCount++;
     } catch {
