@@ -203,6 +203,7 @@ const paySchema = z.object({
   operator: z.string().min(1),
   customerName: z.string().optional(),
   customerEmail: z.string().optional(),
+  operatorOtp: z.string().optional(),
 });
 
 router.post("/api/pay/:token", async (req: any, res: any) => {
@@ -214,7 +215,7 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
     return;
   }
 
-  const { phone, amount, countryCode, operator, customerName, customerEmail } = parsed.data;
+  const { phone, amount, countryCode, operator, customerName, customerEmail, operatorOtp } = parsed.data;
 
   // Load link
   const [link] = await db
@@ -335,6 +336,9 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
         reference, order_id: tx.orderId!,
         callback_url: callbackUrl,
         description: link.title,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        operator_otp: operatorOtp,
       });
       if (!clapayRes.success) {
         throw new ClapayError(clapayRes.message ?? "Échec Clapay", 502, clapayRes);
