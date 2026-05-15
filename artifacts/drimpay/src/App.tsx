@@ -80,6 +80,7 @@ import DashboardSupport from "@/pages/dashboard/support";
 import AdminSettings from "@/pages/admin/settings";
 import AdminContract from "@/pages/admin/contract";
 import AdminSocialLinks from "@/pages/admin/social-links";
+import AdminSupportAgents from "@/pages/admin/support-agents";
 import SupportPage from "@/pages/support";
 import SocialRedirect from "@/pages/social-redirect";
 
@@ -253,6 +254,7 @@ function AdminSwitch() {
       <Route path="/admin/contract" component={AdminContract} />
       <Route path="/admin/settings" component={AdminSettings} />
       <Route path="/admin/social-links" component={AdminSocialLinks} />
+      <Route path="/admin/support-agents" component={AdminSupportAgents} />
       <Route component={AdminDashboard} />
     </Switch>
   );

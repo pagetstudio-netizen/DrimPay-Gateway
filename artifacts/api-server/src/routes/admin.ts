@@ -6,7 +6,7 @@ import {
   apiKeysTable, paymentLinksTable, operatorsTable, countriesTable,
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
   blacklistedPhonesTable, paymentLinkAttemptsTable, socialLinksTable,
-  notificationsTable,
+  notificationsTable, supportUsersTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
@@ -1440,6 +1440,84 @@ router.post("/admin/telegram/save", requireAdmin, async (req: any, res: any) => 
   invalidateTelegramCache();
   await logAdminAction(req.session.userId, "UPDATE_TELEGRAM_CONFIG", "settings", undefined, undefined, req.ip);
   res.json({ ok: true });
+});
+
+// ─── Support Agents Management ───────────────────────────────────────────────
+
+router.get("/admin/support-agents", requireAdmin, async (req, res) => {
+  const agents = await db
+    .select({
+      id: supportUsersTable.id,
+      email: supportUsersTable.email,
+      name: supportUsersTable.name,
+      mustChangePassword: supportUsersTable.mustChangePassword,
+      createdAt: supportUsersTable.createdAt,
+    })
+    .from(supportUsersTable)
+    .orderBy(asc(supportUsersTable.createdAt));
+  res.json({ agents });
+});
+
+router.post("/admin/support-agents", requireAdmin, async (req, res) => {
+  const schema = z.object({
+    email: z.string().email("Email invalide"),
+    name: z.string().min(2, "Nom requis"),
+    password: z.string().min(8, "Mot de passe : 8 caractères minimum"),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Données invalides" });
+    return;
+  }
+  const { email, name, password } = parsed.data;
+
+  const [existing] = await db.select({ id: supportUsersTable.id }).from(supportUsersTable).where(eq(supportUsersTable.email, email));
+  if (existing) {
+    res.status(409).json({ error: "Un agent avec cet email existe déjà" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const [agent] = await db.insert(supportUsersTable).values({
+    email,
+    name,
+    passwordHash,
+    mustChangePassword: true,
+  }).returning({ id: supportUsersTable.id, email: supportUsersTable.email, name: supportUsersTable.name });
+
+  await logAdminAction(req.session.userId, "CREATE_SUPPORT_AGENT", "support_user", String(agent.id), `Created support agent: ${email}`, req.ip);
+  res.status(201).json({ success: true, agent });
+});
+
+router.patch("/admin/support-agents/:id/reset-password", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const schema = z.object({ newPassword: z.string().min(8, "Mot de passe : 8 caractères minimum") });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Données invalides" });
+    return;
+  }
+
+  const [agent] = await db.select({ id: supportUsersTable.id }).from(supportUsersTable).where(eq(supportUsersTable.id, id));
+  if (!agent) { res.status(404).json({ error: "Agent introuvable" }); return; }
+
+  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+  await db.update(supportUsersTable)
+    .set({ passwordHash, mustChangePassword: true })
+    .where(eq(supportUsersTable.id, id));
+
+  await logAdminAction(req.session.userId, "RESET_SUPPORT_AGENT_PASSWORD", "support_user", String(id), undefined, req.ip);
+  res.json({ success: true });
+});
+
+router.delete("/admin/support-agents/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const [agent] = await db.select({ id: supportUsersTable.id, email: supportUsersTable.email }).from(supportUsersTable).where(eq(supportUsersTable.id, id));
+  if (!agent) { res.status(404).json({ error: "Agent introuvable" }); return; }
+
+  await db.delete(supportUsersTable).where(eq(supportUsersTable.id, id));
+  await logAdminAction(req.session.userId, "DELETE_SUPPORT_AGENT", "support_user", String(id), `Deleted: ${agent.email}`, req.ip);
+  res.json({ success: true });
 });
 
 export default router;
