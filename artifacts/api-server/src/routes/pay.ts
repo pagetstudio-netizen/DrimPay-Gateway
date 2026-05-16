@@ -198,7 +198,7 @@ router.patch("/api/pay/:token/attempt/:id", async (req: any, res: any) => {
 // ─── POST /api/pay/:token ─────────────────────────────────────────────────────
 const paySchema = z.object({
   phone: z.string().min(8),
-  amount: z.number().positive(),
+  amount: z.number().min(200, "Le montant minimum est de 200"),
   countryCode: z.string().length(2),
   operator: z.string().min(1),
   customerName: z.string().optional(),

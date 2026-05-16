@@ -184,7 +184,7 @@ const EXPIRY_MINUTES: Record<string, number> = { "2": 2, "5": 5, "10": 10 };
 
 // ─── POST /v2/payin/initiate ──────────────────────────────────────────────────
 const initiateSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().min(200, "Le montant minimum est de 200"),
   currency: z.string().length(3),
   country_code: z.string().length(2),
   operator: z.string().min(1),

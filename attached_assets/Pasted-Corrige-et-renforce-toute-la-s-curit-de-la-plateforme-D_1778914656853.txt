@@ -1,0 +1,157 @@
+Corrige et renforce toute la sécurité de la plateforme DrimPay avec une architecture fintech professionnelle et anti-fraude avancée.
+⚠️ Ne pas modifier la logique actuelle des paiements, crédits automatiques, webhooks, wallets, transactions ou intégrations existantes.
+Je veux ajouter un système de sécurité multicouche complet pour empêcher :
+bots automatisés,
+attaques API,
+fraude marchande,
+connexions suspectes,
+création abusive de transactions,
+accès non autorisés,
+manipulation des comptes marchands,
+abus via VPN/proxy/rotation IP.
+────────────────────────────── 🔐 SÉCURITÉ API & BACKEND ──────────────────────────────
+• Toutes les routes sensibles doivent être protégées :
+/admin
+/dashboard
+/api/admin
+/api/payout
+/api/wallet
+/api/merchant
+/api/keys
+/api/settings
+• Ajouter :
+middleware d’authentification sécurisé,
+vérification JWT,
+expiration de session,
+rotation des tokens,
+contrôle des rôles : → admin → support → merchant → personal
+• Les secret keys ne doivent JAMAIS être exposées côté frontend.
+• Vérification serveur obligatoire pour :
+montants,
+soldes,
+opérateurs,
+pays,
+permissions,
+ownership wallet,
+statut KYC/KYB.
+────────────────────────────── 🤖 PROTECTION ANTI-BOT ──────────────────────────────
+Ajouter un système anti-bot avancé :
+• Détection :
+Selenium
+Puppeteer
+Playwright
+Headless browser
+scripts automatisés
+• Ajouter :
+Cloudflare Turnstile ou hCaptcha,
+limitation des requêtes,
+blocage des requêtes trop rapides,
+détection comportement anormal,
+protection brute-force.
+────────────────────────────── 🌍 DÉTECTION VPN / FRAUDE ──────────────────────────────
+Ajouter :
+détection VPN,
+détection proxy,
+détection TOR,
+détection changement géographique rapide.
+Exemple : connexion Togo → 2 min après Russie → blocage automatique.
+Créer :
+risk_score
+risk_level
+Si activité suspecte :
+suspension session,
+vérification supplémentaire,
+validation manuelle.
+────────────────────────────── 📱 DEVICE FINGERPRINTING ──────────────────────────────
+Créer un système de fingerprint device sécurisé.
+Stocker :
+navigateur,
+système,
+timezone,
+langue,
+résolution écran,
+canvas fingerprint,
+device_id,
+user-agent.
+Détecter :
+plusieurs comptes sur même device,
+plusieurs devices sur même compte,
+activité suspecte.
+────────────────────────────── 🔔 ALERTES & MONITORING ──────────────────────────────
+Créer un dashboard sécurité admin avec :
+connexions suspectes,
+pays suspects,
+IPs suspectes,
+bots détectés,
+devices suspects,
+activités rapides,
+tentatives échouées.
+Ajouter alertes temps réel.
+────────────────────────────── 🔑 SÉCURITÉ COMPTES ──────────────────────────────
+Ajouter :
+2FA pour admins,
+confirmation email,
+OTP pour actions sensibles,
+cooldown sécurité.
+Exemples :
+changement webhook → confirmation
+changement email → validation
+ajout clé API → OTP
+────────────────────────────── 📊 RATE LIMITING ──────────────────────────────
+Ajouter limites :
+login : 5/min
+API keys : 3/min
+payout : 10/min
+register : 3/min
+webhook resend : 5/min
+Bloquer automatiquement les abus.
+────────────────────────────── 🧾 LOGS & TRAÇABILITÉ ──────────────────────────────
+Créer logs complets :
+login,
+logout,
+création transaction,
+payout,
+changement solde,
+création clé API,
+changement webhook,
+changement email/password,
+suppression données.
+Les logs doivent être :
+horodatés,
+sécurisés,
+non modifiables.
+────────────────────────────── 🔒 WEBHOOK SECURITY ──────────────────────────────
+Toujours vérifier :
+signature HMAC,
+timestamp,
+replay attack,
+référence unique.
+Refuser :
+webhook invalide,
+webhook expiré,
+webhook sans signature.
+────────────────────────────── ☁️ INFRASTRUCTURE ──────────────────────────────
+Ajouter :
+HTTPS obligatoire,
+headers sécurité,
+CSP,
+HSTS,
+X-Frame-Options,
+SameSite cookies,
+protection CSRF,
+protection XSS,
+protection SQL Injection.
+Préparer compatibilité :
+Cloudflare,
+WAF,
+protection DDoS.
+────────────────────────────── ⚠️ IMPORTANT ──────────────────────────────
+• Ne pas casser :
+paiements automatiques,
+crédits automatiques,
+webhooks,
+wallets,
+transactions existantes.
+• Garder toute la logique actuelle intacte.
+• Le système doit rester fluide, moderne et responsive.
+• Toutes les nouvelles protections doivent fonctionner côté serveur et frontend.
