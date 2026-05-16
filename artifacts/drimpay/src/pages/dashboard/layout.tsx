@@ -3,9 +3,9 @@ import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, ArrowDownLeft, ArrowUpRight,
-  CreditCard, Radio, Users, Menu, X, ChevronRight, History, Link2, SendHorizonal,
-  FlaskConical, Zap, AlertTriangle, ShieldX, Lock, QrCode,
+  LayoutDashboard, ArrowUpRight,
+  Menu, X, ChevronRight, ChevronDown, History, SendHorizonal,
+  FlaskConical, Zap, AlertTriangle, ShieldX, Lock, QrCode, KeyRound, Wallet,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
@@ -25,51 +25,235 @@ import massPaiementImg from "@assets/téléchargement_(57)_1778601564265.png";
 import linkPaiementImg from "@assets/1751761_1778601564313.png";
 import apiDocImg       from "@assets/1437214_1778601764910.png";
 
-type NavItem = {
+// ─── Nav data types ───────────────────────────────────────────────────────────
+
+type SubItem = {
   href: string;
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
   img?: string;
 };
 
-const navItems: NavItem[] = [
-  { href: "/dashboard",                    label: "Vue d'ensemble",      icon: LayoutDashboard },
-  { href: "/dashboard/wallets",            label: "Wallets",              img: walletImg },
-  { href: "/dashboard/payments",           label: "Historique",           icon: History },
-  { href: "/dashboard/payment-links",      label: "Liens de Paiement",    img: linkPaiementImg },
-  { href: "/dashboard/qr-codes",           label: "Pay with QR",          icon: QrCode },
-  { href: "/dashboard/mass-payout",        label: "Paiement de Masse",    img: massPaiementImg },
-  { href: "/dashboard/reversement",        label: "Reversement",          img: reversImg },
-  { href: "/dashboard/kyb",                label: "Vérification KYB",     img: kybImg },
-  { href: "/dashboard/settings",           label: "Paramètres",           img: settingsImg },
-  { href: "/support",                       label: "Support Client",        img: supportImg },
+type NavEntry = {
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  img?: string;
+  href?: string;        // direct link — no children
+  children?: SubItem[]; // expandable group — no href
+};
+
+type NavSection = {
+  title?: string;
+  entries: NavEntry[];
+};
+
+// ─── Nav structure ────────────────────────────────────────────────────────────
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    entries: [
+      { label: "Vue d'ensemble", href: "/dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: "PAIEMENTS",
+    entries: [
+      { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
+      {
+        label: "Transactions",
+        icon: History,
+        children: [
+          { href: "/dashboard/payments",      label: "Historique",         icon: History },
+          { href: "/dashboard/payment-links", label: "Liens de Paiement",  img: linkPaiementImg },
+          { href: "/dashboard/qr-codes",      label: "Pay with QR",        icon: QrCode },
+        ],
+      },
+      {
+        label: "Transferts",
+        icon: SendHorizonal,
+        children: [
+          { href: "/dashboard/mass-payout",  label: "Paiement de Masse", img: massPaiementImg },
+          { href: "/dashboard/reversement",  label: "Reversement",       img: reversImg },
+        ],
+      },
+    ],
+  },
+  {
+    title: "COMPTE",
+    entries: [
+      { label: "Vérification KYB", href: "/dashboard/kyb",       img: kybImg },
+      { label: "Clés API",         href: "/dashboard/api-keys",  icon: KeyRound },
+      { label: "Paramètres",       href: "/dashboard/settings",  img: settingsImg },
+    ],
+  },
+  {
+    title: "DOCUMENTATION",
+    entries: [
+      {
+        label: "Documentation API",
+        img: apiIconImg,
+        children: [
+          { href: "/docs/payin",                          label: "API Pay-in",             img: apiDocImg },
+          { href: "/docs/payout",                         label: "API Pay-out",            img: apiDocImg },
+          { href: "/dashboard/docs/virtual-cards",        label: "Cartes Virtuelles",      img: apiDocImg },
+          { href: "/dashboard/docs/credits",              label: "Crédits Communication",  img: apiDocImg },
+          { href: "/dashboard/docs/mass-payout",          label: "Paiement de Masse",      img: apiDocImg },
+        ],
+      },
+    ],
+  },
+  {
+    entries: [
+      { label: "Support Client", href: "/support", img: supportImg },
+    ],
+  },
 ];
 
-const apiItems: NavItem[] = [
-  { href: "/docs/payin",                     label: "API Pay-in",           img: apiDocImg },
-  { href: "/docs/payout",                    label: "API Pay-out",          img: apiDocImg },
-  { href: "/dashboard/docs/virtual-cards",   label: "Cartes Virtuelles",    img: apiDocImg },
-  { href: "/dashboard/docs/credits",         label: "Crédits Communication",img: apiDocImg },
-  { href: "/dashboard/docs/mass-payout",     label: "Paiement de Masse",    img: apiDocImg },
-];
+// ─── Icon renderer ────────────────────────────────────────────────────────────
 
-function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
-  if (item.img) {
-    return (
-      <img
-        src={item.img}
-        alt=""
-        className="w-[22px] h-[22px] shrink-0 object-contain"
-      />
-    );
-  }
-  if (item.icon) {
-    const Icon = item.icon;
-    return (
-      <Icon className={cn("w-[18px] h-[18px] shrink-0", active ? "text-primary" : "text-gray-500")} />
-    );
-  }
+function EntryIcon({
+  icon: Icon, img, active, size = "md",
+}: {
+  icon?: React.ComponentType<{ className?: string }>;
+  img?: string;
+  active: boolean;
+  size?: "sm" | "md";
+}) {
+  const imgSize = size === "sm" ? "w-[17px] h-[17px]" : "w-[20px] h-[20px]";
+  const iconSize = size === "sm" ? "w-[15px] h-[15px]" : "w-[17px] h-[17px]";
+  if (img) return <img src={img} alt="" className={cn(imgSize, "shrink-0 object-contain")} />;
+  if (Icon) return <Icon className={cn(iconSize, "shrink-0", active ? "text-primary" : "text-gray-400")} />;
   return null;
+}
+
+// ─── Collapsible group ────────────────────────────────────────────────────────
+
+function CollapsibleGroup({
+  entry, location, onNavigate,
+}: {
+  entry: NavEntry;
+  location: string;
+  onNavigate: () => void;
+}) {
+  const children = entry.children ?? [];
+  const hasActive = children.some(c => location === c.href || location.startsWith(c.href));
+  const [open, setOpen] = useState(hasActive);
+
+  // auto-open when location changes to match a child
+  useEffect(() => {
+    if (hasActive) setOpen(true);
+  }, [hasActive]);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer mb-0.5",
+          hasActive
+            ? "bg-primary/10 text-gray-900 font-semibold"
+            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        )}
+      >
+        <EntryIcon icon={entry.icon} img={entry.img} active={hasActive} />
+        <span className="flex-1 text-left">{entry.label}</span>
+        <ChevronDown
+          className={cn(
+            "w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform duration-200",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="sub"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="ml-3 pl-3 border-l-2 border-gray-100 mb-1 mt-0.5 space-y-0.5">
+              {children.map(child => {
+                const active = location === child.href || location.startsWith(child.href);
+                return (
+                  <Link key={child.href} href={child.href}>
+                    <div
+                      onClick={onNavigate}
+                      className={cn(
+                        "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all cursor-pointer",
+                        active
+                          ? "bg-primary/10 text-gray-900 font-semibold border-l-2 border-primary -ml-[2px]"
+                          : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                      )}
+                    >
+                      <EntryIcon icon={child.icon} img={child.img} active={active} size="sm" />
+                      <span className="flex-1 truncate">{child.label}</span>
+                      {active && <ChevronRight className="w-3 h-3 shrink-0 text-primary" />}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Nav links (shared by desktop sidebar and mobile drawer) ──────────────────
+
+function NavLinks({ location, onNavigate }: { location: string; onNavigate: () => void }) {
+  return (
+    <>
+      {NAV_SECTIONS.map((section, si) => (
+        <div key={si} className={si > 0 ? "mt-4" : ""}>
+          {section.title && (
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-1.5">
+              {section.title}
+            </p>
+          )}
+          {section.entries.map((entry, ei) => {
+            if (entry.children && entry.children.length > 0) {
+              return (
+                <CollapsibleGroup
+                  key={ei}
+                  entry={entry}
+                  location={location}
+                  onNavigate={onNavigate}
+                />
+              );
+            }
+            // Direct link
+            const href = entry.href!;
+            const active = href === "/dashboard"
+              ? location === href
+              : location === href || location.startsWith(href);
+            return (
+              <Link key={href} href={href}>
+                <div
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer mb-0.5",
+                    active
+                      ? "bg-primary/10 text-gray-900 font-semibold border-l-[3px] border-primary"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  )}
+                >
+                  <EntryIcon icon={entry.icon} img={entry.img} active={active} />
+                  <span className="flex-1">{entry.label}</span>
+                  {active && <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </>
+  );
 }
 
 function ModeSwitcher() {
@@ -328,51 +512,7 @@ function SidebarNav({ onNavigate, location }: { onNavigate: () => void; location
       </div>
 
       <nav className="flex-1 px-3 py-3 overflow-y-auto">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">Principal</p>
-        {navItems.map((item) => {
-          const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
-          return (
-            <Link key={item.href} href={item.href}>
-              <div
-                onClick={onNavigate}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer mb-0.5",
-                  active
-                    ? "bg-primary/10 text-gray-900 font-semibold border-l-[3px] border-primary"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                )}
-              >
-                <NavIcon item={item} active={active} />
-                <span className="flex-1">{item.label}</span>
-                {active && <ChevronRight className="w-3.5 h-3.5 shrink-0 text-primary" />}
-              </div>
-            </Link>
-          );
-        })}
-
-        <div className="flex items-center gap-2 px-3 mb-2 mt-5">
-          <img src={apiIconImg} alt="" className="w-4 h-4 object-contain shrink-0" />
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Documentation API</p>
-        </div>
-        {apiItems.map((item) => {
-          const active = location.startsWith(item.href);
-          return (
-            <Link key={item.href} href={item.href}>
-              <div
-                onClick={onNavigate}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer mb-0.5",
-                  active
-                    ? "bg-primary/10 text-gray-900 font-semibold border-l-[3px] border-primary"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                )}
-              >
-                <NavIcon item={item} active={active} />
-                <span>{item.label}</span>
-              </div>
-            </Link>
-          );
-        })}
+        <NavLinks location={location} onNavigate={onNavigate} />
       </nav>
 
       <div className="px-3 py-3 border-t border-gray-100">
@@ -443,57 +583,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 </div>
               </div>
 
-              {/* Main nav items */}
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2 mt-1">Principal</p>
-              {navItems.map((item) => {
-                const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <div
-                      onClick={() => setSidebarOpen(false)}
-                      className={cn(
-                        "flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-medium transition-all cursor-pointer mb-1",
-                        active
-                          ? "bg-primary/10 text-gray-900 font-semibold border-l-4 border-primary"
-                          : "text-gray-700 active:bg-gray-100"
-                      )}
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                        <NavIcon item={item} active={active} />
-                      </div>
-                      <span className="flex-1">{item.label}</span>
-                      {active && <ChevronRight className="w-4 h-4 shrink-0 text-primary" />}
-                    </div>
-                  </Link>
-                );
-              })}
-
-              {/* API docs section */}
-              <div className="flex items-center gap-2 px-3 mb-2 mt-5">
-                <img src={apiIconImg} alt="" className="w-4 h-4 object-contain shrink-0" />
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Documentation API</p>
-              </div>
-              {apiItems.map((item) => {
-                const active = location.startsWith(item.href);
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <div
-                      onClick={() => setSidebarOpen(false)}
-                      className={cn(
-                        "flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-medium transition-all cursor-pointer mb-1",
-                        active
-                          ? "bg-primary/10 text-gray-900 font-semibold border-l-4 border-primary"
-                          : "text-gray-700 active:bg-gray-100"
-                      )}
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                        <NavIcon item={item} active={active} />
-                      </div>
-                      <span className="flex-1">{item.label}</span>
-                    </div>
-                  </Link>
-                );
-              })}
+              <NavLinks location={location} onNavigate={() => setSidebarOpen(false)} />
             </div>
 
             {/* Logout */}
