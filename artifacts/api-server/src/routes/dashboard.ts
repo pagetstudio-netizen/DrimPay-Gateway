@@ -301,7 +301,7 @@ router.get("/dashboard/wallets", requireAuth, async (req, res) => {
 
     const payinSuccess  = txStats.find(r => r.type === "payin"  && r.status === "success");
     const payoutSuccess = txStats.find(r => r.type === "payout" && r.status === "success");
-    const payinPending  = txStats.filter(r => r.type === "payin" && ["pending","processing"].includes(r.status));
+    const payinPending  = txStats.filter(r => r.type === "payin" && ["pending","processing","queued"].includes(r.status));
 
     const payinVolume   = parseFloat(String(payinSuccess?.total  ?? 0));
     const payoutVolume  = parseFloat(String(payoutSuccess?.total ?? 0));
@@ -310,6 +310,48 @@ router.get("/dashboard/wallets", requireAuth, async (req, res) => {
     const payinCount    = Number(payinSuccess?.cnt  ?? 0);
     const payoutCount   = Number(payoutSuccess?.cnt ?? 0);
     const pendingCount  = payinPending.reduce((a, r) => a + Number(r.cnt), 0);
+
+    // Status breakdown (all transactions, all types)
+    const allByStatus: Record<string, number> = {};
+    for (const row of txStats) {
+      const s = row.status as string;
+      allByStatus[s] = (allByStatus[s] ?? 0) + Number(row.cnt);
+    }
+    const totalTx = Object.values(allByStatus).reduce((a, b) => a + b, 0);
+    const statusBreakdown = {
+      success:   allByStatus["success"]   ?? 0,
+      pending:   (allByStatus["pending"]  ?? 0) + (allByStatus["processing"] ?? 0) + (allByStatus["queued"] ?? 0),
+      failed:    allByStatus["failed"]    ?? 0,
+      cancelled: (allByStatus["cancelled"] ?? 0) + (allByStatus["expired"] ?? 0) + (allByStatus["reversed"] ?? 0),
+      total:     totalTx,
+    };
+
+    // Operator breakdown
+    const opStats = await db
+      .select({
+        operator: transactionsTable.operator,
+        type: transactionsTable.type,
+        cnt: count(),
+        total: sum(transactionsTable.amount),
+      })
+      .from(transactionsTable)
+      .where(and(
+        eq(transactionsTable.walletId, w.id),
+        eq(transactionsTable.mode, currentMode),
+        eq(transactionsTable.status, "success"),
+      ))
+      .groupBy(transactionsTable.operator, transactionsTable.type);
+
+    const byOperator: Record<string, { payinCount: number; payoutCount: number; volume: number }> = {};
+    for (const row of opStats) {
+      const op = row.operator ?? "Autre";
+      if (!byOperator[op]) byOperator[op] = { payinCount: 0, payoutCount: 0, volume: 0 };
+      if (row.type === "payin")  byOperator[op].payinCount  += Number(row.cnt);
+      if (row.type === "payout") byOperator[op].payoutCount += Number(row.cnt);
+      byOperator[op].volume += parseFloat(String(row.total ?? 0));
+    }
+    const operatorBreakdown = Object.entries(byOperator).map(([name, s]) => ({ name, ...s }))
+      .sort((a, b) => b.volume - a.volume);
 
     return {
       ...w,
@@ -322,6 +364,8 @@ router.get("/dashboard/wallets", requireAuth, async (req, res) => {
         payinCount,
         payoutCount,
         pendingCount,
+        statusBreakdown,
+        operatorBreakdown,
       },
     };
   }));

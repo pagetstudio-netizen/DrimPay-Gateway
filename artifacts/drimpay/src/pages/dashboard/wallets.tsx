@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownLeft, ArrowUpRight, X, CheckCircle2, Loader2, Phone, Banknote,
-  ArrowLeftRight, Clock, RefreshCw, TrendingUp, TrendingDown, Wallet,
-  AlertCircle, ChevronRight, BarChart3, Activity,
+  ArrowLeftRight, Clock, RefreshCw, Wallet,
+  AlertCircle, Activity, PieChart, Network, ChevronDown,
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { useLocation } from "wouter";
@@ -33,13 +33,16 @@ const COUNTRIES_LIST = Object.entries(COUNTRY_MAP).map(([code, v]) => ({
 function fmt(n: string | number, currency: string) {
   const v = parseFloat(String(n));
   if (isNaN(v)) return `0 ${currency}`;
-  return `${v.toLocaleString("fr-FR")} ${currency}`;
+  return `${v.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency}`;
 }
 
-function fmtShort(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}k`;
-  return n.toLocaleString("fr-FR");
+function fmtNum(n: number): string {
+  return n.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function pct(part: number, total: number): string {
+  if (!total) return "0%";
+  return `${((part / total) * 100).toFixed(1)}%`;
 }
 
 // ── Pay-in modal ───────────────────────────────────────────────────────────────
@@ -235,197 +238,388 @@ function ExchangeSoonModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Wallet card ────────────────────────────────────────────────────────────────
-function WalletCard({ wallet, index, onPayin, onPayout, onExchange }: {
-  wallet: any; index: number;
-  onPayin: () => void; onPayout: () => void; onExchange: () => void;
+// ── Wallet selector tabs ───────────────────────────────────────────────────────
+function WalletTabs({ wallets, selected, onSelect }: {
+  wallets: any[];
+  selected: number | null;
+  onSelect: (id: number) => void;
 }) {
-  const c = COUNTRY_MAP[wallet.countryCode] ?? { name: wallet.countryCode, flag: "🌍", currency: wallet.currency, operators: [] };
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+      {wallets.map((w) => {
+        const c = COUNTRY_MAP[w.countryCode] ?? { name: w.countryCode, flag: "🌍", currency: w.currency };
+        const active = selected === w.id;
+        return (
+          <button
+            key={w.id}
+            onClick={() => onSelect(w.id)}
+            className={cn(
+              "flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all shrink-0",
+              active
+                ? "bg-[#C5FF4A]/10 border-[#C5FF4A]/40 text-[#C5FF4A]"
+                : "bg-white/5 border-white/10 text-white/50 hover:bg-white/8 hover:text-white/70"
+            )}
+          >
+            <span className="text-base leading-none">{c.flag}</span>
+            <span>{c.currency}</span>
+            {active && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C5FF4A] shrink-0" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Balance / Cashin / Cashout cards ──────────────────────────────────────────
+function StatCards({ wallet, onPayin, onPayout, onExchange }: {
+  wallet: any;
+  onPayin: () => void;
+  onPayout: () => void;
+  onExchange: () => void;
+}) {
+  const c = COUNTRY_MAP[wallet.countryCode] ?? { name: wallet.countryCode, flag: "🌍", currency: wallet.currency ?? "XOF", operators: [] };
+  const s = wallet.stats ?? {};
   const balance  = parseFloat(String(wallet.balance ?? 0));
   const locked   = parseFloat(String(wallet.lockedBalance ?? 0));
-  const s        = wallet.stats ?? {};
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Balance — lime left border */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+        className="sm:col-span-2 relative rounded-xl border border-white/10 bg-[#0f0f0f] overflow-hidden pl-1"
+      >
+        <div className="absolute inset-y-0 left-0 w-1 rounded-l-xl bg-[#C5FF4A]" />
+        <div className="flex items-start justify-between px-5 py-4">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-full bg-[#C5FF4A]/10 border border-[#C5FF4A]/20 flex items-center justify-center">
+                <Wallet className="w-4 h-4 text-[#C5FF4A]" />
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Balance</span>
+            </div>
+            <p className="text-3xl font-black text-white leading-none">
+              {fmtNum(balance)}
+            </p>
+            <p className="text-sm font-semibold text-white/40 mt-1">{c.currency}</p>
+            {locked > 0 && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <Clock className="w-3 h-3 text-amber-400" />
+                <span className="text-xs text-amber-400">{fmt(locked, c.currency)} en attente</span>
+              </div>
+            )}
+            {s.pendingCount > 0 && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <Activity className="w-3 h-3 text-blue-400" />
+                <span className="text-xs text-blue-400">{s.pendingCount} paiement{s.pendingCount > 1 ? "s" : ""} en cours</span>
+              </div>
+            )}
+          </div>
+          <div className={cn(
+            "text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wide shrink-0",
+            wallet.active ? "bg-[#C5FF4A]/10 text-[#C5FF4A]" : "bg-red-500/10 text-red-400"
+          )}>
+            {wallet.active ? "Actif" : "Inactif"}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Cashin — green left border */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+        className="relative rounded-xl border border-white/10 bg-[#0f0f0f] overflow-hidden pl-1"
+      >
+        <div className="absolute inset-y-0 left-0 w-1 rounded-l-xl bg-green-500" />
+        <div className="px-5 py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+              <ArrowDownLeft className="w-4 h-4 text-green-400" />
+            </div>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Cashin</span>
+          </div>
+          <p className="text-2xl font-black text-green-400 leading-none">
+            +{fmtNum(s.payinVolume ?? 0)}
+          </p>
+          <p className="text-xs text-white/30 mt-1.5">
+            {s.payinCount ?? 0} txns
+            {(s.payinFees ?? 0) > 0 && <> · {fmtNum(s.payinFees)} frais</>}
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Cashout — orange left border */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        className="relative rounded-xl border border-white/10 bg-[#0f0f0f] overflow-hidden pl-1"
+      >
+        <div className="absolute inset-y-0 left-0 w-1 rounded-l-xl bg-orange-500" />
+        <div className="px-5 py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <ArrowUpRight className="w-4 h-4 text-orange-400" />
+            </div>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Cashout</span>
+          </div>
+          <p className="text-2xl font-black text-orange-400 leading-none">
+            -{fmtNum(s.payoutVolume ?? 0)}
+          </p>
+          <p className="text-xs text-white/30 mt-1.5">
+            {s.payoutCount ?? 0} txns
+            {(s.payoutFees ?? 0) > 0 && <> · {fmtNum(s.payoutFees)} frais</>}
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Status breakdown ───────────────────────────────────────────────────────────
+function StatusBreakdown({ wallet }: { wallet: any }) {
+  const sb = wallet.stats?.statusBreakdown ?? { success: 0, pending: 0, failed: 0, cancelled: 0, total: 0 };
+  const total = sb.total || 1;
+
+  const rows = [
+    { label: "Réussi",    key: "success",   color: "bg-green-500",  textColor: "text-green-400",  dot: "bg-green-500" },
+    { label: "En attente",key: "pending",   color: "bg-yellow-400", textColor: "text-yellow-400", dot: "bg-yellow-400" },
+    { label: "Échoué",    key: "failed",    color: "bg-red-500",    textColor: "text-red-400",    dot: "bg-red-500" },
+    { label: "Annulé",    key: "cancelled", color: "bg-white/20",   textColor: "text-white/30",   dot: "bg-white/30" },
+  ] as const;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.07, type: "spring", stiffness: 280, damping: 24 }}
-      className="relative rounded-2xl border border-white/10 bg-[#0f0f0f] overflow-hidden flex flex-col"
+      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+      className="rounded-xl border border-white/10 bg-[#0f0f0f] px-5 py-4"
     >
-      {/* Accent top bar */}
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#C5FF4A]/40 to-transparent" />
-
-      {/* Header */}
-      <div className="flex items-start justify-between px-5 pt-5 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl">
-            {c.flag}
-          </div>
-          <div>
-            <p className="font-bold text-white text-base leading-tight">{c.name}</p>
-            <p className="text-xs text-white/40 mt-0.5">{c.currency} · Wallet isolé</p>
-          </div>
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
+          <PieChart className="w-3.5 h-3.5 text-white/40" />
         </div>
-        <div className={cn(
-          "text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wide",
-          wallet.active ? "bg-[#C5FF4A]/10 text-[#C5FF4A]" : "bg-red-500/10 text-red-400"
-        )}>
-          {wallet.active ? "Actif" : "Inactif"}
-        </div>
+        <span className="text-sm font-bold text-white/70">Statut</span>
       </div>
 
-      {/* Balance */}
-      <div className="px-5 pb-4 border-b border-white/8">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Solde disponible</p>
-        <p className="text-3xl font-black text-[#C5FF4A] leading-none tracking-tight">
-          {balance.toLocaleString("fr-FR")}
-          <span className="text-lg ml-2 font-semibold text-[#C5FF4A]/60">{c.currency}</span>
-        </p>
-        {locked > 0 && (
-          <div className="flex items-center gap-1.5 mt-2">
-            <Clock className="w-3 h-3 text-amber-400" />
-            <p className="text-xs text-amber-400">{fmt(locked, c.currency)} en attente</p>
-          </div>
-        )}
-        {s.pendingCount > 0 && (
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <Activity className="w-3 h-3 text-blue-400" />
-            <p className="text-xs text-blue-400">{s.pendingCount} paiement{s.pendingCount > 1 ? "s" : ""} en cours</p>
-          </div>
-        )}
+      <div className="space-y-3.5">
+        {rows.map((row) => {
+          const val = sb[row.key] as number ?? 0;
+          const ratio = val / total;
+          return (
+            <div key={row.key}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className={cn("w-2 h-2 rounded-full shrink-0", row.dot)} />
+                  <span className="text-sm text-white/60">{row.label}</span>
+                </div>
+                <span className={cn("text-sm font-semibold tabular-nums", row.textColor)}>
+                  {val} <span className="text-white/25 font-normal text-xs">({pct(val, total)})</span>
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${ratio * 100}%` }}
+                  transition={{ delay: 0.2, duration: 0.6, ease: "easeOut" }}
+                  className={cn("h-full rounded-full", row.color)}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-px bg-white/8 border-b border-white/8">
-        <div className="bg-[#0f0f0f] px-4 py-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <TrendingUp className="w-3 h-3 text-green-400" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-white/30">Encaissé</span>
-          </div>
-          <p className="text-sm font-bold text-white">{fmtShort(s.payinVolume ?? 0)} <span className="text-white/30 font-normal text-xs">{c.currency}</span></p>
-          <p className="text-[10px] text-white/25 mt-0.5">{s.payinCount ?? 0} transaction{(s.payinCount ?? 0) !== 1 ? "s" : ""}</p>
-        </div>
-        <div className="bg-[#0f0f0f] px-4 py-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <TrendingDown className="w-3 h-3 text-orange-400" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-white/30">Décaissé</span>
-          </div>
-          <p className="text-sm font-bold text-white">{fmtShort(s.payoutVolume ?? 0)} <span className="text-white/30 font-normal text-xs">{c.currency}</span></p>
-          <p className="text-[10px] text-white/25 mt-0.5">{s.payoutCount ?? 0} transaction{(s.payoutCount ?? 0) !== 1 ? "s" : ""}</p>
-        </div>
-      </div>
-
-      {/* Operators */}
-      <div className="px-5 py-3 border-b border-white/8">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-2">Opérateurs</p>
-        <div className="flex flex-wrap gap-1.5">
-          {c.operators.map(op => (
-            <span key={op} className="text-[10px] px-2.5 py-1 rounded-full bg-white/6 border border-white/10 text-white/50 font-medium">
-              {op}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="grid grid-cols-3 gap-2 px-5 py-4 mt-auto">
-        <button
-          onClick={onPayin}
-          className="flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl bg-[#C5FF4A]/10 hover:bg-[#C5FF4A]/20 border border-[#C5FF4A]/20 transition-colors group"
-        >
-          <ArrowDownLeft className="w-4 h-4 text-[#C5FF4A]" />
-          <span className="text-[10px] font-bold text-[#C5FF4A]">Pay-in</span>
-        </button>
-        <button
-          onClick={onPayout}
-          className="flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-colors"
-        >
-          <ArrowUpRight className="w-4 h-4 text-blue-400" />
-          <span className="text-[10px] font-bold text-blue-400">Pay-out</span>
-        </button>
-        <button
-          onClick={onExchange}
-          className="flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
-        >
-          <ArrowLeftRight className="w-4 h-4 text-white/40" />
-          <span className="text-[10px] font-bold text-white/40">Échange</span>
-        </button>
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/8">
+        <span className="text-xs text-white/30 font-medium">Total</span>
+        <span className="text-sm font-bold text-white/60 bg-white/8 px-3 py-1 rounded-lg tabular-nums">
+          {sb.total ?? 0}
+        </span>
       </div>
     </motion.div>
   );
 }
 
-// ── Summary bar ────────────────────────────────────────────────────────────────
-function SummaryBar({ wallets }: { wallets: any[] }) {
-  const totalBalance = wallets.reduce((a, w) => a + parseFloat(String(w.balance ?? 0)), 0);
-  const totalPayin   = wallets.reduce((a, w) => a + (w.stats?.payinVolume  ?? 0), 0);
-  const totalPayout  = wallets.reduce((a, w) => a + (w.stats?.payoutVolume ?? 0), 0);
-  const totalPending = wallets.reduce((a, w) => a + (w.stats?.pendingCount ?? 0), 0);
-
-  const items = [
-    { label: "Wallets actifs", value: wallets.filter(w => w.active).length.toString(), sub: `sur ${wallets.length} total`, icon: Wallet, color: "text-[#C5FF4A]", bg: "bg-[#C5FF4A]/10" },
-    { label: "Total encaissé", value: fmtShort(totalPayin), sub: "toutes devises", icon: TrendingUp, color: "text-green-400", bg: "bg-green-500/10" },
-    { label: "Total décaissé", value: fmtShort(totalPayout), sub: "toutes devises", icon: TrendingDown, color: "text-orange-400", bg: "bg-orange-500/10" },
-    { label: "En cours", value: totalPending.toString(), sub: "paiements en attente", icon: Activity, color: "text-blue-400", bg: "bg-blue-500/10" },
-  ];
+// ── By Network ─────────────────────────────────────────────────────────────────
+function ByNetwork({ wallet }: { wallet: any }) {
+  const ops: { name: string; payinCount: number; payoutCount: number; volume: number }[] =
+    wallet.stats?.operatorBreakdown ?? [];
+  const c = COUNTRY_MAP[wallet.countryCode] ?? { currency: wallet.currency ?? "XOF" };
+  const allOps = COUNTRY_MAP[wallet.countryCode]?.operators ?? [];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-      {items.map((item, i) => (
-        <motion.div key={item.label}
-          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.05 }}
-          className="rounded-xl border border-white/10 bg-[#0f0f0f] px-4 py-4"
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", item.bg)}>
-              <item.icon className={cn("w-3.5 h-3.5", item.color)} />
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">{item.label}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+      className="rounded-xl border border-white/10 bg-[#0f0f0f] px-5 py-4"
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
+          <Network className="w-3.5 h-3.5 text-white/40" />
+        </div>
+        <span className="text-sm font-bold text-white/70">Par réseau</span>
+      </div>
+
+      {ops.length === 0 ? (
+        <div className="py-4 text-center">
+          <p className="text-xs text-white/25">Aucune transaction enregistrée</p>
+          <div className="flex flex-wrap gap-2 justify-center mt-3">
+            {allOps.map(op => (
+              <span key={op} className="text-[11px] px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/30">
+                {op}
+              </span>
+            ))}
           </div>
-          <p className={cn("text-xl font-black", item.color)}>{item.value}</p>
-          <p className="text-[10px] text-white/25 mt-0.5">{item.sub}</p>
-        </motion.div>
-      ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {ops.map((op, i) => {
+            const totalVol = ops.reduce((a, o) => a + o.volume, 0) || 1;
+            const ratio = op.volume / totalVol;
+            return (
+              <div key={op.name} className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-white/70 font-medium truncate">{op.name}</span>
+                    <span className="text-xs text-white/30 tabular-nums shrink-0 ml-2">
+                      {fmt(op.volume, c.currency)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${ratio * 100}%` }}
+                      transition={{ delay: 0.25 + i * 0.05, duration: 0.5, ease: "easeOut" }}
+                      className="h-full rounded-full bg-[#C5FF4A]/60"
+                    />
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] text-white/25 leading-none">
+                    {op.payinCount}↓ {op.payoutCount}↑
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Action buttons ─────────────────────────────────────────────────────────────
+function WalletActions({ onPayin, onPayout, onExchange }: {
+  onPayin: () => void; onPayout: () => void; onExchange: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+      className="grid grid-cols-3 gap-3"
+    >
+      <button
+        onClick={onPayin}
+        className="flex flex-col items-center gap-2 py-4 rounded-xl bg-[#C5FF4A]/10 hover:bg-[#C5FF4A]/18 border border-[#C5FF4A]/25 transition-colors"
+      >
+        <div className="w-9 h-9 rounded-xl bg-[#C5FF4A]/15 flex items-center justify-center">
+          <ArrowDownLeft className="w-5 h-5 text-[#C5FF4A]" />
+        </div>
+        <span className="text-xs font-bold text-[#C5FF4A]">Pay-in</span>
+      </button>
+
+      <button
+        onClick={onPayout}
+        className="flex flex-col items-center gap-2 py-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/18 border border-blue-500/25 transition-colors"
+      >
+        <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center">
+          <ArrowUpRight className="w-5 h-5 text-blue-400" />
+        </div>
+        <span className="text-xs font-bold text-blue-400">Pay-out</span>
+      </button>
+
+      <button
+        onClick={onExchange}
+        className="flex flex-col items-center gap-2 py-4 rounded-xl bg-white/5 hover:bg-white/8 border border-white/10 transition-colors"
+      >
+        <div className="w-9 h-9 rounded-xl bg-white/8 flex items-center justify-center">
+          <ArrowLeftRight className="w-5 h-5 text-white/30" />
+        </div>
+        <span className="text-xs font-bold text-white/30">Échange</span>
+      </button>
+    </motion.div>
+  );
+}
+
+// ── Wallet detail view ─────────────────────────────────────────────────────────
+function WalletDetail({ wallet, onPayin, onPayout, onExchange }: {
+  wallet: any;
+  onPayin: () => void;
+  onPayout: () => void;
+  onExchange: () => void;
+}) {
+  const c = COUNTRY_MAP[wallet.countryCode] ?? { name: wallet.countryCode, flag: "🌍", currency: wallet.currency };
+  return (
+    <div className="space-y-3">
+      {/* Country header */}
+      <div className="flex items-center gap-3 px-1 mb-1">
+        <span className="text-2xl leading-none">{c.flag}</span>
+        <div>
+          <p className="text-base font-bold text-white">{c.name}</p>
+          <p className="text-xs text-white/40">{c.currency} · Wallet isolé</p>
+        </div>
+      </div>
+
+      <StatCards wallet={wallet} onPayin={onPayin} onPayout={onPayout} onExchange={onExchange} />
+      <WalletActions onPayin={onPayin} onPayout={onPayout} onExchange={onExchange} />
+      <StatusBreakdown wallet={wallet} />
+      <ByNetwork wallet={wallet} />
     </div>
   );
 }
 
-// ── Countries without wallet ───────────────────────────────────────────────────
-function InactiveCountries({ activeCodes }: { activeCodes: string[] }) {
-  const inactive = Object.entries(COUNTRY_MAP).filter(([code]) => !activeCodes.includes(code));
-  if (!inactive.length) return null;
-
+// ── Skeleton loader ────────────────────────────────────────────────────────────
+function SkeletonLoader() {
   return (
-    <div className="mt-10">
-      <div className="flex items-center gap-2 mb-4">
-        <BarChart3 className="w-4 h-4 text-white/30" />
-        <h2 className="text-xs font-bold uppercase tracking-widest text-white/30">Pays disponibles sans wallet actif</h2>
+    <div className="space-y-3 animate-pulse">
+      <div className="flex gap-2">
+        {[1,2,3].map(i => <div key={i} className="h-10 w-24 rounded-xl bg-white/5" />)}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-        {inactive.map(([code, c]) => (
-          <div key={code} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/6 bg-white/3 hover:bg-white/5 transition-colors">
-            <span className="text-xl">{c.flag}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white/60 truncate">{c.name}</p>
-              <p className="text-[10px] text-white/25">{c.currency} · {c.operators.length} opérateur{c.operators.length > 1 ? "s" : ""}</p>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-white/20 shrink-0" />
-          </div>
-        ))}
+      <div className="h-28 rounded-xl bg-white/5" />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="h-24 rounded-xl bg-white/5" />
+        <div className="h-24 rounded-xl bg-white/5" />
       </div>
-      <p className="text-xs text-white/25 mt-3">
-        Un wallet est créé automatiquement lors de votre premier pay-in dans chaque pays.
+      <div className="h-14 rounded-xl bg-white/5" />
+      <div className="h-40 rounded-xl bg-white/5" />
+      <div className="h-32 rounded-xl bg-white/5" />
+    </div>
+  );
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────────
+function EmptyState({ onNavigate }: { onNavigate: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-20 h-20 rounded-2xl bg-[#C5FF4A]/10 border border-[#C5FF4A]/20 flex items-center justify-center mb-6">
+        <Wallet className="w-9 h-9 text-[#C5FF4A]" />
+      </div>
+      <h2 className="text-xl font-bold text-white mb-2">Aucun wallet actif</h2>
+      <p className="text-sm text-white/40 max-w-sm leading-relaxed mb-6">
+        Vos wallets sont créés automatiquement lors de votre premier pay-in dans chaque pays.
       </p>
+      <button
+        onClick={onNavigate}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C5FF4A] text-black text-sm font-bold hover:bg-[#b8f040] transition-colors"
+      >
+        <ArrowDownLeft className="w-4 h-4" />
+        Effectuer un premier pay-in
+      </button>
     </div>
   );
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function Wallets() {
-  const [wallets, setWallets]       = useState<any[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [wallets, setWallets]               = useState<any[]>([]);
+  const [loading, setLoading]               = useState(true);
+  const [refreshing, setRefreshing]         = useState(false);
+  const [selectedId, setSelectedId]         = useState<number | null>(null);
   const [payinWallet, setPayinWallet]       = useState<any | null>(null);
   const [showExchange, setShowExchange]     = useState(false);
   const [, navigate] = useLocation();
@@ -436,7 +630,11 @@ export default function Wallets() {
     try {
       const r = await fetch(`${BASE}/api/dashboard/wallets`, { credentials: "include" });
       const d = await r.json();
-      setWallets(Array.isArray(d) ? d : []);
+      const list = Array.isArray(d) ? d : [];
+      setWallets(list);
+      if (list.length > 0) {
+        setSelectedId(prev => (prev && list.find((w: any) => w.id === prev)) ? prev : list[0].id);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -447,25 +645,20 @@ export default function Wallets() {
 
   useEffect(() => { loadWallets(); }, []);
 
-  const activeCodes = wallets.map(w => w.countryCode);
+  const selectedWallet = wallets.find(w => w.id === selectedId) ?? null;
 
   return (
     <DashboardLayout>
       <ProductionGate>
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-2xl mx-auto">
 
           {/* Header */}
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Wallets</h1>
-              <p className="text-sm text-white/40 mt-1">
-                Fonds isolés par pays — chaque corridor gère sa propre devise.
-              </p>
-            </div>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-black text-white tracking-tight">Wallets</h1>
             <button
               onClick={() => loadWallets(true)}
               disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/60 text-xs font-semibold transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 text-xs font-semibold transition-colors disabled:opacity-50"
             >
               <RefreshCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin")} />
               Actualiser
@@ -473,59 +666,25 @@ export default function Wallets() {
           </div>
 
           {loading ? (
-            <div className="space-y-6">
-              {/* Skeleton summary */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-                {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-white/5 animate-pulse" />)}
-              </div>
-              {/* Skeleton cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[1,2,3].map(i => <div key={i} className="h-80 rounded-2xl bg-white/5 animate-pulse" />)}
-              </div>
-            </div>
+            <SkeletonLoader />
           ) : !wallets.length ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-[#C5FF4A]/10 border border-[#C5FF4A]/20 flex items-center justify-center mb-6">
-                <Wallet className="w-9 h-9 text-[#C5FF4A]" />
-              </div>
-              <h2 className="text-xl font-bold text-white mb-2">Aucun wallet actif</h2>
-              <p className="text-sm text-white/40 max-w-sm leading-relaxed mb-6">
-                Vos wallets sont créés automatiquement lors de votre premier pay-in dans chaque pays. Aucune action manuelle n'est requise.
-              </p>
-              <button
-                onClick={() => navigate("/dashboard/payments")}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C5FF4A] text-black text-sm font-bold hover:bg-[#b8f040] transition-colors"
-              >
-                <ArrowDownLeft className="w-4 h-4" />
-                Effectuer un premier pay-in
-              </button>
-              <InactiveCountries activeCodes={[]} />
-            </div>
+            <EmptyState onNavigate={() => navigate("/dashboard/payments")} />
           ) : (
-            <>
-              <SummaryBar wallets={wallets} />
+            <div className="space-y-5">
+              {/* Wallet tabs */}
+              <WalletTabs wallets={wallets} selected={selectedId} onSelect={setSelectedId} />
 
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-xs font-bold uppercase tracking-widest text-white/30">
-                  Wallets actifs ({wallets.length})
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {wallets.map((w, i) => (
-                  <WalletCard
-                    key={w.id}
-                    wallet={w}
-                    index={i}
-                    onPayin={() => setPayinWallet(w)}
-                    onPayout={() => navigate(`/dashboard/reversement?country=${w.countryCode}`)}
-                    onExchange={() => setShowExchange(true)}
-                  />
-                ))}
-              </div>
-
-              <InactiveCountries activeCodes={activeCodes} />
-            </>
+              {/* Wallet detail */}
+              {selectedWallet && (
+                <WalletDetail
+                  key={selectedWallet.id}
+                  wallet={selectedWallet}
+                  onPayin={() => setPayinWallet(selectedWallet)}
+                  onPayout={() => navigate(`/dashboard/reversement?country=${selectedWallet.countryCode}`)}
+                  onExchange={() => setShowExchange(true)}
+                />
+              )}
+            </div>
           )}
         </div>
       </ProductionGate>
