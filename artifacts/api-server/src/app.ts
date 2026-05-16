@@ -12,6 +12,7 @@ import {
   globalRateLimiter,
   ipBlockMiddleware,
 } from "./middlewares/security";
+import { subdomainMiddleware } from "./middlewares/subdomain";
 
 const app: Express = express();
 
@@ -89,6 +90,9 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 // ── Security middleware (IP block + global rate limit) ─────────────────────────
 app.use(ipBlockMiddleware);
 app.use(globalRateLimiter);
+
+// ── Subdomain routing (dashboard.drimpay.com → /dashboard, etc.) ─────────────
+app.use(subdomainMiddleware);
 
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use("/api", router);
