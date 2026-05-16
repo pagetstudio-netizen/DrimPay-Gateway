@@ -182,7 +182,7 @@ function CommunityCard({
               Non configuré
             </span>
           )}
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/80 border border-border text-xs font-semibold text-foreground group-hover:text-primary transition-colors whitespace-nowrap shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-700 group-hover:text-primary transition-colors whitespace-nowrap shrink-0">
             {action}
             <ArrowUpRight className="w-3 h-3" />
           </span>

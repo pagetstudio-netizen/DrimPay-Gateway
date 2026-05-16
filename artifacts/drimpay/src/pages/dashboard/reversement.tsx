@@ -361,7 +361,7 @@ export default function DashboardReversement() {
                     const st = STATUS_LABELS[r.status] ?? STATUS_LABELS.pending;
                     const country = COUNTRIES.find((c) => c.code === r.countryCode);
                     return (
-                      <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background/40">
+                      <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white">
                         <div className="shrink-0">
                           <OperatorLogo name={r.operator} size={36} />
                         </div>

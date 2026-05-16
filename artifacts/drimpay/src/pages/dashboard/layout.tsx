@@ -404,7 +404,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-gray-100 shadow-sm">
         <SidebarNav onNavigate={() => {}} location={location} />
       </aside>
@@ -532,7 +532,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           )}
         </AnimatePresence>
 
-        <header className="flex items-center gap-3 px-6 py-4 border-b border-border bg-background/80 backdrop-blur-sm shrink-0">
+        <header className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-white shrink-0">
           <button
             className="lg:hidden text-muted-foreground hover:text-foreground"
             onClick={() => setSidebarOpen(true)}
@@ -561,7 +561,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           </Link>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50">
           {children}
         </main>
       </div>

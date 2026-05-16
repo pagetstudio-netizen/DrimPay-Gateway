@@ -536,7 +536,7 @@ export default function PaymentLinksCreate() {
                                       value={val}
                                       onChange={e => set(e.target.value)}
                                       placeholder={ph}
-                                      className="pl-8 h-9 text-sm bg-background border-border"
+                                      className="pl-8 h-9 text-sm bg-white border-gray-200"
                                     />
                                   </div>
                                 </div>

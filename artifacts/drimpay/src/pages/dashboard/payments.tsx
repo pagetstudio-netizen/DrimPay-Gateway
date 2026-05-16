@@ -154,7 +154,7 @@ function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed right-0 top-0 h-full w-full max-w-md bg-background border-l border-border z-50 flex flex-col shadow-2xl"
+        className="fixed right-0 top-0 h-full w-full max-w-md bg-white border-l border-gray-100 z-50 flex flex-col shadow-2xl"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 className="text-base font-semibold">Payment Details</h2>
