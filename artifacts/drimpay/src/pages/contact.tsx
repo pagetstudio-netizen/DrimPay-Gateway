@@ -61,7 +61,7 @@ export default function Contact() {
 
   const [emails, setEmails] = useState<string[]>([]);
   const [phones, setPhones] = useState<string[]>([]);
-  const [wsUrl, setWsUrl] = useState("https://wa.me/22892123456");
+  const [wsUrl, setWsUrl] = useState("https://wa.me/22872151047");
 
   useEffect(() => {
     fetch(`${BASE}/api/support/contact-info`)

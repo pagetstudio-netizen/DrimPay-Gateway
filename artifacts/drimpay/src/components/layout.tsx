@@ -70,7 +70,10 @@ function FooterSocials() {
       {DEFAULT_PLATFORMS.map((platform) => {
         const icon = SOCIAL_ICONS[platform];
         if (!icon) return null;
-        const href = adminLinks[platform] || "#";
+        // Try platform key, then common aliases (whatsapp → whatsapp_support or whatsapp_channel)
+        const href = adminLinks[platform]
+          ?? (platform === "whatsapp" ? (adminLinks["whatsapp_support"] ?? adminLinks["whatsapp_channel"]) : undefined)
+          ?? "#";
         return (
           <a
             key={platform}

@@ -236,7 +236,7 @@ export default function SupportPage() {
 
   const linkMap = Object.fromEntries(links.map(l => [l.platform, l]));
   const wsLink = linkMap["whatsapp_support"] ?? linkMap["whatsapp"];
-  const wsUrl = wsLink?.url ?? "https://wa.me/22892123456";
+  const wsUrl = wsLink?.url ?? "https://wa.me/22872151047";
   const emailLink = "mailto:support@drimpay.com";
 
   const getSocialUrl = (key: string) => {
