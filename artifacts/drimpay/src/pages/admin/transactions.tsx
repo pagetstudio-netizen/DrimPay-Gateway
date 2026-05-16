@@ -121,9 +121,12 @@ function JsonViewer({ data, label, badge }: { data: object | null; label: string
   );
 }
 
-function TxDetailModal({ tx, onClose }: { tx: any; onClose: () => void }) {
+function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => void; onResolved?: () => void }) {
   const [resending, setResending] = useState(false);
   const [resent, setResent]       = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [resolved, setResolved]   = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
   const [tab, setTab]             = useState<"info" | "merchant" | "gateway">("info");
 
   const resendWebhook = async () => {
@@ -131,6 +134,22 @@ function TxDetailModal({ tx, onClose }: { tx: any; onClose: () => void }) {
     await fetch(`/api/dashboard/transactions/${tx.id}/resend-webhook`, { method: "POST", credentials: "include" });
     setResent(true);
     setResending(false);
+  };
+
+  const forceResolve = async () => {
+    if (!window.confirm(`Forcer la résolution de la transaction ${tx.reference} ?\n\nCela mettra le statut en "succès" et créditera le wallet du marchand de ${tx.netAmount} ${tx.currency}.\n\nCette action est irréversible.`)) return;
+    setResolving(true);
+    setResolveError(null);
+    try {
+      const r = await fetch(`/api/admin/transactions/${tx.id}/force-resolve`, { method: "POST", credentials: "include" });
+      const d = await r.json();
+      if (!r.ok) { setResolveError(d.error ?? "Erreur"); setResolving(false); return; }
+      setResolved(true);
+      onResolved?.();
+    } catch (e: any) {
+      setResolveError(e.message);
+    }
+    setResolving(false);
   };
 
   let parsedRequest: object | null = null;
@@ -209,12 +228,33 @@ function TxDetailModal({ tx, onClose }: { tx: any; onClose: () => void }) {
                   <p className="text-sm text-red-700">{tx.failureReason}</p>
                 </div>
               )}
+              {resolveError && (
+                <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+                  <p className="text-xs text-red-500 font-semibold mb-1">Erreur résolution</p>
+                  <p className="text-sm text-red-700">{resolveError}</p>
+                </div>
+              )}
+              {resolved && (
+                <div className="bg-green-50 border border-green-100 rounded-xl p-3">
+                  <p className="text-sm font-semibold text-green-700">Transaction résolue — wallet crédité</p>
+                </div>
+              )}
               <div className="flex gap-3">
                 <button onClick={resendWebhook} disabled={resending || resent} className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
                   {resent ? "✓ Webhook renvoyé" : resending ? "Envoi…" : "Renvoyer webhook"}
                 </button>
                 <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Fermer</button>
               </div>
+              {tx.type === "payin" && ["pending", "processing"].includes(tx.status) && !resolved && (
+                <button
+                  onClick={forceResolve}
+                  disabled={resolving}
+                  className="w-full px-4 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  {resolving ? "Résolution en cours…" : "Forcer la résolution (crédit manuel)"}
+                </button>
+              )}
             </>
           )}
 
@@ -675,7 +715,7 @@ export default function AdminTransactions() {
         )}
       </div>
 
-      {selected && <TxDetailModal tx={selected} onClose={() => setSelected(null)} />}
+      {selected && <TxDetailModal tx={selected} onClose={() => setSelected(null)} onResolved={() => { loadTxs(); }} />}
       {selectedAttempt && <AttemptModal attempt={selectedAttempt} onClose={() => setSelectedAttempt(null)} onNoteUpdated={loadAttempts} />}
     </AdminLayout>
   );

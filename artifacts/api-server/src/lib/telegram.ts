@@ -125,8 +125,8 @@ export async function notifyPayin(opts: {
   const large = opts.amount >= LARGE;
   const src = opts.source === "api" ? "API" : opts.source === "qr" ? "QR" : "Lien";
   const header = large
-    ? `🚨 <b>GROS MONTANT — Paiement (${src})</b>`
-    : `💰 <b>Paiement Reçu (${src})</b>`;
+    ? `🚨 <b>GROS MONTANT — Paiement Initié (${src})</b>`
+    : `⏳ <b>Paiement Initié (${src})</b>`;
   await send(
 `${header}
 
@@ -136,6 +136,32 @@ export async function notifyPayin(opts: {
 📱 ${opts.operator} → ${opts.phone}
 🌍 ${opts.country}
 🔖 <code>${opts.reference}</code>
+${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
+📅 ${dt()}`
+  );
+}
+
+export async function notifyPayinConfirmed(opts: {
+  company: string; amount: number; fee: number; net: number;
+  currency: string; operator: string; phone: string;
+  country: string; reference: string; mode: string; source: "api" | "link" | "qr";
+  gateway: string;
+}) {
+  const large = opts.amount >= LARGE;
+  const src = opts.source === "api" ? "API" : opts.source === "qr" ? "QR" : "Lien";
+  const header = large
+    ? `🚨 <b>GROS MONTANT — Paiement Confirmé (${src})</b>`
+    : `💰 <b>Paiement Confirmé (${src})</b>`;
+  await send(
+`${header}
+
+🏢 ${opts.company}
+💵 Montant: <b>${money(opts.amount, opts.currency)}</b>
+   Frais: ${money(opts.fee, opts.currency)} | Net: ${money(opts.net, opts.currency)}
+📱 ${opts.operator} → ${opts.phone}
+🌍 ${opts.country}
+🔖 <code>${opts.reference}</code>
+🔗 Gateway: ${opts.gateway}
 ${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
 📅 ${dt()}`
   );

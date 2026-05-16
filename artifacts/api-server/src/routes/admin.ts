@@ -755,6 +755,45 @@ router.get("/admin/transactions", requireAdmin, async (req: any, res: any) => {
   });
 });
 
+// ─── FORCE-RESOLVE TRANSACTION (résolution manuelle admin) ───────────────────
+router.post("/admin/transactions/:id/force-resolve", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
+
+  const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
+  if (!tx) { res.status(404).json({ error: "Transaction introuvable" }); return; }
+
+  if (tx.type !== "payin") {
+    res.status(400).json({ error: "Seules les transactions pay-in peuvent être force-résolues" });
+    return;
+  }
+  if (tx.status === "success") {
+    res.status(400).json({ error: "Transaction déjà en succès" });
+    return;
+  }
+
+  // Mettre le statut en succès
+  await db.update(transactionsTable)
+    .set({ status: "success", updatedAt: new Date() })
+    .where(eq(transactionsTable.id, tx.id));
+
+  // Créditer le wallet
+  await db.update(walletsTable)
+    .set({ balance: sql`${walletsTable.balance} + ${tx.netAmount}` })
+    .where(eq(walletsTable.id, tx.walletId));
+
+  await logAdminAction(
+    req.session.userId,
+    "FORCE_RESOLVE_TRANSACTION",
+    "transaction",
+    String(id),
+    `ref: ${tx.reference} | amount: ${tx.amount} ${tx.currency} | net: ${tx.netAmount}`,
+    req.ip,
+  );
+
+  res.json({ ok: true, message: `Transaction ${tx.reference} résolue manuellement. Wallet crédité de ${tx.netAmount} ${tx.currency}.` });
+});
+
 // ─── WALLETS ──────────────────────────────────────────────────────────────────
 router.get("/admin/wallets", requireAdmin, async (_req: any, res: any) => {
   const wallets = await db.select().from(walletsTable).orderBy(walletsTable.countryCode);

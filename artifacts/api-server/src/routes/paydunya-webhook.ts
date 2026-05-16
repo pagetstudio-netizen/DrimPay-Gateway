@@ -8,10 +8,11 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { transactionsTable, walletsTable } from "@workspace/db/schema";
+import { transactionsTable, walletsTable, usersTable } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { getPayDunyaClient, isPayDunyaConfigured, type PayDunyaWebhookPayload } from "../lib/paydunya";
+import { notifyPayinConfirmed } from "../lib/telegram";
 
 const router = Router();
 
@@ -110,6 +111,27 @@ router.post("/webhooks/paydunya", async (req: any, res: any) => {
         .set({ balance: sql`${walletsTable.balance} + ${tx.netAmount}` })
         .where(eq(walletsTable.id, tx.walletId));
       console.log(`[PayDunya Webhook] Wallet ${tx.walletId} crédité de ${tx.netAmount} ${tx.currency}`);
+
+      // Notification Telegram — paiement réellement confirmé
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName })
+          .from(usersTable).where(eq(usersTable.id, tx.userId));
+        const source = tx.reference.startsWith("PL-") ? "link" : tx.reference.startsWith("QR-") ? "qr" : "api";
+        notifyPayinConfirmed({
+          company: merchant?.companyName ?? "?",
+          amount: parseFloat(tx.amount),
+          fee: parseFloat(tx.fee),
+          net: parseFloat(tx.netAmount),
+          currency: tx.currency,
+          operator: tx.operator,
+          phone: tx.phone,
+          country: tx.countryCode,
+          reference: tx.reference,
+          mode: tx.mode,
+          source,
+          gateway: "paydunya",
+        }).catch(() => {});
+      } catch {}
     }
 
     // Déclencher le webhook marchand
