@@ -2277,7 +2277,7 @@ function generateQrReference(): string {
 const createQrCodeSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(300).optional(),
-  defaultCountry: z.string().length(2).optional(),
+  countryCodes: z.array(z.string().length(2)).optional(),
   currency: z.string().min(3).max(4).default("XOF"),
   type: z.enum(["fixed", "flexible"]).default("flexible"),
   amount: z.number().positive().optional(),
@@ -2302,7 +2302,7 @@ router.post("/dashboard/qr-codes", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
     return;
   }
-  const { name, description, defaultCountry, currency, type, amount, expiresAt, status } = parsed.data;
+  const { name, description, countryCodes, currency, type, amount, expiresAt, status } = parsed.data;
 
   // Ensure unique reference
   let reference = generateQrReference();
@@ -2321,7 +2321,7 @@ router.post("/dashboard/qr-codes", requireAuth, async (req, res) => {
       reference,
       name,
       description,
-      defaultCountry,
+      countryCodes: countryCodes && countryCodes.length > 0 ? countryCodes : null,
       currency,
       type,
       amount: amount ? String(amount) : null,
@@ -2385,7 +2385,8 @@ router.get("/qr/:reference", async (req, res) => {
   const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, qr.userId));
 
   const allCountryCodes = Object.keys(COUNTRY_OPERATORS);
-  const filteredCodes = qr.defaultCountry ? [qr.defaultCountry, ...allCountryCodes.filter(c => c !== qr.defaultCountry)] : allCountryCodes;
+  const stored = Array.isArray(qr.countryCodes) && qr.countryCodes.length > 0 ? qr.countryCodes : null;
+  const filteredCodes = stored ? stored : allCountryCodes;
 
   const countries = filteredCodes.map(code => ({
     code,

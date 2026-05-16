@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, integer, timestamp, pgEnum, numeric, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, integer, timestamp, pgEnum, numeric, uuid, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -454,6 +454,7 @@ export const qrCodesTable = pgTable("qr_codes", {
   name: text("name").notNull(),
   description: text("description"),
   defaultCountry: text("default_country"),
+  countryCodes: jsonb("country_codes").$type<string[]>(),
   currency: text("currency").notNull().default("XOF"),
   type: qrCodeTypeEnum("type").notNull().default("flexible"),
   amount: numeric("amount", { precision: 18, scale: 2 }),

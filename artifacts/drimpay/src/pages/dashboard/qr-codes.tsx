@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "react-qr-code";
 import {
   QrCode, Plus, Download, Copy, Trash2, Power, PowerOff,
-  CheckCircle2, AlertCircle, X, Eye, Banknote,
+  CheckCircle2, AlertCircle, X, Eye, Banknote, Globe, Check,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DashboardLayout } from "./layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,15 +14,16 @@ import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const CURRENCIES = ["XOF", "XAF"];
 const COUNTRIES = [
-  { code: "TG", name: "Togo" },
-  { code: "BJ", name: "Bénin" },
-  { code: "CM", name: "Cameroun" },
-  { code: "BF", name: "Burkina Faso" },
-  { code: "ML", name: "Mali" },
-  { code: "SN", name: "Sénégal" },
-  { code: "CI", name: "Côte d'Ivoire" },
+  { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF" },
+  { code: "BJ", name: "Bénin",         flag: "🇧🇯", currency: "XOF" },
+  { code: "CM", name: "Cameroun",      flag: "🇨🇲", currency: "XAF" },
+  { code: "BF", name: "Burkina Faso",  flag: "🇧🇫", currency: "XOF" },
+  { code: "ML", name: "Mali",          flag: "🇲🇱", currency: "XOF" },
+  { code: "SN", name: "Sénégal",       flag: "🇸🇳", currency: "XOF" },
+  { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF" },
+  { code: "GH", name: "Ghana",         flag: "🇬🇭", currency: "GHS" },
+  { code: "NG", name: "Nigeria",       flag: "🇳🇬", currency: "NGN" },
 ];
 
 type QrCodeData = {
@@ -182,35 +184,43 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (qr
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    defaultCountry: "",
-    currency: "XOF",
-    type: "flexible" as "fixed" | "flexible",
-    amount: "",
-    expires: "never" as "never" | "custom",
-    expiresAt: "",
-    status: "active" as "active" | "inactive",
-  });
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+  const [type, setType] = useState<"flexible" | "fixed">("flexible");
+  const [amount, setAmount] = useState("");
+  const [expires, setExpires] = useState<"never" | "custom">("never");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [status, setStatus] = useState<"active" | "inactive">("active");
+
+  const allSelected = selectedCodes.length === COUNTRIES.length;
+  const toggleCountry = (code: string) =>
+    setSelectedCodes(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
+  const toggleAll = () =>
+    setSelectedCodes(allSelected ? [] : COUNTRIES.map(c => c.code));
+
+  const selectedCountries = COUNTRIES.filter(c => selectedCodes.includes(c.code));
+  const currencies = [...new Set(selectedCountries.map(c => c.currency))];
+  const derivedCurrency = currencies.length === 1 ? currencies[0] : currencies.length > 1 ? currencies.join(" + ") : "XOF";
 
   const handleSubmit = async () => {
-    if (!form.name.trim()) { setError("Le nom du QR est requis."); return; }
-    if (form.type === "fixed" && (!form.amount || parseFloat(form.amount) <= 0)) {
+    if (!name.trim()) { setError("Le nom du QR est requis."); return; }
+    if (selectedCodes.length === 0) { setError("Veuillez sélectionner au moins un pays."); return; }
+    if (type === "fixed" && (!amount || parseFloat(amount) <= 0)) {
       setError("Le montant est requis pour un QR à montant fixe."); return;
     }
     setError("");
     setSubmitting(true);
     try {
       const body: any = {
-        name: form.name.trim(),
-        description: form.description.trim() || undefined,
-        defaultCountry: form.defaultCountry || undefined,
-        currency: form.currency,
-        type: form.type,
-        amount: form.type === "fixed" ? parseFloat(form.amount) : undefined,
-        expiresAt: form.expires === "custom" && form.expiresAt ? form.expiresAt : undefined,
-        status: form.status,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        countryCodes: selectedCodes,
+        currency: currencies[0] ?? "XOF",
+        type,
+        amount: type === "fixed" ? parseFloat(amount) : undefined,
+        expiresAt: expires === "custom" && expiresAt ? expiresAt : undefined,
+        status,
       };
       const res = await fetch(`${BASE}/api/dashboard/qr-codes`, {
         method: "POST",
@@ -239,77 +249,135 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (qr
         transition={{ duration: 0.15 }}
         className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
       >
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div>
-            <h3 className="font-bold text-base">Générer un QR de paiement</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Créez un code QR statique lié à votre compte</p>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <QrCode className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base">Nouveau QR de paiement</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Code QR statique lié à votre compte</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+
+        <div className="p-6 space-y-5 max-h-[72vh] overflow-y-auto">
           {error && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}
             </div>
           )}
+
+          {/* Nom */}
           <div>
             <label className="block text-sm font-medium mb-1.5">Nom du QR <span className="text-red-500">*</span></label>
             <Input
               placeholder="Caisse principale, Restaurant, Boutique..."
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              value={name}
+              onChange={e => setName(e.target.value)}
             />
           </div>
+
+          {/* Description */}
           <div>
-            <label className="block text-sm font-medium mb-1.5">Description <span className="text-xs text-muted-foreground font-normal">(optionnel)</span></label>
+            <label className="block text-sm font-medium mb-1.5">
+              Description <span className="text-xs text-muted-foreground font-normal">(optionnel)</span>
+            </label>
             <Textarea
               placeholder="Description optionnelle de ce point de vente..."
               className="min-h-16 resize-none"
-              value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Pays par défaut</label>
-              <select
-                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                value={form.defaultCountry}
-                onChange={e => setForm(f => ({ ...f, defaultCountry: e.target.value }))}
+
+          {/* Pays de collecte */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-primary" />
+                <label className="text-sm font-medium">Pays de collecte <span className="text-red-500">*</span></label>
+              </div>
+              <button
+                type="button"
+                onClick={toggleAll}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all",
+                  allSelected
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/40 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                )}
               >
-                <option value="">Tous les pays</option>
-                {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-              </select>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {allSelected ? "Tout désélectionner" : "Tout sélectionner"}
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Devise</label>
-              <select
-                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                value={form.currency}
-                onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
-              >
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {COUNTRIES.map(country => {
+                const active = selectedCodes.includes(country.code);
+                return (
+                  <button
+                    key={country.code}
+                    type="button"
+                    onClick={() => toggleCountry(country.code)}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border-2 transition-all text-center",
+                      active
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-muted/20 text-muted-foreground hover:border-primary/40 hover:bg-muted/40"
+                    )}
+                  >
+                    {active && (
+                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                      </div>
+                    )}
+                    <span className="text-xl leading-none">{country.flag}</span>
+                    <span className="text-[10px] font-semibold leading-tight">{country.name}</span>
+                    <span className="text-[9px] opacity-60">{country.currency}</span>
+                  </button>
+                );
+              })}
             </div>
+            <AnimatePresence>
+              {selectedCodes.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden mt-2"
+                >
+                  <div className="text-xs text-muted-foreground bg-primary/5 rounded-xl px-3 py-2.5 border border-primary/10">
+                    <span className="font-semibold text-foreground">
+                      {selectedCodes.length} pays sélectionné{selectedCodes.length > 1 ? "s" : ""}
+                    </span>
+                    {" · "}Devise{currencies.length > 1 ? "s" : ""} : <span className="font-medium text-foreground">{derivedCurrency}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+
+          {/* Type de QR */}
           <div>
             <label className="block text-sm font-medium mb-2">Type de QR</label>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { value: "flexible", label: "Montant flexible", desc: "Le client saisit le montant" },
-                { value: "fixed", label: "Montant fixe", desc: "Montant prédéfini" },
+                { value: "fixed",    label: "Montant fixe",     desc: "Montant prédéfini" },
               ].map(opt => (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, type: opt.value as any }))}
-                  className={`p-3 rounded-xl border-2 text-left transition-all ${
-                    form.type === opt.value
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/40"
-                  }`}
+                  onClick={() => setType(opt.value as any)}
+                  className={cn(
+                    "p-3 rounded-xl border-2 text-left transition-all",
+                    type === opt.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                  )}
                 >
                   <p className="text-sm font-semibold">{opt.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
@@ -317,7 +385,9 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (qr
               ))}
             </div>
           </div>
-          {form.type === "fixed" && (
+
+          {/* Montant fixe */}
+          {type === "fixed" && (
             <div>
               <label className="block text-sm font-medium mb-1.5">Montant <span className="text-red-500">*</span></label>
               <div className="relative">
@@ -325,61 +395,69 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (qr
                   type="number"
                   min="1"
                   placeholder="5000"
-                  className="pr-14"
-                  value={form.amount}
-                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  className="pr-20"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">{form.currency}</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                  {currencies[0] ?? "XOF"}
+                </span>
               </div>
             </div>
           )}
+
+          {/* Expiration */}
           <div>
             <label className="block text-sm font-medium mb-2">Expiration</label>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { value: "never", label: "Jamais" },
+                { value: "never",  label: "Jamais" },
                 { value: "custom", label: "Date personnalisée" },
               ].map(opt => (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, expires: opt.value as any }))}
-                  className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                    form.expires === opt.value
+                  onClick={() => setExpires(opt.value as any)}
+                  className={cn(
+                    "px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all",
+                    expires === opt.value
                       ? "border-primary bg-primary/5 text-foreground"
                       : "border-border text-muted-foreground hover:border-primary/40"
-                  }`}
+                  )}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-            {form.expires === "custom" && (
+            {expires === "custom" && (
               <Input
                 type="date"
                 className="mt-2"
-                value={form.expiresAt}
+                value={expiresAt}
                 min={new Date().toISOString().split("T")[0]}
-                onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
+                onChange={e => setExpiresAt(e.target.value)}
               />
             )}
           </div>
+
+          {/* Statut initial */}
           <div>
             <label className="block text-sm font-medium mb-2">Statut initial</label>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { value: "active", label: "Actif" },
+                { value: "active",   label: "Actif" },
                 { value: "inactive", label: "Inactif" },
               ].map(opt => (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, status: opt.value as any }))}
-                  className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                    form.status === opt.value
+                  onClick={() => setStatus(opt.value as any)}
+                  className={cn(
+                    "px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all",
+                    status === opt.value
                       ? "border-primary bg-primary/5 text-foreground"
                       : "border-border text-muted-foreground hover:border-primary/40"
-                  }`}
+                  )}
                 >
                   {opt.label}
                 </button>
@@ -387,11 +465,42 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (qr
             </div>
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Annuler</Button>
-          <Button className="bg-primary text-black gap-2" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? "Création…" : <><QrCode className="w-4 h-4" /> Générer le QR</>}
-          </Button>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-border bg-muted/10 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className={cn(
+              "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all",
+              submitting
+                ? "bg-primary/60 text-black/60 cursor-not-allowed"
+                : "bg-primary text-black hover:bg-primary/90 active:scale-[0.97] shadow-[0_0_20px_rgba(197,255,74,0.3)]"
+            )}
+          >
+            {submitting ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Génération…
+              </>
+            ) : (
+              <>
+                <QrCode className="w-4 h-4" />
+                Générer le QR
+              </>
+            )}
+          </button>
         </div>
       </motion.div>
     </div>
