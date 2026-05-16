@@ -1877,19 +1877,8 @@ router.post("/pay/:token", async (req, res) => {
       .set({ uses: sql`${paymentLinksTable.uses} + 1` })
       .where(eq(paymentLinksTable.id, link.id));
 
-    // Telegram: notify
-    try {
-      const [merchant] = await db.select({ companyName: usersTable.companyName })
-        .from(usersTable).where(eq(usersTable.id, link.userId));
-      notifyPayin({
-        company: merchant?.companyName ?? "?",
-        amount, fee, net: netAmount,
-        currency: effectiveCurrency,
-        operator: effectiveOperator,
-        phone, country: effectiveCountry,
-        reference, mode: "live", source: "link",
-      }).catch(() => {});
-    } catch {}
+    // Telegram : aucune notification à l'initiation.
+    // Le webhook Clapay/PayDunya enverra "Paiement Confirmé" quand le fournisseur confirmera.
 
     res.status(201).json({
       reference, amount, fee, netAmount, currency: effectiveCurrency,
@@ -2603,22 +2592,21 @@ router.post("/qr/:reference", async (req, res) => {
     })
     .where(eq(qrCodesTable.id, qr.id));
 
-  // Telegram notification
-  try {
-    notifyPayin({
-      company: merchantInfo?.companyName ?? "?",
-      amount,
-      fee,
-      net: netAmount,
-      currency: effectiveCurrency,
-      operator: effectiveOperator,
-      phone,
-      country: effectiveCountry,
-      reference: txReference,
-      mode: merchantMode,
-      source: "qr",
-    }).catch(() => {});
-  } catch {}
+  // Telegram : notifier uniquement en sandbox (succès immédiat simulé).
+  // En mode LIVE, le webhook Clapay/PayDunya enverra la notification à la confirmation réelle.
+  if (merchantMode === "sandbox") {
+    try {
+      notifyPayin({
+        company: merchantInfo?.companyName ?? "?",
+        amount, fee, net: netAmount,
+        currency: effectiveCurrency,
+        operator: effectiveOperator,
+        phone, country: effectiveCountry,
+        reference: txReference,
+        mode: merchantMode, source: "qr",
+      }).catch(() => {});
+    } catch {}
+  }
 
   res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency, _sandbox: merchantMode === "sandbox" });
 });

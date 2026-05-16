@@ -22,10 +22,10 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import crypto from "crypto";
-import { resolveAggregator, AggregatorNotConfiguredError, checkStatusAfterInit } from "../lib/aggregator-router";
+import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
-import { notifyPayin } from "../lib/telegram";
+import { notifyPayinConfirmed } from "../lib/telegram";
 
 const router = Router();
 
@@ -402,8 +402,13 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
       paymentUrl = pdRes.payment_url ?? null;
     }
 
-    // Vérifier le statut réel chez le fournisseur avant de répondre
-    const statusCheck = await checkStatusAfterInit(aggregator, client, externalRef);
+    // Polling du statut chez le fournisseur (lien de paiement = 4s × max 20s)
+    // L'utilisateur doit approuver sur son téléphone. On poll jusqu'à 20s,
+    // puis le webhook confirme le statut final si toujours en attente.
+    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+      intervalMs: 4_000,
+      maxDurationMs: 20_000,
+    });
     const verifiedStatus = statusCheck?.status ?? "processing";
     const verifiedFailureReason = statusCheck?.failureReason;
 
@@ -429,12 +434,17 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
       .set({ uses: sql`${paymentLinksTable.uses} + 1` })
       .where(eq(paymentLinksTable.id, link.id));
 
-    // Telegram notification (fire & forget)
-    notifyPayin({
-      company: merchantInfo?.companyName ?? "?",
-      amount, fee, net: netAmount, currency, operator, phone,
-      country: countryCode, reference, mode: "live", source: "link",
-    }).catch(() => {});
+    // Telegram : notifier UNIQUEMENT si le fournisseur confirme le succès immédiatement.
+    // Si le statut est encore "processing/pending", le webhook enverra la notification
+    // quand le paiement sera réellement confirmé côté fournisseur.
+    if (verifiedStatus === "success") {
+      notifyPayinConfirmed({
+        company: merchantInfo?.companyName ?? "?",
+        amount, fee, net: netAmount, currency, operator, phone,
+        country: countryCode, reference, mode: "live", source: "link",
+        gateway: aggregator,
+      }).catch(() => {});
+    }
 
     res.status(201).json({
       reference,
