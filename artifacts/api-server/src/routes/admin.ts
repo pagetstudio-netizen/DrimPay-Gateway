@@ -1524,7 +1524,7 @@ router.post("/admin/support-agents", requireAdmin, async (req, res) => {
     mustChangePassword: true,
   }).returning({ id: supportUsersTable.id, email: supportUsersTable.email, name: supportUsersTable.name });
 
-  await logAdminAction(req.session.userId, "CREATE_SUPPORT_AGENT", "support_user", String(agent.id), `Created support agent: ${email}`, req.ip);
+  await logAdminAction(req.session.userId!, "CREATE_SUPPORT_AGENT", "support_user", String(agent.id), `Created support agent: ${email}`, req.ip);
   res.status(201).json({ success: true, agent });
 });
 
@@ -1545,7 +1545,7 @@ router.patch("/admin/support-agents/:id/reset-password", requireAdmin, async (re
     .set({ passwordHash, mustChangePassword: true })
     .where(eq(supportUsersTable.id, id));
 
-  await logAdminAction(req.session.userId, "RESET_SUPPORT_AGENT_PASSWORD", "support_user", String(id), undefined, req.ip);
+  await logAdminAction(req.session.userId!, "RESET_SUPPORT_AGENT_PASSWORD", "support_user", String(id), undefined, req.ip);
   res.json({ success: true });
 });
 
@@ -1555,7 +1555,7 @@ router.delete("/admin/support-agents/:id", requireAdmin, async (req, res) => {
   if (!agent) { res.status(404).json({ error: "Agent introuvable" }); return; }
 
   await db.delete(supportUsersTable).where(eq(supportUsersTable.id, id));
-  await logAdminAction(req.session.userId, "DELETE_SUPPORT_AGENT", "support_user", String(id), `Deleted: ${agent.email}`, req.ip);
+  await logAdminAction(req.session.userId!, "DELETE_SUPPORT_AGENT", "support_user", String(id), `Deleted: ${agent.email}`, req.ip);
   res.json({ success: true });
 });
 
