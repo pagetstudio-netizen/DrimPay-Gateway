@@ -29,7 +29,7 @@ import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam }
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
-import { resolveAggregator, AggregatorNotConfiguredError, checkStatusAfterInit } from "../lib/aggregator-router";
+import { resolveAggregator, routePayout, AggregatorNotConfiguredError, checkStatusAfterInit } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 
@@ -1284,7 +1284,7 @@ router.get("/dashboard/reversements", requireAuth, async (req, res) => {
   res.json(rows);
 });
 
-router.post("/dashboard/reversements", requireAuth, async (req, res) => {
+router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (req, res) => {
   const parsed = reversementSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
@@ -1297,6 +1297,13 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
   const countryMeta = COUNTRIES.find((c) => c.code === countryCode);
   if (!countryMeta) {
     res.status(400).json({ error: "Pays non supporté" });
+    return;
+  }
+
+  // Vérifier disponibilité opérateur (maintenance, blockWithdrawals…)
+  const opCheck = await checkOperatorAvailable(countryCode, operator, "withdrawals");
+  if (!opCheck.ok) {
+    res.status(opCheck.status).json({ error: opCheck.error });
     return;
   }
 
@@ -1313,11 +1320,22 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
   const feeRate = await getUserFeeRate(userId, "payout");
   const fee = +(amount * feeRate).toFixed(2);
   const net = +(amount - fee).toFixed(2);
-  const totalDebit = amount; // montant total débité du wallet (fee inclusive)
+  const totalDebit = amount;
 
   const balance = parseFloat(wallet.balance as string);
   if (totalDebit > balance) {
     res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
+    return;
+  }
+
+  // Résoudre l'agrégateur AVANT de débiter (fail-fast si non configuré)
+  let resolvedAggregator: "clapay" | "paydunya";
+  try {
+    const { aggregator } = await resolveAggregator(countryCode, operator);
+    resolvedAggregator = aggregator;
+  } catch (err: any) {
+    const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 400;
+    res.status(statusCode).json({ error: err.message ?? "Agrégateur non disponible" });
     return;
   }
 
@@ -1329,7 +1347,11 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
     .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
     .where(eq(walletsTable.id, wallet.id));
 
-  // Créer un enregistrement dans transactionsTable pour que le webhook puisse le retrouver
+  const baseUrl = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+  const callbackUrl = `${baseUrl}/api/webhooks/${resolvedAggregator}`;
+
+  // Créer la transaction (webhook peut la retrouver via reference)
   const [tx] = await db
     .insert(transactionsTable)
     .values({
@@ -1351,48 +1373,38 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
     })
     .returning();
 
-  // MODE LIVE : appel synchrone de l'agrégateur
   if (currentMode === "live") {
+    // ── MODE LIVE : appel réel à Clapay ou PayDunya selon l'opérateur configuré ──
     try {
-      const { aggregator, client } = await resolveAggregator(countryCode, operator);
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
-      const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+      console.info(`[Reversement] Routing ${reference} via ${resolvedAggregator} (${operator} / ${countryCode})`);
 
-      let gatewayRef: string;
-      if (aggregator === "clapay") {
-        const r = await (client as ClapayClient).initiatePayout({
-          amount: net, currency: countryMeta.currency, country_code: countryCode,
-          operator, phone, reference, callback_url: callbackUrl,
-          description: note ?? "Reversement DrimPay",
-        });
-        if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay payout", 502, r);
-        gatewayRef = r.clapay_reference;
-      } else {
-        const r = await (client as PayDunyaClient).initiatePayout({
-          amount: net, currency: countryMeta.currency, country_code: countryCode,
-          operator, phone, reference, callback_url: callbackUrl,
-          description: note ?? "Reversement DrimPay",
-        });
-        if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya payout", 502, r);
-        gatewayRef = r.paydunya_reference;
-      }
+      const result = await routePayout({
+        amount: net,
+        currency: countryMeta.currency,
+        country_code: countryCode,
+        operator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        description: note ?? "Reversement DrimPay",
+      });
 
-      // Vérifier le statut réel chez le fournisseur avant de répondre
-      const statusCheck = await checkStatusAfterInit(aggregator, client, gatewayRef);
+      // Vérifier le statut réel chez le fournisseur
+      const { client } = await resolveAggregator(countryCode, operator);
+      const statusCheck = await checkStatusAfterInit(resolvedAggregator, client, result.externalRef);
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
 
       await db.update(transactionsTable)
         .set({
           status: verifiedStatus as any,
-          externalRef: gatewayRef,
+          externalRef: result.externalRef,
           ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
           updatedAt: new Date(),
         })
         .where(eq(transactionsTable.id, tx.id));
 
-      // Si le fournisseur confirme un échec immédiat → rembourser + marquer failed
+      // Échec immédiat → remboursement
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         await db.update(walletsTable)
           .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
@@ -1402,12 +1414,12 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
           .where(eq(reversementsTable.id, reversement.id));
         res.status(502).json({
           error: verifiedFailureReason ?? "Reversement rejeté par le fournisseur",
-          reference, status: verifiedStatus, gateway: aggregator,
+          reference, status: verifiedStatus, gateway: resolvedAggregator,
         });
         return;
       }
 
-      // Si succès immédiat → marquer completed
+      // Succès immédiat
       if (verifiedStatus === "success") {
         await db.update(reversementsTable)
           .set({ status: "completed" })
@@ -1415,7 +1427,7 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
       }
 
     } catch (err: any) {
-      // Remboursement du wallet en cas d'échec agrégateur
+      // Remboursement wallet + marquage échec
       await db.update(walletsTable)
         .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
         .where(eq(walletsTable.id, wallet.id));
@@ -1428,13 +1440,15 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
         .set({ status: "failed", failureReason: errMsg })
         .where(eq(reversementsTable.id, reversement.id));
 
-      console.error(`[Reversement] Erreur agrégateur: ${errMsg}`);
+      console.error(`[Reversement] Erreur ${resolvedAggregator}: ${errMsg}`);
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: errMsg });
+      res.status(statusCode).json({ error: errMsg, gateway: resolvedAggregator });
       return;
     }
   } else {
-    // MODE SANDBOX : succès immédiat
+    // ── MODE SANDBOX : simulation immédiate (aucun argent réel) ──
+    // L'agrégateur qui SERAIT utilisé en live est résolu et inclus dans la réponse.
+    console.info(`[Reversement][SANDBOX] Simulation via ${resolvedAggregator} (${operator} / ${countryCode})`);
     await db.update(transactionsTable)
       .set({ status: "success", updatedAt: new Date() })
       .where(eq(transactionsTable.id, tx.id));
