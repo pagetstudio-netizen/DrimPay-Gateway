@@ -392,7 +392,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { mode } = useMode();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -411,30 +411,103 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
       <AnimatePresence>
         {sidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <motion.div
-              className="absolute inset-0 bg-black/50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSidebarOpen(false)}
-            />
-            <motion.aside
-              className="absolute left-0 top-0 bottom-0 w-[85vw] max-w-[320px] flex flex-col shadow-2xl"
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            >
+          <motion.div
+            className="fixed inset-0 z-50 lg:hidden bg-white flex flex-col overflow-hidden"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ type: "spring", stiffness: 340, damping: 30 }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+              <img src="/logo-drimpay.png" alt="DrimPay" className="h-8 w-auto object-contain" />
               <button
-                className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200"
                 onClick={() => setSidebarOpen(false)}
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
-              <SidebarNav onNavigate={() => setSidebarOpen(false)} location={location} />
-            </motion.aside>
-          </div>
+            </div>
+
+            {/* Scrollable nav */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {/* User info */}
+              <div className="flex items-center gap-3 px-3 py-3 mb-3 rounded-2xl bg-gray-50">
+                <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
+                  <img src={userImg} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 truncate">{user?.companyName ?? "—"}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email ?? "—"}</p>
+                </div>
+              </div>
+
+              {/* Main nav items */}
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2 mt-1">Principal</p>
+              {navItems.map((item) => {
+                const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-medium transition-all cursor-pointer mb-1",
+                        active
+                          ? "bg-primary/10 text-gray-900 font-semibold border-l-4 border-primary"
+                          : "text-gray-700 active:bg-gray-100"
+                      )}
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                        <NavIcon item={item} active={active} />
+                      </div>
+                      <span className="flex-1">{item.label}</span>
+                      {active && <ChevronRight className="w-4 h-4 shrink-0 text-primary" />}
+                    </div>
+                  </Link>
+                );
+              })}
+
+              {/* API docs section */}
+              <div className="flex items-center gap-2 px-3 mb-2 mt-5">
+                <img src={apiIconImg} alt="" className="w-4 h-4 object-contain shrink-0" />
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Documentation API</p>
+              </div>
+              {apiItems.map((item) => {
+                const active = location.startsWith(item.href);
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-medium transition-all cursor-pointer mb-1",
+                        active
+                          ? "bg-primary/10 text-gray-900 font-semibold border-l-4 border-primary"
+                          : "text-gray-700 active:bg-gray-100"
+                      )}
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                        <NavIcon item={item} active={active} />
+                      </div>
+                      <span className="flex-1">{item.label}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Logout */}
+            <div className="px-4 py-4 border-t border-gray-100 shrink-0">
+              <button
+                onClick={async () => { setSidebarOpen(false); await logout(); window.location.href = "/"; }}
+                className="flex items-center gap-4 px-4 py-3.5 w-full rounded-2xl text-base font-medium text-gray-700 active:bg-red-50 transition-all"
+              >
+                <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                  <img src={logoutImg} alt="" className="w-6 h-6 object-contain" />
+                </div>
+                Déconnexion
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
