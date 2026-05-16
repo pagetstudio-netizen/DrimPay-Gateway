@@ -29,7 +29,7 @@ import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam }
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
-import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled } from "../lib/aggregator-router";
+import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 
@@ -87,54 +87,7 @@ router.post("/dashboard/mode", requireAuth, async (req, res) => {
   res.json({ mode });
 });
 
-// ── Operator availability check ───────────────────────────────────────────────
-type BlockKind = "deposits" | "withdrawals" | "api" | "paymentLinks";
-
-async function checkOperatorAvailable(
-  countryCode: string,
-  operatorName: string,
-  blockKind: BlockKind,
-): Promise<{ ok: false; error: string; status: number } | { ok: true }> {
-  const [op] = await db
-    .select()
-    .from(operatorsTable)
-    .where(and(eq(operatorsTable.countryCode, countryCode), eq(operatorsTable.name, operatorName)));
-
-  if (!op || !op.active) {
-    return { ok: false, status: 503, error: "Opérateur indisponible pour le moment." };
-  }
-
-  const [opAgg] = await db
-    .select()
-    .from(operatorAggregatorsTable)
-    .where(and(
-      eq(operatorAggregatorsTable.countryCode, countryCode),
-      eq(operatorAggregatorsTable.operatorName, operatorName),
-    ));
-
-  if (opAgg) {
-    if (opAgg.maintenanceMode) {
-      return { ok: false, status: 503, error: "Cet opérateur est actuellement en maintenance. Veuillez réessayer plus tard." };
-    }
-    if (!opAgg.active) {
-      return { ok: false, status: 503, error: "Opérateur indisponible pour le moment." };
-    }
-    if (blockKind === "deposits" && opAgg.blockDeposits) {
-      return { ok: false, status: 503, error: "Les dépôts sont temporairement bloqués pour cet opérateur." };
-    }
-    if (blockKind === "withdrawals" && opAgg.blockWithdrawals) {
-      return { ok: false, status: 503, error: "Les retraits sont temporairement bloqués pour cet opérateur." };
-    }
-    if (blockKind === "api" && opAgg.blockApi) {
-      return { ok: false, status: 503, error: "Les paiements API sont temporairement bloqués pour cet opérateur." };
-    }
-    if (blockKind === "paymentLinks" && opAgg.blockPaymentLinks) {
-      return { ok: false, status: 503, error: "Les liens de paiement sont temporairement bloqués pour cet opérateur." };
-    }
-  }
-
-  return { ok: true };
-}
+// checkOperatorAvailable est maintenant dans aggregator-router.ts (fonction partagée)
 
 const COUNTRIES = [
   { code: "TG", name: "Togo", flag: "🇹🇬", currency: "XOF" },

@@ -22,7 +22,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import crypto from "crypto";
-import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled } from "../lib/aggregator-router";
+import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { notifyPayinConfirmed } from "../lib/telegram";
@@ -361,6 +361,13 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
     : (process.env.FRONTEND_BASE_URL ?? "https://drimpay.com");
 
   const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
+
+  // Vérifier disponibilité opérateur (actif, maintenance, liens bloqués)
+  const opCheck = await checkOperatorAvailable(countryCode, operator, "paymentLinks");
+  if (!opCheck.ok) {
+    res.status(opCheck.status).json({ error: opCheck.error });
+    return;
+  }
 
   try {
     const { aggregator, client } = await resolveAggregator(countryCode, operator);

@@ -13,7 +13,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
-import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled } from "../lib/aggregator-router";
+import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam } from "../lib/telegram";
 
 const router = Router();
@@ -351,6 +351,12 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
 
   // ── LIVE mode: route through the correct aggregator per operator ─────────────
   if (mode === "live") {
+    // Vérifier disponibilité opérateur avant tout appel réseau (actif, maintenance, API bloquée)
+    const opCheck = await checkOperatorAvailable(country_code, operator, "api");
+    if (!opCheck.ok) {
+      res.status(opCheck.status).json({ error: opCheck.error, code: "OPERATOR_UNAVAILABLE" });
+      return;
+    }
     const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       : "https://api.drimpay.com";
