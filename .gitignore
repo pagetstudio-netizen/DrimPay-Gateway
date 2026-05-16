@@ -1,12 +1,16 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # compiled output
-dist
 tmp
 out-tsc
 *.tsbuildinfo
 .expo
 .expo-shared
+
+# Ignore dist everywhere EXCEPT the deployment artifacts
+dist
+!artifacts/api-server/dist
+!artifacts/drimpay/dist
 
 # dependencies
 node_modules
