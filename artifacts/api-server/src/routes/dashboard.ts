@@ -1201,7 +1201,7 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
     return;
   }
   const userId = req.session.userId!;
-  const currentMode = req.session.mode ?? "sandbox";
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const { countryCode, operator, phone, amount, note } = parsed.data;
 
   const countryMeta = COUNTRIES.find((c) => c.code === countryCode);
@@ -1220,87 +1220,120 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
     return;
   }
 
-  const reversementFeeRate = await getUserFeeRate(userId, "payout");
-  const fee = +(amount * reversementFeeRate).toFixed(2);
+  const feeRate = await getUserFeeRate(userId, "payout");
+  const fee = +(amount * feeRate).toFixed(2);
   const net = +(amount - fee).toFixed(2);
+  const totalDebit = amount; // montant total débité du wallet (fee inclusive)
 
-  // Always check balance and deduct (both sandbox and live)
   const balance = parseFloat(wallet.balance as string);
-  if (amount > balance) {
+  if (totalDebit > balance) {
     res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
     return;
   }
-  const newBalance = +(balance - amount).toFixed(2);
+
+  const reference = `REV-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+  // Pré-déduction du wallet
   await db
     .update(walletsTable)
-    .set({ balance: String(newBalance) })
+    .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
     .where(eq(walletsTable.id, wallet.id));
 
-  const [reversement] = await db
-    .insert(reversementsTable)
+  // Créer un enregistrement dans transactionsTable pour que le webhook puisse le retrouver
+  const [tx] = await db
+    .insert(transactionsTable)
     .values({
-      userId,
-      walletId: wallet.id,
-      countryCode,
-      currency: countryMeta.currency,
-      operator,
-      phone,
-      amount: String(amount),
-      fee: String(fee),
-      net: String(net),
-      note: note ?? null,
-      status: "pending",
-      mode: currentMode,
+      userId, walletId: wallet.id, reference, type: "payout", status: "pending",
+      amount: String(amount), fee: String(fee), netAmount: String(net),
+      currency: countryMeta.currency, countryCode, operator, phone,
+      description: note ?? "Reversement DrimPay", mode: currentMode,
     })
     .returning();
 
-  // LIVE mode: dispatch real payout via aggregator
-  if (currentMode === "live") {
-    ;(async () => {
-      try {
-        const { aggregator, client } = await resolveAggregator(countryCode, operator);
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
-        const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
-        const txRef = `REV-${reversement.id}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+  // Créer le reversement lié à la même référence
+  const [reversement] = await db
+    .insert(reversementsTable)
+    .values({
+      userId, walletId: wallet.id, countryCode, currency: countryMeta.currency,
+      operator, phone,
+      amount: String(amount), fee: String(fee), net: String(net),
+      note: note ?? null, reference, status: "pending", mode: currentMode,
+    })
+    .returning();
 
-        if (aggregator === "clapay") {
-          await (client as ClapayClient).initiatePayout({
-            amount: net, currency: countryMeta.currency, country_code: countryCode,
-            operator, phone, reference: txRef, callback_url: callbackUrl,
-            description: note ?? `Reversement DrimPay`,
-          });
-        } else {
-          await (client as PayDunyaClient).initiatePayout({
-            amount: net, currency: countryMeta.currency, country_code: countryCode,
-            operator, phone, reference: txRef, callback_url: callbackUrl,
-            description: note ?? `Reversement DrimPay`,
-          });
-        }
-      } catch (e: any) {
-        console.error(`[Reversement] Erreur agrégateur: ${e?.message}`);
+  // MODE LIVE : appel synchrone de l'agrégateur
+  if (currentMode === "live") {
+    try {
+      const { aggregator, client } = await resolveAggregator(countryCode, operator);
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+      const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+
+      let gatewayRef: string;
+      if (aggregator === "clapay") {
+        const r = await (client as ClapayClient).initiatePayout({
+          amount: net, currency: countryMeta.currency, country_code: countryCode,
+          operator, phone, reference, callback_url: callbackUrl,
+          description: note ?? "Reversement DrimPay",
+        });
+        if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay payout", 502, r);
+        gatewayRef = r.clapay_reference;
+      } else {
+        const r = await (client as PayDunyaClient).initiatePayout({
+          amount: net, currency: countryMeta.currency, country_code: countryCode,
+          operator, phone, reference, callback_url: callbackUrl,
+          description: note ?? "Reversement DrimPay",
+        });
+        if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya payout", 502, r);
+        gatewayRef = r.paydunya_reference;
       }
-    })();
+
+      // Mettre à jour la transaction en processing (le webhook confirmera)
+      await db.update(transactionsTable)
+        .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+
+    } catch (err: any) {
+      // Remboursement du wallet en cas d'échec agrégateur
+      await db.update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+        .where(eq(walletsTable.id, wallet.id));
+
+      const errMsg = err?.message ?? String(err);
+      await db.update(transactionsTable)
+        .set({ status: "failed", failureReason: errMsg, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+      await db.update(reversementsTable)
+        .set({ status: "failed", failureReason: errMsg })
+        .where(eq(reversementsTable.id, reversement.id));
+
+      console.error(`[Reversement] Erreur agrégateur: ${errMsg}`);
+      const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
+      res.status(statusCode).json({ error: errMsg });
+      return;
+    }
+  } else {
+    // MODE SANDBOX : succès immédiat
+    await db.update(transactionsTable)
+      .set({ status: "success", updatedAt: new Date() })
+      .where(eq(transactionsTable.id, tx.id));
+    await db.update(reversementsTable)
+      .set({ status: "completed" })
+      .where(eq(reversementsTable.id, reversement.id));
   }
 
   createNotification(
     userId, "info", "wallet",
     `Demande de reversement — ${amount.toLocaleString("fr-FR")} ${countryMeta.currency}`,
-    `Reversement de ${amount.toLocaleString("fr-FR")} ${countryMeta.currency} vers ${phone} (${operator}, ${countryCode}). Frais : ${fee.toLocaleString("fr-FR")} ${countryMeta.currency}. Net : ${net.toLocaleString("fr-FR")} ${countryMeta.currency}.`,
+    `Reversement de ${amount.toLocaleString("fr-FR")} ${countryMeta.currency} vers ${phone} (${operator}, ${countryCode}). Frais : ${fee.toLocaleString("fr-FR")} ${countryMeta.currency}. Net : ${net.toLocaleString("fr-FR")} ${countryMeta.currency}. Réf : ${reference}.`,
     "/dashboard/reversement",
   ).catch(() => {});
 
-  // Telegram: notify withdrawal request
   try {
     const [user] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
     notifyReversement({
       company: user?.companyName ?? "?",
-      amount,
-      currency: countryMeta.currency,
-      operator,
-      phone,
-      country: countryCode,
-      mode: currentMode,
+      amount, currency: countryMeta.currency, operator, phone, country: countryCode, mode: currentMode,
     }).catch(() => {});
   } catch {}
 

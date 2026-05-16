@@ -8,7 +8,7 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { transactionsTable, walletsTable, usersTable } from "@workspace/db/schema";
+import { transactionsTable, walletsTable, usersTable, reversementsTable } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { getPayDunyaClient, isPayDunyaConfigured, type PayDunyaWebhookPayload } from "../lib/paydunya";
@@ -132,6 +132,29 @@ router.post("/webhooks/paydunya", async (req: any, res: any) => {
           gateway: "paydunya",
         }).catch(() => {});
       } catch {}
+    }
+
+    // Si payout échoue → rembourser le solde
+    if ((newStatus === "failed" || newStatus === "cancelled") && tx.type === "payout") {
+      const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
+      await db
+        .update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+        .where(eq(walletsTable.id, tx.walletId));
+      console.log(`[PayDunya Webhook] Payout échoué — wallet ${tx.walletId} remboursé de ${totalDebit} ${tx.currency}`);
+    }
+
+    // Synchroniser le statut du reversement si la transaction vient d'un REV-
+    if (tx.type === "payout" && tx.reference.startsWith("REV-")) {
+      const revStatus = newStatus === "success" ? "completed" : (newStatus === "failed" || newStatus === "cancelled") ? "failed" : "pending";
+      await db
+        .update(reversementsTable)
+        .set({
+          status: revStatus as any,
+          ...(event.failure_reason ? { failureReason: event.failure_reason } : {}),
+        })
+        .where(eq(reversementsTable.reference, tx.reference));
+      console.log(`[PayDunya Webhook] Reversement ${tx.reference} → ${revStatus}`);
     }
 
     // Déclencher le webhook marchand

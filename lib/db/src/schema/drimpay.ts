@@ -197,6 +197,8 @@ export const reversementsTable = pgTable("reversements", {
   fee: numeric("fee", { precision: 18, scale: 2 }).notNull(),
   net: numeric("net", { precision: 18, scale: 2 }).notNull(),
   note: text("note"),
+  reference: text("reference"),
+  failureReason: text("failure_reason"),
   status: reversementStatusEnum("status").notNull().default("pending"),
   mode: transactionModeEnum("mode").notNull().default("sandbox"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -12,7 +12,7 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { transactionsTable, walletsTable, usersTable } from "@workspace/db/schema";
+import { transactionsTable, walletsTable, usersTable, reversementsTable } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { getClapayClient, isClapayConfigured, type ClapayWebhookPayload } from "../lib/clapay";
@@ -158,6 +158,19 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
         .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
         .where(eq(walletsTable.id, tx.walletId));
       console.log(`[Clapay Webhook] Payout échoué — wallet ${tx.walletId} remboursé de ${totalDebit} ${tx.currency}`);
+    }
+
+    // Synchroniser le statut du reversement si la transaction vient d'un REV-
+    if (tx.type === "payout" && tx.reference.startsWith("REV-")) {
+      const revStatus = newStatus === "success" ? "completed" : (newStatus === "failed" || newStatus === "cancelled") ? "failed" : "pending";
+      await db
+        .update(reversementsTable)
+        .set({
+          status: revStatus as any,
+          ...(event.failure_reason ? { failureReason: event.failure_reason } : {}),
+        })
+        .where(eq(reversementsTable.reference, tx.reference));
+      console.log(`[Clapay Webhook] Reversement ${tx.reference} → ${revStatus}`);
     }
 
     // Déclencher le webhook marchand si configuré
