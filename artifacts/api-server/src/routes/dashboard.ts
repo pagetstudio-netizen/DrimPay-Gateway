@@ -498,7 +498,7 @@ router.post("/dashboard/transactions/:id/resend-webhook", requireAuth, async (re
 });
 
 const payinSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().min(200, "Le montant minimum est de 200"),
   currency: z.string().length(3),
   countryCode: z.string().length(2),
   operator: z.string().min(1),
@@ -650,7 +650,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
 });
 
 const payoutSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().min(200, "Le montant minimum est de 200"),
   currency: z.string().length(3),
   countryCode: z.string().length(2),
   operator: z.string().min(1),
@@ -1280,7 +1280,7 @@ const reversementSchema = z.object({
   countryCode: z.string().min(2),
   operator: z.string().min(1),
   phone: z.string().min(8),
-  amount: z.number().positive(),
+  amount: z.number().min(200, "Le montant minimum est de 200"),
   note: z.string().optional(),
 });
 
