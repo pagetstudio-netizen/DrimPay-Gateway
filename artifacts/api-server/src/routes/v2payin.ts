@@ -13,7 +13,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
-import { resolveAggregator, AggregatorNotConfiguredError, checkStatusAfterInit } from "../lib/aggregator-router";
+import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam } from "../lib/telegram";
 
 const router = Router();
@@ -411,8 +411,13 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         paymentUrl = pdRes.payment_url ?? null;
       }
 
-      // Vérifier le statut réel chez le fournisseur avant de répondre
-      const statusCheck = await checkStatusAfterInit(aggregator, client, externalRef);
+      // Polling du statut chez le fournisseur (API payin = 4s × max 20s)
+      // L'utilisateur doit approuver sur son téléphone — on attend jusqu'à 20s,
+      // puis le webhook confirme le statut final si toujours en attente.
+      const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+        intervalMs: 4_000,
+        maxDurationMs: 20_000,
+      });
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
 

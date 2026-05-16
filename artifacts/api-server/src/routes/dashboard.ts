@@ -29,7 +29,7 @@ import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam }
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
-import { resolveAggregator, routePayout, AggregatorNotConfiguredError, checkStatusAfterInit } from "../lib/aggregator-router";
+import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 
@@ -576,8 +576,13 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
         gatewayRef = r.paydunya_reference;
       }
 
-      // Vérifier le statut réel chez le fournisseur avant de répondre
-      const statusCheck = await checkStatusAfterInit(aggregator, client, gatewayRef);
+      // Polling du statut chez le fournisseur (payin = 4s × max 20s)
+      // L'utilisateur doit approuver sur son téléphone — on attend jusqu'à 20s,
+      // puis le webhook confirme le statut final si toujours en attente.
+      const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
+        intervalMs: 4_000,
+        maxDurationMs: 20_000,
+      });
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
 
@@ -604,7 +609,9 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
         walletId: wallet.id,
         gateway: aggregator, gateway_reference: gatewayRef,
         verified_status: verifiedStatus,
-        message: "Prompt de paiement envoyé au téléphone du client. Le wallet sera crédité après confirmation.",
+        message: verifiedStatus === "success"
+          ? "Paiement confirmé par le fournisseur. Le wallet a été crédité."
+          : "Prompt envoyé au téléphone du client — statut final via webhook.",
       });
     } catch (err: any) {
       const msg = err?.message ?? String(err);
@@ -739,8 +746,13 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         gatewayRef = r.paydunya_reference;
       }
 
-      // Vérifier le statut réel chez le fournisseur avant de répondre
-      const statusCheck = await checkStatusAfterInit(aggregator, client, gatewayRef);
+      // Polling du statut chez le fournisseur (payout = 3s × max 30s)
+      // Opération automatisée : le fournisseur traite sans intervention humaine.
+      // On poll jusqu'à 30s pour obtenir la réponse définitive avant de répondre au client.
+      const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
+        intervalMs: 3_000,
+        maxDurationMs: 30_000,
+      });
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
 
@@ -753,7 +765,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         })
         .where(eq(transactionsTable.id, tx.id));
 
-      // Si le fournisseur confirme un échec immédiat → rembourser le wallet
+      // Si le fournisseur confirme un échec → rembourser le wallet
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         await db.update(walletsTable)
           .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
@@ -1389,9 +1401,13 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
         description: note ?? "Reversement DrimPay",
       });
 
-      // Vérifier le statut réel chez le fournisseur
+      // Polling du statut chez le fournisseur (reversement = 3s × max 30s)
+      // Même stratégie que payout : opération automatisée, règle en quelques secondes.
       const { client } = await resolveAggregator(countryCode, operator);
-      const statusCheck = await checkStatusAfterInit(resolvedAggregator, client, result.externalRef);
+      const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
+        intervalMs: 3_000,
+        maxDurationMs: 30_000,
+      });
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
 

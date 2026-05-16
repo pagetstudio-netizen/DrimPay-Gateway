@@ -47,7 +47,6 @@ export async function resolveAggregator(
   countryCode: string,
   operatorName: string,
 ): Promise<RouteResult> {
-  // 1. Lookup operator_aggregators
   const [opAgg] = await db
     .select()
     .from(operatorAggregatorsTable)
@@ -58,11 +57,9 @@ export async function resolveAggregator(
       ),
     );
 
-  // 2. Determine target aggregator code
   let aggregatorCode: AggregatorCode;
 
   if (opAgg) {
-    // Operator explicitly routed
     const code = opAgg.aggregatorCode.toLowerCase();
     if (code !== "clapay" && code !== "paydunya") {
       throw new AggregatorUnavailableError(
@@ -72,7 +69,6 @@ export async function resolveAggregator(
     }
     aggregatorCode = code;
   } else {
-    // Fallback: env var ACTIVE_AGGREGATOR
     const preferred = (process.env.ACTIVE_AGGREGATOR ?? "clapay").toLowerCase();
     if (preferred !== "clapay" && preferred !== "paydunya") {
       throw new AggregatorUnavailableError(
@@ -83,24 +79,17 @@ export async function resolveAggregator(
     aggregatorCode = preferred;
   }
 
-  // 3. Get the matching client
   if (aggregatorCode === "clapay") {
-    if (!isClapayConfigured()) {
-      throw new AggregatorNotConfiguredError("clapay");
-    }
+    if (!isClapayConfigured()) throw new AggregatorNotConfiguredError("clapay");
     return { aggregator: "clapay", client: getClapayClient(), opAgg: opAgg ?? null };
   } else {
-    if (!isPayDunyaConfigured()) {
-      throw new AggregatorNotConfiguredError("paydunya");
-    }
+    if (!isPayDunyaConfigured()) throw new AggregatorNotConfiguredError("paydunya");
     return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
   }
 }
 
-/**
- * Initie un pay-in via l'agrégateur résolu pour cet opérateur.
- * Retourne le résultat normalisé.
- */
+// ─── Status types ─────────────────────────────────────────────────────────────
+
 export interface NormalizedPayinResult {
   aggregator: AggregatorCode;
   externalRef: string;
@@ -138,43 +127,17 @@ export interface PayoutParams {
   callback_url: string;
 }
 
-export async function routePayin(params: PayinParams): Promise<NormalizedPayinResult> {
-  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator);
-
-  if (aggregator === "clapay") {
-    const c = client as ClapayClient;
-    const res = await c.initiatePayin(params);
-    if (!res.success) {
-      throw new Error(res.message ?? "Échec Clapay payin");
-    }
-    return {
-      aggregator,
-      externalRef: res.clapay_reference,
-      paymentUrl: res.payment_url ?? null,
-      ussdCode: res.ussd_code ?? null,
-      message: "Prompt de paiement envoyé via Clapay",
-    };
-  } else {
-    const p = client as PayDunyaClient;
-    const res = await p.initiatePayin(params);
-    if (!res.success) {
-      throw new Error(res.message ?? "Échec PayDunya payin");
-    }
-    return {
-      aggregator,
-      externalRef: res.paydunya_reference,
-      paymentUrl: res.payment_url ?? null,
-      ussdCode: null,
-      message: "Prompt de paiement envoyé via PayDunya",
-    };
-  }
-}
-
-// ─── Normalized status check result ──────────────────────────────────────────
 export interface StatusCheckResult {
   status: "pending" | "processing" | "success" | "failed" | "expired" | "cancelled";
   gatewayReference: string;
   failureReason?: string;
+}
+
+// Statuts définitifs — le fournisseur ne reviendra plus dessus
+const SETTLED_STATUSES = new Set<string>(["success", "failed", "cancelled", "expired"]);
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function mapPayDunyaStatus(s: string): StatusCheckResult["status"] {
@@ -188,8 +151,96 @@ function mapPayDunyaStatus(s: string): StatusCheckResult["status"] {
 }
 
 /**
- * Vérifie le statut réel d'une transaction chez le fournisseur après initiation.
- * Retourne null en cas d'erreur (le webhook prendra le relais).
+ * Vérification unique du statut chez le fournisseur.
+ * Utilisé en interne par pollUntilSettled.
+ */
+async function fetchStatus(
+  aggregator: AggregatorCode,
+  client: ClapayClient | PayDunyaClient,
+  gatewayRef: string,
+): Promise<StatusCheckResult> {
+  if (aggregator === "clapay") {
+    const r = await (client as ClapayClient).getStatus(gatewayRef);
+    return {
+      status: r.status,
+      gatewayReference: r.clapay_reference || gatewayRef,
+      failureReason: r.failure_reason,
+    };
+  } else {
+    const r = await (client as PayDunyaClient).getStatus(gatewayRef);
+    return {
+      status: mapPayDunyaStatus(r.status),
+      gatewayReference: r.paydunya_reference || gatewayRef,
+      failureReason: r.failure_reason,
+    };
+  }
+}
+
+/**
+ * Polling du statut chez le fournisseur jusqu'à obtenir un statut définitif.
+ *
+ * Stratégie recommandée :
+ *   - Pay-in  : intervalMs=4000, maxDurationMs=20000 (l'utilisateur doit approuver sur son téléphone)
+ *   - Payout  : intervalMs=3000, maxDurationMs=30000 (automatisé, règle en quelques secondes)
+ *
+ * Si le délai max est atteint sans statut définitif, retourne le dernier statut connu
+ * (le webhook du fournisseur confirme ensuite le statut final).
+ */
+export async function pollUntilSettled(
+  aggregator: AggregatorCode,
+  client: ClapayClient | PayDunyaClient,
+  gatewayRef: string,
+  options?: {
+    intervalMs?: number;
+    maxDurationMs?: number;
+  },
+): Promise<StatusCheckResult | null> {
+  if (!gatewayRef) return null;
+
+  const intervalMs    = options?.intervalMs    ?? 3_000;
+  const maxDurationMs = options?.maxDurationMs ?? 25_000;
+  const deadline      = Date.now() + maxDurationMs;
+  let lastResult: StatusCheckResult | null = null;
+  let attempt = 0;
+
+  // First check after a short initial wait (fournisseur peut déjà avoir une réponse)
+  await sleep(Math.min(intervalMs, 2_000));
+
+  while (Date.now() < deadline) {
+    attempt++;
+    try {
+      const result = await fetchStatus(aggregator, client, gatewayRef);
+      lastResult = result;
+
+      console.info(
+        `[Poll#${attempt}] ${aggregator}/${gatewayRef} → ${result.status} (+${Date.now() - (deadline - maxDurationMs)}ms)`,
+      );
+
+      if (SETTLED_STATUSES.has(result.status)) {
+        console.info(`[Poll] Settled: ${result.status}`);
+        return result;
+      }
+    } catch (err: any) {
+      console.warn(`[Poll#${attempt}] ${aggregator}/${gatewayRef} check error: ${err.message}`);
+    }
+
+    // Attendre avant la prochaine tentative si on n'a pas encore dépassé le délai
+    if (Date.now() + intervalMs < deadline) {
+      await sleep(intervalMs);
+    } else {
+      break;
+    }
+  }
+
+  console.info(
+    `[Poll] Timeout après ${maxDurationMs}ms — dernier statut: ${lastResult?.status ?? "null"}. Le webhook confirmera.`,
+  );
+  return lastResult;
+}
+
+/**
+ * Compatibilité — appel unique (remplacé par pollUntilSettled dans les nouveaux endpoints).
+ * Conservé pour éviter les imports cassés.
  */
 export async function checkStatusAfterInit(
   aggregator: AggregatorCode,
@@ -198,24 +249,38 @@ export async function checkStatusAfterInit(
 ): Promise<StatusCheckResult | null> {
   if (!gatewayRef) return null;
   try {
-    if (aggregator === "clapay") {
-      const r = await (client as ClapayClient).getStatus(gatewayRef);
-      return {
-        status: r.status,
-        gatewayReference: r.clapay_reference || gatewayRef,
-        failureReason: r.failure_reason,
-      };
-    } else {
-      const r = await (client as PayDunyaClient).getStatus(gatewayRef);
-      return {
-        status: mapPayDunyaStatus(r.status),
-        gatewayReference: r.paydunya_reference || gatewayRef,
-        failureReason: r.failure_reason,
-      };
-    }
+    return await fetchStatus(aggregator, client, gatewayRef);
   } catch (err: any) {
-    console.warn(`[StatusCheck] Impossible de vérifier le statut ${aggregator}/${gatewayRef}: ${err.message}`);
+    console.warn(`[StatusCheck] ${aggregator}/${gatewayRef}: ${err.message}`);
     return null;
+  }
+}
+
+export async function routePayin(params: PayinParams): Promise<NormalizedPayinResult> {
+  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator);
+
+  if (aggregator === "clapay") {
+    const c = client as ClapayClient;
+    const res = await c.initiatePayin(params);
+    if (!res.success) throw new Error(res.message ?? "Échec Clapay payin");
+    return {
+      aggregator,
+      externalRef: res.clapay_reference,
+      paymentUrl: res.payment_url ?? null,
+      ussdCode: res.ussd_code ?? null,
+      message: "Prompt de paiement envoyé via Clapay",
+    };
+  } else {
+    const p = client as PayDunyaClient;
+    const res = await p.initiatePayin(params);
+    if (!res.success) throw new Error(res.message ?? "Échec PayDunya payin");
+    return {
+      aggregator,
+      externalRef: res.paydunya_reference,
+      paymentUrl: res.payment_url ?? null,
+      ussdCode: null,
+      message: "Prompt de paiement envoyé via PayDunya",
+    };
   }
 }
 
@@ -225,9 +290,7 @@ export async function routePayout(params: PayoutParams): Promise<NormalizedPayou
   if (aggregator === "clapay") {
     const c = client as ClapayClient;
     const res = await c.initiatePayout(params);
-    if (!res.success) {
-      throw new Error(res.message ?? "Échec Clapay payout");
-    }
+    if (!res.success) throw new Error(res.message ?? "Échec Clapay payout");
     return {
       aggregator,
       externalRef: res.clapay_reference,
@@ -236,9 +299,7 @@ export async function routePayout(params: PayoutParams): Promise<NormalizedPayou
   } else {
     const p = client as PayDunyaClient;
     const res = await p.initiatePayout(params);
-    if (!res.success) {
-      throw new Error(res.message ?? "Échec PayDunya payout");
-    }
+    if (!res.success) throw new Error(res.message ?? "Échec PayDunya payout");
     return {
       aggregator,
       externalRef: res.paydunya_reference,
