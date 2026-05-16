@@ -170,6 +170,55 @@ export async function routePayin(params: PayinParams): Promise<NormalizedPayinRe
   }
 }
 
+// ─── Normalized status check result ──────────────────────────────────────────
+export interface StatusCheckResult {
+  status: "pending" | "processing" | "success" | "failed" | "expired" | "cancelled";
+  gatewayReference: string;
+  failureReason?: string;
+}
+
+function mapPayDunyaStatus(s: string): StatusCheckResult["status"] {
+  const u = (s ?? "").toLowerCase();
+  if (u === "completed" || u === "success" || u === "paid") return "success";
+  if (u === "failed" || u === "error" || u === "rejected" || u === "declined") return "failed";
+  if (u === "cancelled" || u === "canceled") return "cancelled";
+  if (u === "expired") return "expired";
+  if (u === "processing" || u === "initiated") return "processing";
+  return "pending";
+}
+
+/**
+ * Vérifie le statut réel d'une transaction chez le fournisseur après initiation.
+ * Retourne null en cas d'erreur (le webhook prendra le relais).
+ */
+export async function checkStatusAfterInit(
+  aggregator: AggregatorCode,
+  client: ClapayClient | PayDunyaClient,
+  gatewayRef: string,
+): Promise<StatusCheckResult | null> {
+  if (!gatewayRef) return null;
+  try {
+    if (aggregator === "clapay") {
+      const r = await (client as ClapayClient).getStatus(gatewayRef);
+      return {
+        status: r.status,
+        gatewayReference: r.clapay_reference || gatewayRef,
+        failureReason: r.failure_reason,
+      };
+    } else {
+      const r = await (client as PayDunyaClient).getStatus(gatewayRef);
+      return {
+        status: mapPayDunyaStatus(r.status),
+        gatewayReference: r.paydunya_reference || gatewayRef,
+        failureReason: r.failure_reason,
+      };
+    }
+  } catch (err: any) {
+    console.warn(`[StatusCheck] Impossible de vérifier le statut ${aggregator}/${gatewayRef}: ${err.message}`);
+    return null;
+  }
+}
+
 export async function routePayout(params: PayoutParams): Promise<NormalizedPayoutResult> {
   const { aggregator, client } = await resolveAggregator(params.country_code, params.operator);
 

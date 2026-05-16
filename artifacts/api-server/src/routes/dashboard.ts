@@ -27,7 +27,7 @@ import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam }
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
-import { resolveAggregator, AggregatorNotConfiguredError } from "../lib/aggregator-router";
+import { resolveAggregator, AggregatorNotConfiguredError, checkStatusAfterInit } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 
@@ -530,15 +530,34 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
         gatewayRef = r.paydunya_reference;
       }
 
+      // Vérifier le statut réel chez le fournisseur avant de répondre
+      const statusCheck = await checkStatusAfterInit(aggregator, client, gatewayRef);
+      const verifiedStatus = statusCheck?.status ?? "processing";
+      const verifiedFailureReason = statusCheck?.failureReason;
+
       await db.update(transactionsTable)
-        .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+        .set({
+          status: verifiedStatus as any,
+          externalRef: gatewayRef,
+          ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(transactionsTable.id, tx.id));
 
+      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
+        res.status(502).json({
+          error: verifiedFailureReason ?? "Paiement rejeté par le fournisseur",
+          reference, status: verifiedStatus, gateway: aggregator,
+        });
+        return;
+      }
+
       res.status(201).json({
-        transaction: { ...tx, status: "processing" },
+        transaction: { ...tx, status: verifiedStatus },
         fee, netAmount, feeRate: `${feeRate * 100}%`,
         walletId: wallet.id,
         gateway: aggregator, gateway_reference: gatewayRef,
+        verified_status: verifiedStatus,
         message: "Prompt de paiement envoyé au téléphone du client. Le wallet sera crédité après confirmation.",
       });
     } catch (err: any) {
@@ -674,22 +693,47 @@ router.post("/dashboard/payout", requireAuth, async (req, res) => {
         gatewayRef = r.paydunya_reference;
       }
 
+      // Vérifier le statut réel chez le fournisseur avant de répondre
+      const statusCheck = await checkStatusAfterInit(aggregator, client, gatewayRef);
+      const verifiedStatus = statusCheck?.status ?? "processing";
+      const verifiedFailureReason = statusCheck?.failureReason;
+
       await db.update(transactionsTable)
-        .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+        .set({
+          status: verifiedStatus as any,
+          externalRef: gatewayRef,
+          ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(transactionsTable.id, tx.id));
+
+      // Si le fournisseur confirme un échec immédiat → rembourser le wallet
+      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
+        await db.update(walletsTable)
+          .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+          .where(eq(walletsTable.id, wallet.id));
+        res.status(502).json({
+          error: verifiedFailureReason ?? "Payout rejeté par le fournisseur",
+          reference, status: verifiedStatus, gateway: aggregator,
+        });
+        return;
+      }
 
       createNotification(
         userId, "info", "transaction",
         `Pay-out en cours — ${amount.toLocaleString("fr-FR")} ${currency}`,
-        `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. Réf : ${reference}.`,
+        `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. Statut initial : ${verifiedStatus}. Réf : ${reference}.`,
         "/dashboard/payments",
       ).catch(() => {});
 
       res.status(201).json({
-        transaction: { ...tx, status: "processing" },
+        transaction: { ...tx, status: verifiedStatus },
         fee, totalDebit, feeRate: `${payoutFeeRate * 100}%`,
         gateway: aggregator, gateway_reference: gatewayRef,
-        message: "Payout en cours de traitement. Le statut sera mis à jour via webhook.",
+        verified_status: verifiedStatus,
+        message: verifiedStatus === "success"
+          ? "Payout traité avec succès par le fournisseur."
+          : "Payout en cours de traitement. Le statut sera mis à jour via webhook.",
       });
     } catch (err: any) {
       // Rollback balance on failure
@@ -1288,10 +1332,41 @@ router.post("/dashboard/reversements", requireAuth, async (req, res) => {
         gatewayRef = r.paydunya_reference;
       }
 
-      // Mettre à jour la transaction en processing (le webhook confirmera)
+      // Vérifier le statut réel chez le fournisseur avant de répondre
+      const statusCheck = await checkStatusAfterInit(aggregator, client, gatewayRef);
+      const verifiedStatus = statusCheck?.status ?? "processing";
+      const verifiedFailureReason = statusCheck?.failureReason;
+
       await db.update(transactionsTable)
-        .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+        .set({
+          status: verifiedStatus as any,
+          externalRef: gatewayRef,
+          ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(transactionsTable.id, tx.id));
+
+      // Si le fournisseur confirme un échec immédiat → rembourser + marquer failed
+      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
+        await db.update(walletsTable)
+          .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+          .where(eq(walletsTable.id, wallet.id));
+        await db.update(reversementsTable)
+          .set({ status: "failed", failureReason: verifiedFailureReason ?? "Rejeté par le fournisseur" })
+          .where(eq(reversementsTable.id, reversement.id));
+        res.status(502).json({
+          error: verifiedFailureReason ?? "Reversement rejeté par le fournisseur",
+          reference, status: verifiedStatus, gateway: aggregator,
+        });
+        return;
+      }
+
+      // Si succès immédiat → marquer completed
+      if (verifiedStatus === "success") {
+        await db.update(reversementsTable)
+          .set({ status: "completed" })
+          .where(eq(reversementsTable.id, reversement.id));
+      }
 
     } catch (err: any) {
       // Remboursement du wallet en cas d'échec agrégateur

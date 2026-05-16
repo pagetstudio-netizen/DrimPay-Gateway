@@ -13,7 +13,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
-import { resolveAggregator, AggregatorNotConfiguredError } from "../lib/aggregator-router";
+import { resolveAggregator, AggregatorNotConfiguredError, checkStatusAfterInit } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam } from "../lib/telegram";
 
 const router = Router();
@@ -403,12 +403,31 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         paymentUrl = pdRes.payment_url ?? null;
       }
 
+      // Vérifier le statut réel chez le fournisseur avant de répondre
+      const statusCheck = await checkStatusAfterInit(aggregator, client, externalRef);
+      const verifiedStatus = statusCheck?.status ?? "processing";
+      const verifiedFailureReason = statusCheck?.failureReason;
+
       await db.update(transactionsTable)
-        .set({ status: "processing", externalRef, updatedAt: new Date() })
+        .set({
+          status: verifiedStatus as any,
+          externalRef,
+          ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(transactionsTable.id, tx.id));
 
+      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
+        res.status(502).json({
+          error: "PAYMENT_REJECTED",
+          message: verifiedFailureReason ?? "Paiement rejeté par le fournisseur",
+          reference, status: verifiedStatus, gateway: aggregator,
+        });
+        return;
+      }
+
       res.status(201).json({
-        reference, order_id, status: "processing",
+        reference, order_id, status: verifiedStatus,
         amount, fee, net_amount: netAmount, currency, country_code, operator, phone, mode,
         expires_at: expiresAt.toISOString(),
         webhook_url: webhook_url ?? null,
@@ -417,6 +436,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         message: "Prompt de paiement envoyé au téléphone du client",
         gateway: aggregator,
         gateway_reference: externalRef,
+        verified_status: verifiedStatus,
         created_at: tx.createdAt.toISOString(),
       });
       return;

@@ -21,7 +21,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import crypto from "crypto";
-import { resolveAggregator, AggregatorNotConfiguredError } from "../lib/aggregator-router";
+import { resolveAggregator, AggregatorNotConfiguredError, checkStatusAfterInit } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { notifyPayin } from "../lib/telegram";
@@ -360,9 +360,27 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
       paymentUrl = pdRes.payment_url ?? null;
     }
 
+    // Vérifier le statut réel chez le fournisseur avant de répondre
+    const statusCheck = await checkStatusAfterInit(aggregator, client, externalRef);
+    const verifiedStatus = statusCheck?.status ?? "processing";
+    const verifiedFailureReason = statusCheck?.failureReason;
+
     await db.update(transactionsTable)
-      .set({ status: "processing", externalRef, updatedAt: new Date() })
+      .set({
+        status: verifiedStatus as any,
+        externalRef,
+        ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(transactionsTable.id, tx.id));
+
+    if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
+      res.status(502).json({
+        error: verifiedFailureReason ?? "Paiement rejeté par le fournisseur",
+        reference, status: verifiedStatus, gateway: aggregator,
+      });
+      return;
+    }
 
     // Increment uses count on payment link
     await db.update(paymentLinksTable)
@@ -378,12 +396,13 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
 
     res.status(201).json({
       reference,
-      status: "processing",
+      status: verifiedStatus,
       amount, fee, net_amount: netAmount, currency,
       payment_url: paymentUrl,
       ussd_code: ussdCode,
       message: "Prompt de paiement envoyé au téléphone du client",
       gateway: aggregator,
+      verified_status: verifiedStatus,
     });
 
   } catch (err: any) {
