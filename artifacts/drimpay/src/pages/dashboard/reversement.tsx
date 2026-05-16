@@ -12,7 +12,73 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CountryPicker } from "@/components/ui/country-picker";
 import { useAuth } from "@/lib/auth";
-import { getOperatorLogo } from "@/lib/operator-logos";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const OPERATOR_LOGOS: Record<string, string> = {
+  "TMoney":           `${BASE}/op-tmoney.png`,
+  "Moov Money":       `${BASE}/op-moov.png`,
+  "MTN Mobile Money": `${BASE}/op-mtn.png`,
+  "MTN MoMo":         `${BASE}/op-mtn.png`,
+  "MTN Ghana":        `${BASE}/op-mtn.png`,
+  "MTN Nigeria":      `${BASE}/op-mtn.png`,
+  "MTN":              `${BASE}/op-mtn.png`,
+  "Orange Money":     `${BASE}/op-orange-money.png`,
+  "Wave":             `${BASE}/op-wave.png`,
+  "Wizall":           `${BASE}/op-wizall.png`,
+  "Wizall Money":     `${BASE}/op-wizall.png`,
+  "Vodacom":          `${BASE}/op-vodacom.png`,
+  "Vodafone Ghana":   `${BASE}/op-vodacom.png`,
+  "Airtel":           `${BASE}/op-airtel.png`,
+  "Airtel Nigeria":   `${BASE}/op-airtel.png`,
+  "Airtel Money":     `${BASE}/op-airtel.png`,
+};
+
+const OPERATOR_COLORS: Record<string, string> = {
+  "TMoney":           "#FFCC00",
+  "Moov Money":       "#F06400",
+  "MTN Mobile Money": "#FFCC00",
+  "MTN MoMo":         "#FFCC00",
+  "MTN Ghana":        "#FFCC00",
+  "MTN Nigeria":      "#FFCC00",
+  "MTN":              "#FFCC00",
+  "Orange Money":     "#FF6600",
+  "Wave":             "#1AC9FF",
+  "Wizall":           "#00BCD4",
+  "Wizall Money":     "#00BCD4",
+  "Vodacom":          "#E60000",
+  "Vodafone Ghana":   "#E60000",
+  "Airtel":           "#E40000",
+  "Airtel Nigeria":   "#E40000",
+  "Airtel Money":     "#E40000",
+};
+
+function OperatorLogo({ name, size = 32 }: { name: string; size?: number }) {
+  const src = OPERATOR_LOGOS[name];
+  const bg = OPERATOR_COLORS[name] ?? "#374151";
+  const [ok, setOk] = useState(true);
+  if (src && ok) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        width={size}
+        height={size}
+        className="rounded-full object-contain"
+        style={{ width: size, height: size, background: bg }}
+        onError={() => setOk(false)}
+      />
+    );
+  }
+  return (
+    <span
+      className="rounded-full flex items-center justify-center text-white font-bold text-xs"
+      style={{ width: size, height: size, background: bg, fontSize: size * 0.35 }}
+    >
+      {name.charAt(0).toUpperCase()}
+    </span>
+  );
+}
 
 
 const COUNTRIES = [
@@ -197,7 +263,7 @@ export default function DashboardReversement() {
                           options={(selectedCountry?.operators ?? []).map(op => ({
                             code: op,
                             name: op,
-                            flag: getOperatorLogo(op, 28),
+                            flag: <OperatorLogo name={op} size={32} />,
                           }))}
                           value={field.value}
                           onChange={field.onChange}
@@ -296,15 +362,15 @@ export default function DashboardReversement() {
                     const country = COUNTRIES.find((c) => c.code === r.countryCode);
                     return (
                       <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background/40">
-                        <div className="w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center text-sm">
-                          {country?.flag ?? "🌍"}
+                        <div className="shrink-0">
+                          <OperatorLogo name={r.operator} size={36} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{r.operator} · {r.phone}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString("fr-FR")}</p>
+                          <p className="text-sm font-medium truncate">{r.operator}</p>
+                          <p className="text-xs text-muted-foreground truncate">{country?.flag ?? "🌍"} {r.phone} · {new Date(r.createdAt).toLocaleDateString("fr-FR")}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-sm font-semibold">{r.net.toLocaleString()} {r.currency}</p>
+                          <p className="text-sm font-semibold">{Number(r.net).toLocaleString()} {r.currency}</p>
                           <div className={`flex items-center gap-1 justify-end text-xs ${st.color}`}>
                             <st.icon className="w-3 h-3" />
                             {st.label}
