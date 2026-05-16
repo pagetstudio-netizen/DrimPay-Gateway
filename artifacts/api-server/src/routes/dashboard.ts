@@ -19,6 +19,7 @@ import {
   qrCodesTable,
   adminSettingsTable,
   notificationsTable,
+  globalBannersTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql, gte, asc } from "drizzle-orm";
 import crypto from "crypto";
@@ -2261,6 +2262,15 @@ router.get("/support/links", async (_req, res) => {
   const rows = await db.select().from(socialLinksTable)
     .where(eq(socialLinksTable.active, true))
     .orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
+  res.json(rows);
+});
+
+// ─── Public: Active global banners ───────────────────────────────────────────
+
+router.get("/banners/active", async (_req, res) => {
+  const rows = await db.select().from(globalBannersTable)
+    .where(eq(globalBannersTable.active, true))
+    .orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
 

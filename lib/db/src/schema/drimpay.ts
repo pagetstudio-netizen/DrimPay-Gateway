@@ -510,3 +510,18 @@ export const notificationsTable = pgTable("notifications", {
   read: boolean("read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const globalBannersTable = pgTable("global_banners", {
+  id: serial("id").primaryKey(),
+  message: text("message").notNull(),
+  color: text("color").notNull().default("blue"),
+  customColor: text("custom_color"),
+  buttonText: text("button_text"),
+  buttonLink: text("button_link"),
+  imageUrl: text("image_url"),
+  active: boolean("active").notNull().default(true),
+  createdById: integer("created_by_id").references(() => usersTable.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export type GlobalBanner = typeof globalBannersTable.$inferSelect;

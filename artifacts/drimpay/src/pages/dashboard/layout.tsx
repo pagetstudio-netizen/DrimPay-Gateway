@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/ui/notification-bell";
+import { GlobalBanner } from "@/components/global-banner";
 
 import walletImg       from "@assets/10149443_1778149009900.png";
 import reversImg       from "@assets/téléchargement_(58)_1778601564225.png";
@@ -512,6 +513,9 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Global admin banners */}
+        <GlobalBanner />
+
         {/* Sandbox banner */}
         <AnimatePresence>
           {mode === "sandbox" && (

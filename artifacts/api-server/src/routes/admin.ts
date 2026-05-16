@@ -6,14 +6,14 @@ import {
   apiKeysTable, paymentLinksTable, operatorsTable, countriesTable,
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
   blacklistedPhonesTable, paymentLinkAttemptsTable, socialLinksTable,
-  notificationsTable, supportUsersTable,
+  notificationsTable, supportUsersTable, globalBannersTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import path from "path";
 import fs from "fs";
-import { downloadKybDocument, downloadContractTemplate, uploadContractTemplateBuffer, getContractTemplateInfo } from "../lib/storage";
+import { downloadKybDocument, downloadContractTemplate, uploadContractTemplateBuffer, getContractTemplateInfo, uploadBannerImage } from "../lib/storage";
 import multer from "multer";
 import {
   notifyKybDecision, notifyBlacklist,
@@ -1556,6 +1556,74 @@ router.delete("/admin/support-agents/:id", requireAdmin, async (req, res) => {
 
   await db.delete(supportUsersTable).where(eq(supportUsersTable.id, id));
   await logAdminAction(req.session.userId!, "DELETE_SUPPORT_AGENT", "support_user", String(id), `Deleted: ${agent.email}`, req.ip);
+  res.json({ success: true });
+});
+
+// ─── Global Banners ───────────────────────────────────────────────────────────
+
+const bannerImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"].includes(file.mimetype);
+    cb(null, ok);
+  },
+});
+
+router.get("/admin/global-banners", requireAdmin, async (_req, res) => {
+  const rows = await db.select().from(globalBannersTable).orderBy(desc(globalBannersTable.createdAt));
+  res.json(rows);
+});
+
+router.post("/admin/global-banners/upload-image", requireAdmin, bannerImageUpload.single("image"), async (req, res) => {
+  if (!req.file) { res.status(400).json({ error: "Aucun fichier reçu" }); return; }
+  try {
+    const publicUrl = await uploadBannerImage(req.file.buffer, req.file.mimetype, req.file.originalname);
+    res.json({ url: publicUrl });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "Échec upload" });
+  }
+});
+
+const bannerCreateSchema = z.object({
+  message: z.string().min(1).max(500),
+  color: z.string().default("blue"),
+  customColor: z.string().optional(),
+  buttonText: z.string().max(60).optional(),
+  buttonLink: z.string().optional(),
+  imageUrl: z.string().optional(),
+  active: z.boolean().default(true),
+});
+
+router.post("/admin/global-banners", requireAdmin, async (req, res) => {
+  const parsed = bannerCreateSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Données invalides", details: parsed.error.issues }); return; }
+  const [banner] = await db.insert(globalBannersTable).values({
+    ...parsed.data,
+    createdById: req.session.userId,
+  }).returning();
+  await logAdminAction(req.session.userId!, "CREATE_BANNER", "global_banner", String(banner.id), parsed.data.message, req.ip);
+  res.json(banner);
+});
+
+router.patch("/admin/global-banners/:id/toggle", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Bannière introuvable" }); return; }
+  const [updated] = await db.update(globalBannersTable)
+    .set({ active: !existing.active, updatedAt: new Date() })
+    .where(eq(globalBannersTable.id, id))
+    .returning();
+  await logAdminAction(req.session.userId!, updated.active ? "ENABLE_BANNER" : "DISABLE_BANNER", "global_banner", String(id), undefined, req.ip);
+  res.json(updated);
+});
+
+router.delete("/admin/global-banners/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const [existing] = await db.select({ id: globalBannersTable.id }).from(globalBannersTable).where(eq(globalBannersTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Bannière introuvable" }); return; }
+  await db.delete(globalBannersTable).where(eq(globalBannersTable.id, id));
+  await logAdminAction(req.session.userId!, "DELETE_BANNER", "global_banner", String(id), undefined, req.ip);
   res.json({ success: true });
 });
 

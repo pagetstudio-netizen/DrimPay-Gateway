@@ -160,3 +160,42 @@ export async function deleteKybDocument(storagePath: string): Promise<void> {
   if (!supabaseAdmin) throw new Error("[Storage] Supabase not configured");
   await supabaseAdmin.storage.from(KYB_BUCKET).remove([storagePath]);
 }
+
+// ── Banner images — Supabase Storage ─────────────────────────────────────────
+
+const BANNER_BUCKET = "banner-images";
+
+export async function ensureBannerBucket(): Promise<void> {
+  if (!serviceRoleKey || !supabaseAdmin) return;
+  try {
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const exists = buckets?.some((b) => b.id === BANNER_BUCKET);
+    if (!exists) {
+      await supabaseAdmin.storage.createBucket(BANNER_BUCKET, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+        allowedMimeTypes: ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"],
+      });
+      console.log(`[Storage] Bucket '${BANNER_BUCKET}' created`);
+    }
+  } catch (err: any) {
+    console.warn("[Storage] ensureBannerBucket:", err?.message ?? err);
+  }
+}
+
+export async function uploadBannerImage(
+  buffer: Buffer,
+  mimetype: string,
+  originalName: string,
+): Promise<string> {
+  if (!serviceRoleKey || !supabaseAdmin) throw new Error("SUPABASE_SERVICE_ROLE_KEY required");
+  await ensureBannerBucket();
+  const ext = originalName.split(".").pop()?.toLowerCase() ?? "png";
+  const filename = `banner_${Date.now()}.${ext}`;
+  const { error } = await supabaseAdmin.storage
+    .from(BANNER_BUCKET)
+    .upload(filename, buffer, { contentType: mimetype, upsert: false });
+  if (error) throw new Error(`Banner upload failed: ${error.message}`);
+  const { data } = supabaseAdmin.storage.from(BANNER_BUCKET).getPublicUrl(filename);
+  return data.publicUrl;
+}
