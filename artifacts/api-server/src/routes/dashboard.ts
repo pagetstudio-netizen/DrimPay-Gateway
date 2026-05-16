@@ -278,10 +278,51 @@ router.get("/dashboard/wallets", requireAuth, async (req, res) => {
     and(eq(walletsTable.userId, userId), eq(walletsTable.mode, currentMode))
   );
 
-  const enriched = wallets.map((w) => {
+  const enriched = await Promise.all(wallets.map(async (w) => {
     const country = COUNTRIES.find((c) => c.code === w.countryCode);
-    return { ...w, country };
-  });
+
+    // Stats par wallet
+    const txStats = await db
+      .select({
+        type: transactionsTable.type,
+        status: transactionsTable.status,
+        total: sum(transactionsTable.amount),
+        fees: sum(transactionsTable.fee),
+        cnt: count(),
+      })
+      .from(transactionsTable)
+      .where(and(
+        eq(transactionsTable.walletId, w.id),
+        eq(transactionsTable.mode, currentMode),
+      ))
+      .groupBy(transactionsTable.type, transactionsTable.status);
+
+    const payinSuccess  = txStats.find(r => r.type === "payin"  && r.status === "success");
+    const payoutSuccess = txStats.find(r => r.type === "payout" && r.status === "success");
+    const payinPending  = txStats.filter(r => r.type === "payin" && ["pending","processing"].includes(r.status));
+
+    const payinVolume   = parseFloat(String(payinSuccess?.total  ?? 0));
+    const payoutVolume  = parseFloat(String(payoutSuccess?.total ?? 0));
+    const payinFees     = parseFloat(String(payinSuccess?.fees   ?? 0));
+    const payoutFees    = parseFloat(String(payoutSuccess?.fees  ?? 0));
+    const payinCount    = Number(payinSuccess?.cnt  ?? 0);
+    const payoutCount   = Number(payoutSuccess?.cnt ?? 0);
+    const pendingCount  = payinPending.reduce((a, r) => a + Number(r.cnt), 0);
+
+    return {
+      ...w,
+      country,
+      stats: {
+        payinVolume,
+        payoutVolume,
+        payinFees,
+        payoutFees,
+        payinCount,
+        payoutCount,
+        pendingCount,
+      },
+    };
+  }));
 
   res.json(enriched);
 });
