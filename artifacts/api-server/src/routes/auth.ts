@@ -7,6 +7,13 @@ import { usersTable, apiKeysTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { notifyNewUser, notifyAdminLogin } from "../lib/telegram";
 import { sendWelcomeEmail } from "../lib/mailer";
+import {
+  logSecurityEvent,
+  trackFailedLogin,
+  clearFailedLogins,
+  loginRateLimiter,
+  signupRateLimiter,
+} from "../middlewares/security";
 
 const router = Router();
 
@@ -23,7 +30,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-router.post("/auth/signup", async (req, res) => {
+router.post("/auth/signup", signupRateLimiter, async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -57,15 +64,14 @@ router.post("/auth/signup", async (req, res) => {
       prefix,
       env: "sandbox",
     });
-    console.log(`[DrimPay] Sandbox API key auto-generated for new user: ${email}`);
   } catch (e) {
     console.error("[DrimPay] Failed to auto-generate sandbox key at signup:", e);
   }
 
-  // Telegram: notify new merchant
-  notifyNewUser(user.email, user.companyName, user.country).catch(() => {});
+  // Security log
+  await logSecurityEvent({ eventType: "REGISTER", req, userId: user.id, details: `Nouveau compte : ${email}`, riskLevel: "low" });
 
-  // Email: welcome message (fire-and-forget)
+  notifyNewUser(user.email, user.companyName, user.country).catch(() => {});
   sendWelcomeEmail({ to: user.email, companyName: user.companyName }).catch(() => {});
 
   res.status(201).json({
@@ -79,7 +85,7 @@ router.post("/auth/signup", async (req, res) => {
   });
 });
 
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", loginRateLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input" });
@@ -90,20 +96,45 @@ router.post("/auth/login", async (req, res) => {
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (!user) {
+    const ip = req.ip ?? "unknown";
+    const isBrute = trackFailedLogin(ip);
+    await logSecurityEvent({
+      eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED",
+      req,
+      details: `Email inconnu : ${email}`,
+      riskLevel: isBrute ? "high" : "medium",
+    });
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
+    const ip = req.ip ?? "unknown";
+    const isBrute = trackFailedLogin(ip);
+    await logSecurityEvent({
+      eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED",
+      req,
+      userId: user.id,
+      details: `Mot de passe incorrect pour : ${email}`,
+      riskLevel: isBrute ? "high" : "medium",
+    });
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
 
+  clearFailedLogins(req.ip ?? "unknown");
   req.session.userId = user.id;
   req.session.role = user.role;
 
-  // Telegram: notify admin login
+  await logSecurityEvent({
+    eventType: "LOGIN_SUCCESS",
+    req,
+    userId: user.id,
+    details: `Connexion réussie : ${email}`,
+    riskLevel: "low",
+  });
+
   if (user.role === "admin") {
     const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "?";
     notifyAdminLogin(user.email, ip).catch(() => {});
@@ -120,7 +151,10 @@ router.post("/auth/login", async (req, res) => {
   });
 });
 
-router.post("/auth/logout", (req, res) => {
+router.post("/auth/logout", async (req, res) => {
+  if (req.session.userId) {
+    await logSecurityEvent({ eventType: "LOGOUT", req, userId: req.session.userId, riskLevel: "low" });
+  }
   req.session.destroy(() => {
     res.json({ ok: true });
   });
@@ -138,7 +172,6 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
-  // Default to sandbox until merchant explicitly switches to live
   if (!req.session.mode) req.session.mode = "sandbox";
 
   res.json({

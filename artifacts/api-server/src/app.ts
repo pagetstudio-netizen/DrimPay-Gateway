@@ -7,6 +7,11 @@ import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import {
+  helmetMiddleware,
+  globalRateLimiter,
+  ipBlockMiddleware,
+} from "./middlewares/security";
 
 const app: Express = express();
 
@@ -17,6 +22,29 @@ if (isProd) {
   app.set("trust proxy", 1);
 }
 
+// ── Security headers (helmet) ─────────────────────────────────────────────────
+app.use(helmetMiddleware);
+
+// ── CORS ─────────────────────────────────────────────────────────────────────
+const allowedOrigins = isProd
+  ? [
+      process.env["ALLOWED_ORIGIN"] ?? "",
+      /\.drimpay\.com$/,
+      /\.replit\.app$/,
+      /\.replit\.dev$/,
+    ].filter(Boolean)
+  : true;
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
+);
+
+// ── Session ──────────────────────────────────────────────────────────────────
 const sessionSecret = process.env["SESSION_SECRET"];
 if (!sessionSecret) throw new Error("SESSION_SECRET is required");
 
@@ -25,15 +53,17 @@ app.use(
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
+    name: "dp_sid",
     cookie: {
       httpOnly: true,
       secure: isProd,
-      sameSite: isProd ? "lax" : false,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: isProd ? "strict" : false,
+      maxAge: 24 * 60 * 60 * 1000, // 24h (réduit de 7j → 1j)
     },
   }),
 );
 
+// ── Logging ───────────────────────────────────────────────────────────────────
 app.use(
   pinoHttp({
     logger,
@@ -46,29 +76,41 @@ app.use(
         };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
 );
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
+// ── Body parsers ──────────────────────────────────────────────────────────────
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+
+// ── Security middleware (IP block + global rate limit) ─────────────────────────
+app.use(ipBlockMiddleware);
+app.use(globalRateLimiter);
+
+// ── API routes ────────────────────────────────────────────────────────────────
 app.use("/api", router);
 
-// ── Serve React SPA in production ─────────────────────────────────────────
+// ── Serve React SPA in production ─────────────────────────────────────────────
 if (isProd) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  // Built artifact is at: artifacts/api-server/dist/index.mjs
-  // Frontend dist is at:  artifacts/drimpay/dist/public
   const frontendDist = path.resolve(__dirname, "../../drimpay/dist/public");
 
   if (existsSync(frontendDist)) {
-    app.use(express.static(frontendDist, { maxAge: "7d", etag: true }));
-    // SPA fallback — serve index.html for all non-API routes
+    app.use(
+      express.static(frontendDist, {
+        maxAge: "7d",
+        etag: true,
+        setHeaders(res, filePath) {
+          // No cache for HTML entry point
+          if (filePath.endsWith("index.html")) {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          }
+        },
+      })
+    );
     app.get(/^(?!\/api).*$/, (_req, res) => {
       res.sendFile(path.join(frontendDist, "index.html"));
     });

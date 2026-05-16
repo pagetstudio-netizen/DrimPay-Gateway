@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, ShieldCheck, ArrowLeftRight, Wallet2,
   Layers, Globe2, KeyRound, Link2, FileText, Lock, Bell, Settings,
   Menu, X, ChevronRight, Search, LogOut, UserCircle, ChevronDown,
-  ShieldOff, Megaphone, FilePen, Share2, Headset,
+  ShieldOff, Megaphone, FilePen, Share2, Headset, ShieldAlert,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,8 @@ const navItems: NavItem[] = [
   { href: "/admin/kyb-contracts",label: "Contrats KYB",        icon: FileText },
   { href: "/admin/contract",     label: "Modèle contrat",      icon: FilePen },
   { href: "/admin/blacklist",    label: "Liste Noire",          icon: ShieldOff },
-  { href: "/admin/logs",         label: "Logs & Sécurité",     icon: Lock },
+  { href: "/admin/logs",         label: "Logs Admin",           icon: Lock },
+  { href: "/admin/security",     label: "Sécurité",             icon: ShieldAlert },
   { href: "/admin/broadcast",    label: "Messages marchands",  icon: Megaphone },
   { href: "/admin/notifications",label: "Notifications",       icon: Bell },
   { href: "/admin/social-links",     label: "Réseaux Sociaux",     icon: Share2 },

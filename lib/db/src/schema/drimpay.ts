@@ -468,6 +468,37 @@ export const qrCodesTable = pgTable("qr_codes", {
 
 export type QrCode = typeof qrCodesTable.$inferSelect;
 
+export const securityEventTypeEnum = pgEnum("security_event_type", [
+  "LOGIN_SUCCESS", "LOGIN_FAILED", "LOGOUT", "REGISTER",
+  "BRUTE_FORCE", "RATE_LIMITED", "IP_BLOCKED", "SUSPICIOUS_ACTIVITY",
+  "PASSWORD_CHANGED", "API_KEY_CREATED", "API_KEY_REVOKED",
+  "WEBHOOK_INVALID", "SESSION_EXPIRED",
+]);
+
+export const securityEventsTable = pgTable("security_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+  eventType: securityEventTypeEnum("event_type").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  details: text("details"),
+  riskLevel: text("risk_level").notNull().default("low"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const blockedIpsTable = pgTable("blocked_ips", {
+  id: serial("id").primaryKey(),
+  ip: text("ip").notNull().unique(),
+  reason: text("reason").notNull(),
+  blockedBy: integer("blocked_by").references(() => usersTable.id, { onDelete: "set null" }),
+  blockedUntil: timestamp("blocked_until"),
+  permanent: boolean("permanent").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type SecurityEvent = typeof securityEventsTable.$inferSelect;
+export type BlockedIp = typeof blockedIpsTable.$inferSelect;
+
 export const notificationsTable = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),

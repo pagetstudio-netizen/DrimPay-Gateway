@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { payoutRateLimiter, apiKeyRateLimiter } from "../middlewares/security";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import {
@@ -606,7 +607,7 @@ const payoutSchema = z.object({
   externalRef: z.string().optional(),
 });
 
-router.post("/dashboard/payout", requireAuth, async (req, res) => {
+router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
   const parsed = payoutSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -811,7 +812,7 @@ const createKeySchema = z.object({
   env: z.enum(["sandbox", "live"]),
 });
 
-router.post("/dashboard/api-keys", requireAuth, async (req, res) => {
+router.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const parsed = createKeySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input" });
@@ -847,9 +848,9 @@ router.post("/dashboard/api-keys", requireAuth, async (req, res) => {
   res.status(201).json({ ...key, warning: "Store this key securely." });
 });
 
-router.delete("/dashboard/api-keys/:id", requireAuth, async (req, res) => {
+router.delete("/dashboard/api-keys/:id", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const userId = req.session.userId!;
-  const keyId = parseInt(req.params.id);
+  const keyId = parseInt(String(req.params.id));
 
   const [key] = await db
     .select()
@@ -875,7 +876,7 @@ router.delete("/dashboard/api-keys/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/dashboard/api-keys/regenerate", requireAuth, async (req, res) => {
+router.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const userId = req.session.userId!;
   const { env } = req.body as { env: string };
 
