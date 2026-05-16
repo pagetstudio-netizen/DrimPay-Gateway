@@ -2,7 +2,7 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { useLocation, Link } from "wouter";
 import {
   LayoutDashboard, MessageSquare, Settings, LogOut,
-  ShieldCheck, Menu, X, Bell,
+  ShieldCheck, Menu, X, Bell, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,7 @@ export function SupportAuthProvider({ children }: { children: React.ReactNode })
 const NAV = [
   { href: "/support-admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/support-admin/messages", icon: MessageSquare, label: "Messages" },
+  { href: "/support-admin/notifications", icon: Megaphone, label: "Notifications" },
   { href: "/support-admin/settings", icon: Settings, label: "Paramètres" },
 ];
 

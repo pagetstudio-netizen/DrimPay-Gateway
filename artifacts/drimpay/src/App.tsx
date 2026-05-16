@@ -59,6 +59,7 @@ import SupportAdminDashboard from "@/pages/support-admin/index";
 import SupportAdminMessages from "@/pages/support-admin/messages";
 import SupportAdminMessageDetail from "@/pages/support-admin/message-detail";
 import SupportAdminSettings from "@/pages/support-admin/settings";
+import SupportAdminNotifications from "@/pages/support-admin/notifications";
 
 import AdminDashboard from "@/pages/admin/index";
 import AdminMerchants from "@/pages/admin/merchants";
@@ -330,6 +331,7 @@ function Router() {
         <Route path="/support-admin/messages/:id" component={SupportAdminMessageDetail} />
         <Route path="/support-admin/messages" component={SupportAdminMessages} />
         <Route path="/support-admin/settings" component={SupportAdminSettings} />
+        <Route path="/support-admin/notifications" component={SupportAdminNotifications} />
         <Route component={SupportAdminDashboard} />
       </Switch>
     );

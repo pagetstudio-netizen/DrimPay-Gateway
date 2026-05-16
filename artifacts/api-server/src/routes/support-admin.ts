@@ -8,6 +8,7 @@ import {
   supportSettingsTable,
   contactSubmissionsTable,
   socialLinksTable,
+  globalBannersTable,
 } from "@workspace/db/schema";
 import { eq, desc, count, and, gte, sql } from "drizzle-orm";
 import { sendSupportReplyEmail } from "../lib/mailer";
@@ -225,6 +226,48 @@ router.patch("/support-admin/socials/:id", requireSupportAuth, requirePasswordCh
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalide" }); return; }
   await db.update(socialLinksTable).set({ url: parsed.data.url, ...(parsed.data.active !== undefined ? { active: parsed.data.active } : {}), updatedAt: new Date() }).where(eq(socialLinksTable.id, id));
+  res.json({ success: true });
+});
+
+// ── Global Banners ───────────────────────────────────────────────────────────
+
+const bannerSchema = z.object({
+  message: z.string().min(1).max(500),
+  color: z.string().default("blue"),
+  customColor: z.string().optional(),
+  buttonText: z.string().max(60).optional(),
+  buttonLink: z.string().optional(),
+  active: z.boolean().default(true),
+});
+
+router.get("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (_req, res) => {
+  const rows = await db.select().from(globalBannersTable).orderBy(desc(globalBannersTable.createdAt));
+  res.json(rows);
+});
+
+router.post("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const parsed = bannerSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Données invalides" }); return; }
+  const [banner] = await db.insert(globalBannersTable).values(parsed.data).returning();
+  res.json(banner);
+});
+
+router.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Bannière introuvable" }); return; }
+  const [updated] = await db.update(globalBannersTable)
+    .set({ active: !existing.active, updatedAt: new Date() })
+    .where(eq(globalBannersTable.id, id))
+    .returning();
+  res.json(updated);
+});
+
+router.delete("/support-admin/global-banners/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const [existing] = await db.select({ id: globalBannersTable.id }).from(globalBannersTable).where(eq(globalBannersTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Bannière introuvable" }); return; }
+  await db.delete(globalBannersTable).where(eq(globalBannersTable.id, id));
   res.json({ success: true });
 });
 
