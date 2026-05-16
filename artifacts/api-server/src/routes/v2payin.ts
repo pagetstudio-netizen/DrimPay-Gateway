@@ -355,6 +355,12 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       : "https://api.drimpay.com";
 
+    const frontendBaseUrl = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : (process.env.FRONTEND_BASE_URL ?? "https://drimpay.com");
+
+    const defaultReturnUrl = `${frontendBaseUrl}/payment/success`;
+
     try {
       // Resolve aggregator from operator_aggregators table (per-operator routing)
       const { aggregator, client } = await resolveAggregator(country_code, operator);
@@ -382,7 +388,9 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         const { ClapayClient } = await import("../lib/clapay");
         const clapayRes = await (client as InstanceType<typeof ClapayClient>).initiatePayin({
           amount, currency, country_code, operator, phone, reference, order_id,
-          callback_url: callbackUrl, description,
+          callback_url: callbackUrl,
+          return_url: defaultReturnUrl,
+          description,
         });
         if (!clapayRes.success) {
           throw new ClapayError(clapayRes.message ?? "Échec Clapay", 502, clapayRes);

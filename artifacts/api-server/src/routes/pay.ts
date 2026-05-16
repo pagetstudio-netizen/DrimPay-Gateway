@@ -321,6 +321,12 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
     ? `https://${process.env.REPLIT_DEV_DOMAIN}`
     : "https://api.drimpay.com";
 
+  const frontendBaseUrl = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : (process.env.FRONTEND_BASE_URL ?? "https://drimpay.com");
+
+  const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
+
   try {
     const { aggregator, client } = await resolveAggregator(countryCode, operator);
     const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
@@ -335,6 +341,7 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
         amount, currency, country_code: countryCode, operator, phone,
         reference, order_id: tx.orderId!,
         callback_url: callbackUrl,
+        return_url: returnUrl,
         description: link.title,
         customer_name: customerName,
         customer_email: customerEmail,
