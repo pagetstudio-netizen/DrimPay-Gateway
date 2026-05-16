@@ -1,10 +1,11 @@
 /**
  * ─── Public Payment Link Routes ───────────────────────────────────────────────
  *
- *   GET  /api/pay/:token          → load link data (public)
- *   POST /api/pay/:token          → initiate payment
- *   POST /api/pay/:token/attempt  → log attempt
- *   PATCH /api/pay/:token/attempt/:id → update attempt status
+ *   GET  /api/pay/:token                   → load link data (public)
+ *   POST /api/pay/:token                   → initiate payment
+ *   POST /api/pay/:token/attempt           → log attempt
+ *   PATCH /api/pay/:token/attempt/:id      → update attempt status
+ *   GET  /api/pay/status/:reference        → poll transaction status
  */
 
 import { Router } from "express";
@@ -55,6 +56,40 @@ function signPayload(payload: string, secret: string, timestamp: number): string
     .update(`${timestamp}.${payload}`)
     .digest("hex");
 }
+
+// ─── GET /api/pay/status/:reference ───────────────────────────────────────────
+// Public endpoint: poll transaction status by reference (for payment link flow)
+router.get("/api/pay/status/:reference", async (req: any, res: any) => {
+  const { reference } = req.params;
+  if (!reference) {
+    res.status(400).json({ error: "Reference required" });
+    return;
+  }
+
+  const [tx] = await db
+    .select({
+      status: transactionsTable.status,
+      reference: transactionsTable.reference,
+      failureReason: transactionsTable.failureReason,
+      amount: transactionsTable.amount,
+      currency: transactionsTable.currency,
+    })
+    .from(transactionsTable)
+    .where(eq(transactionsTable.reference, reference));
+
+  if (!tx) {
+    res.status(404).json({ error: "Transaction introuvable" });
+    return;
+  }
+
+  res.json({
+    reference: tx.reference,
+    status: tx.status,
+    amount: tx.amount,
+    currency: tx.currency,
+    failureReason: tx.failureReason ?? undefined,
+  });
+});
 
 // ─── GET /api/pay/:token ───────────────────────────────────────────────────────
 router.get("/api/pay/:token", async (req: any, res: any) => {

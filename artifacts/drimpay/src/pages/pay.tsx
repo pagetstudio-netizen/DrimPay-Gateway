@@ -60,10 +60,10 @@ type LinkData = {
   operatorMaintenance?: boolean;
 };
 
-type Step = "select" | "form" | "confirm" | "processing" | "success" | "error";
+type Step = "select" | "form" | "confirm" | "processing" | "pending" | "success" | "error";
 
 const STEP_NUMS: Record<Step, number> = {
-  select: 1, form: 2, confirm: 3, processing: 4, success: 4, error: 4
+  select: 1, form: 2, confirm: 3, processing: 4, pending: 4, success: 4, error: 4
 };
 
 // ── Operator button ──────────────────────────────────────────────────────────
@@ -331,15 +331,64 @@ export default function PayPage() {
         setStep("error");
         return;
       }
-      if (attemptId) await updateAttempt(attemptId, "success", data.reference);
       setTxRef(data.reference);
-      setStep("success");
+      // If already confirmed as success by gateway, show success immediately
+      if (data.status === "success") {
+        if (attemptId) await updateAttempt(attemptId, "success", data.reference);
+        setStep("success");
+      } else {
+        // USSD prompt sent — wait for user to confirm on phone
+        setStep("pending");
+      }
     } catch {
       if (attemptId) await updateAttempt(attemptId, "failed");
       setError("Erreur réseau. Veuillez réessayer.");
       setStep("error");
     }
   };
+
+  // ── Poll transaction status while in "pending" state ─────────────────────
+  useEffect(() => {
+    if (step !== "pending" || !txRef) return;
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 36; // 36 × 5s = 3 minutes
+    let stopped = false;
+
+    const poll = async () => {
+      if (stopped) return;
+      try {
+        const r = await fetch(`${BASE}/api/pay/status/${txRef}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        const s: string = d.status ?? "";
+        if (s === "success") {
+          stopped = true;
+          if (attemptId) await updateAttempt(attemptId, "success", txRef);
+          setStep("success");
+        } else if (s === "failed" || s === "cancelled" || s === "expired") {
+          stopped = true;
+          if (attemptId) await updateAttempt(attemptId, "failed");
+          setError(d.failureReason ?? "Paiement annulé ou échoué. Veuillez réessayer.");
+          setStep("error");
+        }
+        // "pending" / "processing" → keep polling
+      } catch { /* ignore, keep polling */ }
+
+      attempts++;
+      if (!stopped && attempts < MAX_ATTEMPTS) {
+        setTimeout(poll, 5000);
+      } else if (!stopped && attempts >= MAX_ATTEMPTS) {
+        // Timeout after 3 minutes
+        if (attemptId) await updateAttempt(attemptId, "failed");
+        setError("Délai dépassé. Si vous avez confirmé, vérifiez votre historique de transactions.");
+        setStep("error");
+      }
+    };
+
+    const timeout = setTimeout(poll, 5000); // first poll after 5s
+    return () => { stopped = true; clearTimeout(timeout); };
+  }, [step, txRef]);
 
   // ── States: loading / invalid link / inactive ──────────────────────────────
 
@@ -655,7 +704,7 @@ export default function PayPage() {
                 </motion.div>
               )}
 
-              {/* ── Step 4: Processing ── */}
+              {/* ── Step 4: Processing (API call in flight) ── */}
               {step === "processing" && (
                 <motion.div
                   key="processing"
@@ -664,11 +713,30 @@ export default function PayPage() {
                   className="text-center py-8"
                 >
                   <div className="w-16 h-16 rounded-full border-4 border-gray-200 border-t-gray-900 animate-spin mx-auto mb-5" />
-                  <h2 className="text-base font-bold text-gray-900 mb-2">Traitement en cours…</h2>
-                  <p className="text-sm text-gray-500">
-                    Vérifiez votre téléphone pour confirmer le paiement via{" "}
-                    <strong className="text-gray-800">{operatorLabel}</strong>.
+                  <h2 className="text-base font-bold text-gray-900 mb-2">Envoi en cours…</h2>
+                  <p className="text-sm text-gray-500">Connexion au réseau de paiement.</p>
+                </motion.div>
+              )}
+
+              {/* ── Step 4: Pending (awaiting phone confirmation) ── */}
+              {step === "pending" && (
+                <motion.div
+                  key="pending"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center py-8"
+                >
+                  <div className="w-16 h-16 rounded-full border-4 border-blue-100 border-t-blue-500 animate-spin mx-auto mb-5" />
+                  <h2 className="text-base font-bold text-gray-900 mb-2">En attente de confirmation</h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Un message a été envoyé sur votre téléphone.{" "}
+                    <strong className="text-gray-800">Confirmez le paiement via {operatorLabel}</strong> pour finaliser la transaction.
                   </p>
+                  <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-700 text-left space-y-1">
+                    <p>Vérifiez les notifications sur votre téléphone</p>
+                    <p>Saisissez votre code PIN pour valider</p>
+                    <p className="text-blue-400">Cette page se met à jour automatiquement</p>
+                  </div>
                 </motion.div>
               )}
 
