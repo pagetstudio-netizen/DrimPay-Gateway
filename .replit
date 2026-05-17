@@ -73,6 +73,10 @@ localPort = 8081
 externalPort = 8081
 
 [[ports]]
+localPort = 9090
+externalPort = 3001
+
+[[ports]]
 localPort = 22390
 externalPort = 3000
 
@@ -84,7 +88,7 @@ PAYDUNYA_WEBHOOK_SECRET = "to-be-configured"
 SUPABASE_DATABASE_URL = "postgresql://postgres.zbootwjgztirlixmaclu:3eBukKGhKGFG1ycO@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
 BASE_PATH = "/"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpib290d2pnenRpcmxpeG1hY2x1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNzE3NDAsImV4cCI6MjA5Mzg0Nzc0MH0.luvkFB13o06KjoMbs6KM6Yvp6nLNDCE7vOqwRiBN5ZQ"
-NODE_ENV = "development"
+NODE_ENV = "production"
 SUPABASE_URL = "https://zbootwjgztirlixmaclu.supabase.co"
 PORT = "8080"
 LOG_LEVEL = "info"

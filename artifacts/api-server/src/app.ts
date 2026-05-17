@@ -87,7 +87,7 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
-// ── Health probe (must be before rate-limiter so Passenger/LB can always reach it) ──
+// ── Quick health probe (before rate-limiter so Passenger/LB always reaches it) ──
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
@@ -108,27 +108,39 @@ app.use(subdomainMiddleware);
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use("/api", router);
 
+// ── 404 handler for unmatched /api/* routes (must come before SPA fallback) ───
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Endpoint not found" });
+});
+
 // ── Serve React SPA in production ─────────────────────────────────────────────
 if (isProd) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const frontendDist = path.resolve(__dirname, "../../drimpay/dist/public");
 
   if (existsSync(frontendDist)) {
+    // Serve static assets (JS, CSS, images) with aggressive caching
     app.use(
       express.static(frontendDist, {
         maxAge: "7d",
         etag: true,
+        index: false, // Don't auto-serve index.html — let catch-all handle it
         setHeaders(res, filePath) {
-          if (filePath.endsWith("index.html")) {
+          if (filePath.endsWith(".html")) {
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
           }
         },
       })
     );
-    // SPA catch-all — serve index.html for all non-API routes
-    app.get(/^(?!\/api).*$/, (_req, res) => {
-      res.sendFile(path.join(frontendDist, "index.html"));
+
+    // SPA catch-all — Express 5 compatible (no regex routes)
+    // Any path that wasn't handled above gets index.html for client-side routing
+    app.use((_req, res, next) => {
+      res.sendFile(path.join(frontendDist, "index.html"), (err) => {
+        if (err) next(); // Don't crash, let error handler deal with it
+      });
     });
+
     logger.info({ frontendDist }, "Serving frontend static files");
   } else {
     logger.warn({ frontendDist }, "Frontend dist not found — skipping static serving");
