@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
 import { DashboardLayout } from "./layout";
 import { useAuth } from "@/lib/auth";
 import {
   Camera, CheckCircle2, AlertCircle,
-  Loader2, Eye, EyeOff, Copy, RefreshCw, AlertTriangle, Lock,
+  Loader2, Eye, EyeOff, Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import companyImg   from "@assets/icon3d_company.png";
-import apiKeyImg    from "@assets/icon3d_api_key.png";
 import identityImg  from "@assets/icon3d_identity.png";
 import userImg      from "@assets/20260125_232710_1771507041579-BmqaXdG3_1778105456352.png";
 import passwordImg  from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466c-8a76-4127fc639_1778791973301.png";
@@ -38,56 +36,9 @@ function Feedback({ status, error }: { status: Status; error?: string }) {
   return null;
 }
 
-function ApiKeyCard({ env, keyData, onRegen }: { env: "sandbox" | "live"; keyData: any | null; onRegen: (env: "sandbox" | "live") => void }) {
-  const [copied, setCopied] = useState(false);
-  const prefix = keyData?.prefix ?? null;
-  const isLive = env === "live";
-  const label = isLive ? "Clé Live" : "Clé Sandbox";
-  const dot = isLive ? "bg-green-400" : "bg-yellow-400";
-  const badge = isLive ? "bg-green-50 text-green-700 border border-green-200" : "bg-yellow-50 text-yellow-700 border border-yellow-200";
-  const handleCopy = () => {
-    if (!prefix) return;
-    navigator.clipboard.writeText(prefix + "•".repeat(24));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 sm:p-5 flex flex-col gap-3 sm:gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badge}`}>{isLive ? "LIVE" : "SANDBOX"}</span>
-          <span className="text-sm font-semibold text-gray-900">{label}</span>
-        </div>
-        <button onClick={() => onRegen(env)} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-primary transition-colors font-medium shrink-0 ml-2">
-          <RefreshCw className="w-3.5 h-3.5" />{keyData ? "Régénérer" : "Générer"}
-        </button>
-      </div>
-      {keyData ? (
-        <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-2.5 font-mono text-xs min-w-0">
-          <span className="flex-1 truncate text-gray-700">{prefix}{"•".repeat(24)}</span>
-          <button onClick={handleCopy} className="text-gray-400 hover:text-primary shrink-0">
-            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 text-xs text-gray-400 bg-white border border-gray-100 rounded-lg px-3 py-2.5">
-          <Lock className="w-3.5 h-3.5" />Aucune clé générée
-        </div>
-      )}
-      {keyData && (
-        <p className="text-[11px] text-gray-400">
-          Créée le {new Date(keyData.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
-          {keyData.lastUsedAt && ` · Dernière utilisation ${new Date(keyData.lastUsedAt).toLocaleDateString("fr-FR")}`}
-        </p>
-      )}
-    </div>
-  );
-}
 
 const MENU_ITEMS = [
   { key: "profil",   label: "Profil",       img: companyImg,  imgClass: "" },
-  { key: "api",      label: "Clés API",     img: apiKeyImg,   imgClass: "" },
   { key: "securite", label: "Mot de passe", img: passwordImg, imgClass: "" },
   { key: "webhook",  label: "Webhook",      img: webhookImg,  imgClass: "opacity-90" },
   { key: "ip",       label: "Adresse IP",   img: ipImg,       imgClass: "" },
@@ -96,7 +47,6 @@ const MENU_ITEMS = [
 
 export default function DashboardProfile() {
   const { user } = useAuth();
-  const [, navigate] = useLocation();
   const [activeSection, setActiveSection] = useState("profil");
 
   const [infoForm, setInfoForm] = useState({ companyName: user?.companyName ?? "", email: user?.email ?? "", country: user?.country ?? "" });
@@ -108,9 +58,6 @@ export default function DashboardProfile() {
   const [pwError, setPwError] = useState("");
   const [showPw, setShowPw] = useState({ current: false, new: false });
 
-  const [sandboxKey, setSandboxKey] = useState<any>(null);
-  const [liveKey, setLiveKey] = useState<any>(null);
-
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookStatus, setWebhookStatus] = useState<Status>("idle");
   const [webhookError, setWebhookError] = useState("");
@@ -120,16 +67,6 @@ export default function DashboardProfile() {
   const [ipError, setIpError] = useState("");
 
   useEffect(() => {
-    fetch(`${BASE}/api/dashboard/api-keys`, { credentials: "include" })
-      .then(r => r.json())
-      .then((keys: any[]) => {
-        if (!Array.isArray(keys)) return;
-        const activeKeys = keys.filter(k => k.status === "active");
-        setSandboxKey(activeKeys.find(k => k.env === "sandbox") ?? null);
-        setLiveKey(activeKeys.find(k => k.env === "live") ?? null);
-      })
-      .catch(console.error);
-
     fetch(`${BASE}/api/dashboard/settings`, { credentials: "include" })
       .then(r => r.json())
       .then(d => {
@@ -175,10 +112,6 @@ export default function DashboardProfile() {
       if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? "Adresse IP invalide."); }
       setIpStatus("success"); setTimeout(() => setIpStatus("idle"), 3000);
     } catch (e: any) { setIpError(e.message); setIpStatus("error"); }
-  };
-
-  const openRegen = (env: "sandbox" | "live") => {
-    navigate(`/dashboard/verify-code?env=${env}`);
   };
 
   const countryLabel = (code: string) => {
@@ -349,31 +282,6 @@ export default function DashboardProfile() {
                     Sauvegarder les modifications
                   </button>
                   <Feedback status={infoStatus} error={infoError} />
-                </div>
-              </div>
-            )}
-
-            {/* ── Clés API ───────────────────────────────────── */}
-            {activeSection === "api" && (
-              <div className="p-4 sm:p-6">
-                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center shrink-0">
-                    <img src={apiKeyImg} alt="" className="w-8 h-8 object-contain" />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">Configuration des clés API</h2>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Une clé unique par environnement. La régénération révoque immédiatement l'ancienne clé.</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200 mb-4">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-700">
-                      Les clés ne sont affichées qu'une seule fois lors de leur génération. Ne partagez jamais votre clé live dans votre code source.
-                    </p>
-                  </div>
-                  <ApiKeyCard env="sandbox" keyData={sandboxKey} onRegen={openRegen} />
-                  <ApiKeyCard env="live" keyData={liveKey} onRegen={openRegen} />
                 </div>
               </div>
             )}

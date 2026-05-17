@@ -37,7 +37,6 @@ import DashboardOverview from "@/pages/dashboard/index";
 import DashboardWallets from "@/pages/dashboard/wallets";
 import DashboardReversement from "@/pages/dashboard/reversement";
 import DashboardPayments from "@/pages/dashboard/payments";
-import DashboardApiKeys from "@/pages/dashboard/api-keys";
 import DashboardKyb from "@/pages/dashboard/kyb";
 import DashboardSettings from "@/pages/dashboard/settings";
 import DashboardProfile from "@/pages/dashboard/profile";
@@ -68,7 +67,6 @@ import AdminTransactions from "@/pages/admin/transactions";
 import AdminWallets from "@/pages/admin/wallets";
 import AdminAggregators from "@/pages/admin/aggregators";
 import AdminOperators from "@/pages/admin/operators";
-import AdminApiKeys from "@/pages/admin/api-keys";
 import AdminPaymentLinks from "@/pages/admin/payment-links";
 import AdminKybContracts from "@/pages/admin/kyb-contracts";
 import AdminBlacklist from "@/pages/admin/blacklist";
@@ -246,7 +244,6 @@ function AdminSwitch() {
       <Route path="/admin/wallets" component={AdminWallets} />
       <Route path="/admin/aggregators" component={AdminAggregators} />
       <Route path="/admin/operators" component={AdminOperators} />
-      <Route path="/admin/api-keys" component={AdminApiKeys} />
       <Route path="/admin/payment-links" component={AdminPaymentLinks} />
       <Route path="/admin/kyb-contracts" component={AdminKybContracts} />
       <Route path="/admin/blacklist" component={AdminBlacklist} />
@@ -287,7 +284,6 @@ function DashboardSwitch() {
       <Route path="/dashboard/wallets" component={DashboardWallets} />
       <Route path="/dashboard/payments" component={DashboardPayments} />
       <Route path="/dashboard/reversement" component={DashboardReversement} />
-      <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
       <Route path="/dashboard/kyb" component={DashboardKyb} />
       <Route path="/dashboard/settings" component={DashboardSettings} />
       <Route path="/dashboard/profile" component={DashboardProfile} />

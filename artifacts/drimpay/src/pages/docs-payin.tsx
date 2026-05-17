@@ -631,7 +631,6 @@ def drimpay_webhook():
                   </tbody>
                 </table>
               </div>
-              <p className="text-sm text-muted-foreground mt-3">Manage your API keys in the <Link href="/dashboard/api-keys" className="text-primary hover:underline">API Keys dashboard</Link>.</p>
             </section>
 
             {/* Environments */}
