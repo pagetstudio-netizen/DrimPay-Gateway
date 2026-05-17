@@ -144,12 +144,29 @@ export const apiKeysTable = pgTable("api_keys", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   name: text("name").notNull(),
+  description: text("description"),
   keyHash: text("key_hash").notNull(),
   rawKey: text("raw_key"),
   prefix: text("prefix").notNull(),
   env: apiKeyEnvEnum("env").notNull().default("sandbox"),
   status: apiKeyStatusEnum("status").notNull().default("active"),
   lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const userWebhooksTable = pgTable("user_webhooks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  url: text("url").notNull(),
+  label: text("label"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const userAllowedIpsTable = pgTable("user_allowed_ips", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  ip: text("ip").notNull(),
+  label: text("label"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

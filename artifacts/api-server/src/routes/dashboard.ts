@@ -20,6 +20,8 @@ import {
   adminSettingsTable,
   notificationsTable,
   globalBannersTable,
+  userWebhooksTable,
+  userAllowedIpsTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sum, count, sql, gte, asc } from "drizzle-orm";
 import crypto from "crypto";
@@ -803,6 +805,7 @@ router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
     .select({
       id: apiKeysTable.id,
       name: apiKeysTable.name,
+      description: apiKeysTable.description,
       prefix: apiKeysTable.prefix,
       rawKey: apiKeysTable.rawKey,
       env: apiKeysTable.env,
@@ -819,6 +822,7 @@ router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
 
 const createKeySchema = z.object({
   name: z.string().min(1).max(60),
+  description: z.string().max(200).optional(),
   env: z.enum(["sandbox", "live"]),
 });
 
@@ -830,7 +834,7 @@ router.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, r
   }
 
   const userId = req.session.userId!;
-  const { name, env } = parsed.data;
+  const { name, description, env } = parsed.data;
 
   const rawKey = `dp_${env}_${crypto.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.substring(0, 14);
@@ -838,10 +842,11 @@ router.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, r
 
   const [key] = await db
     .insert(apiKeysTable)
-    .values({ userId, name, keyHash, rawKey, prefix, env })
+    .values({ userId, name, description: description ?? null, keyHash, rawKey, prefix, env })
     .returning({
       id: apiKeysTable.id,
       name: apiKeysTable.name,
+      description: apiKeysTable.description,
       prefix: apiKeysTable.prefix,
       rawKey: apiKeysTable.rawKey,
       env: apiKeysTable.env,
@@ -1480,6 +1485,86 @@ router.patch("/dashboard/settings/ip", requireAuth, async (req, res) => {
 
   await db.update(usersTable).set({ staticIp: result.data.staticIp || null }).where(eq(usersTable.id, userId));
   res.json({ success: true });
+});
+
+// ── Webhooks (multiple per user) ─────────────────────────────────────────────
+
+router.get("/dashboard/webhooks", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const rows = await db
+    .select()
+    .from(userWebhooksTable)
+    .where(eq(userWebhooksTable.userId, userId))
+    .orderBy(asc(userWebhooksTable.createdAt));
+  res.json(rows);
+});
+
+router.post("/dashboard/webhooks", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const schema = z.object({
+    url: z.string().url("URL invalide"),
+    label: z.string().max(80).optional(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalide" }); return; }
+
+  const existing = await db.select({ id: userWebhooksTable.id }).from(userWebhooksTable).where(eq(userWebhooksTable.userId, userId));
+  if (existing.length >= 10) { res.status(400).json({ error: "Maximum 10 webhooks autorisés" }); return; }
+
+  const [row] = await db
+    .insert(userWebhooksTable)
+    .values({ userId, url: parsed.data.url, label: parsed.data.label ?? null })
+    .returning();
+  res.status(201).json(row);
+});
+
+router.delete("/dashboard/webhooks/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const id = parseInt(String(req.params.id));
+  const [row] = await db.select().from(userWebhooksTable).where(and(eq(userWebhooksTable.id, id), eq(userWebhooksTable.userId, userId)));
+  if (!row) { res.status(404).json({ error: "Webhook non trouvé" }); return; }
+  await db.delete(userWebhooksTable).where(eq(userWebhooksTable.id, id));
+  res.json({ ok: true });
+});
+
+// ── Allowed IPs (multiple per user) ──────────────────────────────────────────
+
+router.get("/dashboard/allowed-ips", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const rows = await db
+    .select()
+    .from(userAllowedIpsTable)
+    .where(eq(userAllowedIpsTable.userId, userId))
+    .orderBy(asc(userAllowedIpsTable.createdAt));
+  res.json(rows);
+});
+
+router.post("/dashboard/allowed-ips", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const schema = z.object({
+    ip: z.string().regex(/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/, "Adresse IP invalide (ex: 192.168.1.1)"),
+    label: z.string().max(80).optional(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalide" }); return; }
+
+  const existing = await db.select({ id: userAllowedIpsTable.id }).from(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, userId));
+  if (existing.length >= 20) { res.status(400).json({ error: "Maximum 20 adresses IP autorisées" }); return; }
+
+  const [row] = await db
+    .insert(userAllowedIpsTable)
+    .values({ userId, ip: parsed.data.ip, label: parsed.data.label ?? null })
+    .returning();
+  res.status(201).json(row);
+});
+
+router.delete("/dashboard/allowed-ips/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const id = parseInt(String(req.params.id));
+  const [row] = await db.select().from(userAllowedIpsTable).where(and(eq(userAllowedIpsTable.id, id), eq(userAllowedIpsTable.userId, userId)));
+  if (!row) { res.status(404).json({ error: "IP non trouvée" }); return; }
+  await db.delete(userAllowedIpsTable).where(eq(userAllowedIpsTable.id, id));
+  res.json({ ok: true });
 });
 
 router.patch("/dashboard/settings/password", requireAuth, async (req, res) => {
