@@ -6,9 +6,9 @@ import {
   Loader2, Eye, EyeOff, Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import companyImg   from "@assets/icon3d_company.png";
-import identityImg  from "@assets/icon3d_identity.png";
-import userImg      from "@assets/20260125_232710_1771507041579-BmqaXdG3_1778105456352.png";
+import companyImg   from "@assets/production_2252197_1779041971733.png";
+import identityImg  from "@assets/55fd2ef307e059909ae9431bbf24eb0c_1779041950589.png";
+import userImg      from "@assets/avatar.b95a699_1779041950327.png";
 import passwordImg  from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466c-8a76-4127fc639_1778791973301.png";
 import webhookImg   from "@assets/17496245_1778791973344.png";
 import ipImg        from "@assets/6146731_1778791973372.png";
@@ -38,7 +38,7 @@ function Feedback({ status, error }: { status: Status; error?: string }) {
 
 
 const MENU_ITEMS = [
-  { key: "profil",   label: "Profil",       img: companyImg,  imgClass: "" },
+  { key: "profil",   label: "Profil",       img: userImg,     imgClass: "" },
   { key: "securite", label: "Mot de passe", img: passwordImg, imgClass: "" },
   { key: "webhook",  label: "Webhook",      img: webhookImg,  imgClass: "opacity-90" },
   { key: "ip",       label: "Adresse IP",   img: ipImg,       imgClass: "" },
@@ -236,7 +236,7 @@ export default function DashboardProfile() {
                   </div>
                   <div>
                     <h2 className="font-semibold text-sm sm:text-base text-gray-900">Informations du compte</h2>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Mettez à jour le nom de votre entreprise et votre email.</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Consultez les informations de votre compte.</p>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -256,11 +256,15 @@ export default function DashboardProfile() {
                   )}
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Nom de l'entreprise</label>
-                    <input className={inputCls} value={infoForm.companyName} onChange={e => setInfoForm(f => ({ ...f, companyName: e.target.value }))} placeholder="Ex: SARL MonEntreprise" />
+                    <div className="w-full h-11 rounded-xl border border-gray-200 bg-gray-100 px-4 text-sm text-gray-700 flex items-center cursor-not-allowed select-none">
+                      {user?.companyName ?? "—"}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Adresse email</label>
-                    <input type="email" className={inputCls} value={infoForm.email} onChange={e => setInfoForm(f => ({ ...f, email: e.target.value }))} placeholder="contact@entreprise.com" />
+                    <div className="w-full h-11 rounded-xl border border-gray-200 bg-gray-100 px-4 text-sm text-gray-700 flex items-center cursor-not-allowed select-none">
+                      {user?.email ?? "—"}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Pays</label>
@@ -279,7 +283,7 @@ export default function DashboardProfile() {
                     className="flex items-center gap-2 bg-primary text-black text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60"
                   >
                     {infoStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    Sauvegarder les modifications
+                    Sauvegarder le pays
                   </button>
                   <Feedback status={infoStatus} error={infoError} />
                 </div>
