@@ -47,41 +47,36 @@ const SOCIAL_ICONS: Record<string, ReactNode> = {
   ),
 };
 
-const DEFAULT_PLATFORMS = ["facebook", "x", "linkedin", "whatsapp", "youtube", "telegram"];
-
 function FooterSocials() {
-  const [adminLinks, setAdminLinks] = useState<Record<string, string>>({});
+  const [links, setLinks] = useState<Array<{ platform: string; url: string; name: string }>>([]);
 
   useEffect(() => {
     fetch("/api/support/links")
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d)) {
-          const map: Record<string, string> = {};
-          d.forEach((l: any) => { if (l.platform && l.url) map[l.platform.toLowerCase()] = l.url; });
-          setAdminLinks(map);
+          setLinks(d.filter((l: any) => l.url && l.url.trim() !== "" && l.platform));
         }
       })
       .catch(() => {});
   }, []);
 
+  if (links.length === 0) return null;
+
   return (
     <div className="flex items-center gap-4 flex-wrap">
-      {DEFAULT_PLATFORMS.map((platform) => {
+      {links.map((link) => {
+        const platform = link.platform?.toLowerCase();
         const icon = SOCIAL_ICONS[platform];
         if (!icon) return null;
-        // Try platform key, then common aliases (whatsapp → whatsapp_support or whatsapp_channel)
-        const href = adminLinks[platform]
-          ?? (platform === "whatsapp" ? (adminLinks["whatsapp_support"] ?? adminLinks["whatsapp_channel"]) : undefined)
-          ?? "#";
         return (
           <a
-            key={platform}
-            href={href}
-            target={href !== "#" ? "_blank" : undefined}
+            key={link.platform}
+            href={link.url}
+            target="_blank"
             rel="noopener noreferrer"
             className="text-muted-foreground hover:text-primary transition-colors"
-            aria-label={platform}
+            aria-label={link.name ?? link.platform}
           >
             {icon}
           </a>
