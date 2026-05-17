@@ -325,6 +325,85 @@ function MerchantPanel({
 
         {tab === "securite" && (
           <div className="space-y-5">
+
+            {/* ── Clés API ── */}
+            <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <KeyRound className="w-4 h-4 text-indigo-500" />
+                <p className="text-sm font-bold text-gray-900">Clés API</p>
+                <span className="text-xs text-gray-400 ml-auto">{(merchant.apiKeys ?? []).length} clé{(merchant.apiKeys ?? []).length > 1 ? "s" : ""}</span>
+              </div>
+              {(merchant.apiKeys ?? []).length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-3">Aucune clé API</p>
+              ) : (
+                <div className="space-y-2">
+                  {(merchant.apiKeys ?? []).map((k: any) => (
+                    <div key={k.id} className="bg-white rounded-lg border border-gray-100 px-3 py-2.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-gray-900">{k.name}</span>
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                          k.env === "live" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                        )}>{k.env === "live" ? "LIVE" : "SANDBOX"}</span>
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded font-bold ml-auto",
+                          k.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+                        )}>{k.status === "active" ? "Active" : "Révoquée"}</span>
+                      </div>
+                      {k.description && (
+                        <p className="text-[11px] text-gray-500 mt-1">{k.description}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{k.prefix}••••• · créée le {new Date(k.createdAt).toLocaleDateString("fr-FR")}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Webhooks configurés ── */}
+            <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Globe2 className="w-4 h-4 text-blue-500" />
+                <p className="text-sm font-bold text-gray-900">URLs Webhook</p>
+                <span className="text-xs text-gray-400 ml-auto">{(merchant.webhooks ?? []).length} URL{(merchant.webhooks ?? []).length > 1 ? "s" : ""}</span>
+              </div>
+              {(merchant.webhooks ?? []).length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-3">Aucun webhook configuré</p>
+              ) : (
+                <div className="space-y-2">
+                  {(merchant.webhooks ?? []).map((h: any) => (
+                    <div key={h.id} className="bg-white rounded-lg border border-gray-100 px-3 py-2.5">
+                      {h.label && <p className="text-xs font-semibold text-gray-700 mb-0.5">{h.label}</p>}
+                      <p className="text-xs text-blue-600 font-mono break-all">{h.url}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Ajouté le {new Date(h.createdAt).toLocaleDateString("fr-FR")}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Adresses IP ── */}
+            <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <BadgeCheck className="w-4 h-4 text-violet-500" />
+                <p className="text-sm font-bold text-gray-900">Adresses IP autorisées</p>
+                <span className="text-xs text-gray-400 ml-auto">{(merchant.allowedIps ?? []).length} IP{(merchant.allowedIps ?? []).length > 1 ? "s" : ""}</span>
+              </div>
+              {(merchant.allowedIps ?? []).length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-3">Pas de restriction IP (toutes IPs autorisées)</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(merchant.allowedIps ?? []).map((ip: any) => (
+                    <div key={ip.id} className="bg-white rounded-lg border border-gray-100 px-3 py-2">
+                      <p className="text-xs font-mono font-bold text-violet-700">{ip.ip}</p>
+                      {ip.label && <p className="text-[10px] text-gray-400">{ip.label}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Promotion / Rôle ── */}
             <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
               <div className="flex items-center gap-2 mb-1">
                 {promotedRole === "admin"
@@ -353,6 +432,7 @@ function MerchantPanel({
               )}
             </div>
 
+            {/* ── Réinitialiser mot de passe ── */}
             <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
               <div className="flex items-center gap-2 mb-1">
                 <KeyRound className="w-4 h-4 text-yellow-500" />

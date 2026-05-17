@@ -7,6 +7,7 @@ import {
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
   blacklistedPhonesTable, paymentLinkAttemptsTable, socialLinksTable,
   notificationsTable, supportUsersTable, globalBannersTable,
+  userWebhooksTable, userAllowedIpsTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
@@ -288,10 +289,12 @@ router.get("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
   const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, id));
   const [kyb] = await db.select().from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, id));
-  const apiKeys = await db.select({ id: apiKeysTable.id, name: apiKeysTable.name, prefix: apiKeysTable.prefix, env: apiKeysTable.env, status: apiKeysTable.status, createdAt: apiKeysTable.createdAt })
+  const apiKeys = await db.select({ id: apiKeysTable.id, name: apiKeysTable.name, description: apiKeysTable.description, prefix: apiKeysTable.prefix, env: apiKeysTable.env, status: apiKeysTable.status, createdAt: apiKeysTable.createdAt })
     .from(apiKeysTable).where(eq(apiKeysTable.userId, id));
+  const webhooks = await db.select().from(userWebhooksTable).where(eq(userWebhooksTable.userId, id)).orderBy(asc(userWebhooksTable.createdAt));
+  const allowedIps = await db.select().from(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, id)).orderBy(asc(userAllowedIpsTable.createdAt));
   const recentTx = await db.select().from(transactionsTable).where(eq(transactionsTable.userId, id)).orderBy(desc(transactionsTable.createdAt)).limit(20);
-  res.json({ ...user, passwordHash: undefined, wallets, kyb, apiKeys, recentTransactions: recentTx });
+  res.json({ ...user, passwordHash: undefined, wallets, kyb, apiKeys, webhooks, allowedIps, recentTransactions: recentTx });
 });
 
 router.put("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
@@ -1010,6 +1013,7 @@ router.get("/admin/api-keys", requireAdmin, async (req: any, res: any) => {
   const keys = await db.select({
     id: apiKeysTable.id,
     name: apiKeysTable.name,
+    description: apiKeysTable.description,
     prefix: apiKeysTable.prefix,
     env: apiKeysTable.env,
     status: apiKeysTable.status,

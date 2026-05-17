@@ -85,7 +85,7 @@ export default function AdminApiKeys() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    {["ID", "Marchand", "Nom clé", "Préfixe", "Env.", "Statut", "Dernière utilisation", "Créée le", "Actions"].map(h => (
+                    {["ID", "Marchand", "Application / Description", "Préfixe", "Env.", "Statut", "Dernière utilisation", "Créée le", "Actions"].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -98,7 +98,10 @@ export default function AdminApiKeys() {
                         <p className="text-xs font-semibold text-gray-900">{k.merchant?.companyName ?? shortId(k.userId)}</p>
                         <p className="text-[10px] text-gray-400">{k.merchant?.email}</p>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-700 font-medium">{k.name}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-semibold text-gray-900">{k.name}</p>
+                        {k.description && <p className="text-[10px] text-gray-400 mt-0.5 max-w-[180px] truncate">{k.description}</p>}
+                      </td>
                       <td className="px-4 py-3"><code className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{k.prefix}...</code></td>
                       <td className="px-4 py-3">
                         <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", k.env === "live" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600")}>
