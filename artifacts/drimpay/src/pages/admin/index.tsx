@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, ArrowDownLeft, ArrowUpRight, Wallet2, KeyRound, Link2,
   TrendingUp, Percent, RefreshCw, AlertTriangle, CheckCircle2,
   Clock, XCircle, ShieldCheck, Globe2, BadgePercent, Banknote,
-  Activity, Calendar,
+  Activity, Calendar, RotateCcw, TriangleAlert,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { shortId } from "@/lib/utils";
@@ -42,11 +42,60 @@ function StatCard({
   );
 }
 
+function ConfirmResetModal({ onConfirm, onCancel, loading }: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 w-full max-w-sm"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+            <TriangleAlert className="w-5 h-5 text-red-600" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-900 text-sm">Réinitialiser les statistiques ?</p>
+            <p className="text-xs text-gray-500">Cette action est réversible</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+          Les compteurs de volumes, transactions, commissions et taux de succès seront remis à <strong>0</strong>.
+          <br /><br />
+          <span className="text-emerald-700 font-medium">Les données réelles ne sont pas supprimées.</span> Seul l'affichage des statistiques est réinitialisé à partir de maintenant.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-60"
+          >
+            {loading ? "En cours..." : "Réinitialiser"}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -60,6 +109,21 @@ export default function AdminDashboard() {
       setLastRefresh(new Date());
     } catch {}
     setLoading(false);
+  };
+
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      const r = await fetch("/api/admin/stats/reset", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (r.ok) {
+        setShowResetModal(false);
+        await fetchAll();
+      }
+    } catch {}
+    setResetting(false);
   };
 
   useEffect(() => { fetchAll(); }, []);
@@ -155,22 +219,46 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
+      <AnimatePresence>
+        {showResetModal && (
+          <ConfirmResetModal
+            onConfirm={handleReset}
+            onCancel={() => setShowResetModal(false)}
+            loading={resetting}
+          />
+        )}
+      </AnimatePresence>
+
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Tableau de bord administrateur</h1>
             <p className="text-sm text-gray-500 mt-0.5">
               Vue d'ensemble de la plateforme DrimPay
               {lastRefresh && (
-                <span className="ml-2 text-gray-400">· Dernière réactualisation : {lastRefresh.toLocaleString("fr-FR")}</span>
+                <span className="ml-2 text-gray-400">· Actualisé à {lastRefresh.toLocaleTimeString("fr-FR")}</span>
               )}
             </p>
+            {stats?.statsResetAt && (
+              <p className="text-xs text-amber-600 mt-0.5">
+                Stats réinitialisées le {new Date(stats.statsResetAt).toLocaleString("fr-FR")}
+              </p>
+            )}
           </div>
-          <button onClick={fetchAll} disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 shadow-sm">
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Réinitialiser les montants
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowResetModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors shadow-sm"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Réinitialiser les statistiques
+            </button>
+            <button onClick={fetchAll} disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 shadow-sm">
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              Actualiser
+            </button>
+          </div>
         </div>
 
         {/* Alertes */}

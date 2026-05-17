@@ -61,6 +61,18 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  // Read stats reset date from admin settings
+  const [resetSetting] = await db
+    .select({ value: adminSettingsTable.value })
+    .from(adminSettingsTable)
+    .where(eq(adminSettingsTable.key, "stats_reset_at"));
+  const statsResetAt = resetSetting?.value ? new Date(resetSetting.value) : null;
+
+  // Build base condition for transaction stats (filtered from reset date if set)
+  const txLiveBase = statsResetAt
+    ? and(eq(transactionsTable.mode, "live"), gte(transactionsTable.createdAt, statsResetAt))
+    : eq(transactionsTable.mode, "live");
+
   // Run all independent queries in parallel
   const [
     [totalMerchants],
@@ -108,9 +120,9 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
       total: sum(transactionsTable.amount),
       fees: sum(transactionsTable.fee),
       cnt: count(),
-    }).from(transactionsTable).where(eq(transactionsTable.mode, "live")).groupBy(transactionsTable.type, transactionsTable.status, transactionsTable.mode),
+    }).from(transactionsTable).where(txLiveBase).groupBy(transactionsTable.type, transactionsTable.status, transactionsTable.mode),
     db.select().from(transactionsTable)
-      .where(and(sql`${transactionsTable.amount}::numeric > 60000`, eq(transactionsTable.mode, "live")))
+      .where(and(sql`${transactionsTable.amount}::numeric > 60000`, txLiveBase))
       .orderBy(desc(transactionsTable.createdAt)).limit(5),
     db.select({
       id: transactionsTable.id,
@@ -125,7 +137,7 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
       phone: transactionsTable.phone,
       createdAt: transactionsTable.createdAt,
       userId: transactionsTable.userId,
-    }).from(transactionsTable).where(eq(transactionsTable.mode, "live")).orderBy(desc(transactionsTable.createdAt)).limit(10),
+    }).from(transactionsTable).where(txLiveBase).orderBy(desc(transactionsTable.createdAt)).limit(10),
     db.selectDistinct({ domain: transactionsTable.webhookUrl })
       .from(transactionsTable)
       .where(sql`${transactionsTable.webhookUrl} IS NOT NULL AND ${transactionsTable.webhookUrl} != ''`),
@@ -212,7 +224,19 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
     // Alerts
     recentTransactions: recentTx.map(t => ({ ...t, merchant: merchantMap[t.userId] ?? null })),
     bigTxAlerts,
+    // Reset info
+    statsResetAt: statsResetAt ? statsResetAt.toISOString() : null,
   });
+});
+
+// ─── RESET STATS ─────────────────────────────────────────────────────────────
+router.post("/admin/stats/reset", requireAdmin, async (req: any, res: any) => {
+  const now = new Date().toISOString();
+  await db.insert(adminSettingsTable)
+    .values({ key: "stats_reset_at", value: now })
+    .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: now, updatedAt: new Date() } });
+  await logAdminAction(req.session.userId, "RESET_STATS", "platform", "stats", undefined, req.ip);
+  res.json({ ok: true, resetAt: now });
 });
 
 // ─── CHART DATA ───────────────────────────────────────────────────────────────
