@@ -59,7 +59,7 @@ app.use(
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? "strict" : false,
-      maxAge: 24 * 60 * 60 * 1000, // 24h (réduit de 7j → 1j)
+      maxAge: 24 * 60 * 60 * 1000,
     },
   }),
 );
@@ -87,6 +87,17 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
+// ── Health probe (must be before rate-limiter so Passenger/LB can always reach it) ──
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: Math.floor(process.uptime()),
+    memory: process.memoryUsage(),
+    timestamp: new Date().toISOString(),
+    env: process.env["NODE_ENV"] ?? "unknown",
+  });
+});
+
 // ── Security middleware (IP block + global rate limit) ─────────────────────────
 app.use(ipBlockMiddleware);
 app.use(globalRateLimiter);
@@ -96,18 +107,6 @@ app.use(subdomainMiddleware);
 
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use("/api", router);
-
-// ── Global Express error handler ─────────────────────────────────────────────
-// Must have 4 args (err, req, res, next) to be recognised as error middleware
-// by Express. Catches any error thrown/rejected inside route handlers.
-app.use((err: any, _req: any, res: any, _next: any) => {
-  const status: number = typeof err?.status === "number" ? err.status : 500;
-  const message: string = err?.message ?? "Erreur interne du serveur";
-  logger.error({ err, status }, "Express error handler");
-  if (!res.headersSent) {
-    res.status(status).json({ error: message });
-  }
-});
 
 // ── Serve React SPA in production ─────────────────────────────────────────────
 if (isProd) {
@@ -120,13 +119,13 @@ if (isProd) {
         maxAge: "7d",
         etag: true,
         setHeaders(res, filePath) {
-          // No cache for HTML entry point
           if (filePath.endsWith("index.html")) {
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
           }
         },
       })
     );
+    // SPA catch-all — serve index.html for all non-API routes
     app.get(/^(?!\/api).*$/, (_req, res) => {
       res.sendFile(path.join(frontendDist, "index.html"));
     });
@@ -135,5 +134,16 @@ if (isProd) {
     logger.warn({ frontendDist }, "Frontend dist not found — skipping static serving");
   }
 }
+
+// ── Global Express error handler (MUST be last, after all routes) ─────────────
+// 4-argument signature is required for Express to recognise this as an error handler
+app.use((err: any, _req: any, res: any, _next: any) => {
+  const status: number = typeof err?.status === "number" ? err.status : 500;
+  const message: string = err?.message ?? "Erreur interne du serveur";
+  logger.error({ err, status }, "Unhandled route error");
+  if (!res.headersSent) {
+    res.status(status).json({ error: message });
+  }
+});
 
 export default app;
