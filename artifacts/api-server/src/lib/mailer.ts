@@ -577,3 +577,81 @@ export async function sendSupportReplyEmail(opts: {
     return { ok: false, error: e?.message ?? String(e) };
   }
 }
+
+export async function sendPasswordResetEmail(opts: {
+  to: string;
+  companyName: string;
+  code: string;
+  resetLink: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const cfg = await getSmtpConfig();
+  if (!cfg) {
+    console.warn("[Mailer] SMTP non configuré — email réinitialisation ignoré.");
+    return { ok: false, error: "SMTP non configuré" };
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      host: cfg.host, port: cfg.port, secure: cfg.port === 465,
+      auth: { user: cfg.user, pass: cfg.pass },
+    });
+    await transporter.sendMail({
+      from: `"DrimPay" <${cfg.from}>`,
+      to: opts.to,
+      subject: "🔐 Réinitialisation de votre mot de passe DrimPay",
+      html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09);">
+        <tr>
+          <td style="background:#0f172a;padding:26px 36px;">
+            <span style="font-size:22px;font-weight:bold;color:#C5FF4A;letter-spacing:-0.5px;">Drim</span><span style="font-size:22px;font-weight:bold;color:#ffffff;">Pay</span>
+          </td>
+        </tr>
+        <tr><td style="padding:36px 36px 24px;">
+          <div style="text-align:center;margin-bottom:24px;">
+            <div style="display:inline-block;background:#fef2f2;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:30px;text-align:center;">🔐</div>
+          </div>
+          <h2 style="color:#0f172a;margin:0 0 8px;text-align:center;font-size:20px;">Réinitialisation du mot de passe</h2>
+          <p style="color:#64748b;font-size:13px;text-align:center;margin:0 0 28px;">Bonjour <strong>${opts.companyName}</strong>, voici votre code de vérification :</p>
+
+          <div style="background:#f8fafc;border:2px dashed #cbd5e1;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">Code de vérification</p>
+            <p style="margin:0;font-size:42px;font-weight:bold;letter-spacing:10px;color:#0f172a;font-family:monospace;">${opts.code}</p>
+            <p style="margin:8px 0 0;font-size:11px;color:#94a3b8;">Ce code expire dans <strong>15 minutes</strong></p>
+          </div>
+
+          <p style="color:#64748b;font-size:13px;text-align:center;margin:0 0 16px;">Ou cliquez directement sur le bouton ci-dessous :</p>
+
+          <div style="text-align:center;margin:0 0 28px;">
+            <a href="${opts.resetLink}" style="display:inline-block;background:#0f172a;color:#C5FF4A;font-size:14px;font-weight:bold;text-decoration:none;padding:14px 32px;border-radius:10px;letter-spacing:0.3px;">
+              Réinitialiser mon mot de passe →
+            </a>
+          </div>
+
+          <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:14px 18px;margin:0 0 8px;">
+            <p style="margin:0;font-size:12px;color:#9a3412;line-height:1.6;">
+              ⚠️ Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe reste inchangé.
+            </p>
+          </div>
+        </td></tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:18px 36px;border-top:1px solid #eeeeee;">
+            <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">DrimPay · Cet email expire dans 15 minutes · Ne partagez jamais ce code.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+    });
+    console.log(`[Mailer] Email réinitialisation envoyé à ${opts.to}`);
+    return { ok: true };
+  } catch (e: any) {
+    console.error("[Mailer] Erreur envoi réinitialisation:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}

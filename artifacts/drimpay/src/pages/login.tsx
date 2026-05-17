@@ -145,7 +145,7 @@ export default function Login() {
                 </div>
                 <span className="text-sm text-gray-600">{t.login.staySignedIn}</span>
               </label>
-              <a href="#" className="text-sm font-medium text-gray-900 hover:underline underline-offset-2">
+              <a href="/forgot-password" className="text-sm font-medium text-gray-900 hover:underline underline-offset-2">
                 {t.login.forgotPassword}
               </a>
             </div>

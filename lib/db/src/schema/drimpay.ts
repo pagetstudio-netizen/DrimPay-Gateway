@@ -529,6 +529,17 @@ export const notificationsTable = pgTable("notifications", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const passwordResetTokensTable = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  email: text("email").notNull(),
+  code: text("code").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const globalBannersTable = pgTable("global_banners", {
   id: serial("id").primaryKey(),
   message: text("message").notNull(),

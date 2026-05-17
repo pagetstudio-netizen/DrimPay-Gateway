@@ -3,10 +3,10 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { z } from "zod";
 import { db } from "@workspace/db";
-import { usersTable, apiKeysTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { usersTable, apiKeysTable, passwordResetTokensTable } from "@workspace/db/schema";
+import { eq, and, gt, isNull } from "drizzle-orm";
 import { notifyNewUser, notifyAdminLogin } from "../lib/telegram";
-import { sendWelcomeEmail } from "../lib/mailer";
+import { sendWelcomeEmail, sendPasswordResetEmail } from "../lib/mailer";
 import {
   logSecurityEvent,
   trackFailedLogin,
@@ -158,6 +158,120 @@ router.post("/auth/logout", async (req, res) => {
   req.session.destroy(() => {
     res.json({ ok: true });
   });
+});
+
+// ─── FORGOT PASSWORD ─────────────────────────────────────────────────────────
+router.post("/auth/forgot-password", async (req, res) => {
+  const { email } = req.body as { email?: string };
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: "Adresse email invalide." });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
+
+  // Always respond OK to avoid user enumeration
+  if (!user) {
+    res.json({ ok: true, message: "Si ce compte existe, un email a été envoyé." });
+    return;
+  }
+
+  // Generate 5-digit code and URL-safe token
+  const code = String(Math.floor(10000 + Math.random() * 90000));
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  await db.insert(passwordResetTokensTable).values({
+    userId: user.id,
+    email: user.email,
+    code,
+    token,
+    expiresAt,
+  });
+
+  const baseUrl = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : "https://drimpay.com";
+  const resetLink = `${baseUrl}/reset-password?token=${token}`;
+
+  const { sendPasswordResetEmail } = await import("../lib/mailer");
+  const mailResult = await sendPasswordResetEmail({
+    to: user.email,
+    companyName: user.companyName,
+    code,
+    resetLink,
+  });
+
+  if (!mailResult.ok) {
+    console.warn("[Auth] Email reset non envoyé:", mailResult.error);
+    // Still return ok — admins can check logs. Don't expose SMTP config status.
+  }
+
+  res.json({ ok: true, message: "Si ce compte existe, un email a été envoyé." });
+});
+
+router.post("/auth/verify-reset-code", async (req, res) => {
+  const { email, code } = req.body as { email?: string; code?: string };
+  if (!email || !code) {
+    res.status(400).json({ error: "Email et code requis." });
+    return;
+  }
+
+  const now = new Date();
+  const [record] = await db
+    .select()
+    .from(passwordResetTokensTable)
+    .where(
+      and(
+        eq(passwordResetTokensTable.email, email.toLowerCase().trim()),
+        eq(passwordResetTokensTable.code, code.trim()),
+        gt(passwordResetTokensTable.expiresAt, now),
+        isNull(passwordResetTokensTable.usedAt),
+      )
+    )
+    .orderBy(passwordResetTokensTable.createdAt)
+    .limit(1);
+
+  if (!record) {
+    res.status(400).json({ error: "Code invalide ou expiré." });
+    return;
+  }
+
+  res.json({ ok: true, token: record.token });
+});
+
+router.post("/auth/reset-password", async (req, res) => {
+  const { token, password } = req.body as { token?: string; password?: string };
+  if (!token || !password || password.length < 8) {
+    res.status(400).json({ error: "Token et nouveau mot de passe (8 caractères min.) requis." });
+    return;
+  }
+
+  const now = new Date();
+  const [record] = await db
+    .select()
+    .from(passwordResetTokensTable)
+    .where(
+      and(
+        eq(passwordResetTokensTable.token, token),
+        gt(passwordResetTokensTable.expiresAt, now),
+        isNull(passwordResetTokensTable.usedAt),
+      )
+    )
+    .limit(1);
+
+  if (!record) {
+    res.status(400).json({ error: "Lien invalide ou expiré. Veuillez recommencer la procédure." });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, record.userId));
+  await db.update(passwordResetTokensTable).set({ usedAt: now }).where(eq(passwordResetTokensTable.id, record.id));
+
+  await logSecurityEvent({ eventType: "PASSWORD_RESET", req, userId: record.userId, riskLevel: "medium" });
+
+  res.json({ ok: true, message: "Mot de passe réinitialisé avec succès." });
 });
 
 router.get("/auth/me", async (req, res) => {

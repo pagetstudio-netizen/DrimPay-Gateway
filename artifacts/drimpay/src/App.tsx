@@ -28,6 +28,7 @@ import DashboardPreview from "@/pages/dashboard-preview";
 import News from "@/pages/news";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import ForgotPassword from "@/pages/forgot-password";
 import NotFound from "@/pages/not-found";
 
 import DocsPayin from "@/pages/docs-payin";
@@ -175,6 +176,8 @@ function PublicSwitch() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ForgotPassword} />
       <Route>
         <Layout>
           <Switch>
