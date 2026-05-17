@@ -4,6 +4,20 @@ import { notifyStartup, startDailyReport, startPolling } from "./lib/telegram";
 import { ensureKybBucket, ensureContractTemplate } from "./lib/storage";
 import { logClapayConfig } from "./lib/clapay";
 
+// ── Global crash guards ───────────────────────────────────────────────────────
+// Prevent Phusion Passenger from seeing a crashed process on transient errors
+// (e.g. DB idle-connection drops, Telegram fetch failures, etc.)
+
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "[Process] uncaughtException — le processus continue");
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "[Process] unhandledRejection — le processus continue");
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
 

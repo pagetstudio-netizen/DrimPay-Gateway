@@ -97,6 +97,18 @@ app.use(subdomainMiddleware);
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use("/api", router);
 
+// ── Global Express error handler ─────────────────────────────────────────────
+// Must have 4 args (err, req, res, next) to be recognised as error middleware
+// by Express. Catches any error thrown/rejected inside route handlers.
+app.use((err: any, _req: any, res: any, _next: any) => {
+  const status: number = typeof err?.status === "number" ? err.status : 500;
+  const message: string = err?.message ?? "Erreur interne du serveur";
+  logger.error({ err, status }, "Express error handler");
+  if (!res.headersSent) {
+    res.status(status).json({ error: message });
+  }
+});
+
 // ── Serve React SPA in production ─────────────────────────────────────────────
 if (isProd) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));

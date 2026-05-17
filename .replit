@@ -36,7 +36,6 @@ outputType = "console"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node artifacts/api-server/dist/index.mjs"
-waitForPort = 8080
 
 [[workflows.workflow]]
 name = "Start frontend"

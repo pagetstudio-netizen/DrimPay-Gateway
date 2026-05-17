@@ -19,6 +19,13 @@ export const pool = new Pool({
   connectionTimeoutMillis: 10000,
 });
 
+// CRITICAL: without this listener, idle-client errors from Supabase closing
+// connections emit an 'error' event that Node.js treats as an uncaught exception,
+// crashing the entire process (Phusion Passenger shows the error page).
+pool.on("error", (err) => {
+  console.error("[DB Pool] Idle client error — connexion perdue, ignorée:", err.message);
+});
+
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
