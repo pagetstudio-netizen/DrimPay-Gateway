@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useLang } from "@/lib/i18n";
 
 /* ── constants ───────────────────────────────────────────────────────────── */
-export const SITE_URL = "https://drimpay.io";
+export const SITE_URL = "https://drimpay.com";
 export const SITE_NAME = "DrimPay";
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/opengraph.jpg`;
 

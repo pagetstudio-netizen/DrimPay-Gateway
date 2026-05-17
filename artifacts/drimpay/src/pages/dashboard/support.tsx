@@ -397,7 +397,7 @@ export default function DashboardSupport() {
               colorClass: "text-sky-400",
               bgClass: "bg-sky-400/10",
               title: "Statut plateforme",
-              desc: "Consultez l'état des services en temps réel sur status.drimpay.com.",
+              desc: "Consultez l'état des services en temps réel sur drimpay.com/status.",
             },
           ].map((item, i) => {
             const Icon = item.Icon;

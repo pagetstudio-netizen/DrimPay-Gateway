@@ -405,12 +405,12 @@ export default function Help() {
                     <ArrowRight className="w-3.5 h-3.5 text-white/30 group-hover:text-white/60 ml-auto group-hover:translate-x-0.5 transition-all" />
                   </button>
                 </Link>
-                <Link href="mailto:support@drimpay.io">
+                <Link href="mailto:support@drimpay.com">
                   <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/8 hover:bg-white/12 border border-white/10 transition-all text-left group">
                     <Phone className="w-4 h-4 text-[#B5F03C] shrink-0" />
                     <div>
                       <p className="text-xs font-semibold text-white">Email support</p>
-                      <p className="text-[10px] text-white/40">support@drimpay.io</p>
+                      <p className="text-[10px] text-white/40">support@drimpay.com</p>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-white/30 group-hover:text-white/60 ml-auto group-hover:translate-x-0.5 transition-all" />
                   </button>
