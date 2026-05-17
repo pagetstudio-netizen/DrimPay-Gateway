@@ -1604,10 +1604,11 @@ const createPaymentLinkSchema = z.object({
 
 router.get("/dashboard/payment-links", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const links = await db
     .select()
     .from(paymentLinksTable)
-    .where(eq(paymentLinksTable.userId, userId))
+    .where(and(eq(paymentLinksTable.userId, userId), eq(paymentLinksTable.mode, currentMode)))
     .orderBy(desc(paymentLinksTable.createdAt));
   res.json(links);
 });
@@ -1638,6 +1639,8 @@ router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
   const token = crypto.randomBytes(16).toString("hex");
   const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86400_000) : undefined;
 
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
+
   const [link] = await db
     .insert(paymentLinksTable)
     .values({
@@ -1652,6 +1655,7 @@ router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
       amount: amount ? String(amount) : null,
       maxUses,
       expiresAt,
+      mode: currentMode,
     })
     .returning();
 
@@ -1713,6 +1717,7 @@ router.get("/pay/:token", async (req, res) => {
       maxUses: paymentLinksTable.maxUses,
       uses: paymentLinksTable.uses,
       status: paymentLinksTable.status,
+      mode: paymentLinksTable.mode,
       expiresAt: paymentLinksTable.expiresAt,
       userId: paymentLinksTable.userId,
     })
@@ -1850,20 +1855,24 @@ router.post("/pay/:token", async (req, res) => {
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `LNK-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
+  const linkMode = link.mode ?? "live";
+
   let [wallet] = await db
     .select()
     .from(walletsTable)
-    .where(and(eq(walletsTable.userId, link.userId), eq(walletsTable.countryCode, effectiveCountry)));
+    .where(and(
+      eq(walletsTable.userId, link.userId),
+      eq(walletsTable.countryCode, effectiveCountry),
+      eq(walletsTable.mode, linkMode),
+    ));
 
   if (!wallet) {
     [wallet] = await db
       .insert(walletsTable)
-      .values({ userId: link.userId, countryCode: effectiveCountry, currency: effectiveCurrency })
+      .values({ userId: link.userId, countryCode: effectiveCountry, currency: effectiveCurrency, mode: linkMode })
       .returning();
   }
 
-  // Determine the current mode for this merchant (links are always live)
-  // We treat payment links as "live" — they collect real money
   const [tx] = await db.insert(transactionsTable).values({
     userId: link.userId,
     walletId: wallet.id,
@@ -1878,10 +1887,42 @@ router.post("/pay/:token", async (req, res) => {
     operator: effectiveOperator,
     phone,
     description: `Payment link: ${link.title}`,
-    mode: "live",
+    mode: linkMode,
   }).returning();
 
-  // Call real aggregator (payment links are always live)
+  // ── SANDBOX: simulate payment (no real API call) ──────────────────────────
+  if (linkMode === "sandbox") {
+    await db.update(paymentLinksTable)
+      .set({ uses: sql`${paymentLinksTable.uses} + 1` })
+      .where(eq(paymentLinksTable.id, link.id));
+
+    setTimeout(async () => {
+      const expiresAt = link.expiresAt ? new Date(link.expiresAt) : null;
+      const isExpired = expiresAt && new Date() > expiresAt;
+      const finalStatus = isExpired ? "expired" : phone.endsWith("2") ? "failed" : "success";
+      await db.update(transactionsTable)
+        .set({
+          status: finalStatus as any,
+          failureReason: finalStatus === "failed" ? "Payment declined by user" : finalStatus === "expired" ? "Payment expired" : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(transactionsTable.id, tx.id));
+      if (finalStatus === "success") {
+        await db.update(walletsTable)
+          .set({ balance: sql`${walletsTable.balance} + ${netAmount}` })
+          .where(eq(walletsTable.id, wallet.id));
+      }
+    }, 3_000);
+
+    res.status(201).json({
+      reference, amount, fee, netAmount, currency: effectiveCurrency,
+      status: "pending", mode: "sandbox",
+      message: "Sandbox : paiement simulé, résolution automatique en ~3 secondes.",
+    });
+    return;
+  }
+
+  // ── LIVE: call real aggregator ────────────────────────────────────────────
   try {
     const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
     const baseUrl = process.env.REPLIT_DEV_DOMAIN
@@ -1914,9 +1955,6 @@ router.post("/pay/:token", async (req, res) => {
     await db.update(paymentLinksTable)
       .set({ uses: sql`${paymentLinksTable.uses} + 1` })
       .where(eq(paymentLinksTable.id, link.id));
-
-    // Telegram : aucune notification à l'initiation.
-    // Le webhook Clapay/PayDunya enverra "Paiement Confirmé" quand le fournisseur confirmera.
 
     res.status(201).json({
       reference, amount, fee, netAmount, currency: effectiveCurrency,

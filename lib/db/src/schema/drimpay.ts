@@ -350,6 +350,7 @@ export const paymentLinksTable = pgTable("payment_links", {
   maxUses: integer("max_uses"),
   uses: integer("uses").notNull().default(0),
   status: paymentLinkStatusEnum("status").notNull().default("active"),
+  mode: apiKeyEnvEnum("mode").notNull().default("sandbox"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
