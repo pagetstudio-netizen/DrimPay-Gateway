@@ -58,7 +58,7 @@ async function buildAll() {
       "@prisma/client",
       "@mikro-orm/*",
       "@grpc/*",
-      "@swc/*",
+      // "@swc/*" intentionally NOT externalized — @swc/helpers must be bundled
       "@aws-sdk/*",
       "@azure/*",
       "@opentelemetry/*",
