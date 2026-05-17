@@ -108,7 +108,7 @@ export default function DocPayout() {
             <Param name="webhook_url" type="string" desc="URL de callback pour les notifications" />
           </div>
 
-          <CodeBlock lang="curl" code={`curl -X POST https://api.drimpay.com/v2/payout/initiate \\
+          <CodeBlock lang="curl" code={`curl -X POST https://drimpay.com/api/v2/payout/initiate \\
   -H "Authorization: Bearer dp_live_xxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -150,7 +150,7 @@ export default function DocPayout() {
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 font-bold font-mono">GET</span>
             <code className="text-sm font-mono text-muted-foreground">/payout/{"{reference}"}</code>
           </div>
-          <CodeBlock lang="curl" code={`curl "https://api.drimpay.com/v2/payout/OUT-1715000000-E5F6G7H8" \\
+          <CodeBlock lang="curl" code={`curl "https://drimpay.com/api/v2/payout/OUT-1715000000-E5F6G7H8" \\
   -H "Authorization: Bearer dp_live_xxxx"`} />
         </Section>
 
@@ -276,7 +276,7 @@ COMMIT;`} />
   if (tentatives >= 3) throw new Error("Nombre max de tentatives atteint");
 
   try {
-    const res = await fetch("https://api.drimpay.com/v2/payout/send", {
+    const res = await fetch("https://drimpay.com/api/v2/payout/send", {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + process.env.DRIMPAY_SECRET_KEY,

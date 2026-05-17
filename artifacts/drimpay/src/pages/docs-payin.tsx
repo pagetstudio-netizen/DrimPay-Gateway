@@ -147,7 +147,7 @@ export default function DocsPayin() {
   const groups = [...new Set(SECTIONS.map(s => s.group))];
 
   const initiateExamples: Record<string, string> = {
-    "curl": `curl -X POST https://api.drimpay.com/v2/payin/initiate \\
+    "curl": `curl -X POST https://drimpay.com/api/v2/payin/initiate \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -163,7 +163,7 @@ export default function DocsPayin() {
   }'`,
     "node.js": `// ⚠️ Always call DrimPay from your backend server, never from the browser!
 const response = await fetch(
-  "https://api.drimpay.com/v2/payin/initiate",
+  "https://drimpay.com/api/v2/payin/initiate",
   {
     method: "POST",
     headers: {
@@ -189,7 +189,7 @@ console.log(data.reference);   // "TG-A1B2C3D4E5F67890"
 console.log(data.expires_at);  // "2026-05-06T08:35:00.000Z"`,
     "php": `<?php
 // ⚠️ Always call DrimPay from your backend server, never from the browser!
-$ch = curl_init("https://api.drimpay.com/v2/payin/initiate");
+$ch = curl_init("https://drimpay.com/api/v2/payin/initiate");
 curl_setopt_array($ch, [
   CURLOPT_POST => true,
   CURLOPT_RETURNTRANSFER => true,
@@ -216,7 +216,7 @@ echo $response["expires_at"];  // "2026-05-06T08:35:00.000Z"`,
 import requests
 
 response = requests.post(
-    "https://api.drimpay.com/v2/payin/initiate",
+    "https://drimpay.com/api/v2/payin/initiate",
     headers={
         "Authorization": "Bearer dp_live_sk_xxxxxxxxxxxxxxxx",
         "Content-Type": "application/json",
@@ -240,7 +240,7 @@ print(data["expires_at"])  # "2026-05-06T08:35:00.000Z"`,
 
   const pollingExamples: Record<string, string> = {
     "curl": `# Poll every 5 seconds until terminal status
-curl https://api.drimpay.com/v2/payin/TG-A1B2C3D4E5F67890 \\
+curl https://drimpay.com/api/v2/payin/TG-A1B2C3D4E5F67890 \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`,
     "node.js": `// Backend polling — never expose your secret key to the browser!
 async function pollPaymentStatus(reference) {
@@ -249,7 +249,7 @@ async function pollPaymentStatus(reference) {
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const res = await fetch(
-      \`https://api.drimpay.com/v2/payin/\${reference}\`,
+      \`https://drimpay.com/api/v2/payin/\${reference}\`,
       { headers: { "Authorization": "Bearer dp_live_sk_xxxxxxxx" } }
     );
     const tx = await res.json();
@@ -270,7 +270,7 @@ function pollPaymentStatus(string $reference): array {
 
   for ($i = 0; $i < 40; $i++) {
     $ch = curl_init(
-      "https://api.drimpay.com/v2/payin/{$reference}"
+      "https://drimpay.com/api/v2/payin/{$reference}"
     );
     curl_setopt_array($ch, [
       CURLOPT_RETURNTRANSFER => true,
@@ -294,7 +294,7 @@ def poll_payment_status(reference: str) -> dict:
 
     for _ in range(40):  # 40 × 5s = ~3min
         r = requests.get(
-            f"https://api.drimpay.com/v2/payin/{reference}",
+            f"https://drimpay.com/api/v2/payin/{reference}",
             headers={"Authorization": "Bearer dp_live_sk_xxxxxxxx"},
         )
         tx = r.json()
@@ -647,13 +647,13 @@ def drimpay_webhook():
                   <tbody>
                     <tr className="border-b border-border/50">
                       <td className="px-4 py-3"><Badge color="yellow">sandbox</Badge></td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://sandbox.drimpay.com/v2</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://drimpay.com/api/v2</td>
                       <td className="px-4 py-3 font-mono text-xs text-primary">dp_sandbox_sk_</td>
                       <td className="px-4 py-3"><XCircle className="w-4 h-4 text-red-400" /></td>
                     </tr>
                     <tr>
                       <td className="px-4 py-3"><Badge color="green">live</Badge></td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://api.drimpay.com/v2</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://drimpay.com/api/v2</td>
                       <td className="px-4 py-3 font-mono text-xs text-primary">dp_live_sk_</td>
                       <td className="px-4 py-3"><CheckCircle2 className="w-4 h-4 text-green-400" /></td>
                     </tr>
@@ -884,7 +884,7 @@ def drimpay_webhook():
                 <code className="text-sm font-mono bg-muted/40 px-3 py-1 rounded-lg text-muted-foreground">/v2/payin/{"{reference}"}</code>
               </div>
               <p className="text-muted-foreground mb-4">Returns the current status of a transaction. Use this for polling from your backend while the customer waits on your frontend. The endpoint auto-expires <Badge color="yellow">pending</Badge> transactions past their <code className="font-mono text-xs text-primary">expires_at</code>.</p>
-              <CodeBlock lang="bash" code={`curl https://api.drimpay.com/v2/payin/TG-A1B2C3D4E5F67890ABCD \\
+              <CodeBlock lang="bash" code={`curl https://drimpay.com/api/v2/payin/TG-A1B2C3D4E5F67890ABCD \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
               <h3 className="text-base font-semibold mb-3 mt-4">Response <Badge color="green">200 OK</Badge></h3>
               <CodeBlock lang="json" code={`{
@@ -933,7 +933,7 @@ def drimpay_webhook():
                   </tbody>
                 </table>
               </div>
-              <CodeBlock lang="bash" code={`curl "https://api.drimpay.com/v2/payin/transactions?status=success&country_code=TG&page=1&limit=20" \\
+              <CodeBlock lang="bash" code={`curl "https://drimpay.com/api/v2/payin/transactions?status=success&country_code=TG&page=1&limit=20" \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
               <CodeBlock lang="json" code={`{
   "data": [
@@ -973,7 +973,7 @@ def drimpay_webhook():
                 <code className="text-sm font-mono bg-muted/40 px-3 py-1 rounded-lg text-muted-foreground">/v2/payin/{"{reference}"}/resend-webhook</code>
               </div>
               <p className="text-muted-foreground mb-4">Manually resends the webhook for a transaction. Useful if your server was down when the original event was sent. The resent webhook is freshly signed with a new timestamp.</p>
-              <CodeBlock lang="bash" code={`curl -X POST https://api.drimpay.com/v2/payin/TG-A1B2C3D4E5F67890ABCD/resend-webhook \\
+              <CodeBlock lang="bash" code={`curl -X POST https://drimpay.com/api/v2/payin/TG-A1B2C3D4E5F67890ABCD/resend-webhook \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
               <CodeBlock lang="json" code={`{
   "message": "Webhook resent",

@@ -1,13 +1,16 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, Upload, Plus, Trash2, Send, CheckCircle2,
-  AlertTriangle, Download, FileText, ChevronDown, AlertCircle, Wallet, Lock
+  Upload, Plus, Trash2, Send, CheckCircle2,
+  AlertTriangle, Download, FileText, ChevronDown, AlertCircle, Lock,
+  ArrowRight, Zap, RefreshCw
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import walletIcon from "@assets/portefeuille-chaud-3d-icon-png-download-9878550_1779042140008.png";
+import sendIcon from "@assets/da590302ca9d8b4097acd7253ed8fbf0_1779042140058.png";
 
 const COUNTRIES = [
   { code: "TG", name: "Togo",          flag: "🇹🇬", currency: "XOF", dialCode: "+228", phoneDigits: 8,  operators: ["TMoney", "Moov Money"] },
@@ -104,6 +107,7 @@ function RecipientRow({ r, index, onChange, onRemove, showErrors }: {
   const phoneOk = !showErrors || validatePhone(r.phone, r.countryCode);
   const opOk    = !showErrors || validateOperator(r.operator, r.countryCode);
   const amtOk   = !showErrors || (!!r.amount && parseFloat(r.amount) > 0);
+  const isValid = errs.length === 0 && showErrors;
 
   return (
     <motion.div
@@ -111,13 +115,19 @@ function RecipientRow({ r, index, onChange, onRemove, showErrors }: {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
       className={cn(
-        "rounded-2xl border bg-gray-50/60 transition-colors p-3",
-        errs.length > 0 ? "border-red-200 bg-red-50/20" : "border-gray-100 hover:border-gray-200"
+        "rounded-2xl border transition-all p-3",
+        errs.length > 0 ? "border-red-200 bg-red-50/20" :
+        isValid ? "border-green-200 bg-green-50/10" :
+        "border-gray-100 bg-gray-50/60 hover:border-gray-200"
       )}
     >
       <div className="grid grid-cols-[28px_1fr_36px] sm:grid-cols-[28px_1fr_1fr_1fr_1fr_36px] gap-2 items-start">
         <div className="flex items-center justify-center h-10">
-          <span className="text-xs text-gray-400 font-mono font-bold">{String(index + 1).padStart(2, "0")}</span>
+          {isValid ? (
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
+          ) : (
+            <span className="text-xs text-gray-400 font-mono font-bold">{String(index + 1).padStart(2, "0")}</span>
+          )}
         </div>
 
         <div className="col-span-1 sm:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -184,15 +194,15 @@ function RecipientRow({ r, index, onChange, onRemove, showErrors }: {
 }
 
 function JobStatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; dot: string; text: string }> = {
-    pending:    { label: "En attente", dot: "bg-amber-400",  text: "text-amber-700" },
-    processing: { label: "En cours",   dot: "bg-blue-400",   text: "text-blue-700"  },
-    completed:  { label: "Terminé",    dot: "bg-green-500",  text: "text-green-700" },
-    failed:     { label: "Échoué",     dot: "bg-red-500",    text: "text-red-700"   },
+  const map: Record<string, { label: string; dot: string; text: string; bg: string }> = {
+    pending:    { label: "En attente", dot: "bg-amber-400",  text: "text-amber-700",  bg: "bg-amber-50 border-amber-100"  },
+    processing: { label: "En cours",   dot: "bg-blue-400",   text: "text-blue-700",   bg: "bg-blue-50 border-blue-100"    },
+    completed:  { label: "Terminé",    dot: "bg-green-500",  text: "text-green-700",  bg: "bg-green-50 border-green-100"  },
+    failed:     { label: "Échoué",     dot: "bg-red-500",    text: "text-red-700",    bg: "bg-red-50 border-red-100"      },
   };
   const s = map[status] ?? map.pending;
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100", s.text)}>
+    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border", s.bg, s.text)}>
       <span className={cn("w-1.5 h-1.5 rounded-full", s.dot)} />
       {s.label}
     </span>
@@ -271,8 +281,8 @@ export default function MassPayout() {
     URL.revokeObjectURL(url);
   };
 
-  const totalAmount = recipients.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0);
-  const fees        = totalAmount * 0.03;
+  const totalAmount  = recipients.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0);
+  const fees         = totalAmount * 0.03;
   const totalDebited = totalAmount + fees;
 
   const allRowsValid = recipients.every(r => rowErrors(r).length === 0);
@@ -345,19 +355,23 @@ export default function MassPayout() {
     return (
       <DashboardLayout>
         <div className="max-w-2xl mx-auto mt-12">
-          <div className="flex flex-col items-center text-center gap-4 p-8 rounded-2xl border border-red-500/20 bg-red-500/5">
-            <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
-              <Lock className="w-7 h-7 text-red-500" />
+          <div className="relative overflow-hidden flex flex-col items-center text-center gap-5 p-10 rounded-3xl border border-red-200 bg-gradient-to-b from-red-50 to-white">
+            <div className="w-20 h-20">
+              <img src={walletIcon} alt="Wallet" className="w-full h-full object-contain drop-shadow-lg" />
             </div>
             <div>
-              <h2 className="text-lg font-bold mb-2">Fonctionnalité réservée aux Entreprises</h2>
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-100 border border-red-200 rounded-full px-3 py-1 mb-3">
+                <Lock className="w-3 h-3" /> Accès restreint
+              </div>
+              <h2 className="text-xl font-bold mb-2 text-gray-900">Fonctionnalité réservée aux Entreprises</h2>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
                 Le Paiement de Masse est exclusivement disponible pour les <strong className="text-foreground">comptes Entreprise</strong>.
                 Les comptes personnels peuvent retirer leurs fonds via la fonctionnalité <strong className="text-foreground">Reversement</strong> (frais : 5%).
               </p>
             </div>
-            <a href="/dashboard/reversement" className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-black text-sm font-semibold hover:bg-primary/90 transition-colors">
-              Aller au Reversement
+            <a href="/dashboard/reversement"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors">
+              Aller au Reversement <ArrowRight className="w-4 h-4" />
             </a>
           </div>
         </div>
@@ -367,68 +381,106 @@ export default function MassPayout() {
 
   return (
     <DashboardLayout>
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto space-y-6">
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#B5F03C" }}>
-              <Users className="w-5 h-5 text-gray-900" />
+        {/* ── Header ── */}
+        <div className="relative overflow-hidden rounded-3xl bg-gray-900 px-6 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_#B5F03C22,_transparent_60%)]" />
+          <div className="relative flex items-center gap-4">
+            <div className="w-16 h-16 shrink-0">
+              <img src={walletIcon} alt="Wallet" className="w-full h-full object-contain drop-shadow-2xl" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Paiement de Masse</h1>
-              <p className="text-xs text-gray-500">Envoyez des fonds à plusieurs destinataires</p>
+              <h1 className="text-xl font-bold text-white">Paiement de Masse</h1>
+              <p className="text-sm text-gray-400 mt-0.5">Envoyez des fonds simultanément à plusieurs destinataires</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-2">
             <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleCSV} />
             <button
               onClick={downloadTemplate}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-all"
+              className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-white/10 bg-white/5 text-xs font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all"
             >
               <Download className="w-3.5 h-3.5" /> Modèle CSV
             </button>
             <button
               onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-all"
+              className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-[#B5F03C] text-gray-900 text-xs font-bold hover:bg-[#a8e034] transition-all"
             >
               <Upload className="w-3.5 h-3.5" /> Importer CSV
             </button>
           </div>
         </div>
 
+        {/* ── Wallet balances strip ── */}
+        {wallets.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {wallets.map(w => {
+              const needed = balanceByCountry[w.countryCode] ?? 0;
+              const ok = needed === 0 || w.balance >= needed;
+              const country = COUNTRIES.find(c => c.code === w.countryCode);
+              return (
+                <div key={w.countryCode} className={cn(
+                  "rounded-2xl border px-4 py-3 flex flex-col gap-1 transition-all",
+                  !ok ? "border-red-200 bg-red-50" : needed > 0 ? "border-green-200 bg-green-50" : "border-gray-100 bg-white"
+                )}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-base leading-none">{country?.flag}</span>
+                    <div className={cn("w-1.5 h-1.5 rounded-full", !ok ? "bg-red-400" : needed > 0 ? "bg-green-400" : "bg-gray-300")} />
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">{country?.name}</p>
+                  <p className={cn("text-sm font-bold", !ok ? "text-red-600" : "text-gray-900")}>
+                    {w.balance.toLocaleString("fr-FR")}
+                  </p>
+                  <p className="text-[10px] text-gray-400">{w.currency}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-5">
+          {/* ── Left: form ── */}
           <div className="lg:col-span-2 space-y-4">
 
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-gray-900 text-sm">Destinataires</h2>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <img src={sendIcon} alt="send" className="w-5 h-5 object-contain" />
+                  <h2 className="font-bold text-gray-900 text-sm">Destinataires</h2>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
                     {recipients.length}
                   </span>
+                  {filledCount > 0 && filledCount < recipients.length && (
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                      {filledCount} valides
+                    </span>
+                  )}
+                  {filledCount > 0 && filledCount === recipients.length && allRowsValid && (
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Prêt
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={addRow}
-                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold border border-gray-200 text-gray-700 hover:border-gray-900 hover:bg-gray-900 hover:text-white transition-all"
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold bg-gray-900 text-white hover:bg-gray-700 transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" /> Ajouter
                 </button>
               </div>
 
-              <div className="hidden sm:grid gap-2 px-5 pt-3 pb-1"
+              <div className="hidden sm:grid gap-2 px-5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400"
                 style={{ gridTemplateColumns: "28px 1fr 1fr 1fr 1fr 36px" }}>
-                {["#", "Pays", "Opérateur", "Téléphone", "Montant", ""].map((h, i) => (
-                  <div key={i} className={cn("text-[10px] font-bold uppercase tracking-widest text-gray-400", i === 1 && "col-span-1")}>{h}</div>
-                ))}
-              </div>
-              <div className="hidden sm:grid gap-2 px-5 pb-1"
-                style={{ gridTemplateColumns: "28px 1fr 1fr 1fr 1fr 36px" }}>
-                {["", "Pays", "Opérateur", "Téléphone", "Montant", ""].map((_, i) =>
-                  i === 0 ? <div key={i} /> : i === 5 ? <div key={i} /> : null
-                )}
+                <div />
+                <div>Pays</div>
+                <div>Opérateur</div>
+                <div>Téléphone</div>
+                <div>Montant</div>
+                <div />
               </div>
 
-              <div className="px-5 pb-5 space-y-2">
+              <div className="px-5 pb-5 pt-2 space-y-2">
                 <AnimatePresence>
                   {recipients.map((r, i) => (
                     <RecipientRow key={r.id} r={r} index={i} onChange={updateRow} onRemove={removeRow} showErrors={showErrors} />
@@ -437,8 +489,8 @@ export default function MassPayout() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 space-y-2">
-              <label className="block text-sm font-semibold text-gray-900">
+            <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Description <span className="text-gray-400 font-normal text-xs">(optionnel)</span>
               </label>
               <input
@@ -450,25 +502,27 @@ export default function MassPayout() {
               />
             </div>
 
-            {balanceWarnings.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 space-y-1.5">
-                <div className="flex items-center gap-2 mb-1">
-                  <Wallet className="w-4 h-4 text-amber-600 shrink-0" />
-                  <p className="text-sm font-semibold text-amber-800">Solde insuffisant</p>
-                </div>
-                {balanceWarnings.map((w, i) => (
-                  <p key={i} className="text-xs text-amber-700 pl-6">{w}</p>
-                ))}
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {balanceWarnings.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <p className="text-sm font-bold text-amber-800">Solde insuffisant</p>
+                  </div>
+                  {balanceWarnings.map((w, i) => (
+                    <p key={i} className="text-xs text-amber-700 pl-6">{w}</p>
+                  ))}
+                </motion.div>
+              )}
 
-            {error && (
-              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2.5 text-sm text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
-                <AlertCircle className="w-4 h-4 shrink-0" /> {error}
-              </motion.div>
-            )}
+              {error && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="flex items-center gap-2.5 text-sm text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+                  <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <button
               onClick={submit}
@@ -490,15 +544,13 @@ export default function MassPayout() {
               ) : (
                 <>
                   <Send className="w-4 h-4 shrink-0" />
-                  <span>
-                    Envoyer à {recipients.length} destinataire{recipients.length > 1 ? "s" : ""}
+                  Envoyer à {recipients.length} destinataire{recipients.length > 1 ? "s" : ""}
+                  <span className="ml-auto">
+                    {canSubmit
+                      ? <CheckCircle2 className="w-4 h-4 text-[#B5F03C]" />
+                      : <AlertTriangle className="w-4 h-4 text-gray-400" />
+                    }
                   </span>
-                  {!canSubmit && (
-                    <AlertTriangle className="w-4 h-4 ml-auto text-gray-400 shrink-0" />
-                  )}
-                  {canSubmit && (
-                    <CheckCircle2 className="w-4 h-4 ml-auto text-green-500 shrink-0" />
-                  )}
                 </>
               )}
             </button>
@@ -512,45 +564,25 @@ export default function MassPayout() {
             )}
           </div>
 
+          {/* ── Right: summary + helpers ── */}
           <div className="space-y-4">
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900 text-sm">Récapitulatif</h3>
+
+            {/* Récapitulatif */}
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h3 className="font-bold text-gray-900 text-sm">Récapitulatif</h3>
               </div>
               <div className="px-5 py-4 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Destinataires</span>
-                  <span className="text-sm font-semibold text-gray-900">{recipients.length}</span>
+                  <span className="text-sm font-bold text-gray-900">{recipients.length}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Valides</span>
-                  <span className={cn("text-sm font-semibold", filledCount === recipients.length ? "text-green-600" : "text-amber-600")}>
+                  <span className={cn("text-sm font-bold", filledCount === recipients.length ? "text-green-600" : "text-amber-600")}>
                     {filledCount} / {recipients.length}
                   </span>
                 </div>
-
-                {wallets.length > 0 && (
-                  <div className="border-t border-dashed border-gray-100 pt-3 space-y-1.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Soldes wallets</p>
-                    {wallets.map(w => {
-                      const needed = balanceByCountry[w.countryCode] ?? 0;
-                      const ok = w.balance >= needed;
-                      const country = COUNTRIES.find(c => c.code === w.countryCode);
-                      return (
-                        <div key={w.countryCode} className={cn(
-                          "flex justify-between items-center text-xs rounded-lg px-2 py-1",
-                          needed > 0 && !ok ? "bg-red-50" : needed > 0 ? "bg-green-50" : ""
-                        )}>
-                          <span className="text-gray-600">{country?.flag} {country?.name}</span>
-                          <span className={cn("font-semibold", needed > 0 && !ok ? "text-red-600" : "text-gray-800")}>
-                            {w.balance.toLocaleString("fr-FR")} {w.currency}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
                 <div className="border-t border-dashed border-gray-200 pt-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">Montant total</span>
@@ -568,39 +600,53 @@ export default function MassPayout() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4">
+            {/* CSV Info */}
+            <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-4 h-4 text-gray-400" />
-                <p className="text-sm font-semibold text-gray-900">Format CSV</p>
+                <p className="text-sm font-bold text-gray-900">Format CSV</p>
               </div>
               <code className="block text-[11px] font-mono bg-gray-50 border border-gray-100 rounded-xl p-3 text-gray-600 leading-relaxed">
                 countryCode,operator,<br />phone,amount,note
               </code>
-              <p className="text-xs text-gray-400 mt-2.5 leading-relaxed">
-                <button onClick={downloadTemplate} className="text-gray-700 font-semibold hover:underline">
-                  Télécharger le modèle →
-                </button>
-              </p>
+              <button onClick={downloadTemplate} className="mt-3 flex items-center gap-1.5 text-xs text-gray-700 font-semibold hover:text-gray-900 transition-colors">
+                <Download className="w-3 h-3" /> Télécharger le modèle
+              </button>
             </div>
 
-            <div className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Opérateurs valides par pays</p>
-              {COUNTRIES.map(c => (
-                <div key={c.code} className="text-xs text-gray-600">
-                  <span className="font-semibold">{c.flag} {c.name} :</span>{" "}
-                  <span className="text-gray-500">{c.operators.join(", ")}</span>
-                </div>
-              ))}
+            {/* Opérateurs */}
+            <div className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="w-3.5 h-3.5 text-gray-400" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Opérateurs par pays</p>
+              </div>
+              <div className="space-y-1.5">
+                {COUNTRIES.map(c => (
+                  <div key={c.code} className="text-xs text-gray-600">
+                    <span className="font-semibold">{c.flag} {c.name} :</span>{" "}
+                    <span className="text-gray-500">{c.operators.join(", ")}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-8">
+        {/* ── History ── */}
+        <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-gray-900">Historique des envois</h2>
-            {jobs.length > 0 && (
-              <span className="text-xs text-gray-400">{jobs.length} opération{jobs.length > 1 ? "s" : ""}</span>
-            )}
+            <div className="flex items-center gap-3">
+              {jobs.length > 0 && (
+                <span className="text-xs text-gray-400">{jobs.length} opération{jobs.length > 1 ? "s" : ""}</span>
+              )}
+              <button
+                onClick={() => { loadJobs(); loadWallets(); }}
+                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Actualiser
+              </button>
+            </div>
           </div>
 
           {loadingJobs ? (
@@ -608,47 +654,53 @@ export default function MassPayout() {
               {[1, 2, 3].map(i => <div key={i} className="h-14 bg-gray-100 rounded-2xl animate-pulse" />)}
             </div>
           ) : jobs.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl py-14 flex flex-col items-center justify-center text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
-                <Users className="w-6 h-6 text-gray-400" />
+            <div className="bg-white border border-gray-200 rounded-2xl py-16 flex flex-col items-center justify-center text-center shadow-sm">
+              <div className="w-16 h-16 mb-4">
+                <img src={walletIcon} alt="Wallet" className="w-full h-full object-contain opacity-40" />
               </div>
-              <p className="text-sm font-semibold text-gray-900 mb-1">Aucun paiement de masse</p>
+              <p className="text-sm font-bold text-gray-900 mb-1">Aucun paiement de masse</p>
               <p className="text-xs text-gray-400">Vos opérations apparaîtront ici après le premier envoi.</p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[560px]">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
                       {["Référence", "Destinataires", "Montant", "Statut", "Date"].map(h => (
-                        <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">{h}</th>
+                        <th key={h} className="text-left px-5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {jobs.map((job, i) => (
                       <motion.tr key={job.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
-                        className="hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-3.5">
+                        className="hover:bg-gray-50/60 transition-colors">
+                        <td className="px-5 py-4">
                           <p className="font-mono text-xs font-bold text-gray-900">{job.reference}</p>
                           {job.description && <p className="text-xs text-gray-400 truncate max-w-[180px]">{job.description}</p>}
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-4">
                           <div className="flex items-center gap-2 text-xs">
-                            <span className="font-semibold text-green-600">{job.successCount}✓</span>
-                            {job.failedCount > 0 && <span className="font-semibold text-red-500">{job.failedCount}✗</span>}
+                            <span className="inline-flex items-center gap-1 font-semibold text-green-600 bg-green-50 border border-green-100 rounded-full px-2 py-0.5">
+                              <CheckCircle2 className="w-3 h-3" />{job.successCount}
+                            </span>
+                            {job.failedCount > 0 && (
+                              <span className="inline-flex items-center gap-1 font-semibold text-red-500 bg-red-50 border border-red-100 rounded-full px-2 py-0.5">
+                                ✗ {job.failedCount}
+                              </span>
+                            )}
                             <span className="text-gray-400">/ {job.totalCount}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-4">
                           <span className="text-sm font-bold text-gray-900">
                             {parseFloat(job.totalAmount).toLocaleString("fr-FR")}{" "}
                             <span className="text-xs font-normal text-gray-400">{job.currency}</span>
                           </span>
                         </td>
-                        <td className="px-5 py-3.5"><JobStatusBadge status={job.status} /></td>
-                        <td className="px-5 py-3.5 text-xs text-gray-400">
+                        <td className="px-5 py-4"><JobStatusBadge status={job.status} /></td>
+                        <td className="px-5 py-4 text-xs text-gray-400">
                           {new Date(job.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
                         </td>
                       </motion.tr>
