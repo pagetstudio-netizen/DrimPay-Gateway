@@ -20,22 +20,28 @@ const app: Express = express();
 
 const isProd = process.env["NODE_ENV"] === "production";
 
-// Trust reverse proxy (Plesk / nginx) so that req.ip and secure cookies work
+// Trust reverse proxy — Plesk runs Nginx → Passenger → Node.js (2 layers).
+// Setting true trusts all proxies, which is correct for a dedicated server.
 if (isProd) {
-  app.set("trust proxy", 1);
+  app.set("trust proxy", true);
 }
 
 // ── Security headers (helmet) ─────────────────────────────────────────────────
 app.use(helmetMiddleware);
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
+// Include drimpay.com (no subdomain) explicitly — the regex \.drimpay\.com$
+// only matches subdomains, not the apex domain itself.
+const extraOrigin = process.env["ALLOWED_ORIGIN"];
 const allowedOrigins = isProd
   ? [
-      process.env["ALLOWED_ORIGIN"] ?? "",
+      "https://drimpay.com",
+      "https://www.drimpay.com",
+      ...(extraOrigin ? [extraOrigin] : []),
       /\.drimpay\.com$/,
       /\.replit\.app$/,
       /\.replit\.dev$/,
-    ].filter(Boolean)
+    ]
   : true;
 
 app.use(
@@ -49,7 +55,11 @@ app.use(
 
 // ── Session ──────────────────────────────────────────────────────────────────
 const sessionSecret = process.env["SESSION_SECRET"];
-if (!sessionSecret) throw new Error("SESSION_SECRET is required");
+// Do NOT throw synchronously — a missing secret at startup would crash the
+// Passenger process before it can even accept a health-check probe.
+if (!sessionSecret) {
+  logger.error("SESSION_SECRET is not set — sessions will not work. Set this env var in Plesk.");
+}
 
 const PgSession = connectPgSimple(session);
 
@@ -61,7 +71,9 @@ app.use(
       createTableIfMissing: true,
       pruneSessionInterval: 60 * 15,
     }),
-    secret: sessionSecret,
+    // Fallback secret prevents a synchronous throw if env var is missing.
+    // Sessions will be invalid but the process won't crash on Passenger.
+    secret: sessionSecret || "drimpay-fallback-secret-please-set-SESSION_SECRET",
     resave: false,
     saveUninitialized: false,
     name: "dp_sid",

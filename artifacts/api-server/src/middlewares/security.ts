@@ -18,14 +18,12 @@ export const helmetMiddleware = helmet({
       connectSrc: ["'self'", "https:"],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
-      upgradeInsecureRequests: [],
+      // upgradeInsecureRequests removed — it causes internal HTTP→HTTPS redirect
+      // loops when Passenger communicates with the Node.js process over HTTP.
     },
   },
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true,
-  },
+  // HSTS is set by Nginx/Plesk already; let Nginx handle it to avoid conflicts.
+  hsts: false,
   frameguard: { action: "deny" },
   xContentTypeOptions: true,
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },

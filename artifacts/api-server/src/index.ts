@@ -29,7 +29,8 @@ if (Number.isNaN(port) || port <= 0) {
 
 logger.info({ port, env: process.env["NODE_ENV"] ?? "unknown" }, "Starting DrimPay API server");
 
-const server = app.listen(port, () => {
+// Bind explicitly to 0.0.0.0 so Passenger/Nginx can reach the socket on all interfaces
+const server = app.listen(port, "0.0.0.0", () => {
   logger.info({ port }, "Server listening");
   logClapayConfig();
 
@@ -51,8 +52,15 @@ const server = app.listen(port, () => {
 server.on("error", (err: any) => {
   logger.error({ err }, "HTTP server error");
   if (err.code === "EADDRINUSE") {
-    logger.error({ port }, "Port already in use — exiting");
-    process.exit(1);
+    // Do NOT exit — Passenger would show the error page and loop.
+    // Wait 3 s for the previous process to release the port, then retry.
+    logger.warn({ port }, "Port busy — retrying in 3 s (Passenger restart race)");
+    setTimeout(() => {
+      server.close();
+      server.listen(port, "0.0.0.0", () => {
+        logger.info({ port }, "Server listening (after retry)");
+      });
+    }, 3_000);
   }
 });
 
