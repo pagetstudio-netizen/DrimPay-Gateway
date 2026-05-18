@@ -217,8 +217,8 @@ export const fr = {
       { type: "Payout en masse (>100 transferts)", feePersonal: "—", feeBusiness: "2,5%", min: "—", max: "Illimité" },
       { type: "Appels API (dans la limite du plan)", feePersonal: "Gratuit", feeBusiness: "Gratuit", min: "—", max: "—" },
       { type: "Retry Webhook", feePersonal: "Gratuit", feeBusiness: "Gratuit", min: "—", max: "—" },
-      { type: "Émission de carte virtuelle", feePersonal: "—", feeBusiness: "XOF 200/carte", min: "—", max: "—" },
-      { type: "Recharge Airtime", feePersonal: "—", feeBusiness: "1,5%", min: "XOF 100", max: "XOF 100 000" },
+      { type: "Émission de carte virtuelle", feePersonal: "—", feeBusiness: "—", min: "—", max: "—" },
+      { type: "Recharge Airtime", feePersonal: "—", feeBusiness: "—", min: "—", max: "—" },
     ],
     feeNote: "* Le taux de 5% pour les particuliers est négociable si vous atteignez un bon volume de transactions. Contactez notre équipe.",
     extras: [

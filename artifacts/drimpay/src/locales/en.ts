@@ -219,8 +219,8 @@ export const en: Translations = {
       { type: "Bulk Payout (>100 transfers)", feePersonal: "—", feeBusiness: "2.5%", min: "—", max: "Unlimited" },
       { type: "API Calls (within plan limit)", feePersonal: "Free", feeBusiness: "Free", min: "—", max: "—" },
       { type: "Webhook Retries", feePersonal: "Free", feeBusiness: "Free", min: "—", max: "—" },
-      { type: "Virtual Card Issuance", feePersonal: "—", feeBusiness: "XOF 200/card", min: "—", max: "—" },
-      { type: "Airtime Top-up", feePersonal: "—", feeBusiness: "1.5%", min: "XOF 100", max: "XOF 100,000" },
+      { type: "Virtual Card Issuance", feePersonal: "—", feeBusiness: "—", min: "—", max: "—" },
+      { type: "Airtime Top-up", feePersonal: "—", feeBusiness: "—", min: "—", max: "—" },
     ],
     feeNote: "* The 5% rate for individuals is negotiable based on transaction volume. Contact our team.",
     extras: [
