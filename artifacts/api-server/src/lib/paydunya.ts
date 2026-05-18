@@ -120,19 +120,18 @@ export class PayDunyaClient {
       signal: AbortSignal.timeout(30_000),
     });
 
-    const contentType = response.headers.get("content-type") ?? "";
-    const isJson = contentType.includes("application/json");
+    const rawText = await response.text();
 
-    if (!isJson) {
-      const text = await response.text();
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
       throw new PayDunyaError(
         `PayDunya a renvoyé une réponse non-JSON (HTTP ${response.status}). Vérifiez les clés API et l'URL de base.`,
         response.status,
-        { raw_text: text.slice(0, 500) }
+        { raw_text: rawText.slice(0, 500) }
       );
     }
-
-    const data = await response.json() as any;
 
     if (!response.ok) {
       throw new PayDunyaError(
