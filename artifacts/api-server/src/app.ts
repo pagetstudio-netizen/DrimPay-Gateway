@@ -68,7 +68,6 @@ app.use(
     store: new PgSession({
       pool,
       tableName: "user_sessions",
-      createTableIfMissing: true,
       pruneSessionInterval: 60 * 15,
     }),
     // Fallback secret prevents a synchronous throw if env var is missing.
