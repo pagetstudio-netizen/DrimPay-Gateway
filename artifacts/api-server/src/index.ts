@@ -49,15 +49,23 @@ const server = app.listen(port, "0.0.0.0", () => {
   }, 3_000);
 });
 
+let eaddrinuseRetries = 0;
+const MAX_EADDRINUSE_RETRIES = 5;
+
 server.on("error", (err: any) => {
   logger.error({ err }, "HTTP server error");
   if (err.code === "EADDRINUSE") {
-    // Do NOT exit — Passenger would show the error page and loop.
+    eaddrinuseRetries += 1;
+    if (eaddrinuseRetries > MAX_EADDRINUSE_RETRIES) {
+      logger.error({ port, retries: eaddrinuseRetries }, "Port still busy after max retries — exiting so process manager can restart");
+      process.exit(1);
+    }
     // Wait 3 s for the previous process to release the port, then retry.
-    logger.warn({ port }, "Port busy — retrying in 3 s (Passenger restart race)");
+    logger.warn({ port, retry: eaddrinuseRetries, max: MAX_EADDRINUSE_RETRIES }, "Port busy — retrying in 3 s");
     setTimeout(() => {
       server.close();
       server.listen(port, "0.0.0.0", () => {
+        eaddrinuseRetries = 0;
         logger.info({ port }, "Server listening (after retry)");
       });
     }, 3_000);
