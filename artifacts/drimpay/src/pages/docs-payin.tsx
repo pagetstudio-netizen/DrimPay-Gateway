@@ -647,7 +647,7 @@ def drimpay_webhook():
                   <tbody>
                     <tr className="border-b border-border/50">
                       <td className="px-4 py-3"><Badge color="yellow">sandbox</Badge></td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://drimpay.com/api/v2</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">https://drimpay.com/sandbox-api/v2</td>
                       <td className="px-4 py-3 font-mono text-xs text-primary">dp_sandbox_sk_</td>
                       <td className="px-4 py-3"><XCircle className="w-4 h-4 text-red-400" /></td>
                     </tr>
