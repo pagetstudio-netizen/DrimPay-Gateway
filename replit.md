@@ -65,16 +65,30 @@ Required env vars: `SUPABASE_DATABASE_URL`, `SESSION_SECRET`, `SUPABASE_SERVICE_
 
 ## Deployment (Plesk)
 
-1. `git push origin main`
-2. Plesk → Pull + Deploy Now → Restart
-3. Variables d'environnement obligatoires sur Plesk :
-   - `SUPABASE_DATABASE_URL` — URL complète Supabase PostgreSQL (Settings > Database)
-   - `SESSION_SECRET` — clé secrète aléatoire longue
-   - `NODE_ENV=production`
-   - `SUPABASE_SERVICE_ROLE_KEY` — clé service role Supabase (Settings > API > service_role). **Obligatoire** pour le stockage des documents KYB dans Supabase Storage. Sans cette clé les dépôts de documents KYB échouent.
-4. Schema DB : `pnpm --filter @workspace/db run push` (depuis Plesk ou CI, pointe vers Supabase)
-5. Commande de démarrage : `node artifacts/api-server/dist/index.mjs`
-6. Répertoire statique frontend : `artifacts/drimpay/dist/public/`
+### Déploiement en une commande
+```bash
+bash scripts/deploy-plesk.sh
+```
+Ce script enchaîne automatiquement : `git pull` → `pnpm install` → migration DB → build prod → redémarrage Passenger → health check.
+
+Options :
+- `--skip-pull` — ne pas faire `git pull` (si le code est déjà à jour)
+- `--skip-db`   — ne pas appliquer les migrations DB
+
+### Déploiement manuel (étape par étape)
+1. `git pull origin main`
+2. `pnpm install --frozen-lockfile`
+3. `pnpm --filter @workspace/db run push` — migrations DB
+4. `pnpm run build:prod` — compile frontend + backend
+5. `touch tmp/restart.txt` — redémarre Passenger
+6. Commande de démarrage Plesk : `node artifacts/api-server/dist/index.mjs`
+7. Répertoire statique frontend : `artifacts/drimpay/dist/public/`
+
+### Variables d'environnement obligatoires sur Plesk
+- `SUPABASE_DATABASE_URL` — URL complète Supabase PostgreSQL (Settings > Database)
+- `SESSION_SECRET` — clé secrète aléatoire longue
+- `NODE_ENV=production`
+- `SUPABASE_SERVICE_ROLE_KEY` — clé service role Supabase (Settings > API > service_role). **Obligatoire** pour le stockage des documents KYB dans Supabase Storage. Sans cette clé les dépôts de documents KYB échouent.
 
 ## Gotchas
 
