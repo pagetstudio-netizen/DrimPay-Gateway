@@ -713,8 +713,8 @@ export default function PayPage() {
                   className="text-center py-8"
                 >
                   <div className="w-16 h-16 rounded-full border-4 border-gray-200 border-t-gray-900 animate-spin mx-auto mb-5" />
-                  <h2 className="text-base font-bold text-gray-900 mb-2">Envoi en cours…</h2>
-                  <p className="text-sm text-gray-500">Connexion au réseau de paiement.</p>
+                  <h2 className="text-base font-bold text-gray-900 mb-2">Traitement en cours…</h2>
+                  <p className="text-sm text-gray-500">Votre paiement est en cours de traitement, veuillez patienter.</p>
                 </motion.div>
               )}
 
