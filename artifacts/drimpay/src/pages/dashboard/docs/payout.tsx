@@ -90,6 +90,23 @@ export default function DocPayout() {
           </div>
         </div>
 
+        <Section title="Introduction" icon={Globe}>
+          <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+            L'API Pay-out DrimPay vous permet d'envoyer des fonds vers un numéro Mobile Money dans 7 pays d'Afrique de l'Ouest et Centrale.
+            Les frais de <strong className="text-foreground">3%</strong> sont débités du wallet du pays cible à chaque transaction réussie.
+          </p>
+          <div className="rounded-xl border border-border bg-card overflow-hidden font-mono text-sm">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-muted-foreground">Live :</span>
+              <span className="text-primary">https://drimpay.com/api/v2</span>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-muted-foreground">Sandbox :</span>
+              <span className="text-yellow-500">https://drimpay.com/sandbox-api/v2</span>
+            </div>
+          </div>
+        </Section>
+
         <Section title="Initier un Pay-out" icon={Send}>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500/10 text-green-600 font-bold font-mono">POST</span>

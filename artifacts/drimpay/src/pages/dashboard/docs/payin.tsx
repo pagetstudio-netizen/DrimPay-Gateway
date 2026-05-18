@@ -89,9 +89,15 @@ export default function DocPayin() {
             Chaque transaction est créditée sur le wallet du pays correspondant.
             Des frais de <strong className="text-foreground">3% (Entreprise) ou 5% (Personnel)</strong> sont prélevés sur chaque transaction réussie.
           </p>
-          <div className="rounded-xl border border-border bg-card p-4 font-mono text-sm">
-            <span className="text-muted-foreground">Base URL : </span>
-            <span className="text-primary">https://drimpay.com/api/v2</span>
+          <div className="rounded-xl border border-border bg-card overflow-hidden font-mono text-sm">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-muted-foreground">Live :</span>
+              <span className="text-primary">https://drimpay.com/api/v2</span>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-muted-foreground">Sandbox :</span>
+              <span className="text-yellow-500">https://drimpay.com/sandbox-api/v2</span>
+            </div>
           </div>
         </Section>
 
