@@ -31,7 +31,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node artifacts/api-server/dist/index.mjs"
+args = "pnpm run build:prod && node artifacts/api-server/dist/index.mjs"
 waitForPort = 5000
 
 [agent]
@@ -48,10 +48,6 @@ channel = "stable-25_05"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8082
-externalPort = 3000
 
 [[ports]]
 localPort = 8083
