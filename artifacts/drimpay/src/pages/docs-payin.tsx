@@ -147,8 +147,9 @@ export default function DocsPayin() {
   const groups = [...new Set(SECTIONS.map(s => s.group))];
 
   const initiateExamples: Record<string, string> = {
-    "curl": `curl -X POST https://drimpay.com/api/v2/payin/initiate \\
-  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" \\
+    "curl": `# Sandbox — utilisez sandbox-api/v2 + clé dp_sandbox_sk_ pour tester
+curl -X POST https://drimpay.com/sandbox-api/v2/payin/initiate \\
+  -H "Authorization: Bearer dp_sandbox_sk_xxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
     "amount": 5000,
@@ -160,14 +161,23 @@ export default function DocsPayin() {
     "webhook_url": "https://yourapp.com/webhooks/drimpay",
     "description": "Payment for order #001",
     "expires_in_minutes": 5
-  }'`,
+  }'
+
+# Live — remplacez par api/v2 + clé dp_live_sk_ en production
+# curl -X POST https://drimpay.com/api/v2/payin/initiate \\
+#   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" ...`,
     "node.js": `// ⚠️ Always call DrimPay from your backend server, never from the browser!
+// Sandbox: use sandbox-api/v2 + dp_sandbox_sk_ key for testing
+// Live:    use api/v2       + dp_live_sk_    key in production
+const BASE_URL = "https://drimpay.com/sandbox-api/v2"; // ← change to api/v2 for live
+const API_KEY  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx";      // ← your sandbox key
+
 const response = await fetch(
-  "https://drimpay.com/api/v2/payin/initiate",
+  \`\${BASE_URL}/payin/initiate\`,
   {
     method: "POST",
     headers: {
-      "Authorization": "Bearer dp_live_sk_xxxxxxxxxxxxxxxx",
+      "Authorization": \`Bearer \${API_KEY}\`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -189,12 +199,17 @@ console.log(data.reference);   // "TG-A1B2C3D4E5F67890"
 console.log(data.expires_at);  // "2026-05-06T08:35:00.000Z"`,
     "php": `<?php
 // ⚠️ Always call DrimPay from your backend server, never from the browser!
-$ch = curl_init("https://drimpay.com/api/v2/payin/initiate");
+// Sandbox: use sandbox-api/v2 + dp_sandbox_sk_ key for testing
+// Live:    use api/v2       + dp_live_sk_    key in production
+$base_url = "https://drimpay.com/sandbox-api/v2"; // ← change to api/v2 for live
+$api_key  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx";      // ← your sandbox key
+
+$ch = curl_init("$base_url/payin/initiate");
 curl_setopt_array($ch, [
   CURLOPT_POST => true,
   CURLOPT_RETURNTRANSFER => true,
   CURLOPT_HTTPHEADER => [
-    "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx",
+    "Authorization: Bearer $api_key",
     "Content-Type: application/json",
   ],
   CURLOPT_POSTFIELDS => json_encode([
@@ -213,12 +228,17 @@ $response = json_decode(curl_exec($ch), true);
 echo $response["reference"];   // "TG-A1B2C3D4E5F67890"
 echo $response["expires_at"];  // "2026-05-06T08:35:00.000Z"`,
     "python": `# ⚠️ Always call DrimPay from your backend server, never from the browser!
+# Sandbox: use sandbox-api/v2 + dp_sandbox_sk_ key for testing
+# Live:    use api/v2       + dp_live_sk_    key in production
 import requests
 
+BASE_URL = "https://drimpay.com/sandbox-api/v2"  # ← change to api/v2 for live
+API_KEY  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx"       # ← your sandbox key
+
 response = requests.post(
-    "https://drimpay.com/api/v2/payin/initiate",
+    f"{BASE_URL}/payin/initiate",
     headers={
-        "Authorization": "Bearer dp_live_sk_xxxxxxxxxxxxxxxx",
+        "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
     },
     json={
@@ -239,18 +259,22 @@ print(data["expires_at"])  # "2026-05-06T08:35:00.000Z"`,
   };
 
   const pollingExamples: Record<string, string> = {
-    "curl": `# Poll every 5 seconds until terminal status
-curl https://drimpay.com/api/v2/payin/TG-A1B2C3D4E5F67890 \\
-  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`,
+    "curl": `# Poll every 5 seconds until terminal status (sandbox example)
+curl https://drimpay.com/sandbox-api/v2/payin/TG-A1B2C3D4E5F67890 \\
+  -H "Authorization: Bearer dp_sandbox_sk_xxxxxxxxxxxxxxxx"`,
     "node.js": `// Backend polling — never expose your secret key to the browser!
+// Replace sandbox-api/v2 → api/v2 and dp_sandbox_sk_ → dp_live_sk_ for production
+const BASE_URL = "https://drimpay.com/sandbox-api/v2";
+const API_KEY  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx";
+
 async function pollPaymentStatus(reference) {
   const TERMINAL = ["success", "failed", "expired", "cancelled", "reversed"];
   const MAX_ATTEMPTS = 40; // 40 × 5s = 3min 20s max
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const res = await fetch(
-      \`https://drimpay.com/api/v2/payin/\${reference}\`,
-      { headers: { "Authorization": "Bearer dp_live_sk_xxxxxxxx" } }
+      \`\${BASE_URL}/payin/\${reference}\`,
+      { headers: { "Authorization": \`Bearer \${API_KEY}\` } }
     );
     const tx = await res.json();
 
@@ -265,17 +289,20 @@ async function pollPaymentStatus(reference) {
   throw new Error("Payment polling timeout");
 }`,
     "php": `<?php
+// Replace sandbox-api/v2 → api/v2 and dp_sandbox_sk_ → dp_live_sk_ for production
+$base_url = "https://drimpay.com/sandbox-api/v2";
+$api_key  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx";
+
 function pollPaymentStatus(string $reference): array {
+  global $base_url, $api_key;
   $terminal = ["success", "failed", "expired", "cancelled", "reversed"];
 
   for ($i = 0; $i < 40; $i++) {
-    $ch = curl_init(
-      "https://drimpay.com/api/v2/payin/{$reference}"
-    );
+    $ch = curl_init("$base_url/payin/{$reference}");
     curl_setopt_array($ch, [
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_HTTPHEADER => [
-        "Authorization: Bearer dp_live_sk_xxxxxxxx"
+        "Authorization: Bearer $api_key"
       ],
     ]);
     $tx = json_decode(curl_exec($ch), true);
@@ -289,13 +316,17 @@ function pollPaymentStatus(string $reference): array {
 }`,
     "python": `import time, requests
 
+# Replace sandbox-api/v2 → api/v2 and dp_sandbox_sk_ → dp_live_sk_ for production
+BASE_URL = "https://drimpay.com/sandbox-api/v2"
+API_KEY  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx"
+
 def poll_payment_status(reference: str) -> dict:
     terminal = {"success", "failed", "expired", "cancelled", "reversed"}
 
     for _ in range(40):  # 40 × 5s = ~3min
         r = requests.get(
-            f"https://drimpay.com/api/v2/payin/{reference}",
-            headers={"Authorization": "Bearer dp_live_sk_xxxxxxxx"},
+            f"{BASE_URL}/payin/{reference}",
+            headers={"Authorization": f"Bearer {API_KEY}"},
         )
         tx = r.json()
         if tx["status"] in terminal:

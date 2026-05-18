@@ -104,8 +104,9 @@ export default function DocsPayout() {
   };
 
   const sendExamples: Record<string, string> = {
-    "curl": `curl -X POST https://drimpay.com/api/v2/payout/send \\
-  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" \\
+    "curl": `# Sandbox — utilisez sandbox-api/v2 + clé dp_sandbox_sk_ pour tester
+curl -X POST https://drimpay.com/sandbox-api/v2/payout/send \\
+  -H "Authorization: Bearer dp_sandbox_sk_xxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
     "amount": 10000,
@@ -116,13 +117,22 @@ export default function DocsPayout() {
     "order_id": "PAYOUT-20240501-042",
     "webhook_url": "https://yourapp.com/webhook/drimpay",
     "description": "Supplier payment May 2026"
-  }'`,
-    "node.js": `const response = await fetch(
-  "https://drimpay.com/api/v2/payout/send",
+  }'
+
+# Live — remplacez par api/v2 + clé dp_live_sk_ en production
+# curl -X POST https://drimpay.com/api/v2/payout/send \\
+#   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" ...`,
+    "node.js": `// Sandbox: use sandbox-api/v2 + dp_sandbox_sk_ key for testing
+// Live:    use api/v2       + dp_live_sk_    key in production
+const BASE_URL = "https://drimpay.com/sandbox-api/v2"; // ← change to api/v2 for live
+const API_KEY  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx";      // ← your sandbox key
+
+const response = await fetch(
+  \`\${BASE_URL}/payout/send\`,
   {
     method: "POST",
     headers: {
-      "Authorization": "Bearer dp_live_sk_xxxxxxxxxxxxxxxx",
+      "Authorization": \`Bearer \${API_KEY}\`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -140,12 +150,17 @@ export default function DocsPayout() {
 const data = await response.json();
 console.log(data.reference); // SN-X9Y8Z7W6V5U4...`,
     "php": `<?php
-$ch = curl_init("https://drimpay.com/api/v2/payout/send");
+// Sandbox: use sandbox-api/v2 + dp_sandbox_sk_ key for testing
+// Live:    use api/v2       + dp_live_sk_    key in production
+$base_url = "https://drimpay.com/sandbox-api/v2"; // ← change to api/v2 for live
+$api_key  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx";      // ← your sandbox key
+
+$ch = curl_init("$base_url/payout/send");
 curl_setopt_array($ch, [
   CURLOPT_POST => true,
   CURLOPT_RETURNTRANSFER => true,
   CURLOPT_HTTPHEADER => [
-    "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx",
+    "Authorization: Bearer $api_key",
     "Content-Type: application/json",
   ],
   CURLOPT_POSTFIELDS => json_encode([
@@ -161,12 +176,17 @@ curl_setopt_array($ch, [
 ]);
 $response = json_decode(curl_exec($ch), true);
 echo $response["reference"];`,
-    "python": `import requests
+    "python": `# Sandbox: use sandbox-api/v2 + dp_sandbox_sk_ key for testing
+# Live:    use api/v2       + dp_live_sk_    key in production
+import requests
+
+BASE_URL = "https://drimpay.com/sandbox-api/v2"  # ← change to api/v2 for live
+API_KEY  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx"       # ← your sandbox key
 
 response = requests.post(
-    "https://drimpay.com/api/v2/payout/send",
+    f"{BASE_URL}/payout/send",
     headers={
-        "Authorization": "Bearer dp_live_sk_xxxxxxxxxxxxxxxx",
+        "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
     },
     json={
