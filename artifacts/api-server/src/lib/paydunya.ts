@@ -1,14 +1,13 @@
 /**
  * ─── PayDunya API Client ──────────────────────────────────────────────────────
  *
- * Variables d'environnement requises (à configurer dans Replit Secrets) :
- *   PAYDUNYA_BASE_URL        → URL de base (ex: https://app.paydunya.com/api/v1)
- *   PAYDUNYA_MASTER_KEY      → Master Key PayDunya
- *   PAYDUNYA_PRIVATE_KEY     → Private Key PayDunya
- *   PAYDUNYA_TOKEN           → Token PayDunya
- *   PAYDUNYA_WEBHOOK_SECRET  → Secret pour vérifier les callbacks entrants
- *
- * TODO: Adapter les endpoints et noms de champs selon la documentation PayDunya reçue.
+ * Variables d'environnement requises :
+ *   PAYDUNYA_BASE_URL        → https://app.paydunya.com/api/v1 (live)
+ *                              https://app.paydunya.com/sandbox-api/v1 (test)
+ *   PAYDUNYA_MASTER_KEY      → Clé Principale
+ *   PAYDUNYA_PRIVATE_KEY     → Clé Privée
+ *   PAYDUNYA_TOKEN           → Token
+ *   PAYDUNYA_WEBHOOK_SECRET  → (optionnel) secret pour vérifier les callbacks
  */
 
 import crypto from "crypto";
@@ -99,17 +98,15 @@ export class PayDunyaClient {
 
   // ─── Auth headers ─────────────────────────────────────────────────────────
   private headers(): Record<string, string> {
-    // TODO: Adapter selon le schéma d'auth exact de PayDunya.
-    // PayDunya utilise généralement ces headers :
     return {
-      "Content-Type": "application/json",
+      "Content-Type":          "application/json",
       "PAYDUNYA-MASTER-KEY":   this.config.masterKey,
       "PAYDUNYA-PRIVATE-KEY":  this.config.privateKey,
       "PAYDUNYA-TOKEN":        this.config.token,
     };
   }
 
-  // ─── HTTP helper ──────────────────────────────────────────────────────────
+  // ─── HTTP helper — gère les réponses HTML (erreurs proxy/auth) ────────────
   private async request<T>(
     method: "GET" | "POST" | "PUT",
     path: string,
@@ -123,11 +120,23 @@ export class PayDunyaClient {
       signal: AbortSignal.timeout(30_000),
     });
 
+    const contentType = response.headers.get("content-type") ?? "";
+    const isJson = contentType.includes("application/json");
+
+    if (!isJson) {
+      const text = await response.text();
+      throw new PayDunyaError(
+        `PayDunya a renvoyé une réponse non-JSON (HTTP ${response.status}). Vérifiez les clés API et l'URL de base.`,
+        response.status,
+        { raw_text: text.slice(0, 500) }
+      );
+    }
+
     const data = await response.json() as any;
 
     if (!response.ok) {
       throw new PayDunyaError(
-        data?.message ?? data?.response_text ?? `PayDunya API error ${response.status}`,
+        data?.response_text ?? data?.message ?? `PayDunya API error ${response.status}`,
         response.status,
         data
       );
@@ -136,66 +145,89 @@ export class PayDunyaClient {
     return data as T;
   }
 
-  // ─── Initiate Pay-In ──────────────────────────────────────────────────────
+  // ─── Initiate Pay-In (Softorder / hosted checkout) ────────────────────────
+  // PayDunya crée une page de paiement hébergée. Le client est redirigé ou
+  // reçoit un prompt mobile money.
   async initiatePayin(params: PayDunyaPayinRequest): Promise<PayDunyaPayinResponse> {
-    // TODO: Adapter l'endpoint et le corps selon la doc PayDunya.
-    // Endpoints PayDunya possibles :
-    //   POST /softorder/create  (checkout standard)
-    //   POST /direct-pay/credit-account  (paiement direct Mobile Money)
-    return this.request<PayDunyaPayinResponse>("POST", "/softorder/create", {
-      // TODO: Mapper selon les champs exacts de l'API PayDunya
+    const raw = await this.request<any>("POST", "/softorder/create", {
       invoice: {
         total_amount: params.amount,
-        description: params.description ?? `Paiement DrimPay ${params.reference}`,
+        description:  params.description ?? `Paiement DrimPay ${params.reference}`,
       },
       store: {
-        name: "DrimPay",
+        name:        "DrimPay",
         website_url: "https://drimpay.com",
       },
       actions: {
-        cancel_url: params.cancel_url ?? "https://drimpay.com/cancel",
-        return_url: params.return_url ?? "https://drimpay.com/success",
+        cancel_url:   params.cancel_url  ?? "https://drimpay.com",
+        return_url:   params.return_url  ?? "https://drimpay.com",
         callback_url: params.callback_url,
       },
       custom_data: {
         drimpay_reference: params.reference,
-        order_id: params.order_id,
-      },
-      payment_method: {
-        operator: params.operator,
-        phone: params.phone,
-        country: params.country_code,
-        currency: params.currency,
+        order_id:          params.order_id,
+        operator:          params.operator,
+        phone:             params.phone,
+        country_code:      params.country_code,
+        currency:          params.currency,
       },
     });
+
+    const success = raw.response_code === "00";
+    return {
+      success,
+      paydunya_reference: raw.token ?? "",
+      token:              raw.token,
+      payment_url:        raw.invoice_url ?? raw.payment_url ?? null,
+      status:             success ? "pending" : "failed",
+      message:            raw.response_text ?? raw.message,
+    };
   }
 
-  // ─── Initiate Pay-Out ─────────────────────────────────────────────────────
+  // ─── Initiate Pay-Out (debit account) ─────────────────────────────────────
   async initiatePayout(params: PayDunyaPayoutRequest): Promise<PayDunyaPayoutResponse> {
-    // TODO: Adapter l'endpoint et le corps selon la doc PayDunya.
-    return this.request<PayDunyaPayoutResponse>("POST", "/direct-pay/debit-account", {
-      account_alias: params.phone,
-      amount: params.amount,
-      description: params.description ?? `Paiement sortant DrimPay ${params.reference}`,
+    const raw = await this.request<any>("POST", "/direct-pay/debit-account", {
+      account_alias:      params.phone,
+      amount:             params.amount,
+      withdraw_mode:      params.operator,
+      callback_url:       params.callback_url,
+      description:        params.description ?? `Paiement sortant DrimPay ${params.reference}`,
+      currency:           params.currency,
       external_reference: params.reference,
-      callback_url: params.callback_url,
-      operator: params.operator,
-      country: params.country_code,
-      currency: params.currency,
     });
+
+    const success = raw.response_code === "00";
+    return {
+      success,
+      paydunya_reference: raw.token ?? raw.reference ?? "",
+      status:             success ? "pending" : "failed",
+      message:            raw.response_text ?? raw.message,
+    };
   }
 
   // ─── Get transaction status ───────────────────────────────────────────────
   async getStatus(paydunyaReference: string): Promise<PayDunyaStatusResponse> {
-    // TODO: Adapter l'endpoint selon la doc PayDunya.
-    // Exemples : GET /softorder/details/{token}  ou  GET /transactions/{ref}
-    return this.request<PayDunyaStatusResponse>("GET", `/softorder/details/${paydunyaReference}`);
+    const raw = await this.request<any>("GET", `/softorder/details/${paydunyaReference}`);
+
+    const invoice    = raw.invoice ?? raw;
+    const customData = raw.custom_data ?? {};
+    const status     = this.mapStatus(invoice.status ?? raw.status);
+
+    return {
+      paydunya_reference: paydunyaReference,
+      our_reference:      customData.drimpay_reference ?? raw.our_reference ?? "",
+      status,
+      amount:             parseFloat(invoice.total_amount ?? raw.amount ?? "0"),
+      currency:           invoice.currency ?? raw.currency ?? "XOF",
+      operator:           customData.operator ?? raw.operator ?? "unknown",
+      phone:              customData.phone    ?? raw.phone    ?? "",
+      failure_reason:     invoice.fail_reason ?? raw.failure_reason,
+      completed_at:       invoice.completed_at ?? raw.completed_at,
+    };
   }
 
   // ─── Verify webhook signature from PayDunya ───────────────────────────────
   verifyWebhookSignature(payload: string, receivedHash: string): boolean {
-    // TODO: Adapter selon la méthode de signature de PayDunya.
-    // PayDunya utilise généralement un hash SHA512 de la clé maître + le payload.
     const expected = crypto
       .createHash("sha512")
       .update(this.config.masterKey + payload)
@@ -205,26 +237,47 @@ export class PayDunyaClient {
 
   // ─── Parse webhook event from PayDunya ───────────────────────────────────
   parseWebhookEvent(body: any): PayDunyaWebhookPayload {
-    // TODO: Adapter selon la structure exacte du webhook PayDunya.
-    // PayDunya envoie généralement les données dans une structure spécifique.
-    const invoice = body.invoice ?? body;
+    const invoice    = body.invoice ?? body;
     const customData = body.custom_data ?? {};
+    const status     = this.mapStatus(invoice.status ?? body.status ?? "");
 
     return {
-      event:               body.event_type ?? (invoice.status === "completed" ? "payin.success" : "payin.failed"),
-      paydunya_reference:  invoice.token ?? body.paydunya_reference ?? body.reference,
-      our_reference:       customData.drimpay_reference ?? body.external_reference ?? body.our_reference,
-      status:              invoice.status ?? body.status,
+      event:               body.event_type ?? (status === "completed" ? "payin.success" : "payin.failed"),
+      paydunya_reference:  invoice.token ?? body.token ?? body.paydunya_reference ?? "",
+      our_reference:       customData.drimpay_reference ?? body.external_reference ?? body.our_reference ?? "",
+      status,
       amount:              parseFloat(invoice.total_amount ?? body.amount ?? "0"),
       currency:            invoice.currency ?? body.currency ?? "XOF",
-      operator:            body.payment_method?.operator ?? body.operator ?? "unknown",
-      phone:               body.payment_method?.phone ?? body.phone ?? "",
-      country_code:        body.payment_method?.country ?? body.country_code ?? "",
-      failure_reason:      body.failure_reason ?? invoice.fail_reason,
+      operator:            customData.operator ?? body.operator ?? "unknown",
+      phone:               customData.phone    ?? body.phone    ?? "",
+      country_code:        customData.country_code ?? body.country_code ?? "",
+      failure_reason:      invoice.fail_reason ?? body.failure_reason,
       completed_at:        invoice.completed_at ?? body.completed_at,
       timestamp:           body.timestamp ?? Math.floor(Date.now() / 1000),
       hash:                body.hash,
     };
+  }
+
+  // ─── Map PayDunya status strings to internal format ───────────────────────
+  private mapStatus(raw: string): "pending" | "processing" | "completed" | "failed" | "cancelled" {
+    switch ((raw ?? "").toLowerCase()) {
+      case "completed":
+      case "success":
+      case "successful":
+        return "completed";
+      case "failed":
+      case "failure":
+      case "error":
+        return "failed";
+      case "cancelled":
+      case "canceled":
+        return "cancelled";
+      case "processing":
+      case "in_progress":
+        return "processing";
+      default:
+        return "pending";
+    }
   }
 }
 
@@ -244,10 +297,10 @@ let _client: PayDunyaClient | null = null;
 
 export function getPayDunyaClient(): PayDunyaClient {
   if (!_client) {
-    const baseUrl      = process.env.PAYDUNYA_BASE_URL;
-    const masterKey    = process.env.PAYDUNYA_MASTER_KEY;
-    const privateKey   = process.env.PAYDUNYA_PRIVATE_KEY;
-    const token        = process.env.PAYDUNYA_TOKEN;
+    const baseUrl       = process.env.PAYDUNYA_BASE_URL;
+    const masterKey     = process.env.PAYDUNYA_MASTER_KEY;
+    const privateKey    = process.env.PAYDUNYA_PRIVATE_KEY;
+    const token         = process.env.PAYDUNYA_TOKEN;
     const webhookSecret = process.env.PAYDUNYA_WEBHOOK_SECRET ?? "placeholder-secret";
 
     if (!baseUrl || !masterKey || !privateKey || !token) {
