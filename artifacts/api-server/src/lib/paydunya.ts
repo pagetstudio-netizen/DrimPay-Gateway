@@ -144,11 +144,11 @@ export class PayDunyaClient {
     return data as T;
   }
 
-  // ─── Initiate Pay-In (Softorder / hosted checkout) ────────────────────────
+  // ─── Initiate Pay-In (Checkout Invoice / hosted checkout) ─────────────────
   // PayDunya crée une page de paiement hébergée. Le client est redirigé ou
   // reçoit un prompt mobile money.
   async initiatePayin(params: PayDunyaPayinRequest): Promise<PayDunyaPayinResponse> {
-    const raw = await this.request<any>("POST", "/softorder/create", {
+    const raw = await this.request<any>("POST", "/checkout-invoice/create", {
       invoice: {
         total_amount: params.amount,
         description:  params.description ?? `Paiement DrimPay ${params.reference}`,
@@ -183,30 +183,21 @@ export class PayDunyaClient {
     };
   }
 
-  // ─── Initiate Pay-Out (debit account) ─────────────────────────────────────
-  async initiatePayout(params: PayDunyaPayoutRequest): Promise<PayDunyaPayoutResponse> {
-    const raw = await this.request<any>("POST", "/direct-pay/debit-account", {
-      account_alias:      params.phone,
-      amount:             params.amount,
-      withdraw_mode:      params.operator,
-      callback_url:       params.callback_url,
-      description:        params.description ?? `Paiement sortant DrimPay ${params.reference}`,
-      currency:           params.currency,
-      external_reference: params.reference,
-    });
-
-    const success = raw.response_code === "00";
-    return {
-      success,
-      paydunya_reference: raw.token ?? raw.reference ?? "",
-      status:             success ? "pending" : "failed",
-      message:            raw.response_text ?? raw.message,
-    };
+  // ─── Initiate Pay-Out ─────────────────────────────────────────────────────
+  // NOTE: PayDunya's direct pay (payout) API endpoint is not available on the
+  // standard REST path. Payout via PayDunya must be configured separately or
+  // handled via Clapay. This method will throw a clear error.
+  async initiatePayout(_params: PayDunyaPayoutRequest): Promise<PayDunyaPayoutResponse> {
+    throw new PayDunyaError(
+      "Le payout via PayDunya n'est pas disponible sur cet endpoint. Configurez Clapay pour les payouts ou contactez PayDunya pour activer le Direct Pay API.",
+      503,
+      { code: "PAYOUT_NOT_SUPPORTED" },
+    );
   }
 
   // ─── Get transaction status ───────────────────────────────────────────────
   async getStatus(paydunyaReference: string): Promise<PayDunyaStatusResponse> {
-    const raw = await this.request<any>("GET", `/softorder/details/${paydunyaReference}`);
+    const raw = await this.request<any>("GET", `/checkout-invoice/confirm/${paydunyaReference}`);
 
     const invoice    = raw.invoice ?? raw;
     const customData = raw.custom_data ?? {};
