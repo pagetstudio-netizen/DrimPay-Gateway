@@ -135,38 +135,44 @@ app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Endpoint not found" });
 });
 
-// ── Serve React SPA in production ─────────────────────────────────────────────
-if (isProd) {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const frontendDist = path.resolve(__dirname, "../../drimpay/dist/public");
+// ── Serve React SPA whenever the built dist exists ────────────────────────────
+// Intentionally NOT gated on isProd — we serve the frontend whenever the build
+// artefact is present. This makes Plesk work correctly regardless of whether
+// NODE_ENV is set, and keeps the dev workflow simple (build once, serve always).
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendDist = path.resolve(__dirname, "../../drimpay/dist/public");
+const indexHtml  = path.join(frontendDist, "index.html");
 
-  if (existsSync(frontendDist)) {
-    // Serve static assets (JS, CSS, images) with aggressive caching
-    app.use(
-      express.static(frontendDist, {
-        maxAge: "7d",
-        etag: true,
-        index: false, // Don't auto-serve index.html — let catch-all handle it
-        setHeaders(res, filePath) {
-          if (filePath.endsWith(".html")) {
-            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-          }
-        },
-      })
-    );
+if (existsSync(frontendDist) && existsSync(indexHtml)) {
+  // Static assets (JS, CSS, images) — aggressive caching except HTML
+  app.use(
+    express.static(frontendDist, {
+      maxAge: "7d",
+      etag: true,
+      index: false, // Don't auto-serve index.html — let catch-all handle it
+      setHeaders(res, filePath) {
+        if (filePath.endsWith(".html")) {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        }
+      },
+    })
+  );
 
-    // SPA catch-all — Express 5 compatible (no regex routes)
-    // Any path that wasn't handled above gets index.html for client-side routing
-    app.use((_req, res, next) => {
-      res.sendFile(path.join(frontendDist, "index.html"), (err) => {
-        if (err) next(); // Don't crash, let error handler deal with it
-      });
+  // SPA catch-all — MUST come after /api routes and static middleware.
+  // Any URL that wasn't matched above (e.g. /dashboard, /fr/pricing on refresh)
+  // receives index.html so React Router can handle client-side routing.
+  app.use((_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.sendFile(indexHtml, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: "Could not serve frontend" });
+      }
     });
+  });
 
-    logger.info({ frontendDist }, "Serving frontend static files");
-  } else {
-    logger.warn({ frontendDist }, "Frontend dist not found — skipping static serving");
-  }
+  logger.info({ frontendDist }, "Serving frontend static files");
+} else {
+  logger.warn({ frontendDist }, "Frontend dist not found — API-only mode");
 }
 
 // ── Global Express error handler (MUST be last, after all routes) ─────────────

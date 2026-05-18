@@ -50,17 +50,20 @@ const server = app.listen(port, "0.0.0.0", () => {
 });
 
 let eaddrinuseRetries = 0;
-const MAX_EADDRINUSE_RETRIES = 5;
+// On Replit the port conflict is permanent (competing processes) — exit fast so
+// the workflow manager can kill the blocker and restart.
+// On Plesk/Passenger it's a transient restart race — retry for up to 90 s.
+const isReplit = !!process.env["REPL_ID"];
+const MAX_EADDRINUSE_RETRIES = isReplit ? 3 : 30; // 3×3s=9s on Replit, 30×3s=90s on Plesk
 
 server.on("error", (err: any) => {
   logger.error({ err }, "HTTP server error");
   if (err.code === "EADDRINUSE") {
     eaddrinuseRetries += 1;
     if (eaddrinuseRetries > MAX_EADDRINUSE_RETRIES) {
-      logger.error({ port, retries: eaddrinuseRetries }, "Port still busy after max retries — exiting so process manager can restart");
+      logger.error({ port, retries: eaddrinuseRetries }, "Port still busy after max retries — exiting");
       process.exit(1);
     }
-    // Wait 3 s for the previous process to release the port, then retry.
     logger.warn({ port, retry: eaddrinuseRetries, max: MAX_EADDRINUSE_RETRIES }, "Port busy — retrying in 3 s");
     setTimeout(() => {
       server.close();
