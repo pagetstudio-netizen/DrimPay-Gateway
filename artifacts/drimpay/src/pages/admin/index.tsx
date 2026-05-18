@@ -65,7 +65,7 @@ function ConfirmResetModal({ onConfirm, onCancel, loading }: {
           </div>
         </div>
         <p className="text-sm text-gray-600 mb-5 leading-relaxed">
-          Les compteurs de volumes, transactions, commissions et taux de succès seront remis à <strong>0</strong>.
+          Les compteurs de volumes, transactions, commissions, taux de succès et <strong>solde total de la plateforme</strong> seront remis à <strong>0</strong>.
           <br /><br />
           <span className="text-emerald-700 font-medium">Les données réelles ne sont pas supprimées.</span> Seul l'affichage des statistiques est réinitialisé à partir de maintenant.
         </p>

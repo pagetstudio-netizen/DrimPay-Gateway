@@ -61,12 +61,14 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Read stats reset date from admin settings
-  const [resetSetting] = await db
-    .select({ value: adminSettingsTable.value })
+  // Read stats reset date and balance snapshot from admin settings
+  const adminSettings = await db
+    .select({ key: adminSettingsTable.key, value: adminSettingsTable.value })
     .from(adminSettingsTable)
-    .where(eq(adminSettingsTable.key, "stats_reset_at"));
-  const statsResetAt = resetSetting?.value ? new Date(resetSetting.value) : null;
+    .where(sql`${adminSettingsTable.key} IN ('stats_reset_at', 'platform_balance_at_reset')`);
+  const settingsMap = Object.fromEntries(adminSettings.map(s => [s.key, s.value]));
+  const statsResetAt = settingsMap["stats_reset_at"] ? new Date(settingsMap["stats_reset_at"]) : null;
+  const balanceAtReset = parseFloat(settingsMap["platform_balance_at_reset"] ?? "0");
 
   // Build base condition for transaction stats (filtered from reset date if set)
   const txLiveBase = statsResetAt
@@ -180,7 +182,9 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
     .filter((d): d is string => !!d);
   const uniqueDomains = [...new Set(domains)];
 
-  const platformBalance = parseFloat(String(soldePlateforme[0]?.total ?? 0));
+  const rawPlatformBalance = parseFloat(String(soldePlateforme[0]?.total ?? 0));
+  // Subtract the snapshot taken at reset so the displayed balance starts from 0 after reset
+  const platformBalance = Math.max(0, rawPlatformBalance - balanceAtReset);
 
   res.json({
     // Users
@@ -232,10 +236,21 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
 // ─── RESET STATS ─────────────────────────────────────────────────────────────
 router.post("/admin/stats/reset", requireAdmin, async (req: any, res: any) => {
   const now = new Date().toISOString();
-  await db.insert(adminSettingsTable)
-    .values({ key: "stats_reset_at", value: now })
-    .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: now, updatedAt: new Date() } });
-  await logAdminAction(req.session.userId, "RESET_STATS", "platform", "stats", undefined, req.ip);
+
+  // Snapshot current platform balance so we can show delta = 0 after reset
+  const [balanceRow] = await db.select({ total: sum(walletsTable.balance) }).from(walletsTable);
+  const currentBalance = String(balanceRow?.total ?? "0");
+
+  await Promise.all([
+    db.insert(adminSettingsTable)
+      .values({ key: "stats_reset_at", value: now })
+      .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: now, updatedAt: new Date() } }),
+    db.insert(adminSettingsTable)
+      .values({ key: "platform_balance_at_reset", value: currentBalance })
+      .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: currentBalance, updatedAt: new Date() } }),
+  ]);
+
+  await logAdminAction(req.session.userId, "RESET_STATS", "platform", "stats", `balance_snapshot=${currentBalance}`, req.ip);
   res.json({ ok: true, resetAt: now });
 });
 
