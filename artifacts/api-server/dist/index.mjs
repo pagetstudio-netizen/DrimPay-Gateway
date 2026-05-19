@@ -84812,6 +84812,373 @@ var init_clapay = __esm({
   }
 });
 
+// src/lib/paydunya-softpay-map.ts
+function getSoftPayConfig(operator, countryCode) {
+  const key = `${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`;
+  return SOFTPAY_OPERATOR_MAP[key] ?? null;
+}
+var SOFTPAY_OPERATOR_MAP;
+var init_paydunya_softpay_map = __esm({
+  "src/lib/paydunya-softpay-map.ts"() {
+    "use strict";
+    SOFTPAY_OPERATOR_MAP = {
+      // ── Togo ──────────────────────────────────────────────────────────────────
+      "tmoney|TG": {
+        slug: "t-money-togo",
+        country: "TG",
+        label: "T-Money (Togo)",
+        buildPayload: (p) => ({
+          name_t_money: p.fullName,
+          email_t_money: p.email,
+          phone_t_money: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "t-money|TG": {
+        slug: "t-money-togo",
+        country: "TG",
+        label: "T-Money (Togo)",
+        buildPayload: (p) => ({
+          name_t_money: p.fullName,
+          email_t_money: p.email,
+          phone_t_money: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov money|TG": {
+        slug: "moov-togo",
+        country: "TG",
+        label: "Moov Money (Togo)",
+        buildPayload: (p) => ({
+          moov_togo_customer_fullname: p.fullName,
+          moov_togo_email: p.email,
+          moov_togo_customer_address: p.address ?? "Lom\xE9",
+          moov_togo_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov|TG": {
+        slug: "moov-togo",
+        country: "TG",
+        label: "Moov Money (Togo)",
+        buildPayload: (p) => ({
+          moov_togo_customer_fullname: p.fullName,
+          moov_togo_email: p.email,
+          moov_togo_customer_address: p.address ?? "Lom\xE9",
+          moov_togo_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "flooz|TG": {
+        slug: "moov-togo",
+        country: "TG",
+        label: "Moov Money / Flooz (Togo)",
+        buildPayload: (p) => ({
+          moov_togo_customer_fullname: p.fullName,
+          moov_togo_email: p.email,
+          moov_togo_customer_address: p.address ?? "Lom\xE9",
+          moov_togo_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      // ── Bénin ─────────────────────────────────────────────────────────────────
+      "mtn mobile money|BJ": {
+        slug: "mtn-benin",
+        country: "BJ",
+        label: "MTN Mobile Money (B\xE9nin)",
+        buildPayload: (p) => ({
+          mtn_benin_customer_fullname: p.fullName,
+          mtn_benin_email: p.email,
+          mtn_benin_phone_number: p.phone,
+          mtn_benin_wallet_provider: "MTNBENIN",
+          payment_token: p.paymentToken
+        })
+      },
+      "mtn|BJ": {
+        slug: "mtn-benin",
+        country: "BJ",
+        label: "MTN Mobile Money (B\xE9nin)",
+        buildPayload: (p) => ({
+          mtn_benin_customer_fullname: p.fullName,
+          mtn_benin_email: p.email,
+          mtn_benin_phone_number: p.phone,
+          mtn_benin_wallet_provider: "MTNBENIN",
+          payment_token: p.paymentToken
+        })
+      },
+      "moov money|BJ": {
+        slug: "moov-benin",
+        country: "BJ",
+        label: "Moov Money (B\xE9nin)",
+        buildPayload: (p) => ({
+          moov_benin_customer_fullname: p.fullName,
+          moov_benin_email: p.email,
+          moov_benin_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov|BJ": {
+        slug: "moov-benin",
+        country: "BJ",
+        label: "Moov Money (B\xE9nin)",
+        buildPayload: (p) => ({
+          moov_benin_customer_fullname: p.fullName,
+          moov_benin_email: p.email,
+          moov_benin_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      // ── Côte d'Ivoire ─────────────────────────────────────────────────────────
+      "mtn|CI": {
+        slug: "mtn-ci",
+        country: "CI",
+        label: "MTN Mobile Money (CI)",
+        buildPayload: (p) => ({
+          mtn_ci_customer_fullname: p.fullName,
+          mtn_ci_email: p.email,
+          mtn_ci_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "mtn mobile money|CI": {
+        slug: "mtn-ci",
+        country: "CI",
+        label: "MTN Mobile Money (CI)",
+        buildPayload: (p) => ({
+          mtn_ci_customer_fullname: p.fullName,
+          mtn_ci_email: p.email,
+          mtn_ci_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "orange money|CI": {
+        slug: "orange-money-ci",
+        country: "CI",
+        label: "Orange Money (CI)",
+        buildPayload: (p) => ({
+          orange_money_ci_customer_fullname: p.fullName,
+          orange_money_ci_email: p.email,
+          orange_money_ci_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "orange|CI": {
+        slug: "orange-money-ci",
+        country: "CI",
+        label: "Orange Money (CI)",
+        buildPayload: (p) => ({
+          orange_money_ci_customer_fullname: p.fullName,
+          orange_money_ci_email: p.email,
+          orange_money_ci_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "wave|CI": {
+        slug: "wave-ci",
+        country: "CI",
+        label: "Wave (CI)",
+        buildPayload: (p) => ({
+          wave_ci_customer_fullname: p.fullName,
+          wave_ci_email: p.email,
+          wave_ci_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov money|CI": {
+        slug: "moov-ci",
+        country: "CI",
+        label: "Moov Money (CI)",
+        buildPayload: (p) => ({
+          moov_ci_customer_fullname: p.fullName,
+          moov_ci_email: p.email,
+          moov_ci_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov|CI": {
+        slug: "moov-ci",
+        country: "CI",
+        label: "Moov Money (CI)",
+        buildPayload: (p) => ({
+          moov_ci_customer_fullname: p.fullName,
+          moov_ci_email: p.email,
+          moov_ci_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      // ── Sénégal ───────────────────────────────────────────────────────────────
+      "orange money|SN": {
+        slug: "orange-money-senegal",
+        country: "SN",
+        label: "Orange Money (S\xE9n\xE9gal)",
+        buildPayload: (p) => ({
+          orange_money_sn_customer_fullname: p.fullName,
+          orange_money_sn_email: p.email,
+          orange_money_sn_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "orange|SN": {
+        slug: "orange-money-senegal",
+        country: "SN",
+        label: "Orange Money (S\xE9n\xE9gal)",
+        buildPayload: (p) => ({
+          orange_money_sn_customer_fullname: p.fullName,
+          orange_money_sn_email: p.email,
+          orange_money_sn_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "wave|SN": {
+        slug: "wave-senegal",
+        country: "SN",
+        label: "Wave (S\xE9n\xE9gal)",
+        buildPayload: (p) => ({
+          wave_sn_customer_fullname: p.fullName,
+          wave_sn_email: p.email,
+          wave_sn_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      // ── Mali ──────────────────────────────────────────────────────────────────
+      "orange money|ML": {
+        slug: "orange-money-mali",
+        country: "ML",
+        label: "Orange Money (Mali)",
+        buildPayload: (p) => ({
+          orange_money_mali_customer_fullname: p.fullName,
+          orange_money_mali_email: p.email,
+          orange_money_mali_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "orange|ML": {
+        slug: "orange-money-mali",
+        country: "ML",
+        label: "Orange Money (Mali)",
+        buildPayload: (p) => ({
+          orange_money_mali_customer_fullname: p.fullName,
+          orange_money_mali_email: p.email,
+          orange_money_mali_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov money|ML": {
+        slug: "moov-mali",
+        country: "ML",
+        label: "Moov Money (Mali)",
+        buildPayload: (p) => ({
+          moov_mali_customer_fullname: p.fullName,
+          moov_mali_email: p.email,
+          moov_mali_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov|ML": {
+        slug: "moov-mali",
+        country: "ML",
+        label: "Moov Money (Mali)",
+        buildPayload: (p) => ({
+          moov_mali_customer_fullname: p.fullName,
+          moov_mali_email: p.email,
+          moov_mali_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      // ── Burkina Faso ──────────────────────────────────────────────────────────
+      "orange money|BF": {
+        slug: "orange-money-burkina",
+        country: "BF",
+        label: "Orange Money (Burkina Faso)",
+        buildPayload: (p) => ({
+          orange_money_bf_customer_fullname: p.fullName,
+          orange_money_bf_email: p.email,
+          orange_money_bf_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "orange|BF": {
+        slug: "orange-money-burkina",
+        country: "BF",
+        label: "Orange Money (Burkina Faso)",
+        buildPayload: (p) => ({
+          orange_money_bf_customer_fullname: p.fullName,
+          orange_money_bf_email: p.email,
+          orange_money_bf_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov money|BF": {
+        slug: "moov-burkina",
+        country: "BF",
+        label: "Moov Money (Burkina Faso)",
+        buildPayload: (p) => ({
+          moov_bf_customer_fullname: p.fullName,
+          moov_bf_email: p.email,
+          moov_bf_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "moov|BF": {
+        slug: "moov-burkina",
+        country: "BF",
+        label: "Moov Money (Burkina Faso)",
+        buildPayload: (p) => ({
+          moov_bf_customer_fullname: p.fullName,
+          moov_bf_email: p.email,
+          moov_bf_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      // ── Cameroun ──────────────────────────────────────────────────────────────
+      "mtn momo|CM": {
+        slug: "mtn-cm",
+        country: "CM",
+        label: "MTN MoMo (Cameroun)",
+        buildPayload: (p) => ({
+          mtn_cm_customer_fullname: p.fullName,
+          mtn_cm_email: p.email,
+          mtn_cm_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "mtn|CM": {
+        slug: "mtn-cm",
+        country: "CM",
+        label: "MTN MoMo (Cameroun)",
+        buildPayload: (p) => ({
+          mtn_cm_customer_fullname: p.fullName,
+          mtn_cm_email: p.email,
+          mtn_cm_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "orange money|CM": {
+        slug: "orange-money-cm",
+        country: "CM",
+        label: "Orange Money (Cameroun)",
+        buildPayload: (p) => ({
+          orange_money_cm_customer_fullname: p.fullName,
+          orange_money_cm_email: p.email,
+          orange_money_cm_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      },
+      "orange|CM": {
+        slug: "orange-money-cm",
+        country: "CM",
+        label: "Orange Money (Cameroun)",
+        buildPayload: (p) => ({
+          orange_money_cm_customer_fullname: p.fullName,
+          orange_money_cm_email: p.email,
+          orange_money_cm_phone_number: p.phone,
+          payment_token: p.paymentToken
+        })
+      }
+    };
+  }
+});
+
 // src/lib/paydunya.ts
 var paydunya_exports = {};
 __export(paydunya_exports, {
@@ -84836,7 +85203,7 @@ function getPayDunyaClient() {
     }
     const isSandbox = baseUrl2.includes("sandbox");
     console.log(
-      `[PayDunya] Mode : ${isSandbox ? "SANDBOX" : "LIVE"} | URL : ${baseUrl2} | Public key : ${publicKey ? "\u2713" : "\u2717 (PAYDUNYA_PUBLIC_KEY manquant)"}`
+      `[PayDunya] Mode : ${isSandbox ? "SANDBOX" : "LIVE"} | URL : ${baseUrl2} | Master key : ${masterKey ? "\u2713" : "\u2717"} | Public key : ${publicKey ? "\u2713" : "\u2717 (PAYDUNYA_PUBLIC_KEY manquant)"}`
     );
     _client2 = new PayDunyaClient({ baseUrl: baseUrl2, masterKey, privateKey, publicKey, token, webhookSecret });
   }
@@ -84849,6 +85216,7 @@ var PayDunyaClient, PayDunyaError, _client2, PAYDUNYA_LIVE_URL;
 var init_paydunya = __esm({
   "src/lib/paydunya.ts"() {
     "use strict";
+    init_paydunya_softpay_map();
     PayDunyaClient = class {
       config;
       constructor(config2) {
@@ -84857,6 +85225,7 @@ var init_paydunya = __esm({
       // ─── Auth headers ─────────────────────────────────────────────────────────
       headers() {
         return {
+          "Accept": "application/json",
           "Content-Type": "application/json",
           "PAYDUNYA-MASTER-KEY": this.config.masterKey,
           "PAYDUNYA-PRIVATE-KEY": this.config.privateKey,
@@ -84864,72 +85233,118 @@ var init_paydunya = __esm({
           "PAYDUNYA-TOKEN": this.config.token
         };
       }
-      // ─── HTTP helper — gère les réponses HTML (erreurs proxy/auth) ────────────
+      // ─── HTTP helper — logs complets, détecte HTML, jamais crash ─────────────
       async request(method, path4, body) {
         const url2 = `${this.config.baseUrl}${path4}`;
-        const response = await fetch(url2, {
-          method,
-          headers: this.headers(),
-          body: body ? JSON.stringify(body) : void 0,
-          signal: AbortSignal.timeout(3e4)
-        });
+        const startMs = Date.now();
+        const sentHeaders = this.headers();
+        console.log(`[PayDunya] \u2192 ${method} ${url2}`);
+        if (body) {
+          console.log(`[PayDunya]   payload: ${JSON.stringify(body)}`);
+        }
+        let response;
+        try {
+          response = await fetch(url2, {
+            method,
+            headers: sentHeaders,
+            body: body ? JSON.stringify(body) : void 0,
+            signal: AbortSignal.timeout(3e4)
+          });
+        } catch (err) {
+          const isTimeout = err?.name === "TimeoutError" || err?.code === "ETIMEDOUT";
+          console.error(`[PayDunya] \u2717 Network error (${method} ${url2}): ${err?.message}`);
+          throw new PayDunyaError(
+            `Erreur r\xE9seau PayDunya : ${err?.message}`,
+            isTimeout ? 408 : 503,
+            { url: url2, error: err?.message, retryable: true }
+          );
+        }
+        const elapsed = Date.now() - startMs;
+        const contentType = response.headers.get("content-type") ?? "";
+        console.log(
+          `[PayDunya] \u2190 HTTP ${response.status} | content-type: ${contentType} | ${elapsed}ms`
+        );
         const rawText = await response.text();
+        if (contentType.includes("text/html") || rawText.trimStart().startsWith("<!DOCTYPE")) {
+          const preview = rawText.slice(0, 300).replace(/\s+/g, " ").trim();
+          console.error(
+            `[PayDunya] \u2717 HTML re\xE7u au lieu de JSON sur ${url2}
+  Cause probable : endpoint incorrect, slug invalide, token expir\xE9,
+  ou fonctionnalit\xE9 SoftPay non activ\xE9e sur ce compte.
+  Preview HTML : ${preview}`
+          );
+          throw new PayDunyaError(
+            "PayDunya a retourn\xE9 une page HTML au lieu de JSON. V\xE9rifiez que le slug op\xE9rateur est correct et que le SoftPay est activ\xE9 sur votre compte PayDunya.",
+            response.status,
+            { url: url2, html_preview: preview, retryable: false }
+          );
+        }
         let data;
         try {
           data = JSON.parse(rawText);
         } catch {
+          const preview = rawText.slice(0, 300);
           console.error(
-            `[PayDunya] R\xE9ponse non-JSON HTTP ${response.status} sur ${url2}
-Raw (500 chars): ${rawText.slice(0, 500)}`
+            `[PayDunya] \u2717 R\xE9ponse non-JSON (HTTP ${response.status}) sur ${url2}
+  Raw: ${preview}`
           );
           throw new PayDunyaError(
-            `PayDunya a renvoy\xE9 une r\xE9ponse non-JSON (HTTP ${response.status}). URL utilis\xE9e : ${url2}. V\xE9rifiez que PAYDUNYA_BASE_URL correspond au mode de vos cl\xE9s (live vs sandbox).`,
+            `PayDunya a retourn\xE9 une r\xE9ponse invalide (HTTP ${response.status}).`,
             response.status,
-            { raw_text: rawText.slice(0, 500), url: url2 }
+            { url: url2, raw_preview: preview, retryable: false }
           );
         }
+        console.log(`[PayDunya]   r\xE9ponse JSON: ${JSON.stringify(data).slice(0, 400)}`);
         if (!response.ok) {
+          const retryable = response.status >= 500;
           throw new PayDunyaError(
             data?.response_text ?? data?.message ?? `PayDunya API error ${response.status}`,
             response.status,
-            data
+            { ...data, retryable }
           );
         }
         return data;
       }
-      // ─── Initiate Pay-In: API PAR (Paiement Avec Redirection) ───────────────
-      // PayDunya's REST API uses the hosted checkout page flow:
-      //   POST /checkout-invoice/create → invoice token + payment_url
-      // The customer is redirected to payment_url to complete payment on PayDunya's
-      // hosted page. PayDunya then calls callback_url when payment is confirmed.
-      //
-      // NOTE: The /softpay/{slug} endpoint is a web dashboard UI endpoint that
-      // requires browser session cookies — it is NOT accessible via REST API headers.
+      // ─── Initiate Pay-In: SoftPay PSR flow ────────────────────────────────────
+      // Step 1 : POST /checkout-invoice/create  → response.token (= payment_token)
+      // Step 2 : POST /softpay/{slug}           → operator-specific payload
       async initiatePayin(params) {
-        const raw = await this.request("POST", "/checkout-invoice/create", {
-          invoice: {
-            total_amount: params.amount,
-            description: params.description ?? `Paiement DrimPay ${params.reference}`
-          },
-          store: {
-            name: "DrimPay",
-            website_url: "https://drimpay.com"
-          },
-          actions: {
-            cancel_url: params.cancel_url ?? "https://drimpay.com",
-            return_url: params.return_url ?? "https://drimpay.com",
-            callback_url: params.callback_url
-          },
-          custom_data: {
-            drimpay_reference: params.reference,
-            order_id: params.order_id,
-            operator: params.operator,
-            phone: params.phone,
-            country_code: params.country_code,
-            currency: params.currency
-          }
-        });
+        console.log(`[PayDunya] \xC9tape 1 \u2014 cr\xE9ation facture | ref: ${params.reference}`);
+        let raw;
+        try {
+          raw = await this.request("POST", "/checkout-invoice/create", {
+            invoice: {
+              total_amount: params.amount,
+              description: params.description ?? `Paiement DrimPay ${params.reference}`
+            },
+            store: {
+              name: "DrimPay",
+              website_url: "https://drimpay.com"
+            },
+            actions: {
+              cancel_url: params.cancel_url ?? "https://drimpay.com",
+              return_url: params.return_url ?? "https://drimpay.com",
+              callback_url: params.callback_url
+            },
+            custom_data: {
+              drimpay_reference: params.reference,
+              order_id: params.order_id,
+              operator: params.operator,
+              phone: params.phone,
+              country_code: params.country_code,
+              currency: params.currency
+            }
+          });
+        } catch (err) {
+          return {
+            success: false,
+            paydunya_reference: "",
+            status: "failed",
+            message: err?.message ?? "Erreur lors de la cr\xE9ation de la facture PayDunya"
+          };
+        }
         if (raw.response_code !== "00" || !raw.token) {
+          console.error(`[PayDunya] \u2717 \xC9tape 1 \xE9chou\xE9e \u2014 response_code: ${raw.response_code} | msg: ${raw.response_text}`);
           return {
             success: false,
             paydunya_reference: raw.token ?? "",
@@ -84939,29 +85354,89 @@ Raw (500 chars): ${rawText.slice(0, 500)}`
             message: raw.response_text ?? raw.message ?? "\xC9chec cr\xE9ation facture PayDunya"
           };
         }
-        const invoiceToken = raw.token;
+        const paymentToken = raw.token;
         const paymentUrl = raw.invoice_url ?? raw.payment_url ?? null;
+        console.log(`[PayDunya] \u2713 \xC9tape 1 OK \u2014 payment_token: ${paymentToken} | payment_url: ${paymentUrl}`);
+        const softPayConfig = getSoftPayConfig(params.operator, params.country_code);
+        if (!softPayConfig) {
+          console.warn(
+            `[PayDunya] \u26A0 Aucune config SoftPay pour "${params.operator}" (${params.country_code}). Fallback sur la page de paiement h\xE9berg\xE9e: ${paymentUrl}`
+          );
+          return {
+            success: true,
+            paydunya_reference: paymentToken,
+            token: paymentToken,
+            payment_url: paymentUrl ?? void 0,
+            status: "pending",
+            message: "Facture cr\xE9\xE9e \u2014 l'op\xE9rateur n'est pas encore support\xE9 en SoftPay. Le client doit valider via la page de paiement."
+          };
+        }
+        const softPayParams = {
+          paymentToken,
+          phone: params.phone,
+          fullName: params.customer_name ?? "Client DrimPay",
+          email: params.customer_email ?? "client@drimpay.com",
+          address: params.country_code === "TG" ? "Lom\xE9" : params.country_code === "BJ" ? "Cotonou" : params.country_code === "CI" ? "Abidjan" : params.country_code === "SN" ? "Dakar" : params.country_code === "ML" ? "Bamako" : params.country_code === "BF" ? "Ouagadougou" : params.country_code === "CM" ? "Yaound\xE9" : void 0
+        };
+        const softPayPayload = softPayConfig.buildPayload(softPayParams);
+        const softPayPath = `/softpay/${softPayConfig.slug}`;
         console.log(
-          `[PayDunya] Facture cr\xE9\xE9e \u2014 token: ${invoiceToken} | URL de paiement: ${paymentUrl}`
+          `[PayDunya] \xC9tape 2 \u2014 SoftPay "${softPayConfig.label}" | endpoint: ${softPayPath}`
         );
+        let softRaw;
+        try {
+          softRaw = await this.request("POST", softPayPath, softPayPayload);
+        } catch (err) {
+          console.error(`[PayDunya] \u2717 \xC9tape 2 SoftPay \xE9chou\xE9e: ${err?.message}`);
+          const raw2 = err;
+          if (raw2?.raw?.retryable === false) {
+            return {
+              success: false,
+              paydunya_reference: paymentToken,
+              token: paymentToken,
+              payment_url: paymentUrl ?? void 0,
+              status: "failed",
+              message: err?.message
+            };
+          }
+          return {
+            success: false,
+            paydunya_reference: paymentToken,
+            token: paymentToken,
+            payment_url: paymentUrl ?? void 0,
+            status: "failed",
+            message: err?.message ?? "Erreur r\xE9seau lors du d\xE9clenchement SoftPay"
+          };
+        }
+        if (softRaw.response_code !== "00") {
+          console.error(
+            `[PayDunya] \u2717 SoftPay rejet\xE9 \u2014 code: ${softRaw.response_code} | msg: ${softRaw.response_text}`
+          );
+          return {
+            success: false,
+            paydunya_reference: paymentToken,
+            token: paymentToken,
+            payment_url: paymentUrl ?? void 0,
+            status: "failed",
+            message: softRaw.response_text ?? softRaw.message ?? "Paiement SoftPay refus\xE9"
+          };
+        }
+        console.log(`[PayDunya] \u2713 \xC9tape 2 OK \u2014 prompt USSD envoy\xE9 sur ${params.phone}`);
         return {
           success: true,
-          paydunya_reference: invoiceToken,
-          token: invoiceToken,
-          payment_url: paymentUrl,
+          paydunya_reference: paymentToken,
+          token: paymentToken,
+          payment_url: paymentUrl ?? void 0,
           status: "pending",
-          message: "Facture PayDunya cr\xE9\xE9e \u2014 le client doit valider via la page de paiement"
+          message: `Prompt ${softPayConfig.label} envoy\xE9 sur le t\xE9l\xE9phone du client`
         };
       }
       // ─── Initiate Pay-Out ─────────────────────────────────────────────────────
-      // NOTE: PayDunya's direct pay (payout) API endpoint is not available on the
-      // standard REST path. Payout via PayDunya must be configured separately or
-      // handled via Clapay. This method will throw a clear error.
       async initiatePayout(_params) {
         throw new PayDunyaError(
           "Le payout via PayDunya n'est pas disponible sur cet endpoint. Configurez Clapay pour les payouts ou contactez PayDunya pour activer le Direct Pay API.",
           503,
-          { code: "PAYOUT_NOT_SUPPORTED" }
+          { code: "PAYOUT_NOT_SUPPORTED", retryable: false }
         );
       }
       // ─── Get transaction status ───────────────────────────────────────────────
@@ -274535,7 +275010,9 @@ router16.post("/api/pay/:token", async (req, res) => {
         reference,
         order_id: tx.orderId,
         callback_url: callbackUrl,
-        description: link.title
+        description: link.title,
+        customer_name: customerName,
+        customer_email: customerEmail
       });
       if (!pdRes.success) {
         throw new PayDunyaError(pdRes.message ?? "\xC9chec PayDunya", 502, pdRes);

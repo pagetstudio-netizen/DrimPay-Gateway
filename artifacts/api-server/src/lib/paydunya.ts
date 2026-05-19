@@ -2,15 +2,25 @@
  * ─── PayDunya API Client ──────────────────────────────────────────────────────
  *
  * Variables d'environnement requises :
- *   PAYDUNYA_BASE_URL        → https://app.paydunya.com/api/v1 (live)
- *                              https://app.paydunya.com/sandbox-api/v1 (test)
  *   PAYDUNYA_MASTER_KEY      → Clé Principale
  *   PAYDUNYA_PRIVATE_KEY     → Clé Privée
+ *   PAYDUNYA_PUBLIC_KEY      → Clé Publique
  *   PAYDUNYA_TOKEN           → Token
- *   PAYDUNYA_WEBHOOK_SECRET  → (optionnel) secret pour vérifier les callbacks
+ *
+ * Optionnel :
+ *   PAYDUNYA_BASE_URL        → https://app.paydunya.com/api/v1 (défaut live)
+ *                              https://app.paydunya.com/sandbox-api/v1 (sandbox)
+ *   PAYDUNYA_WEBHOOK_SECRET  → secret pour vérifier les callbacks
+ *
+ * Flow SoftPay (PSR — Paiement Sans Redirection) :
+ *   1. POST /checkout-invoice/create  → response.token (= payment_token)
+ *   2. POST /softpay/{slug}           → payload spécifique à chaque opérateur
+ *      champ token = "payment_token" (pas "token")
+ *      slug et payload définis dans paydunya-softpay-map.ts
  */
 
 import crypto from "crypto";
+import { getSoftPayConfig, type SoftPayParams } from "./paydunya-softpay-map.js";
 
 export interface PayDunyaConfig {
   baseUrl: string;
@@ -33,6 +43,8 @@ export interface PayDunyaPayinRequest {
   return_url?: string;
   cancel_url?: string;
   description?: string;
+  customer_name?: string;
+  customer_email?: string;
 }
 
 export interface PayDunyaPayinResponse {
@@ -100,6 +112,7 @@ export class PayDunyaClient {
   // ─── Auth headers ─────────────────────────────────────────────────────────
   private headers(): Record<string, string> {
     return {
+      "Accept":                "application/json",
       "Content-Type":          "application/json",
       "PAYDUNYA-MASTER-KEY":   this.config.masterKey,
       "PAYDUNYA-PRIVATE-KEY":  this.config.privateKey,
@@ -108,85 +121,141 @@ export class PayDunyaClient {
     };
   }
 
-  // ─── HTTP helper — gère les réponses HTML (erreurs proxy/auth) ────────────
+  // ─── HTTP helper — logs complets, détecte HTML, jamais crash ─────────────
   private async request<T>(
     method: "GET" | "POST" | "PUT",
     path: string,
-    body?: object
+    body?: object,
   ): Promise<T> {
     const url = `${this.config.baseUrl}${path}`;
-    const response = await fetch(url, {
-      method,
-      headers: this.headers(),
-      body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(30_000),
-    });
+    const startMs = Date.now();
+    const sentHeaders = this.headers();
+
+    console.log(`[PayDunya] → ${method} ${url}`);
+    if (body) {
+      console.log(`[PayDunya]   payload: ${JSON.stringify(body)}`);
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: sentHeaders,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err: any) {
+      // Network timeout or DNS failure — safe to retry
+      const isTimeout = err?.name === "TimeoutError" || err?.code === "ETIMEDOUT";
+      console.error(`[PayDunya] ✗ Network error (${method} ${url}): ${err?.message}`);
+      throw new PayDunyaError(
+        `Erreur réseau PayDunya : ${err?.message}`,
+        isTimeout ? 408 : 503,
+        { url, error: err?.message, retryable: true },
+      );
+    }
+
+    const elapsed = Date.now() - startMs;
+    const contentType = response.headers.get("content-type") ?? "";
+    console.log(
+      `[PayDunya] ← HTTP ${response.status} | content-type: ${contentType} | ${elapsed}ms`,
+    );
 
     const rawText = await response.text();
 
+    // ── Detect HTML response (login page / wrong endpoint / wrong slug) ─────
+    if (contentType.includes("text/html") || rawText.trimStart().startsWith("<!DOCTYPE")) {
+      const preview = rawText.slice(0, 300).replace(/\s+/g, " ").trim();
+      console.error(
+        `[PayDunya] ✗ HTML reçu au lieu de JSON sur ${url}\n` +
+        `  Cause probable : endpoint incorrect, slug invalide, token expiré,\n` +
+        `  ou fonctionnalité SoftPay non activée sur ce compte.\n` +
+        `  Preview HTML : ${preview}`,
+      );
+      throw new PayDunyaError(
+        "PayDunya a retourné une page HTML au lieu de JSON. " +
+        "Vérifiez que le slug opérateur est correct et que le SoftPay est activé sur votre compte PayDunya.",
+        response.status,
+        { url, html_preview: preview, retryable: false },
+      );
+    }
+
+    // ── Parse JSON ────────────────────────────────────────────────────────────
     let data: any;
     try {
       data = JSON.parse(rawText);
     } catch {
-      // Log the raw response to help diagnose key/URL mismatches
+      const preview = rawText.slice(0, 300);
       console.error(
-        `[PayDunya] Réponse non-JSON HTTP ${response.status} sur ${url}\n` +
-        `Raw (500 chars): ${rawText.slice(0, 500)}`
+        `[PayDunya] ✗ Réponse non-JSON (HTTP ${response.status}) sur ${url}\n` +
+        `  Raw: ${preview}`,
       );
       throw new PayDunyaError(
-        `PayDunya a renvoyé une réponse non-JSON (HTTP ${response.status}). ` +
-        `URL utilisée : ${url}. ` +
-        `Vérifiez que PAYDUNYA_BASE_URL correspond au mode de vos clés (live vs sandbox).`,
+        `PayDunya a retourné une réponse invalide (HTTP ${response.status}).`,
         response.status,
-        { raw_text: rawText.slice(0, 500), url }
+        { url, raw_preview: preview, retryable: false },
       );
     }
 
+    console.log(`[PayDunya]   réponse JSON: ${JSON.stringify(data).slice(0, 400)}`);
+
+    // ── HTTP error ────────────────────────────────────────────────────────────
     if (!response.ok) {
+      const retryable = response.status >= 500;
       throw new PayDunyaError(
         data?.response_text ?? data?.message ?? `PayDunya API error ${response.status}`,
         response.status,
-        data
+        { ...data, retryable },
       );
     }
 
     return data as T;
   }
 
-  // ─── Initiate Pay-In: API PAR (Paiement Avec Redirection) ───────────────
-  // PayDunya's REST API uses the hosted checkout page flow:
-  //   POST /checkout-invoice/create → invoice token + payment_url
-  // The customer is redirected to payment_url to complete payment on PayDunya's
-  // hosted page. PayDunya then calls callback_url when payment is confirmed.
-  //
-  // NOTE: The /softpay/{slug} endpoint is a web dashboard UI endpoint that
-  // requires browser session cookies — it is NOT accessible via REST API headers.
+  // ─── Initiate Pay-In: SoftPay PSR flow ────────────────────────────────────
+  // Step 1 : POST /checkout-invoice/create  → response.token (= payment_token)
+  // Step 2 : POST /softpay/{slug}           → operator-specific payload
   async initiatePayin(params: PayDunyaPayinRequest): Promise<PayDunyaPayinResponse> {
-    const raw = await this.request<any>("POST", "/checkout-invoice/create", {
-      invoice: {
-        total_amount: params.amount,
-        description:  params.description ?? `Paiement DrimPay ${params.reference}`,
-      },
-      store: {
-        name:        "DrimPay",
-        website_url: "https://drimpay.com",
-      },
-      actions: {
-        cancel_url:   params.cancel_url  ?? "https://drimpay.com",
-        return_url:   params.return_url  ?? "https://drimpay.com",
-        callback_url: params.callback_url,
-      },
-      custom_data: {
-        drimpay_reference: params.reference,
-        order_id:          params.order_id,
-        operator:          params.operator,
-        phone:             params.phone,
-        country_code:      params.country_code,
-        currency:          params.currency,
-      },
-    });
+
+    // ── Step 1 — Create checkout invoice ─────────────────────────────────────
+    console.log(`[PayDunya] Étape 1 — création facture | ref: ${params.reference}`);
+
+    let raw: any;
+    try {
+      raw = await this.request<any>("POST", "/checkout-invoice/create", {
+        invoice: {
+          total_amount: params.amount,
+          description:  params.description ?? `Paiement DrimPay ${params.reference}`,
+        },
+        store: {
+          name:        "DrimPay",
+          website_url: "https://drimpay.com",
+        },
+        actions: {
+          cancel_url:   params.cancel_url  ?? "https://drimpay.com",
+          return_url:   params.return_url  ?? "https://drimpay.com",
+          callback_url: params.callback_url,
+        },
+        custom_data: {
+          drimpay_reference: params.reference,
+          order_id:          params.order_id,
+          operator:          params.operator,
+          phone:             params.phone,
+          country_code:      params.country_code,
+          currency:          params.currency,
+        },
+      });
+    } catch (err: any) {
+      return {
+        success:            false,
+        paydunya_reference: "",
+        status:             "failed",
+        message:            err?.message ?? "Erreur lors de la création de la facture PayDunya",
+      };
+    }
 
     if (raw.response_code !== "00" || !raw.token) {
+      console.error(`[PayDunya] ✗ Étape 1 échouée — response_code: ${raw.response_code} | msg: ${raw.response_text}`);
       return {
         success:            false,
         paydunya_reference: raw.token ?? "",
@@ -197,32 +266,115 @@ export class PayDunyaClient {
       };
     }
 
-    const invoiceToken: string = raw.token;
-    const paymentUrl: string | null = raw.invoice_url ?? raw.payment_url ?? null;
+    const paymentToken: string = raw.token;
+    const paymentUrl:   string | null = raw.invoice_url ?? raw.payment_url ?? null;
+
+    console.log(`[PayDunya] ✓ Étape 1 OK — payment_token: ${paymentToken} | payment_url: ${paymentUrl}`);
+
+    // ── Step 2 — SoftPay: operator-specific USSD prompt ───────────────────────
+    const softPayConfig = getSoftPayConfig(params.operator, params.country_code);
+
+    if (!softPayConfig) {
+      console.warn(
+        `[PayDunya] ⚠ Aucune config SoftPay pour "${params.operator}" (${params.country_code}). ` +
+        `Fallback sur la page de paiement hébergée: ${paymentUrl}`,
+      );
+      return {
+        success:            true,
+        paydunya_reference: paymentToken,
+        token:              paymentToken,
+        payment_url:        paymentUrl ?? undefined,
+        status:             "pending",
+        message:            "Facture créée — l'opérateur n'est pas encore supporté en SoftPay. " +
+                            "Le client doit valider via la page de paiement.",
+      };
+    }
+
+    const softPayParams: SoftPayParams = {
+      paymentToken: paymentToken,
+      phone:        params.phone,
+      fullName:     params.customer_name ?? "Client DrimPay",
+      email:        params.customer_email ?? "client@drimpay.com",
+      address:      params.country_code === "TG" ? "Lomé" :
+                    params.country_code === "BJ" ? "Cotonou" :
+                    params.country_code === "CI" ? "Abidjan" :
+                    params.country_code === "SN" ? "Dakar" :
+                    params.country_code === "ML" ? "Bamako" :
+                    params.country_code === "BF" ? "Ouagadougou" :
+                    params.country_code === "CM" ? "Yaoundé" : undefined,
+    };
+
+    const softPayPayload = softPayConfig.buildPayload(softPayParams);
+    const softPayPath    = `/softpay/${softPayConfig.slug}`;
 
     console.log(
-      `[PayDunya] Facture créée — token: ${invoiceToken} | URL de paiement: ${paymentUrl}`
+      `[PayDunya] Étape 2 — SoftPay "${softPayConfig.label}" | endpoint: ${softPayPath}`,
     );
+
+    let softRaw: any;
+    try {
+      softRaw = await this.request<any>("POST", softPayPath, softPayPayload);
+    } catch (err: any) {
+      console.error(`[PayDunya] ✗ Étape 2 SoftPay échouée: ${err?.message}`);
+
+      // Non-retryable errors (HTML login page, invalid slug) → hard failure
+      const raw = err as PayDunyaError;
+      if (raw?.raw?.retryable === false) {
+        return {
+          success:            false,
+          paydunya_reference: paymentToken,
+          token:              paymentToken,
+          payment_url:        paymentUrl ?? undefined,
+          status:             "failed",
+          message:            err?.message,
+        };
+      }
+
+      // Retryable (network/5xx) → still fail cleanly, let client retry
+      return {
+        success:            false,
+        paydunya_reference: paymentToken,
+        token:              paymentToken,
+        payment_url:        paymentUrl ?? undefined,
+        status:             "failed",
+        message:            err?.message ?? "Erreur réseau lors du déclenchement SoftPay",
+      };
+    }
+
+    // PayDunya returns response_code "00" on success
+    if (softRaw.response_code !== "00") {
+      console.error(
+        `[PayDunya] ✗ SoftPay rejeté — code: ${softRaw.response_code} | msg: ${softRaw.response_text}`,
+      );
+      return {
+        success:            false,
+        paydunya_reference: paymentToken,
+        token:              paymentToken,
+        payment_url:        paymentUrl ?? undefined,
+        status:             "failed",
+        message:            softRaw.response_text ?? softRaw.message ?? "Paiement SoftPay refusé",
+      };
+    }
+
+    console.log(`[PayDunya] ✓ Étape 2 OK — prompt USSD envoyé sur ${params.phone}`);
 
     return {
       success:            true,
-      paydunya_reference: invoiceToken,
-      token:              invoiceToken,
-      payment_url:        paymentUrl,
+      paydunya_reference: paymentToken,
+      token:              paymentToken,
+      payment_url:        paymentUrl ?? undefined,
       status:             "pending",
-      message:            "Facture PayDunya créée — le client doit valider via la page de paiement",
+      message:            `Prompt ${softPayConfig.label} envoyé sur le téléphone du client`,
     };
   }
 
   // ─── Initiate Pay-Out ─────────────────────────────────────────────────────
-  // NOTE: PayDunya's direct pay (payout) API endpoint is not available on the
-  // standard REST path. Payout via PayDunya must be configured separately or
-  // handled via Clapay. This method will throw a clear error.
   async initiatePayout(_params: PayDunyaPayoutRequest): Promise<PayDunyaPayoutResponse> {
     throw new PayDunyaError(
-      "Le payout via PayDunya n'est pas disponible sur cet endpoint. Configurez Clapay pour les payouts ou contactez PayDunya pour activer le Direct Pay API.",
+      "Le payout via PayDunya n'est pas disponible sur cet endpoint. " +
+      "Configurez Clapay pour les payouts ou contactez PayDunya pour activer le Direct Pay API.",
       503,
-      { code: "PAYOUT_NOT_SUPPORTED" },
+      { code: "PAYOUT_NOT_SUPPORTED", retryable: false },
     );
   }
 
@@ -306,7 +458,7 @@ export class PayDunyaError extends Error {
   constructor(
     message: string,
     public readonly statusCode: number,
-    public readonly raw: any
+    public readonly raw: any,
   ) {
     super(message);
     this.name = "PayDunyaError";
@@ -316,13 +468,11 @@ export class PayDunyaError extends Error {
 // ─── Singleton factory ────────────────────────────────────────────────────────
 let _client: PayDunyaClient | null = null;
 
-// Default URLs — override with PAYDUNYA_BASE_URL env var if needed
 const PAYDUNYA_LIVE_URL    = "https://app.paydunya.com/api/v1";
 const PAYDUNYA_SANDBOX_URL = "https://app.paydunya.com/sandbox-api/v1";
 
 export function getPayDunyaClient(): PayDunyaClient {
   if (!_client) {
-    // Default to live URL; set PAYDUNYA_BASE_URL=https://app.paydunya.com/sandbox-api/v1 for sandbox
     const baseUrl       = process.env.PAYDUNYA_BASE_URL ?? PAYDUNYA_LIVE_URL;
     const masterKey     = process.env.PAYDUNYA_MASTER_KEY;
     const privateKey    = process.env.PAYDUNYA_PRIVATE_KEY;
@@ -332,14 +482,16 @@ export function getPayDunyaClient(): PayDunyaClient {
 
     if (!masterKey || !privateKey || !token) {
       throw new Error(
-        "PayDunya non configuré. Définissez PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY, PAYDUNYA_PUBLIC_KEY et PAYDUNYA_TOKEN dans les secrets."
+        "PayDunya non configuré. Définissez PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY, " +
+        "PAYDUNYA_PUBLIC_KEY et PAYDUNYA_TOKEN dans les secrets.",
       );
     }
 
     const isSandbox = baseUrl.includes("sandbox");
     console.log(
       `[PayDunya] Mode : ${isSandbox ? "SANDBOX" : "LIVE"} | URL : ${baseUrl} | ` +
-      `Public key : ${publicKey ? "✓" : "✗ (PAYDUNYA_PUBLIC_KEY manquant)"}`
+      `Master key : ${masterKey ? "✓" : "✗"} | ` +
+      `Public key : ${publicKey ? "✓" : "✗ (PAYDUNYA_PUBLIC_KEY manquant)"}`,
     );
 
     _client = new PayDunyaClient({ baseUrl, masterKey, privateKey, publicKey, token, webhookSecret });

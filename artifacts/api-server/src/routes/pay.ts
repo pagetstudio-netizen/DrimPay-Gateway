@@ -401,6 +401,8 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
         reference, order_id: tx.orderId!,
         callback_url: callbackUrl,
         description: link.title,
+        customer_name:  customerName,
+        customer_email: customerEmail,
       });
       if (!pdRes.success) {
         throw new PayDunyaError(pdRes.message ?? "Échec PayDunya", 502, pdRes);
