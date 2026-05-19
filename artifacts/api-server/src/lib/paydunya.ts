@@ -16,6 +16,7 @@ export interface PayDunyaConfig {
   baseUrl: string;
   masterKey: string;
   privateKey: string;
+  publicKey: string;
   token: string;
   webhookSecret: string;
 }
@@ -102,6 +103,7 @@ export class PayDunyaClient {
       "Content-Type":          "application/json",
       "PAYDUNYA-MASTER-KEY":   this.config.masterKey,
       "PAYDUNYA-PRIVATE-KEY":  this.config.privateKey,
+      "PAYDUNYA-PUBLIC-KEY":   this.config.publicKey,
       "PAYDUNYA-TOKEN":        this.config.token,
     };
   }
@@ -411,19 +413,23 @@ export function getPayDunyaClient(): PayDunyaClient {
     const baseUrl       = process.env.PAYDUNYA_BASE_URL ?? PAYDUNYA_LIVE_URL;
     const masterKey     = process.env.PAYDUNYA_MASTER_KEY;
     const privateKey    = process.env.PAYDUNYA_PRIVATE_KEY;
+    const publicKey     = process.env.PAYDUNYA_PUBLIC_KEY ?? "";
     const token         = process.env.PAYDUNYA_TOKEN;
     const webhookSecret = process.env.PAYDUNYA_WEBHOOK_SECRET ?? "placeholder-secret";
 
     if (!masterKey || !privateKey || !token) {
       throw new Error(
-        "PayDunya non configuré. Définissez PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY et PAYDUNYA_TOKEN dans les secrets."
+        "PayDunya non configuré. Définissez PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY, PAYDUNYA_PUBLIC_KEY et PAYDUNYA_TOKEN dans les secrets."
       );
     }
 
     const isSandbox = baseUrl.includes("sandbox");
-    console.log(`[PayDunya] Mode : ${isSandbox ? "SANDBOX" : "LIVE"} | URL : ${baseUrl}`);
+    console.log(
+      `[PayDunya] Mode : ${isSandbox ? "SANDBOX" : "LIVE"} | URL : ${baseUrl} | ` +
+      `Public key : ${publicKey ? "✓" : "✗ (PAYDUNYA_PUBLIC_KEY manquant)"}`
+    );
 
-    _client = new PayDunyaClient({ baseUrl, masterKey, privateKey, token, webhookSecret });
+    _client = new PayDunyaClient({ baseUrl, masterKey, privateKey, publicKey, token, webhookSecret });
   }
   return _client;
 }
