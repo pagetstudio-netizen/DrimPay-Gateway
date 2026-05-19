@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2, XCircle, Clock, ArrowLeft,
@@ -41,6 +41,125 @@ const OPERATOR_BRAND: Record<string, { bg: string; text: string; abbr: string; l
   "Airtel Nigeria":   { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel",       logo: `${BASE}/op-airtel.png` },
   "Airtel Money":     { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel Money", logo: `${BASE}/op-airtel.png` },
 };
+
+// ── Translations ─────────────────────────────────────────────────────────────
+
+type Lang = "fr" | "en";
+
+const T = {
+  fr: {
+    poweredBy: "Propulsé par",
+    langLabel: "Français",
+    langSwitch: "English",
+    youWantToPay: "Vous souhaitez envoyer un paiement",
+    to: "À :",
+    for: "Pour :",
+    chooseCountry: "Choisissez un pays",
+    selectCountry: "— Sélectionnez un pays —",
+    youAreIn: (flag: string, name: string) => `Vous êtes au ${flag} ${name}`,
+    chooseOperator: "Choisissez un opérateur",
+    continue: "Continuer",
+    back: "Retour",
+    edit: "Modifier",
+    payingVia: (op: string, country: string) => `Vous payez par ${op} ${country}`,
+    yourNumber: (op: string) => `Votre numéro ${op.toUpperCase()}`,
+    amount: "Montant",
+    enterAmount: "Entrez le montant",
+    yourName: "Votre Nom",
+    yourNamePlaceholder: "John",
+    emailLabel: "Entrez adresse email",
+    confirmPayment: "Confirmer le paiement",
+    summary: "Récapitulatif",
+    recipient: "Destinataire",
+    subject: "Objet",
+    operator: "Opérateur",
+    country: "Pays",
+    number: "Numéro",
+    name: "Nom",
+    email: "Email",
+    youPay: "Vous payez",
+    feesCovered: "Les frais de service sont pris en charge par le marchand.",
+    phoneNotification: "Vous recevrez une notification sur votre téléphone pour valider le paiement.",
+    processing: "Traitement en cours\u2026",
+    processingDesc: "Votre paiement est en cours de traitement, veuillez patienter.",
+    pendingTitle: "En attente de confirmation",
+    pendingDesc: (op: string) => `Un message a été envoyé sur votre téléphone. Confirmez le paiement via ${op} pour finaliser la transaction.`,
+    checkPhone: "Vérifiez les notifications sur votre téléphone",
+    enterPin: "Saisissez votre code PIN pour valider",
+    autoUpdate: "Cette page se met à jour automatiquement",
+    successTitle: "Paiement réussi !",
+    successDesc: "Votre paiement a été traité avec succès.",
+    paidTo: (merchant: string) => `payé à ${merchant}`,
+    reference: "Référence",
+    errorTitle: "Paiement échoué",
+    retry: "Réessayer",
+    invalidLink: "Lien invalide",
+    linkExpired: "Lien expiré",
+    linkDisabled: "Lien désactivé",
+    linkUnavailable: "Ce lien de paiement n'est plus disponible.",
+    maintenance: "Maintenance en cours",
+    maintenanceDesc: (op: string) => `L'opérateur ${op} est temporairement indisponible.`,
+    operatorUnavailable: "Opérateur indisponible",
+    operatorUnavailableDesc: (op: string) => `L'opérateur ${op} n'est pas disponible pour le moment.`,
+  },
+  en: {
+    poweredBy: "Powered by",
+    langLabel: "English",
+    langSwitch: "Français",
+    youWantToPay: "You want to send a payment",
+    to: "To:",
+    for: "For:",
+    chooseCountry: "Choose a country",
+    selectCountry: "— Select a country —",
+    youAreIn: (flag: string, name: string) => `You are in ${flag} ${name}`,
+    chooseOperator: "Choose an operator",
+    continue: "Continue",
+    back: "Back",
+    edit: "Edit",
+    payingVia: (op: string, country: string) => `Paying via ${op} — ${country}`,
+    yourNumber: (op: string) => `Your ${op} number`,
+    amount: "Amount",
+    enterAmount: "Enter amount",
+    yourName: "Your Name",
+    yourNamePlaceholder: "John",
+    emailLabel: "Enter email address",
+    confirmPayment: "Confirm payment",
+    summary: "Summary",
+    recipient: "Recipient",
+    subject: "Subject",
+    operator: "Operator",
+    country: "Country",
+    number: "Number",
+    name: "Name",
+    email: "Email",
+    youPay: "You pay",
+    feesCovered: "Service fees are covered by the merchant.",
+    phoneNotification: "You will receive a notification on your phone to confirm the payment.",
+    processing: "Processing\u2026",
+    processingDesc: "Your payment is being processed, please wait.",
+    pendingTitle: "Waiting for confirmation",
+    pendingDesc: (op: string) => `A message was sent to your phone. Confirm the payment via ${op} to complete the transaction.`,
+    checkPhone: "Check notifications on your phone",
+    enterPin: "Enter your PIN code to confirm",
+    autoUpdate: "This page updates automatically",
+    successTitle: "Payment successful!",
+    successDesc: "Your payment has been processed successfully.",
+    paidTo: (merchant: string) => `paid to ${merchant}`,
+    reference: "Reference",
+    errorTitle: "Payment failed",
+    retry: "Try again",
+    invalidLink: "Invalid link",
+    linkExpired: "Link expired",
+    linkDisabled: "Link disabled",
+    linkUnavailable: "This payment link is no longer available.",
+    maintenance: "Maintenance in progress",
+    maintenanceDesc: (op: string) => `Operator ${op} is temporarily unavailable.`,
+    operatorUnavailable: "Operator unavailable",
+    operatorUnavailableDesc: (op: string) => `Operator ${op} is not available at the moment.`,
+  },
+} satisfies Record<Lang, object>;
+
+type Translations = typeof T.fr;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -140,16 +259,18 @@ function Divider({ label }: { label: string }) {
 
 // ── Payment header ───────────────────────────────────────────────────────────
 
-function PayHeader({ merchantName, title, description }: { merchantName: string; title: string; description?: string }) {
+function PayHeader({ merchantName, title, description, t }: {
+  merchantName: string; title: string; description?: string; t: Translations;
+}) {
   return (
     <div className="mb-2">
-      <p className="text-sm text-gray-600">Vous souhaitez envoyer un paiement</p>
+      <p className="text-sm text-gray-600">{t.youWantToPay}</p>
       <p className="text-sm text-gray-800 mt-0.5">
-        A : <strong>{merchantName}</strong>
+        {t.to} <strong>{merchantName}</strong>
       </p>
       {(title || description) && (
         <p className="text-sm text-gray-600">
-          Pour : <em>{description || title}</em>
+          {t.for} <em>{description || title}</em>
         </p>
       )}
     </div>
@@ -170,7 +291,7 @@ function Logo() {
 
 // ── Footer ───────────────────────────────────────────────────────────────────
 
-function Footer() {
+function Footer({ t, lang, onToggleLang }: { t: Translations; lang: Lang; onToggleLang: () => void }) {
   return (
     <div className="flex items-center justify-between mt-5 px-1">
       <a
@@ -179,12 +300,18 @@ function Footer() {
         rel="noopener noreferrer"
         className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
       >
-        Powered By <span className="font-semibold text-blue-600">DrimPay</span>
+        {t.poweredBy} <span className="font-semibold text-blue-600">DrimPay</span>
       </a>
-      <div className="flex items-center gap-1.5 text-xs text-gray-500 select-none">
+      <button
+        onClick={onToggleLang}
+        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition-all"
+        title={`Switch to ${t.langSwitch}`}
+      >
         <Globe className="w-3.5 h-3.5" />
-        <span>Français</span>
-      </div>
+        <span>{t.langLabel}</span>
+        <span className="text-gray-300 mx-0.5">|</span>
+        <span className="text-gray-400">{t.langSwitch}</span>
+      </button>
     </div>
   );
 }
@@ -217,6 +344,10 @@ export default function PayPage() {
   const [, params] = useRoute("/pay/:token");
   const token = params?.token ?? window.location.pathname.split("/pay/")[1]?.split("/")[0];
 
+  const [lang, setLang]                   = useState<Lang>("fr");
+  const t                                 = T[lang] as Translations;
+  const toggleLang                        = () => setLang(l => l === "fr" ? "en" : "fr");
+
   const [link, setLink]                   = useState<LinkData | null>(null);
   const [loading, setLoading]             = useState(true);
   const [step, setStep]                   = useState<Step>("select");
@@ -239,7 +370,6 @@ export default function PayPage() {
         else {
           setLink(d);
           if (d.amount) setAmount(d.amount);
-          // auto-select single country
           const firstCountry = d.countries?.[0];
           if (!d.isMultiCountry || d.countries?.length === 1) {
             setSelectedCountry(firstCountry?.code ?? d.countryCode);
@@ -253,8 +383,6 @@ export default function PayPage() {
   const currentCountryData = link?.countries.find(c => c.code === selectedCountry);
   const currency           = currentCountryData?.currency ?? link?.currency ?? "XOF";
   const displayAmount      = parseFloat(amount || "0");
-  const platformFee        = Math.round(displayAmount * 0.03 * 100) / 100;
-  const merchantNet        = Math.round((displayAmount - platformFee) * 100) / 100;
   const operatorLabel      = OPERATOR_BRAND[selectedOperator]?.label ?? selectedOperator;
   const countryMeta        = COUNTRY_META[selectedCountry];
   const stepNum            = STEP_NUMS[step];
@@ -332,12 +460,10 @@ export default function PayPage() {
         return;
       }
       setTxRef(data.reference);
-      // If already confirmed as success by gateway, show success immediately
-      if (data.status === "success") {
+      if (data.status === "success" || data.status === "completed") {
         if (attemptId) await updateAttempt(attemptId, "success", data.reference);
         setStep("success");
       } else {
-        // USSD prompt sent — wait for user to confirm on phone
         setStep("pending");
       }
     } catch {
@@ -362,7 +488,6 @@ export default function PayPage() {
         if (!r.ok) return;
         const d = await r.json();
         const s: string = d.status ?? "";
-        // "success" ou "completed" → paiement confirmé
         if (s === "success" || s === "completed") {
           stopped = true;
           if (attemptId) await updateAttempt(attemptId, "success", txRef);
@@ -373,21 +498,19 @@ export default function PayPage() {
           setError(d.failureReason ?? "Paiement annulé ou échoué. Veuillez réessayer.");
           setStep("error");
         }
-        // "pending" / "processing" → keep polling
       } catch { /* ignore, keep polling */ }
 
       attempts++;
       if (!stopped && attempts < MAX_ATTEMPTS) {
         setTimeout(poll, 5000);
       } else if (!stopped && attempts >= MAX_ATTEMPTS) {
-        // Timeout after 3 minutes
         if (attemptId) await updateAttempt(attemptId, "failed");
         setError("Délai dépassé. Si vous avez confirmé, vérifiez votre historique de transactions.");
         setStep("error");
       }
     };
 
-    const timeout = setTimeout(poll, 5000); // first poll after 5s
+    const timeout = setTimeout(poll, 5000);
     return () => { stopped = true; clearTimeout(timeout); };
   }, [step, txRef]);
 
@@ -401,6 +524,8 @@ export default function PayPage() {
     );
   }
 
+  const footerProps = { t, lang, onToggleLang: toggleLang };
+
   if (error && !link) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -409,9 +534,9 @@ export default function PayPage() {
           <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-7 h-7 text-red-400" />
           </div>
-          <h1 className="text-lg font-bold text-gray-900 mb-2">Lien invalide</h1>
+          <h1 className="text-lg font-bold text-gray-900 mb-2">{t.invalidLink}</h1>
           <p className="text-sm text-gray-500 mb-6">{error}</p>
-          <Footer />
+          <Footer {...footerProps} />
         </div>
       </div>
     );
@@ -426,10 +551,10 @@ export default function PayPage() {
             <Clock className="w-7 h-7 text-yellow-500" />
           </div>
           <h1 className="text-lg font-bold text-gray-900 mb-2">
-            Lien {link?.status === "expired" ? "expiré" : "désactivé"}
+            {link?.status === "expired" ? t.linkExpired : t.linkDisabled}
           </h1>
-          <p className="text-sm text-gray-500">Ce lien de paiement n'est plus disponible.</p>
-          <Footer />
+          <p className="text-sm text-gray-500">{t.linkUnavailable}</p>
+          <Footer {...footerProps} />
         </div>
       </div>
     );
@@ -443,9 +568,9 @@ export default function PayPage() {
           <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-4">
             <WrenchIcon className="w-7 h-7 text-amber-500" />
           </div>
-          <h1 className="text-lg font-bold text-gray-900 mb-2">Maintenance en cours</h1>
-          <p className="text-sm text-gray-500">L'opérateur <strong>{link.operator}</strong> est temporairement indisponible.</p>
-          <Footer />
+          <h1 className="text-lg font-bold text-gray-900 mb-2">{t.maintenance}</h1>
+          <p className="text-sm text-gray-500">{t.maintenanceDesc(link.operator)}</p>
+          <Footer {...footerProps} />
         </div>
       </div>
     );
@@ -459,9 +584,9 @@ export default function PayPage() {
           <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
             <BanIcon className="w-7 h-7 text-red-400" />
           </div>
-          <h1 className="text-lg font-bold text-gray-900 mb-2">Opérateur indisponible</h1>
-          <p className="text-sm text-gray-500">L'opérateur <strong>{link.operator}</strong> n'est pas disponible pour le moment.</p>
-          <Footer />
+          <h1 className="text-lg font-bold text-gray-900 mb-2">{t.operatorUnavailable}</h1>
+          <p className="text-sm text-gray-500">{t.operatorUnavailableDesc(link.operator)}</p>
+          <Footer {...footerProps} />
         </div>
       </div>
     );
@@ -493,19 +618,20 @@ export default function PayPage() {
                     merchantName={link?.merchantName ?? ""}
                     title={link?.title ?? ""}
                     description={link?.description}
+                    t={t}
                   />
 
                   {/* Country selector */}
                   {link?.isMultiCountry && link.countries.length > 1 ? (
                     <>
-                      <Divider label="Choisissez un pays" />
+                      <Divider label={t.chooseCountry} />
                       <div className="relative">
                         <select
                           value={selectedCountry}
                           onChange={e => { setSelectedCountry(e.target.value); setSelectedOperator(""); }}
                           className="w-full h-12 px-4 pr-10 rounded-lg border border-gray-200 text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
                         >
-                          <option value="">— Sélectionnez un pays —</option>
+                          <option value="">{t.selectCountry}</option>
                           {link.countries.map(c => (
                             <option key={c.code} value={c.code}>
                               {COUNTRY_META[c.code]?.flag} {COUNTRY_META[c.code]?.name ?? c.code}
@@ -516,13 +642,13 @@ export default function PayPage() {
                       </div>
                     </>
                   ) : (
-                    <Divider label={`Vous êtes au ${countryMeta?.flag} ${countryMeta?.name ?? selectedCountry}`} />
+                    <Divider label={t.youAreIn(countryMeta?.flag ?? "", countryMeta?.name ?? selectedCountry)} />
                   )}
 
                   {/* Operator buttons */}
                   {selectedCountry && currentCountryData && (
                     <>
-                      <Divider label="Choisissez un opérateur" />
+                      <Divider label={t.chooseOperator} />
                       <div className={cn(
                         "grid gap-3",
                         currentCountryData.operators.length === 1 ? "grid-cols-1" : "grid-cols-2"
@@ -551,7 +677,7 @@ export default function PayPage() {
                           : "bg-gray-200 text-gray-400 cursor-not-allowed"
                       )}
                     >
-                      Continuer
+                      {t.continue}
                     </button>
                   )}
                 </motion.div>
@@ -571,20 +697,21 @@ export default function PayPage() {
                     onClick={() => setStep("select")}
                     className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 mb-1"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Retour
+                    <ArrowLeft className="w-3.5 h-3.5" /> {t.back}
                   </button>
 
                   <PayHeader
                     merchantName={link?.merchantName ?? ""}
                     title={link?.title ?? ""}
                     description={link?.description}
+                    t={t}
                   />
 
-                  <Divider label={`Vous payez par ${operatorLabel} ${countryMeta?.name ?? ""}`} />
+                  <Divider label={t.payingVia(operatorLabel, countryMeta?.name ?? "")} />
 
                   {/* Phone */}
                   <Field
-                    label={`Votre numéro ${operatorLabel.toUpperCase()}`}
+                    label={t.yourNumber(operatorLabel)}
                     placeholder="XXXXXXXX"
                     value={phone}
                     onChange={setPhone}
@@ -594,7 +721,7 @@ export default function PayPage() {
                   {/* Amount */}
                   {link?.fixedAmount ? (
                     <div>
-                      <label className="block text-sm text-gray-700 mb-1.5">Montant</label>
+                      <label className="block text-sm text-gray-700 mb-1.5">{t.amount}</label>
                       <div className="h-12 px-4 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-between">
                         <span className="text-gray-900 font-bold">
                           {parseFloat(link.amount ?? "0").toLocaleString("fr-FR")}
@@ -604,7 +731,7 @@ export default function PayPage() {
                     </div>
                   ) : (
                     <Field
-                      label="Entrez le montant"
+                      label={t.enterAmount}
                       placeholder="0"
                       value={amount}
                       onChange={setAmount}
@@ -614,16 +741,16 @@ export default function PayPage() {
 
                   {/* Name */}
                   <Field
-                    label="Votre Nom"
-                    placeholder="John"
+                    label={t.yourName}
+                    placeholder={t.yourNamePlaceholder}
                     value={name}
                     onChange={setName}
                   />
 
                   {/* Email */}
                   <Field
-                    label="Entrez adresse email"
-                    placeholder="test@example.com"
+                    label={t.emailLabel}
+                    placeholder="email@example.com"
                     value={email}
                     onChange={setEmail}
                     type="email"
@@ -645,7 +772,7 @@ export default function PayPage() {
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     )}
                   >
-                    Confirmer le paiement
+                    {t.confirmPayment}
                   </button>
                 </motion.div>
               )}
@@ -663,20 +790,20 @@ export default function PayPage() {
                     onClick={() => setStep("form")}
                     className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 mb-4"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Modifier
+                    <ArrowLeft className="w-3.5 h-3.5" /> {t.edit}
                   </button>
 
-                  <h2 className="text-base font-bold text-gray-900 mb-4">Récapitulatif</h2>
+                  <h2 className="text-base font-bold text-gray-900 mb-4">{t.summary}</h2>
 
                   <div className="rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-100 mb-4">
                     {[
-                      { label: "Destinataire",  value: link?.merchantName ?? "" },
-                      { label: "Objet",          value: link?.description ?? link?.title ?? "" },
-                      { label: "Opérateur",      value: operatorLabel },
-                      { label: "Pays",           value: `${countryMeta?.flag ?? ""} ${countryMeta?.name ?? selectedCountry}` },
-                      { label: "Numéro",         value: phone },
-                      ...(name  ? [{ label: "Nom",   value: name }]  : []),
-                      ...(email ? [{ label: "Email", value: email }] : []),
+                      { label: t.recipient, value: link?.merchantName ?? "" },
+                      { label: t.subject,   value: link?.description ?? link?.title ?? "" },
+                      { label: t.operator,  value: operatorLabel },
+                      { label: t.country,   value: `${countryMeta?.flag ?? ""} ${countryMeta?.name ?? selectedCountry}` },
+                      { label: t.number,    value: phone },
+                      ...(name  ? [{ label: t.name,  value: name }]  : []),
+                      ...(email ? [{ label: t.email, value: email }] : []),
                     ].map(({ label, value }) => (
                       <div key={label} className="flex justify-between px-4 py-2.5 text-sm">
                         <span className="text-gray-500">{label}</span>
@@ -684,23 +811,24 @@ export default function PayPage() {
                       </div>
                     ))}
                     <div className="flex justify-between px-4 py-3 bg-gray-50">
-                      <span className="font-bold text-gray-900">Vous payez</span>
+                      <span className="font-bold text-gray-900">{t.youPay}</span>
                       <span className="font-extrabold text-gray-900">{displayAmount.toLocaleString("fr-FR")} {currency}</span>
                     </div>
                   </div>
+
                   <p className="text-xs text-gray-400 text-center mb-4">
-                    Les frais de service sont pris en charge par le marchand.
+                    {t.feesCovered}
                   </p>
 
                   <p className="text-xs text-gray-500 text-center bg-gray-50 rounded-lg px-4 py-3 mb-4">
-                    📱 Vous recevrez une notification sur votre téléphone pour valider le paiement.
+                    {t.phoneNotification}
                   </p>
 
                   <button
                     onClick={handleConfirm}
                     className="w-full h-12 rounded-lg font-bold text-sm uppercase tracking-wide bg-gray-900 text-white hover:bg-gray-800 transition-all"
                   >
-                    Confirmer le paiement
+                    {t.confirmPayment}
                   </button>
                 </motion.div>
               )}
@@ -714,8 +842,8 @@ export default function PayPage() {
                   className="text-center py-8"
                 >
                   <div className="w-16 h-16 rounded-full border-4 border-gray-200 border-t-gray-900 animate-spin mx-auto mb-5" />
-                  <h2 className="text-base font-bold text-gray-900 mb-2">Traitement en cours…</h2>
-                  <p className="text-sm text-gray-500">Votre paiement est en cours de traitement, veuillez patienter.</p>
+                  <h2 className="text-base font-bold text-gray-900 mb-2">{t.processing}</h2>
+                  <p className="text-sm text-gray-500">{t.processingDesc}</p>
                 </motion.div>
               )}
 
@@ -728,15 +856,14 @@ export default function PayPage() {
                   className="text-center py-8"
                 >
                   <div className="w-16 h-16 rounded-full border-4 border-blue-100 border-t-blue-500 animate-spin mx-auto mb-5" />
-                  <h2 className="text-base font-bold text-gray-900 mb-2">En attente de confirmation</h2>
+                  <h2 className="text-base font-bold text-gray-900 mb-2">{t.pendingTitle}</h2>
                   <p className="text-sm text-gray-500 mb-4">
-                    Un message a été envoyé sur votre téléphone.{" "}
-                    <strong className="text-gray-800">Confirmez le paiement via {operatorLabel}</strong> pour finaliser la transaction.
+                    {t.pendingDesc(operatorLabel)}
                   </p>
                   <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-700 text-left space-y-1">
-                    <p>Vérifiez les notifications sur votre téléphone</p>
-                    <p>Saisissez votre code PIN pour valider</p>
-                    <p className="text-blue-400">Cette page se met à jour automatiquement</p>
+                    <p>{t.checkPhone}</p>
+                    <p>{t.enterPin}</p>
+                    <p className="text-blue-400">{t.autoUpdate}</p>
                   </div>
                 </motion.div>
               )}
@@ -752,15 +879,15 @@ export default function PayPage() {
                   <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-5">
                     <CheckCircle2 className="w-8 h-8 text-green-500" />
                   </div>
-                  <h2 className="text-xl font-extrabold text-gray-900 mb-1">Paiement réussi !</h2>
-                  <p className="text-sm text-gray-500 mb-5">Votre paiement a été traité avec succès.</p>
+                  <h2 className="text-xl font-extrabold text-gray-900 mb-1">{t.successTitle}</h2>
+                  <p className="text-sm text-gray-500 mb-5">{t.successDesc}</p>
                   <div className="text-3xl font-extrabold text-green-600 mb-1">
                     {displayAmount.toLocaleString("fr-FR")} {currency}
                   </div>
-                  <p className="text-xs text-gray-400 mb-5">payé à {link?.merchantName}</p>
+                  <p className="text-xs text-gray-400 mb-5">{t.paidTo(link?.merchantName ?? "")}</p>
                   {txRef && (
                     <div className="bg-gray-50 rounded-xl px-4 py-3 inline-block">
-                      <p className="text-xs text-gray-400 mb-1">Référence</p>
+                      <p className="text-xs text-gray-400 mb-1">{t.reference}</p>
                       <code className="font-mono text-sm font-bold text-gray-800">{txRef}</code>
                     </div>
                   )}
@@ -778,13 +905,13 @@ export default function PayPage() {
                   <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5">
                     <XCircle className="w-8 h-8 text-red-400" />
                   </div>
-                  <h2 className="text-base font-bold text-gray-900 mb-2">Paiement échoué</h2>
+                  <h2 className="text-base font-bold text-gray-900 mb-2">{t.errorTitle}</h2>
                   <p className="text-sm text-gray-500 mb-5">{error}</p>
                   <button
                     onClick={() => { setError(""); setStep("form"); }}
                     className="px-6 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
                   >
-                    Réessayer
+                    {t.retry}
                   </button>
                 </motion.div>
               )}
@@ -794,7 +921,7 @@ export default function PayPage() {
 
           {/* Footer inside the card */}
           <div className="px-6 pb-5">
-            <Footer />
+            <Footer {...footerProps} />
           </div>
         </div>
       </div>
