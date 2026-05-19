@@ -85408,9 +85408,10 @@ var init_paydunya = __esm({
             message: err?.message ?? "Erreur r\xE9seau lors du d\xE9clenchement SoftPay"
           };
         }
-        if (softRaw.response_code !== "00") {
+        const softpayOk = softRaw.response_code === "00" || softRaw.success === true;
+        if (!softpayOk) {
           console.error(
-            `[PayDunya] \u2717 SoftPay rejet\xE9 \u2014 code: ${softRaw.response_code} | msg: ${softRaw.response_text}`
+            `[PayDunya] \u2717 SoftPay rejet\xE9 \u2014 code: ${softRaw.response_code} | success: ${softRaw.success} | msg: ${softRaw.response_text ?? softRaw.message}`
           );
           return {
             success: false,

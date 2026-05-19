@@ -341,10 +341,11 @@ export class PayDunyaClient {
       };
     }
 
-    // PayDunya returns response_code "00" on success
-    if (softRaw.response_code !== "00") {
+    // PayDunya SoftPay success: response_code "00" OR success: true (selon l'opérateur)
+    const softpayOk = softRaw.response_code === "00" || softRaw.success === true;
+    if (!softpayOk) {
       console.error(
-        `[PayDunya] ✗ SoftPay rejeté — code: ${softRaw.response_code} | msg: ${softRaw.response_text}`,
+        `[PayDunya] ✗ SoftPay rejeté — code: ${softRaw.response_code} | success: ${softRaw.success} | msg: ${softRaw.response_text ?? softRaw.message}`,
       );
       return {
         success:            false,
