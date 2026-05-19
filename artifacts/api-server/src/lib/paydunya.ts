@@ -126,10 +126,17 @@ export class PayDunyaClient {
     try {
       data = JSON.parse(rawText);
     } catch {
+      // Log the raw response to help diagnose key/URL mismatches
+      console.error(
+        `[PayDunya] Réponse non-JSON HTTP ${response.status} sur ${url}\n` +
+        `Raw (500 chars): ${rawText.slice(0, 500)}`
+      );
       throw new PayDunyaError(
-        `PayDunya a renvoyé une réponse non-JSON (HTTP ${response.status}). Vérifiez les clés API et l'URL de base.`,
+        `PayDunya a renvoyé une réponse non-JSON (HTTP ${response.status}). ` +
+        `URL utilisée : ${url}. ` +
+        `Vérifiez que PAYDUNYA_BASE_URL correspond au mode de vos clés (live vs sandbox).`,
         response.status,
-        { raw_text: rawText.slice(0, 500) }
+        { raw_text: rawText.slice(0, 500), url }
       );
     }
 
@@ -394,19 +401,27 @@ export class PayDunyaError extends Error {
 // ─── Singleton factory ────────────────────────────────────────────────────────
 let _client: PayDunyaClient | null = null;
 
+// Default URLs — override with PAYDUNYA_BASE_URL env var if needed
+const PAYDUNYA_LIVE_URL    = "https://app.paydunya.com/api/v1";
+const PAYDUNYA_SANDBOX_URL = "https://app.paydunya.com/sandbox-api/v1";
+
 export function getPayDunyaClient(): PayDunyaClient {
   if (!_client) {
-    const baseUrl       = process.env.PAYDUNYA_BASE_URL;
+    // Default to live URL; set PAYDUNYA_BASE_URL=https://app.paydunya.com/sandbox-api/v1 for sandbox
+    const baseUrl       = process.env.PAYDUNYA_BASE_URL ?? PAYDUNYA_LIVE_URL;
     const masterKey     = process.env.PAYDUNYA_MASTER_KEY;
     const privateKey    = process.env.PAYDUNYA_PRIVATE_KEY;
     const token         = process.env.PAYDUNYA_TOKEN;
     const webhookSecret = process.env.PAYDUNYA_WEBHOOK_SECRET ?? "placeholder-secret";
 
-    if (!baseUrl || !masterKey || !privateKey || !token) {
+    if (!masterKey || !privateKey || !token) {
       throw new Error(
-        "PayDunya non configuré. Définissez PAYDUNYA_BASE_URL, PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY et PAYDUNYA_TOKEN dans les secrets."
+        "PayDunya non configuré. Définissez PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY et PAYDUNYA_TOKEN dans les secrets."
       );
     }
+
+    const isSandbox = baseUrl.includes("sandbox");
+    console.log(`[PayDunya] Mode : ${isSandbox ? "SANDBOX" : "LIVE"} | URL : ${baseUrl}`);
 
     _client = new PayDunyaClient({ baseUrl, masterKey, privateKey, token, webhookSecret });
   }
@@ -415,7 +430,6 @@ export function getPayDunyaClient(): PayDunyaClient {
 
 export function isPayDunyaConfigured(): boolean {
   return !!(
-    process.env.PAYDUNYA_BASE_URL &&
     process.env.PAYDUNYA_MASTER_KEY &&
     process.env.PAYDUNYA_PRIVATE_KEY &&
     process.env.PAYDUNYA_TOKEN

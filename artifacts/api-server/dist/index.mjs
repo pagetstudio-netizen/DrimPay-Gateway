@@ -84823,24 +84823,26 @@ __export(paydunya_exports, {
 import crypto4 from "crypto";
 function getPayDunyaClient() {
   if (!_client2) {
-    const baseUrl2 = process.env.PAYDUNYA_BASE_URL;
+    const baseUrl2 = process.env.PAYDUNYA_BASE_URL ?? PAYDUNYA_LIVE_URL;
     const masterKey = process.env.PAYDUNYA_MASTER_KEY;
     const privateKey = process.env.PAYDUNYA_PRIVATE_KEY;
     const token = process.env.PAYDUNYA_TOKEN;
     const webhookSecret = process.env.PAYDUNYA_WEBHOOK_SECRET ?? "placeholder-secret";
-    if (!baseUrl2 || !masterKey || !privateKey || !token) {
+    if (!masterKey || !privateKey || !token) {
       throw new Error(
-        "PayDunya non configur\xE9. D\xE9finissez PAYDUNYA_BASE_URL, PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY et PAYDUNYA_TOKEN dans les secrets."
+        "PayDunya non configur\xE9. D\xE9finissez PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY et PAYDUNYA_TOKEN dans les secrets."
       );
     }
+    const isSandbox = baseUrl2.includes("sandbox");
+    console.log(`[PayDunya] Mode : ${isSandbox ? "SANDBOX" : "LIVE"} | URL : ${baseUrl2}`);
     _client2 = new PayDunyaClient({ baseUrl: baseUrl2, masterKey, privateKey, token, webhookSecret });
   }
   return _client2;
 }
 function isPayDunyaConfigured() {
-  return !!(process.env.PAYDUNYA_BASE_URL && process.env.PAYDUNYA_MASTER_KEY && process.env.PAYDUNYA_PRIVATE_KEY && process.env.PAYDUNYA_TOKEN);
+  return !!(process.env.PAYDUNYA_MASTER_KEY && process.env.PAYDUNYA_PRIVATE_KEY && process.env.PAYDUNYA_TOKEN);
 }
-var PayDunyaClient, PayDunyaError, _client2;
+var PayDunyaClient, PayDunyaError, _client2, PAYDUNYA_LIVE_URL;
 var init_paydunya = __esm({
   "src/lib/paydunya.ts"() {
     "use strict";
@@ -84872,10 +84874,14 @@ var init_paydunya = __esm({
         try {
           data = JSON.parse(rawText);
         } catch {
+          console.error(
+            `[PayDunya] R\xE9ponse non-JSON HTTP ${response.status} sur ${url2}
+Raw (500 chars): ${rawText.slice(0, 500)}`
+          );
           throw new PayDunyaError(
-            `PayDunya a renvoy\xE9 une r\xE9ponse non-JSON (HTTP ${response.status}). V\xE9rifiez les cl\xE9s API et l'URL de base.`,
+            `PayDunya a renvoy\xE9 une r\xE9ponse non-JSON (HTTP ${response.status}). URL utilis\xE9e : ${url2}. V\xE9rifiez que PAYDUNYA_BASE_URL correspond au mode de vos cl\xE9s (live vs sandbox).`,
             response.status,
-            { raw_text: rawText.slice(0, 500) }
+            { raw_text: rawText.slice(0, 500), url: url2 }
           );
         }
         if (!response.ok) {
@@ -85103,6 +85109,7 @@ var init_paydunya = __esm({
       }
     };
     _client2 = null;
+    PAYDUNYA_LIVE_URL = "https://app.paydunya.com/api/v1";
   }
 });
 
