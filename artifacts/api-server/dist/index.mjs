@@ -84897,58 +84897,14 @@ Raw (500 chars): ${rawText.slice(0, 500)}`
         }
         return data;
       }
-      // ─── Operator → PayDunya softpay slug mapping ────────────────────────────
-      // PayDunya requires a two-step flow for mobile money:
-      //   1. POST /checkout-invoice/create  → creates the invoice, returns a token
-      //   2. POST /softpay/{slug}           → triggers the USSD/SMS prompt on the phone
-      // Without step 2, the customer never receives any notification.
-      getSoftpaySlug(operator, countryCode) {
-        const key = `${operator.toLowerCase()}|${countryCode.toUpperCase()}`;
-        const map2 = {
-          // Togo
-          "tmoney|TG": "tmoney",
-          "t-money|TG": "tmoney",
-          "moov money|TG": "flooz",
-          "moov|TG": "flooz",
-          "flooz|TG": "flooz",
-          // Bénin
-          "mtn mobile money|BJ": "mtn-benin",
-          "mtn|BJ": "mtn-benin",
-          "moov money|BJ": "flooz",
-          "moov|BJ": "flooz",
-          // Côte d'Ivoire
-          "mtn|CI": "mtn-cote-divoire",
-          "mtn mobile money|CI": "mtn-cote-divoire",
-          "orange money|CI": "orange-money-cote-divoire",
-          "orange|CI": "orange-money-cote-divoire",
-          "wave|CI": "wave-cote-divoire",
-          "moov money|CI": "flooz",
-          "moov|CI": "flooz",
-          // Sénégal
-          "orange money|SN": "orange-money-senegal",
-          "orange|SN": "orange-money-senegal",
-          "wave|SN": "wave-senegal",
-          // Burkina Faso
-          "orange money|BF": "orange-money-burkina",
-          "orange|BF": "orange-money-burkina",
-          "moov money|BF": "flooz",
-          "moov|BF": "flooz",
-          // Mali
-          "orange money|ML": "orange-money-mali",
-          "orange|ML": "orange-money-mali",
-          "moov money|ML": "flooz",
-          "moov|ML": "flooz",
-          // Cameroun
-          "mtn momo|CM": "mtn-cameroun",
-          "mtn|CM": "mtn-cameroun",
-          "orange money|CM": "orange-money-cameroun",
-          "orange|CM": "orange-money-cameroun"
-        };
-        return map2[key] ?? null;
-      }
-      // ─── Initiate Pay-In: create invoice then trigger softpay prompt ──────────
-      // Step 1: POST /checkout-invoice/create  → invoice token
-      // Step 2: POST /softpay/{slug}           → push USSD/SMS prompt to phone
+      // ─── Initiate Pay-In: API PAR (Paiement Avec Redirection) ───────────────
+      // PayDunya's REST API uses the hosted checkout page flow:
+      //   POST /checkout-invoice/create → invoice token + payment_url
+      // The customer is redirected to payment_url to complete payment on PayDunya's
+      // hosted page. PayDunya then calls callback_url when payment is confirmed.
+      //
+      // NOTE: The /softpay/{slug} endpoint is a web dashboard UI endpoint that
+      // requires browser session cookies — it is NOT accessible via REST API headers.
       async initiatePayin(params) {
         const raw = await this.request("POST", "/checkout-invoice/create", {
           invoice: {
@@ -84985,46 +84941,16 @@ Raw (500 chars): ${rawText.slice(0, 500)}`
         }
         const invoiceToken = raw.token;
         const paymentUrl = raw.invoice_url ?? raw.payment_url ?? null;
-        const softpaySlug = this.getSoftpaySlug(params.operator, params.country_code);
-        if (softpaySlug) {
-          try {
-            const softpayRaw = await this.request("POST", `/softpay/${softpaySlug}`, {
-              token: invoiceToken,
-              phone_number: params.phone
-            });
-            const softpaySuccess = softpayRaw.response_code === "00";
-            if (!softpaySuccess) {
-              return {
-                success: false,
-                paydunya_reference: invoiceToken,
-                token: invoiceToken,
-                payment_url: paymentUrl,
-                status: "failed",
-                message: softpayRaw.response_text ?? softpayRaw.message ?? "\xC9chec envoi prompt mobile money"
-              };
-            }
-          } catch (err) {
-            return {
-              success: false,
-              paydunya_reference: invoiceToken,
-              token: invoiceToken,
-              payment_url: paymentUrl,
-              status: "failed",
-              message: err?.message ?? "Erreur lors du d\xE9clenchement du prompt mobile money"
-            };
-          }
-        } else {
-          console.warn(
-            `[PayDunya] Aucun slug softpay pour l'op\xE9rateur "${params.operator}" (${params.country_code}). L'utilisateur devra payer via la page h\xE9berg\xE9e: ${paymentUrl}`
-          );
-        }
+        console.log(
+          `[PayDunya] Facture cr\xE9\xE9e \u2014 token: ${invoiceToken} | URL de paiement: ${paymentUrl}`
+        );
         return {
           success: true,
           paydunya_reference: invoiceToken,
           token: invoiceToken,
           payment_url: paymentUrl,
           status: "pending",
-          message: softpaySlug ? "Prompt mobile money envoy\xE9 sur le t\xE9l\xE9phone du client" : "Facture cr\xE9\xE9e \u2014 le client doit valider via la page de paiement"
+          message: "Facture PayDunya cr\xE9\xE9e \u2014 le client doit valider via la page de paiement"
         };
       }
       // ─── Initiate Pay-Out ─────────────────────────────────────────────────────
