@@ -66,7 +66,8 @@ router.get("/api/pay/status/:reference", async (req: any, res: any) => {
     return;
   }
 
-  const [tx] = await db
+  // Chercher par référence interne d'abord, puis par référence externe (token fournisseur)
+  let [tx] = await db
     .select({
       status: transactionsTable.status,
       reference: transactionsTable.reference,
@@ -78,13 +79,31 @@ router.get("/api/pay/status/:reference", async (req: any, res: any) => {
     .where(eq(transactionsTable.reference, reference));
 
   if (!tx) {
+    // Fallback: chercher par externalRef (token PayDunya/Clapay)
+    [tx] = await db
+      .select({
+        status: transactionsTable.status,
+        reference: transactionsTable.reference,
+        failureReason: transactionsTable.failureReason,
+        amount: transactionsTable.amount,
+        currency: transactionsTable.currency,
+      })
+      .from(transactionsTable)
+      .where(eq(transactionsTable.externalRef, reference));
+  }
+
+  if (!tx) {
+    console.warn(`[Status] Transaction introuvable: ${reference}`);
     res.status(404).json({ error: "Transaction introuvable" });
     return;
   }
 
+  // Normaliser "completed" → "success" pour le frontend
+  const normalizedStatus = tx.status === "completed" ? "success" : tx.status;
+
   res.json({
     reference: tx.reference,
-    status: tx.status,
+    status: normalizedStatus,
     amount: tx.amount,
     currency: tx.currency,
     failureReason: tx.failureReason ?? undefined,
@@ -352,13 +371,20 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
   }).returning();
 
   // Route through aggregator
-  const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : "https://api.drimpay.com";
+  // WEBHOOK_BASE_URL prend la priorité (à configurer en prod sur Replit/Plesk).
+  // En développement (NODE_ENV !== production), on utilise REPLIT_DEV_DOMAIN.
+  // En production sans WEBHOOK_BASE_URL configuré, on fallback sur api.drimpay.com.
+  const baseCallbackUrl =
+    process.env.WEBHOOK_BASE_URL ??
+    (process.env.NODE_ENV !== "production" && process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "https://api.drimpay.com");
 
-  const frontendBaseUrl = process.env.REPLIT_DEV_DOMAIN
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : (process.env.FRONTEND_BASE_URL ?? "https://drimpay.com");
+  const frontendBaseUrl =
+    process.env.FRONTEND_BASE_URL ??
+    (process.env.NODE_ENV !== "production" && process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "https://drimpay.com");
 
   const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
 

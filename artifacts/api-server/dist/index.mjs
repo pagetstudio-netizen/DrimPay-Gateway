@@ -274338,9 +274338,15 @@ router14.post("/webhooks/paydunya", async (req, res) => {
       console.warn("[PayDunya Webhook] our_reference manquant \u2014 ignor\xE9");
       return;
     }
-    const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.reference, event.our_reference));
+    let [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.reference, event.our_reference));
+    if (!tx && event.paydunya_reference) {
+      [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.externalRef, event.paydunya_reference));
+      if (tx) {
+        console.log(`[PayDunya Webhook] Transaction trouv\xE9e via externalRef: ${event.paydunya_reference}`);
+      }
+    }
     if (!tx) {
-      console.warn(`[PayDunya Webhook] Transaction non trouv\xE9e: ${event.our_reference}`);
+      console.warn(`[PayDunya Webhook] Transaction non trouv\xE9e: ${event.our_reference} / ${event.paydunya_reference}`);
       return;
     }
     const statusMap = {
@@ -274768,7 +274774,7 @@ router16.get("/api/pay/status/:reference", async (req, res) => {
     res.status(400).json({ error: "Reference required" });
     return;
   }
-  const [tx] = await db.select({
+  let [tx] = await db.select({
     status: transactionsTable.status,
     reference: transactionsTable.reference,
     failureReason: transactionsTable.failureReason,
@@ -274776,12 +274782,23 @@ router16.get("/api/pay/status/:reference", async (req, res) => {
     currency: transactionsTable.currency
   }).from(transactionsTable).where(eq(transactionsTable.reference, reference));
   if (!tx) {
+    [tx] = await db.select({
+      status: transactionsTable.status,
+      reference: transactionsTable.reference,
+      failureReason: transactionsTable.failureReason,
+      amount: transactionsTable.amount,
+      currency: transactionsTable.currency
+    }).from(transactionsTable).where(eq(transactionsTable.externalRef, reference));
+  }
+  if (!tx) {
+    console.warn(`[Status] Transaction introuvable: ${reference}`);
     res.status(404).json({ error: "Transaction introuvable" });
     return;
   }
+  const normalizedStatus = tx.status === "completed" ? "success" : tx.status;
   res.json({
     reference: tx.reference,
-    status: tx.status,
+    status: normalizedStatus,
     amount: tx.amount,
     currency: tx.currency,
     failureReason: tx.failureReason ?? void 0
@@ -274964,8 +274981,8 @@ router16.post("/api/pay/:token", async (req, res) => {
     expiresAt,
     requestPayload: JSON.stringify(req.body)
   }).returning();
-  const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
-  const frontendBaseUrl = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : process.env.FRONTEND_BASE_URL ?? "https://drimpay.com";
+  const baseCallbackUrl = process.env.WEBHOOK_BASE_URL ?? (process.env.NODE_ENV !== "production" && process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com");
+  const frontendBaseUrl = process.env.FRONTEND_BASE_URL ?? (process.env.NODE_ENV !== "production" && process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://drimpay.com");
   const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
   const opCheck = await checkOperatorAvailable(countryCode, operator, "paymentLinks");
   if (!opCheck.ok) {

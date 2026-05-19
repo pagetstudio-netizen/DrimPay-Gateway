@@ -61,14 +61,24 @@ router.post("/webhooks/paydunya", async (req: any, res: any) => {
       return;
     }
 
-    // Retrouver la transaction via notre référence
-    const [tx] = await db
+    // Retrouver la transaction via notre référence (fallback: externalRef = token PayDunya)
+    let [tx] = await db
       .select()
       .from(transactionsTable)
       .where(eq(transactionsTable.reference, event.our_reference));
 
+    if (!tx && event.paydunya_reference) {
+      [tx] = await db
+        .select()
+        .from(transactionsTable)
+        .where(eq(transactionsTable.externalRef, event.paydunya_reference));
+      if (tx) {
+        console.log(`[PayDunya Webhook] Transaction trouvée via externalRef: ${event.paydunya_reference}`);
+      }
+    }
+
     if (!tx) {
-      console.warn(`[PayDunya Webhook] Transaction non trouvée: ${event.our_reference}`);
+      console.warn(`[PayDunya Webhook] Transaction non trouvée: ${event.our_reference} / ${event.paydunya_reference}`);
       return;
     }
 

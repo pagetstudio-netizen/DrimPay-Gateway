@@ -362,7 +362,8 @@ export default function PayPage() {
         if (!r.ok) return;
         const d = await r.json();
         const s: string = d.status ?? "";
-        if (s === "success") {
+        // "success" ou "completed" → paiement confirmé
+        if (s === "success" || s === "completed") {
           stopped = true;
           if (attemptId) await updateAttempt(attemptId, "success", txRef);
           setStep("success");
