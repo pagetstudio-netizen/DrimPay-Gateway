@@ -252272,12 +252272,12 @@ var globalBannersTable = pgTable("global_banners", {
 var { Pool: Pool3 } = esm_default;
 var connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error(
-    "SUPABASE_DATABASE_URL or DATABASE_URL must be set. Please configure your database connection."
+  console.error(
+    "[DB] FATAL: SUPABASE_DATABASE_URL or DATABASE_URL is not set. Set this variable in your Plesk environment (Node.js > Environment Variables). All database operations will fail until this is fixed."
   );
 }
 var pool = new Pool3({
-  connectionString,
+  connectionString: connectionString ?? "postgresql://localhost/placeholder",
   max: 10,
   idleTimeoutMillis: 3e4,
   connectionTimeoutMillis: 1e4
@@ -275292,7 +275292,9 @@ app.use(
     store: new PgSession2({
       pool,
       tableName: "user_sessions",
-      pruneSessionInterval: 60 * 15
+      pruneSessionInterval: 60 * 15,
+      // Auto-create the table if it doesn't exist yet (e.g. fresh Supabase instance)
+      createTableIfMissing: true
     }),
     // Fallback secret prevents a synchronous throw if env var is missing.
     // Sessions will be invalid but the process won't crash on Passenger.
@@ -275303,7 +275305,9 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: isProd,
-      sameSite: isProd ? "strict" : false,
+      // "lax" allows the cookie to be sent after redirects (e.g. login → dashboard).
+      // "strict" blocks cookies on top-level navigations which causes auth loops on Plesk.
+      sameSite: isProd ? "lax" : false,
       maxAge: 24 * 60 * 60 * 1e3
     }
   })

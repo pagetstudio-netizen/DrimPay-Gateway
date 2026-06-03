@@ -7,13 +7,17 @@ const { Pool } = pg;
 const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error(
-    "SUPABASE_DATABASE_URL or DATABASE_URL must be set. Please configure your database connection."
+  // Log clearly but do NOT throw — a synchronous throw here crashes the process
+  // before uncaughtException is registered, causing Passenger to show "We're sorry".
+  console.error(
+    "[DB] FATAL: SUPABASE_DATABASE_URL or DATABASE_URL is not set. " +
+    "Set this variable in your Plesk environment (Node.js > Environment Variables). " +
+    "All database operations will fail until this is fixed."
   );
 }
 
 export const pool = new Pool({
-  connectionString,
+  connectionString: connectionString ?? "postgresql://localhost/placeholder",
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,

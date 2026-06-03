@@ -69,6 +69,8 @@ app.use(
       pool,
       tableName: "user_sessions",
       pruneSessionInterval: 60 * 15,
+      // Auto-create the table if it doesn't exist yet (e.g. fresh Supabase instance)
+      createTableIfMissing: true,
     }),
     // Fallback secret prevents a synchronous throw if env var is missing.
     // Sessions will be invalid but the process won't crash on Passenger.
@@ -79,7 +81,9 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: isProd,
-      sameSite: isProd ? "strict" : false,
+      // "lax" allows the cookie to be sent after redirects (e.g. login → dashboard).
+      // "strict" blocks cookies on top-level navigations which causes auth loops on Plesk.
+      sameSite: isProd ? "lax" : false,
       maxAge: 24 * 60 * 60 * 1000,
     },
   }),
