@@ -93,11 +93,14 @@ bash scripts/deploy-plesk.sh
 - `NODE_ENV=production`
 - `SUPABASE_SERVICE_ROLE_KEY` — clé service role Supabase (Settings > API > service_role). **Obligatoire** pour le stockage des documents KYB dans Supabase Storage. Sans cette clé les dépôts de documents KYB échouent.
 
-### Commande de démarrage Plesk
+### Fichier de démarrage Plesk (IMPORTANT)
 ```
-node artifacts/api-server/dist/index.mjs
+start.cjs
 ```
+> **Ne pas utiliser** `artifacts/api-server/dist/index.mjs` directement — Passenger charge les fichiers `.mjs` via `require()` ce qui provoque `ERR_REQUIRE_ESM`. Le wrapper `start.cjs` charge correctement le bundle ESM via `import()` dynamique.
 > Pas besoin de `pnpm install` ni de `npm run build` sur Plesk — tout est déjà compilé.
+>
+> En cas de crash : lire `logs/startup-errors.log` depuis le File Manager Plesk.
 
 ## Gotchas
 

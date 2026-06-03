@@ -59,6 +59,12 @@ ok "Dépendances installées"
 log "Synchronisation du schéma de base de données..."
 pnpm --filter @workspace/db run push && ok "Schéma DB à jour" || warn "DB push échoué — les tables existent peut-être déjà"
 
+# ── 4b. Vérification du startup file ──────────────────────────────────────────
+if [ ! -f "start.cjs" ]; then
+  error "start.cjs introuvable — vérifiez que le git pull est complet"
+fi
+ok "start.cjs présent"
+
 # ── 5. Restart Passenger ──────────────────────────────────────────────────────
 log "Redémarrage du serveur Node.js (Passenger)..."
 mkdir -p tmp

@@ -1,3 +1,36 @@
+// ── Crash guards — registered FIRST before any imports take effect ────────────
+// In ESM, this module body runs after all static imports are resolved,
+// but we still register these as early as possible to catch runtime crashes.
+// For import-time crashes, we rely on the file-based logger below.
+
+import { appendFileSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname2 = dirname(fileURLToPath(import.meta.url));
+const logDir = join(__dirname2, "..", "..", "..", "logs");
+
+function crashLog(label: string, err: unknown) {
+  try {
+    mkdirSync(logDir, { recursive: true });
+    const msg = `[${new Date().toISOString()}] ${label}: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`;
+    appendFileSync(join(logDir, "startup-errors.log"), msg);
+    process.stderr.write(msg);
+  } catch {
+    // If even file logging fails, at least stderr
+    process.stderr.write(`${label}: ${String(err)}\n`);
+  }
+}
+
+process.on("uncaughtException", (err) => {
+  crashLog("[uncaughtException]", err);
+  // Do NOT exit — Passenger shows "We're sorry" if the process dies
+});
+
+process.on("unhandledRejection", (reason) => {
+  crashLog("[unhandledRejection]", reason);
+});
+
 import app from "./app";
 import { logger } from "./lib/logger";
 import { notifyStartup, startDailyReport, startPolling } from "./lib/telegram";
@@ -5,33 +38,23 @@ import { ensureKybBucket, ensureContractTemplate } from "./lib/storage";
 import { logClapayConfig } from "./lib/clapay";
 import { pool } from "@workspace/db";
 
-// ── Global crash guards ───────────────────────────────────────────────────────
-// Prevent Phusion Passenger from seeing a crashed process on transient errors.
-// These MUST be registered before any async code runs.
-
-process.on("uncaughtException", (err) => {
-  logger.error({ err }, "[Process] uncaughtException — le processus continue");
-});
-
-process.on("unhandledRejection", (reason) => {
-  logger.error({ reason }, "[Process] unhandledRejection — le processus continue");
-});
-
 // ── Start ─────────────────────────────────────────────────────────────────────
 
-const rawPort = process.env["PORT"] ?? "8080";
+// Use || (not ??) so that empty-string PORT (e.g. set to "" in Plesk) falls
+// back to 8080 instead of being parsed as NaN/0 and crashing the process.
+const rawPort = process.env["PORT"] || "8080";
 const port = Number(rawPort);
 
-if (Number.isNaN(port) || port <= 0) {
-  logger.error({ rawPort }, "Invalid PORT value — cannot start");
-  process.exit(1);
+const effectivePort = (Number.isNaN(port) || port <= 0) ? 8080 : port;
+if (effectivePort !== port) {
+  crashLog("[PORT]", `Invalid PORT="${rawPort}" — falling back to 8080. Fix: remove PORT from Plesk custom env vars and let Passenger manage it.`);
 }
 
-logger.info({ port, env: process.env["NODE_ENV"] ?? "unknown" }, "Starting DrimPay API server");
+logger.info({ port: effectivePort, env: process.env["NODE_ENV"] ?? "unknown" }, "Starting DrimPay API server");
 
 // Bind explicitly to 0.0.0.0 so Passenger/Nginx can reach the socket on all interfaces
-const server = app.listen(port, "0.0.0.0", () => {
-  logger.info({ port }, "Server listening");
+const server = app.listen(effectivePort, "0.0.0.0", () => {
+  logger.info({ port: effectivePort }, "Server listening");
   logClapayConfig();
 
   // Supabase Storage — ensure KYB bucket exists and upload contract template
@@ -61,15 +84,16 @@ server.on("error", (err: any) => {
   if (err.code === "EADDRINUSE") {
     eaddrinuseRetries += 1;
     if (eaddrinuseRetries > MAX_EADDRINUSE_RETRIES) {
-      logger.error({ port, retries: eaddrinuseRetries }, "Port still busy after max retries — exiting");
+      crashLog("[EADDRINUSE]", `Port ${effectivePort} still busy after ${eaddrinuseRetries} retries — exiting`);
+      logger.error({ port: effectivePort, retries: eaddrinuseRetries }, "Port still busy after max retries — exiting");
       process.exit(1);
     }
-    logger.warn({ port, retry: eaddrinuseRetries, max: MAX_EADDRINUSE_RETRIES }, "Port busy — retrying in 3 s");
+    logger.warn({ port: effectivePort, retry: eaddrinuseRetries, max: MAX_EADDRINUSE_RETRIES }, "Port busy — retrying in 3 s");
     setTimeout(() => {
       server.close();
-      server.listen(port, "0.0.0.0", () => {
+      server.listen(effectivePort, "0.0.0.0", () => {
         eaddrinuseRetries = 0;
-        logger.info({ port }, "Server listening (after retry)");
+        logger.info({ port: effectivePort }, "Server listening (after retry)");
       });
     }, 3_000);
   }

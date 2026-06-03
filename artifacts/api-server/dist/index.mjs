@@ -18682,10 +18682,10 @@ var require_view = __commonJS({
     var debug = require_src()("express:view");
     var path4 = __require("node:path");
     var fs2 = __require("node:fs");
-    var dirname = path4.dirname;
+    var dirname2 = path4.dirname;
     var basename = path4.basename;
     var extname = path4.extname;
-    var join = path4.join;
+    var join2 = path4.join;
     var resolve = path4.resolve;
     module.exports = View2;
     function View2(name2, options) {
@@ -18721,7 +18721,7 @@ var require_view = __commonJS({
       for (var i = 0; i < roots.length && !path5; i++) {
         var root = roots[i];
         var loc = resolve(root, name2);
-        var dir = dirname(loc);
+        var dir = dirname2(loc);
         var file2 = basename(loc);
         path5 = this.resolve(dir, file2);
       }
@@ -18747,12 +18747,12 @@ var require_view = __commonJS({
     };
     View2.prototype.resolve = function resolve2(dir, file2) {
       var ext = this.ext;
-      var path5 = join(dir, file2);
+      var path5 = join2(dir, file2);
       var stat = tryStat(path5);
       if (stat && stat.isFile()) {
         return path5;
       }
-      path5 = join(dir, basename(file2, ext), "index" + ext);
+      path5 = join2(dir, basename(file2, ext), "index" + ext);
       stat = tryStat(path5);
       if (stat && stat.isFile()) {
         return path5;
@@ -22397,7 +22397,7 @@ var require_send = __commonJS({
     var Stream = __require("stream");
     var util2 = __require("util");
     var extname = path4.extname;
-    var join = path4.join;
+    var join2 = path4.join;
     var normalize = path4.normalize;
     var resolve = path4.resolve;
     var sep = path4.sep;
@@ -22569,7 +22569,7 @@ var require_send = __commonJS({
           return res;
         }
         parts = path5.split(sep);
-        path5 = normalize(join(root, path5));
+        path5 = normalize(join2(root, path5));
       } else {
         if (UP_PATH_REGEXP.test(path5)) {
           debug('malicious path "%s"', path5);
@@ -22702,7 +22702,7 @@ var require_send = __commonJS({
           if (err) return self2.onStatError(err);
           return self2.error(404);
         }
-        var p = join(path5, self2._index[i]);
+        var p = join2(path5, self2._index[i]);
         debug('stat "%s"', p);
         fs2.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -32659,7 +32659,7 @@ var require_thread_stream = __commonJS({
     var { version: version6 } = require_package();
     var { EventEmitter } = __require("events");
     var { Worker: Worker2 } = __require("worker_threads");
-    var { join } = __require("path");
+    var { join: join2 } = __require("path");
     var { pathToFileURL } = __require("url");
     var { wait } = require_wait();
     var {
@@ -32695,7 +32695,7 @@ var require_thread_stream = __commonJS({
     function createWorker(stream, opts) {
       const { filename, workerData } = opts;
       const bundlerOverrides = "__bundlerPathsOverrides" in globalThis ? globalThis.__bundlerPathsOverrides : {};
-      const toExecute = bundlerOverrides["thread-stream-worker"] || join(__dirname, "lib", "worker.js");
+      const toExecute = bundlerOverrides["thread-stream-worker"] || join2(__dirname, "lib", "worker.js");
       const worker = new Worker2(toExecute, {
         ...opts.workerOpts,
         trackUnmanagedFds: false,
@@ -33081,7 +33081,7 @@ var require_transport = __commonJS({
     "use strict";
     var { createRequire } = __require("module");
     var getCallers = require_caller();
-    var { join, isAbsolute, sep } = __require("node:path");
+    var { join: join2, isAbsolute, sep } = __require("node:path");
     var sleep3 = require_atomic_sleep();
     var onExit = require_on_exit_leak_free();
     var ThreadStream = require_thread_stream();
@@ -33144,7 +33144,7 @@ var require_transport = __commonJS({
         throw new Error("only one of target or targets can be specified");
       }
       if (targets) {
-        target = bundlerOverrides["pino-worker"] || join(__dirname, "worker.js");
+        target = bundlerOverrides["pino-worker"] || join2(__dirname, "worker.js");
         options.targets = targets.filter((dest) => dest.target).map((dest) => {
           return {
             ...dest,
@@ -33162,7 +33162,7 @@ var require_transport = __commonJS({
           });
         });
       } else if (pipeline) {
-        target = bundlerOverrides["pino-worker"] || join(__dirname, "worker.js");
+        target = bundlerOverrides["pino-worker"] || join2(__dirname, "worker.js");
         options.pipelines = [pipeline.map((dest) => {
           return {
             ...dest,
@@ -33184,7 +33184,7 @@ var require_transport = __commonJS({
           return origin;
         }
         if (origin === "pino/file") {
-          return join(__dirname, "..", "file.js");
+          return join2(__dirname, "..", "file.js");
         }
         let fixTarget2;
         for (const filePath of callers) {
@@ -34173,7 +34173,7 @@ var require_safe_stable_stringify = __commonJS({
               return circularValue;
             }
             let res = "";
-            let join = ",";
+            let join2 = ",";
             const originalIndentation = indentation;
             if (Array.isArray(value)) {
               if (value.length === 0) {
@@ -34187,7 +34187,7 @@ var require_safe_stable_stringify = __commonJS({
                 indentation += spacer;
                 res += `
 ${indentation}`;
-                join = `,
+                join2 = `,
 ${indentation}`;
               }
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
@@ -34195,13 +34195,13 @@ ${indentation}`;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyFnReplacer(String(i), value, stack, replacer, spacer, indentation);
                 res += tmp2 !== void 0 ? tmp2 : "null";
-                res += join;
+                res += join2;
               }
               const tmp = stringifyFnReplacer(String(i), value, stack, replacer, spacer, indentation);
               res += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res += `${join}"... ${getItemCount(removedKeys)} not stringified"`;
+                res += `${join2}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               if (spacer !== "") {
                 res += `
@@ -34222,7 +34222,7 @@ ${originalIndentation}`;
             let separator = "";
             if (spacer !== "") {
               indentation += spacer;
-              join = `,
+              join2 = `,
 ${indentation}`;
               whitespace = " ";
             }
@@ -34236,13 +34236,13 @@ ${indentation}`;
               const tmp = stringifyFnReplacer(key2, value, stack, replacer, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}:${whitespace}${tmp}`;
-                separator = join;
+                separator = join2;
               }
             }
             if (keyLength > maximumBreadth) {
               const removedKeys = keyLength - maximumBreadth;
               res += `${separator}"...":${whitespace}"${getItemCount(removedKeys)} not stringified"`;
-              separator = join;
+              separator = join2;
             }
             if (spacer !== "" && separator.length > 1) {
               res = `
@@ -34283,7 +34283,7 @@ ${originalIndentation}`;
             }
             const originalIndentation = indentation;
             let res = "";
-            let join = ",";
+            let join2 = ",";
             if (Array.isArray(value)) {
               if (value.length === 0) {
                 return "[]";
@@ -34296,7 +34296,7 @@ ${originalIndentation}`;
                 indentation += spacer;
                 res += `
 ${indentation}`;
-                join = `,
+                join2 = `,
 ${indentation}`;
               }
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
@@ -34304,13 +34304,13 @@ ${indentation}`;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyArrayReplacer(String(i), value[i], stack, replacer, spacer, indentation);
                 res += tmp2 !== void 0 ? tmp2 : "null";
-                res += join;
+                res += join2;
               }
               const tmp = stringifyArrayReplacer(String(i), value[i], stack, replacer, spacer, indentation);
               res += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res += `${join}"... ${getItemCount(removedKeys)} not stringified"`;
+                res += `${join2}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               if (spacer !== "") {
                 res += `
@@ -34323,7 +34323,7 @@ ${originalIndentation}`;
             let whitespace = "";
             if (spacer !== "") {
               indentation += spacer;
-              join = `,
+              join2 = `,
 ${indentation}`;
               whitespace = " ";
             }
@@ -34332,7 +34332,7 @@ ${indentation}`;
               const tmp = stringifyArrayReplacer(key2, value[key2], stack, replacer, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}:${whitespace}${tmp}`;
-                separator = join;
+                separator = join2;
               }
             }
             if (spacer !== "" && separator.length > 1) {
@@ -34390,20 +34390,20 @@ ${originalIndentation}`;
               indentation += spacer;
               let res2 = `
 ${indentation}`;
-              const join2 = `,
+              const join3 = `,
 ${indentation}`;
               const maximumValuesToStringify = Math.min(value.length, maximumBreadth);
               let i = 0;
               for (; i < maximumValuesToStringify - 1; i++) {
                 const tmp2 = stringifyIndent(String(i), value[i], stack, spacer, indentation);
                 res2 += tmp2 !== void 0 ? tmp2 : "null";
-                res2 += join2;
+                res2 += join3;
               }
               const tmp = stringifyIndent(String(i), value[i], stack, spacer, indentation);
               res2 += tmp !== void 0 ? tmp : "null";
               if (value.length - 1 > maximumBreadth) {
                 const removedKeys = value.length - maximumBreadth - 1;
-                res2 += `${join2}"... ${getItemCount(removedKeys)} not stringified"`;
+                res2 += `${join3}"... ${getItemCount(removedKeys)} not stringified"`;
               }
               res2 += `
 ${originalIndentation}`;
@@ -34419,16 +34419,16 @@ ${originalIndentation}`;
               return '"[Object]"';
             }
             indentation += spacer;
-            const join = `,
+            const join2 = `,
 ${indentation}`;
             let res = "";
             let separator = "";
             let maximumPropertiesToStringify = Math.min(keyLength, maximumBreadth);
             if (isTypedArrayWithEntries(value)) {
-              res += stringifyTypedArray(value, join, maximumBreadth);
+              res += stringifyTypedArray(value, join2, maximumBreadth);
               keys = keys.slice(value.length);
               maximumPropertiesToStringify -= value.length;
-              separator = join;
+              separator = join2;
             }
             if (deterministic) {
               keys = sort(keys, comparator);
@@ -34439,13 +34439,13 @@ ${indentation}`;
               const tmp = stringifyIndent(key2, value[key2], stack, spacer, indentation);
               if (tmp !== void 0) {
                 res += `${separator}${strEscape(key2)}: ${tmp}`;
-                separator = join;
+                separator = join2;
               }
             }
             if (keyLength > maximumBreadth) {
               const removedKeys = keyLength - maximumBreadth;
               res += `${separator}"...": "${getItemCount(removedKeys)} not stringified"`;
-              separator = join;
+              separator = join2;
             }
             if (separator !== "") {
               res = `
@@ -36490,7 +36490,7 @@ var init_sql = __esm({
         return new SQL([new StringChunk(str)]);
       }
       sql2.raw = raw;
-      function join(chunks, separator) {
+      function join2(chunks, separator) {
         const result = [];
         for (const [i, chunk] of chunks.entries()) {
           if (i > 0 && separator !== void 0) {
@@ -36500,7 +36500,7 @@ var init_sql = __esm({
         }
         return new SQL(result);
       }
-      sql2.join = join;
+      sql2.join = join2;
       function identifier(value) {
         return new Name(value);
       }
@@ -68264,7 +68264,7 @@ var require_buffer_list = __commonJS({
         }
       }, {
         key: "join",
-        value: function join(s) {
+        value: function join2(s) {
           if (this.length === 0) return "";
           var p = this.head;
           var ret = "" + p.data;
@@ -75704,8 +75704,8 @@ var require_RealtimeChannel = __commonJS({
       }
       /** @internal */
       _notThisChannelEvent(event, ref) {
-        const { close, error: error40, leave, join } = constants_1.CHANNEL_EVENTS;
-        const events = [close, error40, leave, join];
+        const { close, error: error40, leave, join: join2 } = constants_1.CHANNEL_EVENTS;
+        const events = [close, error40, leave, join2];
         return ref && events.includes(event) && ref !== this.joinPush.ref;
       }
       /** @internal */
@@ -236534,6 +236534,11 @@ end`);
   }
 });
 
+// src/index.ts
+import { appendFileSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+
 // src/app.ts
 var import_express19 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
@@ -237962,7 +237967,7 @@ var PgSelectQueryBuilderBase = class extends TypedQueryBuilder {
       const baseTableName = this.tableName;
       const tableName = getTableLikeName(table);
       for (const item of extractUsedTable(table)) this.usedTables.add(item);
-      if (typeof tableName === "string" && this.config.joins?.some((join) => join.alias === tableName)) {
+      if (typeof tableName === "string" && this.config.joins?.some((join2) => join2.alias === tableName)) {
         throw new Error(`Alias "${tableName}" is already used in this query`);
       }
       if (!this.isPartialSelect) {
@@ -239200,7 +239205,7 @@ var PgUpdateBase = class extends QueryPromise {
   createJoin(joinType) {
     return (table, on) => {
       const tableName = getTableLikeName(table);
-      if (typeof tableName === "string" && this.config.joins.some((join) => join.alias === tableName)) {
+      if (typeof tableName === "string" && this.config.joins.some((join2) => join2.alias === tableName)) {
         throw new Error(`Alias "${tableName}" is already used in this query`);
       }
       if (typeof on === "function") {
@@ -239296,10 +239301,10 @@ var PgUpdateBase = class extends QueryPromise {
           const fromFields = this.getTableLikeFields(this.config.from);
           fields[tableName] = fromFields;
         }
-        for (const join of this.config.joins) {
-          const tableName2 = getTableLikeName(join.table);
-          if (typeof tableName2 === "string" && !is(join.table, SQL)) {
-            const fromFields = this.getTableLikeFields(join.table);
+        for (const join2 of this.config.joins) {
+          const tableName2 = getTableLikeName(join2.table);
+          if (typeof tableName2 === "string" && !is(join2.table, SQL)) {
+            const fromFields = this.getTableLikeFields(join2.table);
             fields[tableName2] = fromFields;
           }
         }
@@ -275388,21 +275393,35 @@ var app_default = app;
 
 // src/index.ts
 init_clapay();
+var __dirname22 = dirname(fileURLToPath2(import.meta.url));
+var logDir = join(__dirname22, "..", "..", "..", "logs");
+function crashLog(label, err) {
+  try {
+    mkdirSync(logDir, { recursive: true });
+    const msg = `[${(/* @__PURE__ */ new Date()).toISOString()}] ${label}: ${err instanceof Error ? err.stack ?? err.message : String(err)}
+`;
+    appendFileSync(join(logDir, "startup-errors.log"), msg);
+    process.stderr.write(msg);
+  } catch {
+    process.stderr.write(`${label}: ${String(err)}
+`);
+  }
+}
 process.on("uncaughtException", (err) => {
-  logger.error({ err }, "[Process] uncaughtException \u2014 le processus continue");
+  crashLog("[uncaughtException]", err);
 });
 process.on("unhandledRejection", (reason) => {
-  logger.error({ reason }, "[Process] unhandledRejection \u2014 le processus continue");
+  crashLog("[unhandledRejection]", reason);
 });
-var rawPort = process.env["PORT"] ?? "8080";
+var rawPort = process.env["PORT"] || "8080";
 var port = Number(rawPort);
-if (Number.isNaN(port) || port <= 0) {
-  logger.error({ rawPort }, "Invalid PORT value \u2014 cannot start");
-  process.exit(1);
+var effectivePort = Number.isNaN(port) || port <= 0 ? 8080 : port;
+if (effectivePort !== port) {
+  crashLog("[PORT]", `Invalid PORT="${rawPort}" \u2014 falling back to 8080. Fix: remove PORT from Plesk custom env vars and let Passenger manage it.`);
 }
-logger.info({ port, env: process.env["NODE_ENV"] ?? "unknown" }, "Starting DrimPay API server");
-var server = app_default.listen(port, "0.0.0.0", () => {
-  logger.info({ port }, "Server listening");
+logger.info({ port: effectivePort, env: process.env["NODE_ENV"] ?? "unknown" }, "Starting DrimPay API server");
+var server = app_default.listen(effectivePort, "0.0.0.0", () => {
+  logger.info({ port: effectivePort }, "Server listening");
   logClapayConfig();
   ensureKybBucket().then(() => ensureContractTemplate()).catch((err) => {
     logger.warn({ err }, "Storage init skipped");
@@ -275422,15 +275441,16 @@ server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
     eaddrinuseRetries += 1;
     if (eaddrinuseRetries > MAX_EADDRINUSE_RETRIES) {
-      logger.error({ port, retries: eaddrinuseRetries }, "Port still busy after max retries \u2014 exiting");
+      crashLog("[EADDRINUSE]", `Port ${effectivePort} still busy after ${eaddrinuseRetries} retries \u2014 exiting`);
+      logger.error({ port: effectivePort, retries: eaddrinuseRetries }, "Port still busy after max retries \u2014 exiting");
       process.exit(1);
     }
-    logger.warn({ port, retry: eaddrinuseRetries, max: MAX_EADDRINUSE_RETRIES }, "Port busy \u2014 retrying in 3 s");
+    logger.warn({ port: effectivePort, retry: eaddrinuseRetries, max: MAX_EADDRINUSE_RETRIES }, "Port busy \u2014 retrying in 3 s");
     setTimeout(() => {
       server.close();
-      server.listen(port, "0.0.0.0", () => {
+      server.listen(effectivePort, "0.0.0.0", () => {
         eaddrinuseRetries = 0;
-        logger.info({ port }, "Server listening (after retry)");
+        logger.info({ port: effectivePort }, "Server listening (after retry)");
       });
     }, 3e3);
   }
