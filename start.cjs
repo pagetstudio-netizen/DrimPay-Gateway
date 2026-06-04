@@ -1,32 +1,53 @@
 'use strict';
 // ─── Passenger/Plesk compatibility wrapper ─────────────────────────────────
-// Phusion Passenger may load the startup file via require() which cannot
-// handle .mjs (ESM) files directly. This CJS wrapper uses dynamic import()
-// to load the ESM bundle, which works correctly in Node 18+.
-//
-// Plesk startup file: start.cjs
+// Passenger may load startup files via require() which cannot handle .mjs
+// (ESM) files. This CJS wrapper uses dynamic import() with a file:// URL
+// to correctly load the ESM bundle on any Node.js 14+ runtime.
 // ───────────────────────────────────────────────────────────────────────────
 
-const path = require('path');
-const fs   = require('fs');
+var path = require('path');
+var fs   = require('fs');
+var url  = require('url');
 
-const bundlePath = path.join(__dirname, 'artifacts', 'api-server', 'dist', 'index.mjs');
+var bundlePath = path.join(__dirname, 'artifacts', 'api-server', 'dist', 'index.mjs');
+var logPath    = path.join(__dirname, 'logs', 'startup-errors.log');
+
+function writeLog(msg) {
+  try {
+    fs.mkdirSync(path.join(__dirname, 'logs'), { recursive: true });
+    fs.appendFileSync(logPath, '[' + new Date().toISOString() + '] ' + msg + '\n');
+  } catch (_) {}
+  process.stderr.write(msg + '\n');
+}
+
+writeLog('[start.cjs] Node.js ' + process.version + ' — démarrage');
+writeLog('[start.cjs] __dirname = ' + __dirname);
+writeLog('[start.cjs] PORT = ' + (process.env.PORT || '(non défini)'));
+writeLog('[start.cjs] NODE_ENV = ' + (process.env.NODE_ENV || '(non défini)'));
 
 if (!fs.existsSync(bundlePath)) {
-  const msg = '[DrimPay] ERREUR: Bundle introuvable: ' + bundlePath + '\n' +
-              'Vérifiez que artifacts/api-server/dist/index.mjs est bien dans le repo git.\n';
-  process.stderr.write(msg);
+  writeLog('[start.cjs] ERREUR FATALE: Bundle introuvable: ' + bundlePath);
+  writeLog('[start.cjs] Contenu de artifacts/api-server/dist/:');
+  try {
+    var distDir = path.join(__dirname, 'artifacts', 'api-server', 'dist');
+    if (fs.existsSync(distDir)) {
+      fs.readdirSync(distDir).forEach(function(f) { writeLog('  - ' + f); });
+    } else {
+      writeLog('  (dossier dist/ absent)');
+    }
+  } catch (e) { writeLog('  (impossible de lister: ' + e.message + ')'); }
   process.exit(1);
 }
 
-import(bundlePath).catch(function (err) {
-  const msg = '[DrimPay startup error] ' + (err && err.stack ? err.stack : String(err)) + '\n';
-  process.stderr.write(msg);
-  // Aussi logguer dans un fichier lisible depuis Plesk File Manager
-  try {
-    const logDir = path.join(__dirname, 'logs');
-    fs.mkdirSync(logDir, { recursive: true });
-    fs.appendFileSync(path.join(logDir, 'startup-errors.log'), '[' + new Date().toISOString() + '] ' + msg);
-  } catch (_) {}
+writeLog('[start.cjs] Bundle trouvé — chargement via import()...');
+
+// Convert absolute path to file:// URL for maximum compatibility
+var bundleUrl = url.pathToFileURL(bundlePath).href;
+
+import(bundleUrl).then(function() {
+  writeLog('[start.cjs] Bundle chargé avec succès');
+}).catch(function(err) {
+  writeLog('[start.cjs] ERREUR au chargement du bundle:');
+  writeLog(err && err.stack ? err.stack : String(err));
   process.exit(1);
 });
