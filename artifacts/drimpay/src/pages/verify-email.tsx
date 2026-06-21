@@ -157,7 +157,7 @@ export default function VerifyEmailPage() {
                   Code envoyé à <span className="font-semibold text-gray-900">{email}</span>
                 </p>
 
-                <div className="flex gap-3 mb-5" onPaste={handlePaste}>
+                <div className="grid grid-cols-6 gap-2 mb-5" onPaste={handlePaste}>
                   {digits.map((d, i) => (
                     <input
                       key={i}
@@ -168,7 +168,7 @@ export default function VerifyEmailPage() {
                       value={d}
                       onChange={e => handleDigit(i, e.target.value)}
                       onKeyDown={e => handleKeyDown(i, e)}
-                      className="flex-1 h-14 text-center text-2xl font-bold rounded-xl border-2 outline-none transition-all"
+                      className="w-full aspect-square text-center text-xl font-bold rounded-xl border-2 outline-none transition-all"
                       style={{
                         borderColor: error ? "#f87171" : d ? "#C5FF4A" : "#e5e7eb",
                         backgroundColor: d ? "#f9ffe8" : "#f9fafb",

@@ -53150,7 +53150,7 @@ var init_mailer = __esm({
   "src/lib/mailer.ts"() {
     "use strict";
     init_dist();
-    FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <noreply@drimpay.com>";
+    FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <support@drimpay.com>";
     SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "Support DrimPay <support@drimpay.com>";
   }
 });

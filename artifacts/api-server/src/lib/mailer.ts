@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <noreply@drimpay.com>";
+const FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <support@drimpay.com>";
 const SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "Support DrimPay <support@drimpay.com>";
 
 function getResend(): Resend | null {
