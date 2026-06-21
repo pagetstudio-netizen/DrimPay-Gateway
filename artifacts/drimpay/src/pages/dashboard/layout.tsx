@@ -88,7 +88,7 @@ const NAV_SECTIONS: NavSection[] = [
     entries: [
       { label: "Clés API",          href: "/dashboard/api-keys", img: apiKeysImg },
       { label: "Vérification KYB",  href: "/dashboard/kyb",      img: kybImg },
-      { label: "Paramètres",        href: "/dashboard/settings", img: settingsImg },
+      { label: "Paramètres",        href: "/dashboard/profile",  img: settingsImg },
     ],
   },
   {
