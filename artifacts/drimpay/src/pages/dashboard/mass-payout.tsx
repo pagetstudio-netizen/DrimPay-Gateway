@@ -282,7 +282,7 @@ export default function MassPayout() {
   };
 
   const totalAmount  = recipients.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0);
-  const fees         = totalAmount * 0.03;
+  const fees         = totalAmount * 0.035;
   const totalDebited = totalAmount + fees;
 
   const allRowsValid = recipients.every(r => rowErrors(r).length === 0);
@@ -290,7 +290,7 @@ export default function MassPayout() {
 
   const balanceByCountry = recipients.reduce<Record<string, number>>((acc, r) => {
     const amt = parseFloat(r.amount) || 0;
-    const fee = amt * 0.03;
+    const fee = amt * 0.035;
     acc[r.countryCode] = (acc[r.countryCode] ?? 0) + amt + fee;
     return acc;
   }, {});
@@ -589,7 +589,7 @@ export default function MassPayout() {
                     <span className="text-sm font-bold text-gray-900">{totalAmount.toLocaleString("fr-FR")} FCFA</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Frais (3%)</span>
+                    <span className="text-sm text-gray-500">Frais (3,5%)</span>
                     <span className="text-sm text-amber-600 font-medium">+ {fees.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA</span>
                   </div>
                   <div className="rounded-xl px-4 py-3 flex justify-between items-center" style={{ backgroundColor: "#B5F03C" }}>

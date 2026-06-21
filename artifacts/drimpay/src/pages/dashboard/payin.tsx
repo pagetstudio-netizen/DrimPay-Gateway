@@ -348,7 +348,7 @@ export default function Payin() {
                         <FormControl><Input type="number" placeholder="10000" min="1" {...field} /></FormControl>
                         {field.value && !isNaN(parseFloat(field.value)) && (
                           <p className="text-xs text-muted-foreground">
-                            Frais 3% : {(parseFloat(field.value) * 0.03).toLocaleString("fr-FR")} · Net : <strong>{(parseFloat(field.value) * 0.97).toLocaleString("fr-FR")}</strong> {selectedCountry?.currency ?? "XOF"}
+                            Frais 3,5% : {(parseFloat(field.value) * 0.035).toLocaleString("fr-FR")} · Net : <strong>{(parseFloat(field.value) * 0.965).toLocaleString("fr-FR")}</strong> {selectedCountry?.currency ?? "XOF"}
                           </p>
                         )}
                         <FormMessage />

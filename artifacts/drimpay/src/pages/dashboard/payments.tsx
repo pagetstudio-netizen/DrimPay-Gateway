@@ -181,18 +181,18 @@ function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
 
           <div className="py-3 border-b border-border/50">
             <p className="text-xs text-muted-foreground mb-1">Amount</p>
-            <p className="text-2xl font-bold">{parseFloat(tx.amount).toLocaleString()} {tx.currency}</p>
+            <p className="text-2xl font-bold">{parseFloat(tx.amount).toLocaleString("fr-FR")} {tx.currency}</p>
           </div>
 
           <div className="py-3 border-b border-border/50">
             <p className="text-xs text-muted-foreground mb-1">Fee</p>
-            <p className="text-lg font-semibold text-yellow-400">{parseFloat(tx.fee).toLocaleString()} {tx.currency}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Fixed: 0.00 {tx.currency} + 3.00%</p>
+            <p className="text-lg font-semibold text-yellow-400">{parseFloat(tx.fee).toLocaleString("fr-FR")} {tx.currency}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Taux fixe : 3,50%</p>
           </div>
 
           <div className="py-3 border-b border-border/50">
             <p className="text-xs text-muted-foreground mb-1">Net Amount</p>
-            <p className="text-base font-semibold text-green-400">{parseFloat(tx.netAmount).toLocaleString()} {tx.currency}</p>
+            <p className="text-base font-semibold text-green-400">{parseFloat(tx.netAmount).toLocaleString("fr-FR")} {tx.currency}</p>
           </div>
 
           <DetailRow label="Payment Method" value="Mobile Money" />
@@ -434,10 +434,10 @@ export default function DashboardPayments() {
                           <span className="inline-block bg-muted/30 border border-border/60 rounded-full px-2.5 py-0.5 font-mono text-xs text-foreground max-w-[180px] truncate">{tx.reference}</span>
                         </td>
                         <td className="px-4 py-3.5 font-semibold">
-                          {parseFloat(tx.amount).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">{tx.currency}</span>
+                          {parseFloat(tx.amount).toLocaleString("fr-FR")} <span className="text-muted-foreground font-normal text-xs">{tx.currency}</span>
                         </td>
                         <td className="px-4 py-3.5 text-yellow-400">
-                          {parseFloat(tx.fee).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">{tx.currency}</span>
+                          {parseFloat(tx.fee).toLocaleString("fr-FR")} <span className="text-muted-foreground font-normal text-xs">{tx.currency}</span>
                         </td>
                         <td className="px-4 py-3.5">
                           <span className={cn("inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full",
