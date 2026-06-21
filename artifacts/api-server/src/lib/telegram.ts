@@ -1,6 +1,11 @@
 import { db } from "@workspace/db";
 import { adminSettingsTable, usersTable, transactionsTable } from "@workspace/db/schema";
 import { eq, and, gte, lt, sum, count } from "drizzle-orm";
+import fs from "fs";
+import path from "path";
+
+const STARTUP_COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
+const STARTUP_FLAG = path.join("/tmp", "drimpay-startup-notif.txt");
 
 // ─── Config cache ──────────────────────────────────────────────────────────────
 interface TGConfig { token: string; chatId: string }
@@ -57,6 +62,18 @@ const LARGE = 500_000;
 
 // ─── Event notifications ───────────────────────────────────────────────────────
 export async function notifyStartup() {
+  // Cooldown : envoyer au maximum une fois par heure
+  try {
+    if (fs.existsSync(STARTUP_FLAG)) {
+      const lastMs = parseInt(fs.readFileSync(STARTUP_FLAG, "utf8").trim(), 10);
+      if (!isNaN(lastMs) && Date.now() - lastMs < STARTUP_COOLDOWN_MS) {
+        console.log("[Telegram] Startup notification skipped (cooldown 1h actif)");
+        return;
+      }
+    }
+    fs.writeFileSync(STARTUP_FLAG, String(Date.now()));
+  } catch { /* ignore fs errors */ }
+
   await send(
 `🚀 <b>DrimPay Bot Actif</b>
 
@@ -320,17 +337,27 @@ export function startPolling() {
     if (!cfg) { setTimeout(poll, 15_000); return; }
     try {
       const r = await fetch(
-        `https://api.telegram.org/bot${cfg.token}/getUpdates?offset=${_lastId + 1}&timeout=20`,
+        `https://api.telegram.org/bot${cfg.token}/getUpdates?offset=${_lastId + 1}&timeout=20&allowed_updates=["message","channel_post"]`,
         { signal: AbortSignal.timeout(25_000) }
       );
       if (!r.ok) { setTimeout(poll, 5_000); return; }
       const data = await r.json() as any;
-      if (!data.ok) { setTimeout(poll, 5_000); return; }
+      if (!data.ok) {
+        // Webhook conflict — try to delete it then retry
+        if (data.error_code === 409) {
+          console.warn("[Telegram] Webhook conflict detected, deleting webhook...");
+          await fetch(`https://api.telegram.org/bot${cfg.token}/deleteWebhook?drop_pending_updates=false`);
+        }
+        setTimeout(poll, 5_000);
+        return;
+      }
       for (const u of data.result as any[]) {
         _lastId = u.update_id;
         const msg = u.message ?? u.channel_post;
         if (msg?.text?.startsWith("/")) {
-          await handleCommand(cfg.token, String(msg.chat.id), msg.text.trim());
+          // Respond to the chat where the command was sent (supports groups + DMs)
+          const replyTo = String(msg.chat.id);
+          await handleCommand(cfg.token, replyTo, msg.text.trim());
         }
       }
       setTimeout(poll, data.result.length ? 100 : 1_000);
@@ -338,8 +365,22 @@ export function startPolling() {
       setTimeout(poll, 5_000);
     }
   };
-  poll();
-  console.log("[Telegram] Command polling started");
+
+  // Delete any existing webhook before starting long-poll
+  // (a registered webhook prevents getUpdates from receiving messages)
+  getConfig().then(cfg => {
+    if (!cfg) { poll(); return; }
+    fetch(`https://api.telegram.org/bot${cfg.token}/deleteWebhook?drop_pending_updates=false`)
+      .then(r => r.json())
+      .then((d: any) => {
+        if (d.ok) console.log("[Telegram] Webhook supprimé — long-polling actif");
+        else console.warn("[Telegram] deleteWebhook:", d.description);
+      })
+      .catch(() => {})
+      .finally(() => poll());
+  }).catch(() => poll());
+
+  console.log("[Telegram] Command polling starting...");
 }
 
 // ─── Spam / surcharge detection ───────────────────────────────────────────────
