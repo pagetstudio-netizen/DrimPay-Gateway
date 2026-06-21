@@ -8,5 +8,5 @@ Disallow: /pay/
 
 Crawl-delay: 1
 
-Sitemap: https://drimpay.io/sitemap.xml
-Sitemap: https://drimpay.io/sitemap-fr.xml
+Sitemap: https://drimpay.com/sitemap.xml
+Sitemap: https://drimpay.com/sitemap-fr.xml

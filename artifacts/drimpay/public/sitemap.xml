@@ -8,24 +8,24 @@
   ══════════════════════════════════════════════════ -->
 
   <url>
-    <loc>https://drimpay.io/fr</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr"/>
+    <loc>https://drimpay.com/fr</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://drimpay.io/opengraph.jpg</image:loc>
+      <image:loc>https://drimpay.com/opengraph.jpg</image:loc>
       <image:title>DrimPay — Infrastructure de Paiement pour l'Afrique</image:title>
     </image:image>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr"/>
+    <loc>https://drimpay.com/en</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
@@ -33,20 +33,20 @@
 
   <!-- À propos -->
   <url>
-    <loc>https://drimpay.io/fr/about</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/about"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/about"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/about"/>
+    <loc>https://drimpay.com/fr/about</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/about"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/about"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/about</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/about"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/about"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/about"/>
+    <loc>https://drimpay.com/en/about</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/about"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/about"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -54,20 +54,20 @@
 
   <!-- Comment ça marche -->
   <url>
-    <loc>https://drimpay.io/fr/how-it-works</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/how-it-works"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/how-it-works"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/how-it-works"/>
+    <loc>https://drimpay.com/fr/how-it-works</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/how-it-works"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/how-it-works</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/how-it-works"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/how-it-works"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/how-it-works"/>
+    <loc>https://drimpay.com/en/how-it-works</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/how-it-works"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/how-it-works"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -75,20 +75,20 @@
 
   <!-- Tarification -->
   <url>
-    <loc>https://drimpay.io/fr/pricing</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/pricing"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/pricing"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/pricing"/>
+    <loc>https://drimpay.com/fr/pricing</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/pricing"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/pricing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/pricing"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/pricing</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/pricing"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/pricing"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/pricing"/>
+    <loc>https://drimpay.com/en/pricing</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/pricing"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/pricing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/pricing"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -96,20 +96,20 @@
 
   <!-- Pays -->
   <url>
-    <loc>https://drimpay.io/fr/countries</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/countries"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/countries"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/countries"/>
+    <loc>https://drimpay.com/fr/countries</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/countries"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/countries"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/countries"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/countries</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/countries"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/countries"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/countries"/>
+    <loc>https://drimpay.com/en/countries</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/countries"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/countries"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/countries"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -117,20 +117,20 @@
 
   <!-- Sécurité -->
   <url>
-    <loc>https://drimpay.io/fr/security</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/security"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/security"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/security"/>
+    <loc>https://drimpay.com/fr/security</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/security"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/security"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/security"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/security</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/security"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/security"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/security"/>
+    <loc>https://drimpay.com/en/security</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/security"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/security"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/security"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -138,20 +138,20 @@
 
   <!-- Documentation -->
   <url>
-    <loc>https://drimpay.io/fr/docs</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/docs"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/docs"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/docs"/>
+    <loc>https://drimpay.com/fr/docs</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/docs"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/docs"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/docs"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/docs</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/docs"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/docs"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/docs"/>
+    <loc>https://drimpay.com/en/docs</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/docs"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/docs"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/docs"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
@@ -159,20 +159,20 @@
 
   <!-- Docs Pay-in -->
   <url>
-    <loc>https://drimpay.io/fr/docs/payin</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/docs/payin"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/docs/payin"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/docs/payin"/>
+    <loc>https://drimpay.com/fr/docs/payin</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/docs/payin"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/docs/payin"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/docs/payin"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/docs/payin</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/docs/payin"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/docs/payin"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/docs/payin"/>
+    <loc>https://drimpay.com/en/docs/payin</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/docs/payin"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/docs/payin"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/docs/payin"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -180,20 +180,20 @@
 
   <!-- Docs Pay-out -->
   <url>
-    <loc>https://drimpay.io/fr/docs/payout</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/docs/payout"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/docs/payout"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/docs/payout"/>
+    <loc>https://drimpay.com/fr/docs/payout</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/docs/payout"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/docs/payout"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/docs/payout"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/docs/payout</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/docs/payout"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/docs/payout"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/docs/payout"/>
+    <loc>https://drimpay.com/en/docs/payout</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/docs/payout"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/docs/payout"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/docs/payout"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -201,20 +201,20 @@
 
   <!-- Entreprises -->
   <url>
-    <loc>https://drimpay.io/fr/businesses</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/businesses"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/businesses"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/businesses"/>
+    <loc>https://drimpay.com/fr/businesses</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/businesses"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/businesses"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/businesses"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/businesses</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/businesses"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/businesses"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/businesses"/>
+    <loc>https://drimpay.com/en/businesses</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/businesses"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/businesses"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/businesses"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
@@ -222,20 +222,20 @@
 
   <!-- Blog -->
   <url>
-    <loc>https://drimpay.io/fr/blog</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/blog"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/blog"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/blog"/>
+    <loc>https://drimpay.com/fr/blog</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/blog"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/blog"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/blog"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/blog</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/blog"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/blog"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/blog"/>
+    <loc>https://drimpay.com/en/blog</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/blog"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/blog"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/blog"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -243,10 +243,10 @@
 
   <!-- Actualités -->
   <url>
-    <loc>https://drimpay.io/fr/news</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/news"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/news"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/news"/>
+    <loc>https://drimpay.com/fr/news</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/news"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/news"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/news"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -254,20 +254,20 @@
 
   <!-- Carrières -->
   <url>
-    <loc>https://drimpay.io/fr/careers</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/careers"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/careers"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/careers"/>
+    <loc>https://drimpay.com/fr/careers</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/careers"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/careers"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/careers"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/careers</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/careers"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/careers"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/careers"/>
+    <loc>https://drimpay.com/en/careers</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/careers"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/careers"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/careers"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
@@ -275,20 +275,20 @@
 
   <!-- Contact -->
   <url>
-    <loc>https://drimpay.io/fr/contact</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/contact"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/contact"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/contact"/>
+    <loc>https://drimpay.com/fr/contact</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/contact"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/contact"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/contact"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/en/contact</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/contact"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/contact"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/contact"/>
+    <loc>https://drimpay.com/en/contact</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/contact"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/contact"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/contact"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
@@ -296,10 +296,10 @@
 
   <!-- Partenaires -->
   <url>
-    <loc>https://drimpay.io/fr/partners</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/partners"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/partners"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/partners"/>
+    <loc>https://drimpay.com/fr/partners</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/partners"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/partners"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/partners"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -307,20 +307,20 @@
 
   <!-- Légal -->
   <url>
-    <loc>https://drimpay.io/fr/terms</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/terms"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/terms"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/terms"/>
+    <loc>https://drimpay.com/fr/terms</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/terms"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/terms"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/terms"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
 
   <url>
-    <loc>https://drimpay.io/fr/privacy</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.io/fr/privacy"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.io/en/privacy"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.io/fr/privacy"/>
+    <loc>https://drimpay.com/fr/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/privacy"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/privacy"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/privacy"/>
     <lastmod>2025-05-01</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
