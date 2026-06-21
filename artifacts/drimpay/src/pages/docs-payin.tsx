@@ -587,7 +587,7 @@ def drimpay_webhook():
                 The DrimPay Pay-in API lets you initiate Mobile Money collection requests directly from your backend. The customer never leaves your interface — you send us the phone number and amount, we send the payment prompt to their phone, they confirm, and you receive a signed webhook with the result.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                DrimPay charges <strong className="text-foreground">5% on Payin for personal accounts</strong> and a flat <strong className="text-foreground">3% fee on Payin for business accounts</strong>. The net amount is credited to your country-specific wallet immediately upon confirmation.
+                DrimPay charges a flat <strong className="text-foreground">3.5% fee on Payin</strong> for all accounts (personal &amp; business). The net amount is credited to your country-specific wallet immediately upon confirmation.
               </p>
               <Alert type="info" title="Full payment flow">
                 <ol className="list-decimal list-inside space-y-1 mt-1">

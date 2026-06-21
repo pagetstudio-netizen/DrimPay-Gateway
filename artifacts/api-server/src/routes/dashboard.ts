@@ -38,7 +38,7 @@ import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const FEE_RATE = 0.03;
+const FEE_RATE = 0.035;
 
 const router = Router();
 
@@ -120,14 +120,14 @@ async function getUserFeeRate(userId: number, type: "payin" | "payout" = "payin"
     payinFeePercent: usersTable.payinFeePercent,
     payoutFeePercent: usersTable.payoutFeePercent,
   }).from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) return 0.03;
+  if (!user) return 0.035;
   if (type === "payin" && user.payinFeePercent !== null && user.payinFeePercent !== undefined) {
     return parseFloat(String(user.payinFeePercent)) / 100;
   }
   if (type === "payout" && user.payoutFeePercent !== null && user.payoutFeePercent !== undefined) {
     return parseFloat(String(user.payoutFeePercent)) / 100;
   }
-  return user.accountType === "personal" ? 0.05 : 0.03;
+  return 0.035;
 }
 
 router.get("/dashboard/status", requireAuth, async (req, res) => {
@@ -623,12 +623,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
 
   const userId = req.session.userId!;
 
-  // Block payout for personal accounts
   const [userRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
-  if (userRecord?.accountType === "personal") {
-    res.status(403).json({ error: "Les comptes personnels n'ont pas accès à l'API Pay-out. Seuls les comptes entreprise peuvent effectuer des retraits." });
-    return;
-  }
 
   const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
   const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
@@ -2153,12 +2148,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
 
   const userId = req.session.userId!;
 
-  // Block mass payout for personal accounts
   const [massPayoutUserRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
-  if (massPayoutUserRecord?.accountType === "personal") {
-    res.status(403).json({ error: "Les comptes personnels n'ont pas accès au Paiement de Masse. Seuls les comptes entreprise peuvent utiliser cette fonctionnalité." });
-    return;
-  }
 
   const currentMode = req.session.mode ?? "sandbox";
   const { description, recipients } = parsed.data;

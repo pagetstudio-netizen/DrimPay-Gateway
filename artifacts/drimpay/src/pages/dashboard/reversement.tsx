@@ -160,7 +160,7 @@ export default function DashboardReversement() {
 
   const { user } = useAuth();
   const isPersonal = (user as any)?.accountType === "personal";
-  const feeRate = isPersonal ? 0.05 : 0.03;
+  const feeRate = 0.035;
 
   const walletForCountry = wallets.find((w) => w.countryCode === watchCountry);
   const amount = parseFloat(form.watch("amount") || "0");

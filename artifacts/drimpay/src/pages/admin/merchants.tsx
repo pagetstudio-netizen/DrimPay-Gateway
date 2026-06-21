@@ -259,7 +259,7 @@ function MerchantPanel({
                   </div>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-1.5">
-                  Taux global actuel : 3% (entreprise) · 5% (personnel). Les frais personnalisés prennent le dessus.
+                  Taux global actuel : 3,5% (entreprise & personnel). Les frais personnalisés prennent le dessus.
                 </p>
               </div>
             </div>

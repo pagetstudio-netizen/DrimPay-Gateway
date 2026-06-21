@@ -27,7 +27,7 @@ const VALUES = [
   {
     icon: <Eye className="w-5 h-5" />,
     title: "Transparence",
-    desc: "3% de frais plats, aucun frais caché, aucun abonnement. Vous savez exactement ce que vous payez à chaque transaction.",
+    desc: "3,5% de frais plats, aucun frais caché, aucun abonnement. Vous savez exactement ce que vous payez à chaque transaction.",
     color: "bg-purple-50 text-purple-600",
   },
   {
@@ -60,7 +60,7 @@ const VALUES = [
 const STATS = [
   { value: "7", label: "Pays couverts", icon: <MapPin className="w-4 h-4" /> },
   { value: "20+", label: "Opérateurs intégrés", icon: <Globe className="w-4 h-4" /> },
-  { value: "3%", label: "Frais flat transparents", icon: <TrendingUp className="w-4 h-4" /> },
+  { value: "3,5%", label: "Frais flat transparents", icon: <TrendingUp className="w-4 h-4" /> },
   { value: "99.9%", label: "Disponibilité garantie", icon: <Star className="w-4 h-4" /> },
 ];
 

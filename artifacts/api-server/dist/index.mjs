@@ -273728,7 +273728,7 @@ async function routePayout(params) {
 init_clapay();
 init_paydunya();
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-var FEE_RATE = 0.03;
+var FEE_RATE = 0.035;
 var router11 = (0, import_express11.Router)();
 function requireAuth(req, res, next) {
   if (!req.session?.userId) {
@@ -273787,14 +273787,14 @@ async function getUserFeeRate(userId, type = "payin") {
     payinFeePercent: usersTable.payinFeePercent,
     payoutFeePercent: usersTable.payoutFeePercent
   }).from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) return 0.03;
+  if (!user) return 0.035;
   if (type === "payin" && user.payinFeePercent !== null && user.payinFeePercent !== void 0) {
     return parseFloat(String(user.payinFeePercent)) / 100;
   }
   if (type === "payout" && user.payoutFeePercent !== null && user.payoutFeePercent !== void 0) {
     return parseFloat(String(user.payoutFeePercent)) / 100;
   }
-  return user.accountType === "personal" ? 0.05 : 0.03;
+  return 0.035;
 }
 router11.get("/dashboard/status", requireAuth, async (req, res) => {
   const userId = req.session.userId;
@@ -274187,10 +274187,6 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
   }
   const userId = req.session.userId;
   const [userRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
-  if (userRecord?.accountType === "personal") {
-    res.status(403).json({ error: "Les comptes personnels n'ont pas acc\xE8s \xE0 l'API Pay-out. Seuls les comptes entreprise peuvent effectuer des retraits." });
-    return;
-  }
   const currentMode = req.session.mode ?? "sandbox";
   const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
   const opCheck = await checkOperatorAvailable(countryCode, operator, "withdrawals");
@@ -275477,10 +275473,6 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   }
   const userId = req.session.userId;
   const [massPayoutUserRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
-  if (massPayoutUserRecord?.accountType === "personal") {
-    res.status(403).json({ error: "Les comptes personnels n'ont pas acc\xE8s au Paiement de Masse. Seuls les comptes entreprise peuvent utiliser cette fonctionnalit\xE9." });
-    return;
-  }
   const currentMode = req.session.mode ?? "sandbox";
   const { description, recipients } = parsed.data;
   const totalsPerCountry = {};
@@ -276112,7 +276104,7 @@ var COUNTRIES2 = {
   SN: "XOF",
   CI: "XOF"
 };
-var FEE_RATE2 = 0.03;
+var FEE_RATE2 = 0.035;
 var initiateSchema = external_exports2.object({
   amount: external_exports2.number().min(200, "Le montant minimum est de 200"),
   currency: external_exports2.string().length(3),
@@ -276662,8 +276654,8 @@ async function generateContractPdf(data) {
     ) + 10;
     section("4. SERVICES FOURNIS PAR DRIMPAY");
     const services = [
-      "API PayIn (r\xE9ception de paiements) \u2014 Frais : 3%",
-      "API Payout (retraits et transferts) \u2014 Frais : 3%",
+      "API PayIn (r\xE9ception de paiements) \u2014 Frais : 3,5%",
+      "API Payout (retraits et transferts) \u2014 Frais : 3,5%",
       "PayIn Link (liens de paiement instantan\xE9)",
       "Dashboard de gestion marchand",
       "Bulk Payout, cartes virtuelles, Airtime (selon \xE9ligibilit\xE9)"
@@ -278847,7 +278839,7 @@ var DEFAULT_OPERATORS = {
   SN: ["Orange Money", "Wave"],
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"]
 };
-var FEE_RATE3 = 0.03;
+var FEE_RATE3 = 0.035;
 router17.get("/api/pay/status/:reference", async (req, res) => {
   const { reference } = req.params;
   if (!reference) {

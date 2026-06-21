@@ -178,7 +178,7 @@ const COUNTRIES: Record<string, string> = {
   ML: "XOF", SN: "XOF", CI: "XOF",
 };
 
-const FEE_RATE = 0.03;
+const FEE_RATE = 0.035;
 
 const EXPIRY_MINUTES: Record<string, number> = { "2": 2, "5": 5, "10": 10 };
 

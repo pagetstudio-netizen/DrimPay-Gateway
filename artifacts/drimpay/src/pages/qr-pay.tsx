@@ -188,7 +188,7 @@ export default function QrPayPage() {
   const currentCountryData = qr?.countries.find(c => c.code === selectedCountry);
   const currency           = currentCountryData?.currency ?? qr?.currency ?? "XOF";
   const displayAmount      = parseFloat(amount || "0");
-  const platformFee        = Math.round(displayAmount * 0.03 * 100) / 100;
+  const platformFee        = Math.round(displayAmount * 0.035 * 100) / 100;
   const merchantNet        = Math.round((displayAmount - platformFee) * 100) / 100;
   const operatorLabel      = OPERATOR_BRAND[selectedOperator]?.label ?? selectedOperator;
   const countryMeta        = COUNTRY_META[selectedCountry];
@@ -392,7 +392,7 @@ export default function QrPayPage() {
                       { label: "Marchand",  value: qr?.merchantName ?? "" },
                       { label: "QR",         value: qr?.name ?? "" },
                       { label: "Montant",    value: `${displayAmount.toLocaleString("fr-FR")} ${currency}` },
-                      { label: "Frais (3%)", value: `${platformFee.toLocaleString("fr-FR")} ${currency}`, sub: true },
+                      { label: "Frais (3,5%)", value: `${platformFee.toLocaleString("fr-FR")} ${currency}`, sub: true },
                       { label: "Net marchand", value: `${merchantNet.toLocaleString("fr-FR")} ${currency}`, sub: true },
                       { label: "Opérateur", value: operatorLabel },
                       { label: "Téléphone", value: phone },

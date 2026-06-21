@@ -202,7 +202,7 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
               </div>
               <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl">
                 <div><p className="text-xs text-gray-500 mb-0.5">Montant</p><p className="text-lg font-bold text-gray-900">{fmt(tx.amount, tx.currency)}</p></div>
-                <div><p className="text-xs text-gray-500 mb-0.5">Frais (3%)</p><p className="text-lg font-bold text-gray-700">{fmt(tx.fee, tx.currency)}</p></div>
+                <div><p className="text-xs text-gray-500 mb-0.5">Frais (3,5%)</p><p className="text-lg font-bold text-gray-700">{fmt(tx.fee, tx.currency)}</p></div>
                 <div><p className="text-xs text-gray-500 mb-0.5">Net</p><p className="text-lg font-bold text-emerald-600">{fmt(tx.netAmount, tx.currency)}</p></div>
               </div>
               <div className="grid grid-cols-2 gap-3">

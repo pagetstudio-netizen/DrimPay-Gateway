@@ -44,7 +44,7 @@ const DEFAULT_OPERATORS: Record<string, string[]> = {
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"],
 };
 
-const FEE_RATE = 0.03;
+const FEE_RATE = 0.035;
 
 function signPayload(payload: string, secret: string, timestamp: number): string {
   return crypto
