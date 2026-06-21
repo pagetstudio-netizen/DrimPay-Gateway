@@ -52541,6 +52541,7 @@ var init_dist = __esm({
 var mailer_exports = {};
 __export(mailer_exports, {
   invalidateMailerCache: () => invalidateMailerCache,
+  sendAdminNewUserEmail: () => sendAdminNewUserEmail,
   sendBroadcastEmail: () => sendBroadcastEmail,
   sendContractEmail: () => sendContractEmail,
   sendEmailVerificationEmail: () => sendEmailVerificationEmail,
@@ -52759,6 +52760,80 @@ async function sendWelcomeEmail(opts) {
     return { ok: true };
   } catch (e) {
     console.error("[Mailer] Erreur envoi bienvenue:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+async function sendAdminNewUserEmail(opts) {
+  const resend = getResend();
+  const adminEmail = process.env["RESEND_SUPPORT_EMAIL"] ?? "support@drimpay.com";
+  if (!resend) return { ok: false, error: "RESEND_API_KEY non configur\xE9" };
+  const now = (/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan", dateStyle: "full", timeStyle: "short" });
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: adminEmail,
+      subject: `[DrimPay] Nouvelle inscription \u2014 ${opts.companyName}`,
+      html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09);">
+        <tr>
+          <td style="background:#0f172a;padding:24px 36px;">
+            <span style="font-size:22px;font-weight:bold;color:#C5FF4A;">Drim</span><span style="font-size:22px;font-weight:bold;color:#ffffff;">Pay</span>
+            <span style="font-size:12px;color:#94a3b8;margin-left:10px;">Admin \xB7 Nouvelle inscription</span>
+          </td>
+        </tr>
+        <tr><td style="padding:28px 36px;">
+          <h2 style="color:#0f172a;margin:0 0 6px;font-size:17px;">Nouvel utilisateur inscrit</h2>
+          <p style="color:#64748b;font-size:13px;margin:0 0 24px;">${now}</p>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Email</span><br>
+                <span style="font-size:15px;font-weight:bold;color:#0f172a;">${opts.userEmail}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Entreprise</span><br>
+                <span style="font-size:15px;font-weight:bold;color:#0f172a;">${opts.companyName}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Pays</span><br>
+                <span style="font-size:15px;color:#0f172a;">${opts.country}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;">
+                <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Type de compte</span><br>
+                <span style="font-size:15px;color:#0f172a;">${opts.accountType}</span>
+              </td>
+            </tr>
+          </table>
+          <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 18px;margin:20px 0 0;">
+            <p style="margin:0;font-size:13px;color:#166534;">L'utilisateur doit encore v\xE9rifier son email avant d'acc\xE9der au tableau de bord.</p>
+          </div>
+        </td></tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:14px 36px;border-top:1px solid #eeeeee;">
+            <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">DrimPay \xB7 Administration interne \xB7 Ne pas r\xE9pondre \xE0 cet email</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim()
+    });
+    console.log(`[Mailer] Notification admin nouvelle inscription envoy\xE9e pour ${opts.userEmail}`);
+    return { ok: true };
+  } catch (e) {
+    console.error("[Mailer] Erreur notification admin inscription:", e?.message ?? e);
     return { ok: false, error: e?.message ?? String(e) };
   }
 }
@@ -264744,6 +264819,8 @@ router10.post("/auth/signup", signupRateLimiter, async (req, res) => {
   }
   await logSecurityEvent({ eventType: "REGISTER", req, userId: user.id, details: `Nouveau compte : ${email3}`, riskLevel: "low" });
   notifyNewUser(user.email, user.companyName, user.country).catch(() => {
+  });
+  sendAdminNewUserEmail({ userEmail: user.email, companyName: user.companyName, country: user.country, accountType: user.accountType }).catch(() => {
   });
   try {
     const { code, token } = await generateVerificationToken(user.id, user.email, "signup");

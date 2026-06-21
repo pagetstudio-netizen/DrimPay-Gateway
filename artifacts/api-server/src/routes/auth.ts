@@ -9,7 +9,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, gt, isNull } from "drizzle-orm";
 import { notifyNewUser, notifyLoginAttempt } from "../lib/telegram";
-import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail, sendPasswordResetSupportEmail } from "../lib/mailer";
+import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail, sendPasswordResetSupportEmail, sendAdminNewUserEmail } from "../lib/mailer";
 import {
   logSecurityEvent,
   trackFailedLogin,
@@ -92,6 +92,7 @@ router.post("/auth/signup", signupRateLimiter, async (req, res) => {
 
   await logSecurityEvent({ eventType: "REGISTER", req, userId: user.id, details: `Nouveau compte : ${email}`, riskLevel: "low" });
   notifyNewUser(user.email, user.companyName, user.country).catch(() => {});
+  sendAdminNewUserEmail({ userEmail: user.email, companyName: user.companyName, country: user.country, accountType: user.accountType }).catch(() => {});
 
   // Send verification email (6-digit code + activation link)
   try {
