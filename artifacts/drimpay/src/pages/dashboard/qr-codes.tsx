@@ -22,8 +22,6 @@ const COUNTRIES = [
   { code: "ML", name: "Mali",          flag: "🇲🇱", currency: "XOF" },
   { code: "SN", name: "Sénégal",       flag: "🇸🇳", currency: "XOF" },
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF" },
-  { code: "GH", name: "Ghana",         flag: "🇬🇭", currency: "GHS" },
-  { code: "NG", name: "Nigeria",       flag: "🇳🇬", currency: "NGN" },
 ];
 
 type QrCodeData = {

@@ -19,8 +19,6 @@ const COUNTRY_META: Record<string, { name: string; flag: string; currency: strin
   ML: { name: "Mali",          flag: "🇲🇱", currency: "XOF" },
   SN: { name: "Sénégal",       flag: "🇸🇳", currency: "XOF" },
   CI: { name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF" },
-  GH: { name: "Ghana",         flag: "🇬🇭", currency: "GHS" },
-  NG: { name: "Nigeria",       flag: "🇳🇬", currency: "NGN" },
 };
 
 const OPERATOR_BRAND: Record<string, { bg: string; text: string; abbr: string; label: string; logo?: string }> = {
@@ -28,17 +26,13 @@ const OPERATOR_BRAND: Record<string, { bg: string; text: string; abbr: string; l
   "Moov Money":       { bg: "#F06400", text: "#fff",    abbr: "MV",  label: "Moov Money",   logo: `${BASE}/op-moov.png` },
   "MTN Mobile Money": { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN MoMo",     logo: `${BASE}/op-mtn.png` },
   "MTN MoMo":         { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN MoMo",     logo: `${BASE}/op-mtn.png` },
-  "MTN Ghana":        { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN Ghana",    logo: `${BASE}/op-mtn.png` },
-  "MTN Nigeria":      { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN Nigeria",  logo: `${BASE}/op-mtn.png` },
   "MTN":              { bg: "#FFCC00", text: "#1a1a1a", abbr: "MTN", label: "MTN",          logo: `${BASE}/op-mtn.png` },
   "Orange Money":     { bg: "#FF6600", text: "#fff",    abbr: "OM",  label: "Orange Money", logo: `${BASE}/op-orange-money.png` },
   "Wave":             { bg: "#1AC9FF", text: "#fff",    abbr: "WV",  label: "Wave",         logo: `${BASE}/op-wave.png` },
   "Wizall Money":     { bg: "#00BCD4", text: "#fff",    abbr: "WZ",  label: "Wizall Money", logo: `${BASE}/op-wizall.png` },
   "Wizall":           { bg: "#00BCD4", text: "#fff",    abbr: "WZ",  label: "Wizall Money", logo: `${BASE}/op-wizall.png` },
   "Vodacom":          { bg: "#E60000", text: "#fff",    abbr: "VC",  label: "Vodacom",      logo: `${BASE}/op-vodacom.png` },
-  "Vodafone Ghana":   { bg: "#E60000", text: "#fff",    abbr: "VF",  label: "Vodafone",     logo: `${BASE}/op-vodacom.png` },
-  "Airtel":           { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel",       logo: `${BASE}/op-airtel.png` },
-  "Airtel Nigeria":   { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel",       logo: `${BASE}/op-airtel.png` },
+  "Airtel":           { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel Money", logo: `${BASE}/op-airtel.png` },
   "Airtel Money":     { bg: "#E40000", text: "#fff",    abbr: "AT",  label: "Airtel Money", logo: `${BASE}/op-airtel.png` },
 };
 

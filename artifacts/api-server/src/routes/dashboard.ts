@@ -1625,7 +1625,7 @@ router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
   // Support both multi-country (countryCodes[]) and legacy single countryCode
   const COUNTRY_CURRENCY: Record<string, string> = {
     TG: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", SN: "XOF", CI: "XOF",
-    CM: "XAF", GH: "GHS", NG: "NGN",
+    CM: "XAF",
   };
   const selectedCodes = parsed.data.countryCodes ?? (parsed.data.countryCode ? [parsed.data.countryCode] : []);
   if (selectedCodes.length === 0) {
@@ -1693,13 +1693,11 @@ const COUNTRY_OPERATORS: Record<string, { name: string; currency: string }[]> = 
   ML: [{ name: "Orange Money", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
   SN: [{ name: "Orange Money", currency: "XOF" }, { name: "Wave", currency: "XOF" }],
   CI: [{ name: "MTN", currency: "XOF" }, { name: "Orange Money", currency: "XOF" }, { name: "Wave", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
-  GH: [{ name: "MTN Ghana", currency: "GHS" }, { name: "Vodafone Ghana", currency: "GHS" }],
-  NG: [{ name: "MTN Nigeria", currency: "NGN" }, { name: "Airtel Nigeria", currency: "NGN" }],
 };
 
 const COUNTRY_CURRENCY: Record<string, string> = {
   TG: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", SN: "XOF", CI: "XOF",
-  CM: "XAF", GH: "GHS", NG: "NGN",
+  CM: "XAF",
 };
 
 router.get("/pay/:token", async (req, res) => {
@@ -2725,7 +2723,7 @@ router.post("/dashboard/payment-links", requireAuth, async (req: any, res: any) 
 
   const CURRENCY_MAP: Record<string, string> = {
     TG: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", SN: "XOF", CI: "XOF",
-    CM: "XAF", GH: "GHS", NG: "NGN",
+    CM: "XAF",
   };
 
   const primaryCountry = countryCodes[0];

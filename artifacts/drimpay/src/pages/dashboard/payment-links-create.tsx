@@ -22,8 +22,6 @@ const COUNTRIES = [
   { code: "ML", name: "Mali",          flag: "🇲🇱", currency: "XOF", operators: ["Orange Money", "Moov Money"] },
   { code: "SN", name: "Sénégal",       flag: "🇸🇳", currency: "XOF", operators: ["Orange Money", "Wave"] },
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF", operators: ["MTN", "Orange Money", "Wave", "Moov Money"] },
-  { code: "GH", name: "Ghana",         flag: "🇬🇭", currency: "GHS", operators: ["MTN Ghana", "Vodafone Ghana"] },
-  { code: "NG", name: "Nigeria",       flag: "🇳🇬", currency: "NGN", operators: ["MTN Nigeria", "Airtel Nigeria"] },
 ];
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -373,11 +371,7 @@ export default function PaymentLinksCreate() {
                       </div>
                     </div>
                   )}
-                  {currencies.some(c => c !== "XOF" && c !== "XAF") && (
-                    <p className="text-xs text-amber-500">
-                      Note : Ghana (GHS) et Nigeria (NGN) utiliseront la conversion automatique.
-                    </p>
-                  )}
+
                   {fixedAmount && selectedCodes.length === 0 && (
                     <p className="text-xs text-muted-foreground italic">
                       Sélectionnez d'abord un pays pour saisir le montant.

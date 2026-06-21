@@ -32,8 +32,6 @@ const router = Router();
 const CURRENCY_MAP: Record<string, string> = {
   TG: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", SN: "XOF", CI: "XOF",
   CM: "XAF",
-  GH: "GHS",
-  NG: "NGN",
 };
 
 const DEFAULT_OPERATORS: Record<string, string[]> = {
@@ -44,8 +42,6 @@ const DEFAULT_OPERATORS: Record<string, string[]> = {
   ML: ["Orange Money", "Moov Money"],
   SN: ["Orange Money", "Wave"],
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"],
-  GH: ["MTN Ghana", "Vodafone Ghana"],
-  NG: ["MTN Nigeria", "Airtel Nigeria"],
 };
 
 const FEE_RATE = 0.03;
