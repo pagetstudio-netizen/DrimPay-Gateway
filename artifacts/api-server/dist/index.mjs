@@ -52543,6 +52543,7 @@ __export(mailer_exports, {
   invalidateMailerCache: () => invalidateMailerCache,
   sendBroadcastEmail: () => sendBroadcastEmail,
   sendContractEmail: () => sendContractEmail,
+  sendEmailVerificationEmail: () => sendEmailVerificationEmail,
   sendKybApprovedEmail: () => sendKybApprovedEmail,
   sendKybProcessingEmail: () => sendKybProcessingEmail,
   sendKybRejectedEmail: () => sendKybRejectedEmail,
@@ -52559,6 +52560,81 @@ function getResend() {
   return new Resend(key);
 }
 function invalidateMailerCache() {
+}
+async function sendEmailVerificationEmail(opts) {
+  const resend = getResend();
+  if (!resend) return { ok: false, error: "RESEND_API_KEY non configur\xE9" };
+  const isNewDevice = opts.type === "new_device";
+  const subject = isNewDevice ? "DrimPay \u2014 Connexion depuis un nouvel appareil" : "DrimPay \u2014 Confirmez votre adresse email";
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: opts.to,
+      subject,
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#0f0f0f;padding:24px 40px;text-align:center;">
+            <span style="font-size:26px;font-weight:bold;color:#ffffff;">Drim<span style="color:#C5FF4A;">Pay</span></span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 40px 32px;">
+            <h2 style="color:#111111;margin:0 0 12px;font-size:20px;text-align:center;">
+              ${isNewDevice ? "Connexion depuis un nouvel appareil" : "Confirmez votre email"}
+            </h2>
+            <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 8px;text-align:center;">
+              Bonjour <strong>${opts.companyName}</strong>,
+            </p>
+            <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 32px;text-align:center;">
+              ${isNewDevice ? "Une connexion a \xE9t\xE9 initi\xE9e depuis un appareil que nous ne reconnaissons pas. Utilisez le code ci-dessous pour confirmer que c'est bien vous." : "Merci de vous \xEAtre inscrit sur DrimPay. Entrez le code ci-dessous pour activer votre compte."}
+            </p>
+            <div style="text-align:center;margin:0 0 28px;">
+              <div style="display:inline-block;background:#f8f8f8;border:2px solid #e5e5e5;border-radius:16px;padding:24px 40px;">
+                <p style="margin:0 0 6px;font-size:11px;font-weight:bold;color:#999;text-transform:uppercase;letter-spacing:2px;">Votre code</p>
+                <p style="margin:0;font-size:42px;font-weight:bold;color:#0f0f0f;letter-spacing:10px;font-family:monospace;">${opts.code}</p>
+                <p style="margin:8px 0 0;font-size:12px;color:#aaa;">Valable 15 minutes</p>
+              </div>
+            </div>
+            <div style="text-align:center;margin:0 0 28px;">
+              <p style="margin:0 0 12px;font-size:13px;color:#777;">Ou cliquez directement sur le lien d'activation :</p>
+              <a href="${opts.activationLink}" style="display:inline-block;background:#C5FF4A;color:#0f0f0f;font-weight:bold;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+                Activer mon compte
+              </a>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 20px;margin:0 0 8px;">
+              <p style="margin:0;font-size:12px;color:#92400e;line-height:1.6;">
+                Si vous n'\xEAtes pas \xE0 l'origine de cette demande, ignorez cet email. Votre compte reste s\xE9curis\xE9.
+              </p>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:18px 40px;border-top:1px solid #eeeeee;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#aaa;">
+              DrimPay \u2014 Infrastructure de paiement pour l'Afrique<br>
+              Cet email a \xE9t\xE9 envoy\xE9 \xE0 ${opts.to}
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim()
+    });
+    console.log(`[Mailer] Email v\xE9rification (${opts.type}) envoy\xE9 \xE0 ${opts.to}`);
+    return { ok: true };
+  } catch (e) {
+    console.error("[Mailer] Erreur envoi v\xE9rification:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
 }
 async function sendWelcomeEmail(opts) {
   const resend = getResend();
@@ -244028,6 +244104,7 @@ __export(schema_exports, {
   blogArticlesTable: () => blogArticlesTable,
   contactSubmissionsTable: () => contactSubmissionsTable,
   countriesTable: () => countriesTable,
+  emailVerificationTokensTable: () => emailVerificationTokensTable,
   globalBannersTable: () => globalBannersTable,
   incidentSeverityEnum: () => incidentSeverityEnum,
   incidentStatusEnum: () => incidentStatusEnum,
@@ -244037,6 +244114,7 @@ __export(schema_exports, {
   insertJobSchema: () => insertJobSchema,
   jobTypeEnum: () => jobTypeEnum,
   jobsTable: () => jobsTable,
+  knownDevicesTable: () => knownDevicesTable,
   kybStatusEnum: () => kybStatusEnum,
   kybSubmissionsTable: () => kybSubmissionsTable,
   massPayoutJobsTable: () => massPayoutJobsTable,
@@ -255488,6 +255566,7 @@ var usersTable = pgTable("users", {
   staticIp: text("static_ip"),
   payinFeePercent: numeric("payin_fee_percent", { precision: 5, scale: 2 }),
   payoutFeePercent: numeric("payout_fee_percent", { precision: 5, scale: 2 }),
+  emailVerified: boolean("email_verified").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow()
 });
 var kybSubmissionsTable = pgTable("kyb_submissions", {
@@ -255936,6 +256015,24 @@ var passwordResetTokensTable = pgTable("password_reset_tokens", {
   token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow()
+});
+var emailVerificationTokensTable = pgTable("email_verification_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  email: text("email").notNull(),
+  code: text("code").notNull(),
+  token: text("token").notNull().unique(),
+  type: text("type").notNull().default("signup"),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow()
+});
+var knownDevicesTable = pgTable("known_devices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  deviceHash: text("device_hash").notNull(),
+  lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow()
 });
 var globalBannersTable = pgTable("global_banners", {
@@ -264187,6 +264284,23 @@ var loginSchema = external_exports2.object({
   email: external_exports2.string().email(),
   password: external_exports2.string().min(1)
 });
+function getBaseUrl(req) {
+  if (process.env["REPLIT_DEV_DOMAIN"]) return `https://${process.env["REPLIT_DEV_DOMAIN"]}`;
+  return "https://drimpay.com";
+}
+function deviceFingerprint(req, userId) {
+  const ua = req.headers["user-agent"] ?? "unknown";
+  const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "0";
+  const ipPrefix = ip.split(".").slice(0, 2).join(".");
+  return crypto2.createHash("sha256").update(`${userId}:${ua}:${ipPrefix}`).digest("hex");
+}
+async function generateVerificationToken(userId, email3, type) {
+  const code = String(Math.floor(1e5 + Math.random() * 9e5));
+  const token = crypto2.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1e3);
+  await db.insert(emailVerificationTokensTable).values({ userId, email: email3, code, token, type, expiresAt });
+  return { code, token };
+}
 router10.post("/auth/signup", signupRateLimiter, async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -264201,37 +264315,34 @@ router10.post("/auth/signup", signupRateLimiter, async (req, res) => {
   }
   const passwordHash = await bcryptjs_default.hash(password, 12);
   const merchantCode = crypto2.randomBytes(3).toString("hex");
-  const [user] = await db.insert(usersTable).values({ email: email3, passwordHash, companyName, country, merchantCode, accountType }).returning();
-  req.session.userId = user.id;
-  req.session.role = user.role;
+  const [user] = await db.insert(usersTable).values({
+    email: email3,
+    passwordHash,
+    companyName,
+    country,
+    merchantCode,
+    accountType,
+    emailVerified: false
+  }).returning();
   try {
     const rawKey = `dp_test_${crypto2.randomBytes(24).toString("hex")}`;
     const prefix = rawKey.substring(0, 12);
     const keyHash = await bcryptjs_default.hash(rawKey, 10);
-    await db.insert(apiKeysTable).values({
-      userId: user.id,
-      name: "Cl\xE9 Sandbox",
-      keyHash,
-      prefix,
-      env: "sandbox"
-    });
+    await db.insert(apiKeysTable).values({ userId: user.id, name: "Cl\xE9 Sandbox", keyHash, prefix, env: "sandbox" });
   } catch (e) {
     console.error("[DrimPay] Failed to auto-generate sandbox key at signup:", e);
   }
   await logSecurityEvent({ eventType: "REGISTER", req, userId: user.id, details: `Nouveau compte : ${email3}`, riskLevel: "low" });
   notifyNewUser(user.email, user.companyName, user.country).catch(() => {
   });
-  sendWelcomeEmail({ to: user.email, companyName: user.companyName }).catch(() => {
-  });
-  res.status(201).json({
-    id: user.id,
-    email: user.email,
-    companyName: user.companyName,
-    country: user.country,
-    role: user.role,
-    accountType: user.accountType,
-    merchantCode: user.merchantCode
-  });
+  try {
+    const { code, token } = await generateVerificationToken(user.id, user.email, "signup");
+    const activationLink = `${getBaseUrl(req)}/api/auth/activate?token=${token}`;
+    await sendEmailVerificationEmail({ to: user.email, companyName: user.companyName, code, activationLink, type: "signup" });
+  } catch (e) {
+    console.error("[Auth] Failed to send verification email:", e);
+  }
+  res.status(202).json({ requiresVerification: true, email: user.email });
 });
 router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
@@ -264244,12 +264355,7 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   if (!user) {
     const ip = req.ip ?? "unknown";
     const isBrute = trackFailedLogin(ip);
-    await logSecurityEvent({
-      eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED",
-      req,
-      details: `Email inconnu : ${email3}`,
-      riskLevel: isBrute ? "high" : "medium"
-    });
+    await logSecurityEvent({ eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED", req, details: `Email inconnu : ${email3}`, riskLevel: isBrute ? "high" : "medium" });
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
@@ -264257,40 +264363,169 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   if (!valid) {
     const ip = req.ip ?? "unknown";
     const isBrute = trackFailedLogin(ip);
-    await logSecurityEvent({
-      eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED",
-      req,
-      userId: user.id,
-      details: `Mot de passe incorrect pour : ${email3}`,
-      riskLevel: isBrute ? "high" : "medium"
-    });
+    await logSecurityEvent({ eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED", req, userId: user.id, details: `Mot de passe incorrect pour : ${email3}`, riskLevel: isBrute ? "high" : "medium" });
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
   clearFailedLogins(req.ip ?? "unknown");
+  if (user.emailVerified === false) {
+    try {
+      const { code, token } = await generateVerificationToken(user.id, user.email, "signup");
+      const activationLink = `${getBaseUrl(req)}/api/auth/activate?token=${token}`;
+      await sendEmailVerificationEmail({ to: user.email, companyName: user.companyName, code, activationLink, type: "signup" });
+    } catch (e) {
+      console.error("[Auth] Failed to resend verification email:", e);
+    }
+    res.status(202).json({ requiresVerification: true, email: user.email, reason: "email_not_verified" });
+    return;
+  }
+  const hash2 = deviceFingerprint(req, user.id);
+  let knownDevice = [];
+  try {
+    knownDevice = await db.select({ id: knownDevicesTable.id }).from(knownDevicesTable).where(and(eq(knownDevicesTable.userId, user.id), eq(knownDevicesTable.deviceHash, hash2))).limit(1);
+  } catch {
+    knownDevice = [{ id: 0 }];
+  }
+  if (knownDevice.length === 0) {
+    try {
+      const { code, token } = await generateVerificationToken(user.id, user.email, "new_device");
+      const activationLink = `${getBaseUrl(req)}/api/auth/activate?token=${token}`;
+      await sendEmailVerificationEmail({ to: user.email, companyName: user.companyName, code, activationLink, type: "new_device" });
+    } catch (e) {
+      console.error("[Auth] Failed to send new device email:", e);
+    }
+    await logSecurityEvent({ eventType: "LOGIN_NEW_DEVICE", req, userId: user.id, details: `Nouvel appareil d\xE9tect\xE9 : ${email3}`, riskLevel: "medium" });
+    res.status(202).json({ requiresVerification: true, email: user.email, reason: "new_device" });
+    return;
+  }
+  try {
+    await db.update(knownDevicesTable).set({ lastSeenAt: /* @__PURE__ */ new Date() }).where(and(eq(knownDevicesTable.userId, user.id), eq(knownDevicesTable.deviceHash, hash2)));
+  } catch {
+  }
   req.session.userId = user.id;
   req.session.role = user.role;
-  await logSecurityEvent({
-    eventType: "LOGIN_SUCCESS",
-    req,
-    userId: user.id,
-    details: `Connexion r\xE9ussie : ${email3}`,
-    riskLevel: "low"
-  });
+  await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Connexion r\xE9ussie : ${email3}`, riskLevel: "low" });
   if (user.role === "admin") {
     const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "?";
     notifyAdminLogin(user.email, ip).catch(() => {
     });
   }
-  res.json({
-    id: user.id,
-    email: user.email,
-    companyName: user.companyName,
-    country: user.country,
-    role: user.role,
-    accountType: user.accountType,
-    merchantCode: user.merchantCode
-  });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
+});
+router10.post("/auth/verify-email", async (req, res) => {
+  const { email: email3, code } = req.body;
+  if (!email3 || !code) {
+    res.status(400).json({ error: "Email et code requis." });
+    return;
+  }
+  const now = /* @__PURE__ */ new Date();
+  let record2;
+  try {
+    const rows = await db.select({ id: emailVerificationTokensTable.id, userId: emailVerificationTokensTable.userId, type: emailVerificationTokensTable.type }).from(emailVerificationTokensTable).where(
+      and(
+        eq(emailVerificationTokensTable.email, email3.toLowerCase().trim()),
+        eq(emailVerificationTokensTable.code, code.trim()),
+        gt(emailVerificationTokensTable.expiresAt, now),
+        isNull(emailVerificationTokensTable.usedAt)
+      )
+    ).orderBy(emailVerificationTokensTable.createdAt).limit(1);
+    record2 = rows[0];
+  } catch (e) {
+    res.status(500).json({ error: "Erreur serveur." });
+    return;
+  }
+  if (!record2) {
+    res.status(400).json({ error: "Code invalide ou expir\xE9." });
+    return;
+  }
+  await db.update(emailVerificationTokensTable).set({ usedAt: now }).where(eq(emailVerificationTokensTable.id, record2.id));
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, record2.userId)).limit(1);
+  if (!user) {
+    res.status(400).json({ error: "Compte introuvable." });
+    return;
+  }
+  if (record2.type === "signup" && !user.emailVerified) {
+    await db.update(usersTable).set({ emailVerified: true }).where(eq(usersTable.id, user.id));
+  }
+  try {
+    const hash2 = deviceFingerprint(req, user.id);
+    await db.insert(knownDevicesTable).values({ userId: user.id, deviceHash: hash2 }).onConflictDoNothing();
+  } catch {
+  }
+  if (record2.type === "signup") {
+    sendWelcomeEmail({ to: user.email, companyName: user.companyName }).catch(() => {
+    });
+  }
+  req.session.userId = user.id;
+  req.session.role = user.role;
+  await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Email v\xE9rifi\xE9 : ${email3}`, riskLevel: "low" });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
+});
+router10.get("/auth/activate", async (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    res.redirect("/login?error=token_missing");
+    return;
+  }
+  const now = /* @__PURE__ */ new Date();
+  let record2;
+  try {
+    const rows = await db.select({ id: emailVerificationTokensTable.id, userId: emailVerificationTokensTable.userId, type: emailVerificationTokensTable.type }).from(emailVerificationTokensTable).where(
+      and(
+        eq(emailVerificationTokensTable.token, token),
+        gt(emailVerificationTokensTable.expiresAt, now),
+        isNull(emailVerificationTokensTable.usedAt)
+      )
+    ).limit(1);
+    record2 = rows[0];
+  } catch {
+    res.redirect("/login?error=server_error");
+    return;
+  }
+  if (!record2) {
+    res.redirect("/login?error=token_invalid");
+    return;
+  }
+  await db.update(emailVerificationTokensTable).set({ usedAt: now }).where(eq(emailVerificationTokensTable.id, record2.id));
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, record2.userId)).limit(1);
+  if (!user) {
+    res.redirect("/login?error=user_not_found");
+    return;
+  }
+  if (record2.type === "signup" && !user.emailVerified) {
+    await db.update(usersTable).set({ emailVerified: true }).where(eq(usersTable.id, user.id));
+    sendWelcomeEmail({ to: user.email, companyName: user.companyName }).catch(() => {
+    });
+  }
+  try {
+    const hash2 = deviceFingerprint(req, user.id);
+    await db.insert(knownDevicesTable).values({ userId: user.id, deviceHash: hash2 }).onConflictDoNothing();
+  } catch {
+  }
+  req.session.userId = user.id;
+  req.session.role = user.role;
+  await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Activation lien email : ${user.email}`, riskLevel: "low" });
+  res.redirect(user.role === "admin" ? "/admin" : "/dashboard");
+});
+router10.post("/auth/resend-verification", async (req, res) => {
+  const { email: email3 } = req.body;
+  if (!email3) {
+    res.status(400).json({ error: "Email requis." });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email3.toLowerCase().trim())).limit(1);
+  if (!user) {
+    res.json({ ok: true });
+    return;
+  }
+  try {
+    const { code, token } = await generateVerificationToken(user.id, user.email, user.emailVerified ? "new_device" : "signup");
+    const activationLink = `${getBaseUrl(req)}/api/auth/activate?token=${token}`;
+    await sendEmailVerificationEmail({ to: user.email, companyName: user.companyName, code, activationLink, type: user.emailVerified ? "new_device" : "signup" });
+  } catch (e) {
+    console.error("[Auth] Failed to resend verification:", e);
+  }
+  res.json({ ok: true });
 });
 router10.post("/auth/logout", async (req, res) => {
   if (req.session.userId) {
@@ -264314,22 +264549,11 @@ router10.post("/auth/forgot-password", async (req, res) => {
   const code = String(Math.floor(1e4 + Math.random() * 9e4));
   const token = crypto2.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1e3);
-  await db.insert(passwordResetTokensTable).values({
-    userId: user.id,
-    email: user.email,
-    code,
-    token,
-    expiresAt
-  });
-  const baseUrl2 = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://drimpay.com";
+  await db.insert(passwordResetTokensTable).values({ userId: user.id, email: user.email, code, token, expiresAt });
+  const baseUrl2 = getBaseUrl(req);
   const resetLink = `${baseUrl2}/reset-password?token=${token}`;
   const { sendPasswordResetEmail: sendPasswordResetEmail3 } = await Promise.resolve().then(() => (init_mailer(), mailer_exports));
-  const mailResult = await sendPasswordResetEmail3({
-    to: user.email,
-    companyName: user.companyName,
-    code,
-    resetLink
-  });
+  const mailResult = await sendPasswordResetEmail3({ to: user.email, companyName: user.companyName, code, resetLink });
   if (!mailResult.ok) {
     console.warn("[Auth] Email reset non envoy\xE9:", mailResult.error);
   }
@@ -264391,16 +264615,7 @@ router10.get("/auth/me", async (req, res) => {
     return;
   }
   if (!req.session.mode) req.session.mode = "sandbox";
-  res.json({
-    id: user.id,
-    email: user.email,
-    companyName: user.companyName,
-    country: user.country,
-    role: user.role,
-    accountType: user.accountType,
-    merchantCode: user.merchantCode,
-    mode: req.session.mode
-  });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode });
 });
 var auth_default = router10;
 
@@ -274831,9 +275046,7 @@ router11.post("/dashboard/payment-links", requireAuth, async (req, res) => {
     ML: "XOF",
     SN: "XOF",
     CI: "XOF",
-    CM: "XAF",
-    GH: "GHS",
-    NG: "NGN"
+    CM: "XAF"
   };
   const selectedCodes = parsed.data.countryCodes ?? (parsed.data.countryCode ? [parsed.data.countryCode] : []);
   if (selectedCodes.length === 0) {
@@ -274887,9 +275100,7 @@ var COUNTRY_OPERATORS = {
   BF: [{ name: "Orange Money", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
   ML: [{ name: "Orange Money", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
   SN: [{ name: "Orange Money", currency: "XOF" }, { name: "Wave", currency: "XOF" }],
-  CI: [{ name: "MTN", currency: "XOF" }, { name: "Orange Money", currency: "XOF" }, { name: "Wave", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }],
-  GH: [{ name: "MTN Ghana", currency: "GHS" }, { name: "Vodafone Ghana", currency: "GHS" }],
-  NG: [{ name: "MTN Nigeria", currency: "NGN" }, { name: "Airtel Nigeria", currency: "NGN" }]
+  CI: [{ name: "MTN", currency: "XOF" }, { name: "Orange Money", currency: "XOF" }, { name: "Wave", currency: "XOF" }, { name: "Moov Money", currency: "XOF" }]
 };
 var COUNTRY_CURRENCY = {
   TG: "XOF",
@@ -274898,9 +275109,7 @@ var COUNTRY_CURRENCY = {
   ML: "XOF",
   SN: "XOF",
   CI: "XOF",
-  CM: "XAF",
-  GH: "GHS",
-  NG: "NGN"
+  CM: "XAF"
 };
 router11.get("/pay/:token", async (req, res) => {
   const { token } = req.params;
@@ -275722,9 +275931,7 @@ router11.post("/dashboard/payment-links", requireAuth, async (req, res) => {
     ML: "XOF",
     SN: "XOF",
     CI: "XOF",
-    CM: "XAF",
-    GH: "GHS",
-    NG: "NGN"
+    CM: "XAF"
   };
   const primaryCountry = countryCodes[0];
   const currency = CURRENCY_MAP2[primaryCountry] ?? "XOF";
@@ -277499,6 +277706,47 @@ router13.delete("/admin/api-keys/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "REVOKE_API_KEY", "api_key", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
+router13.get("/admin/api-keys/:id/details", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [key] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id));
+  if (!key) {
+    res.status(404).json({ error: "Cl\xE9 introuvable" });
+    return;
+  }
+  const [merchant] = await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email, website: usersTable.website, country: usersTable.country }).from(usersTable).where(eq(usersTable.id, key.userId));
+  const webhooks = await db.select().from(userWebhooksTable).where(eq(userWebhooksTable.userId, key.userId));
+  const ips = await db.select().from(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, key.userId));
+  res.json({ key, merchant: merchant ?? null, webhooks, ips });
+});
+router13.post("/admin/api-keys/:id/regenerate", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [old] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id));
+  if (!old) {
+    res.status(404).json({ error: "Cl\xE9 introuvable" });
+    return;
+  }
+  const env = old.env;
+  const prefix_str = env === "sandbox" ? "test" : "live";
+  const rawKey = `dp_${prefix_str}_sk_${crypto7.randomBytes(24).toString("hex")}`;
+  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 15);
+  const keyHash = await bcryptjs_default.hash(rawKey, 10);
+  await db.update(apiKeysTable).set({ status: "revoked" }).where(eq(apiKeysTable.id, id));
+  const [newKey] = await db.insert(apiKeysTable).values({ userId: old.userId, name: old.name, description: old.description, keyHash, rawKey, prefix, env }).returning();
+  await logAdminAction(req.session.userId, "REGENERATE_API_KEY", "api_key", String(id), { oldPrefix: old.prefix, newPrefix: prefix }, req.ip);
+  res.json({ ...newKey, rawKey });
+});
+router13.patch("/admin/api-keys/:id/status", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { status } = req.body;
+  if (status !== "active" && status !== "revoked") {
+    res.status(400).json({ error: "Statut invalide" });
+    return;
+  }
+  await db.update(apiKeysTable).set({ status }).where(eq(apiKeysTable.id, id));
+  const action = status === "revoked" ? "REVOKE_API_KEY" : "RESTORE_API_KEY";
+  await logAdminAction(req.session.userId, action, "api_key", String(id), void 0, req.ip);
+  res.json({ ok: true });
+});
 router13.get("/admin/payment-links", requireAdmin, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
@@ -278588,9 +278836,7 @@ var CURRENCY_MAP = {
   ML: "XOF",
   SN: "XOF",
   CI: "XOF",
-  CM: "XAF",
-  GH: "GHS",
-  NG: "NGN"
+  CM: "XAF"
 };
 var DEFAULT_OPERATORS = {
   TG: ["TMoney", "Moov Money"],
@@ -278599,9 +278845,7 @@ var DEFAULT_OPERATORS = {
   BF: ["Orange Money", "Moov Money"],
   ML: ["Orange Money", "Moov Money"],
   SN: ["Orange Money", "Wave"],
-  CI: ["MTN", "Orange Money", "Wave", "Moov Money"],
-  GH: ["MTN Ghana", "Vodafone Ghana"],
-  NG: ["MTN Nigeria", "Airtel Nigeria"]
+  CI: ["MTN", "Orange Money", "Wave", "Moov Money"]
 };
 var FEE_RATE3 = 0.03;
 router17.get("/api/pay/status/:reference", async (req, res) => {

@@ -25,6 +25,7 @@ const navItems: NavItem[] = [
   { href: "/admin/wallets",      label: "Wallets Pays",        icon: Wallet2 },
   { href: "/admin/aggregators",  label: "Agrégateurs",         icon: Layers },
   { href: "/admin/operators",    label: "Opérateurs & Pays",   icon: Globe2 },
+  { href: "/admin/api-keys",     label: "Clés API Marchands",  icon: KeyRound },
   { href: "/admin/payment-links",label: "Liens de paiement",   icon: Link2 },
   { href: "/admin/kyb-contracts",label: "Contrats KYB",        icon: FileText },
   { href: "/admin/contract",     label: "Modèle contrat",      icon: FilePen },
