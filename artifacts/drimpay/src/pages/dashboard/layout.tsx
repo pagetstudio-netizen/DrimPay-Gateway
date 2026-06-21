@@ -13,10 +13,15 @@ import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { GlobalBanner } from "@/components/global-banner";
 
-import walletImg       from "@assets/10149443_1778149009900.png";
+import walletImg       from "@assets/mine-mod-bankcard-CLOhqwHj_1782036253681.png";
+import transactionsImg from "@assets/mine-mod-records-DgHXSKa1_1782036253767.png";
+import historiqueImg   from "@assets/téléchargement_(72)_1782036253794.png";
+import qrImg           from "@assets/241528_1782036283663.png";
+import transfertsImg   from "@assets/recharge-icon-BZHWSjQZ_1782036357452.png";
+import apiKeysImg      from "@assets/18405142_1782036357506.png";
+import kybImg          from "@assets/bankCard-CnRlNHo8_(1)_1782036357534.png";
 import reversImg       from "@assets/téléchargement_(58)_1778601564225.png";
 import settingsImg     from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466c-8a76-4127fc639_1778149010010.png";
-import kybImg          from "@assets/telecharger_1778149010032.png";
 import userImg         from "@assets/utilisateur_1778149009992.png";
 import logoutImg       from "@assets/3240728_1778601564288.png";
 import apiIconImg      from "@assets/6213702_1778508885407.png";
@@ -58,19 +63,19 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "PAIEMENTS",
     entries: [
-      { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
+      { label: "Wallets", href: "/dashboard/wallets", img: walletImg },
       {
         label: "Transactions",
-        icon: History,
+        img: transactionsImg,
         children: [
-          { href: "/dashboard/payments",      label: "Historique",         icon: History },
+          { href: "/dashboard/payments",      label: "Historique",         img: historiqueImg },
           { href: "/dashboard/payment-links", label: "Liens de Paiement",  img: linkPaiementImg },
-          { href: "/dashboard/qr-codes",      label: "Pay with QR",        icon: QrCode },
+          { href: "/dashboard/qr-codes",      label: "Pay with QR",        img: qrImg },
         ],
       },
       {
         label: "Transferts",
-        icon: SendHorizonal,
+        img: transfertsImg,
         children: [
           { href: "/dashboard/mass-payout",  label: "Paiement de Masse", img: massPaiementImg },
           { href: "/dashboard/reversement",  label: "Reversement",       img: reversImg },
@@ -81,7 +86,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "COMPTE",
     entries: [
-      { label: "Clés API",          href: "/dashboard/api-keys", icon: KeyRound },
+      { label: "Clés API",          href: "/dashboard/api-keys", img: apiKeysImg },
       { label: "Vérification KYB",  href: "/dashboard/kyb",      img: kybImg },
       { label: "Paramètres",        href: "/dashboard/settings", img: settingsImg },
     ],
@@ -121,7 +126,18 @@ function EntryIcon({
 }) {
   const imgSize = size === "sm" ? "w-[17px] h-[17px]" : "w-[20px] h-[20px]";
   const iconSize = size === "sm" ? "w-[15px] h-[15px]" : "w-[17px] h-[17px]";
-  if (img) return <img src={img} alt="" className={cn(imgSize, "shrink-0 object-contain")} />;
+  if (img) return (
+    <img
+      src={img}
+      alt=""
+      className={cn(imgSize, "shrink-0 object-contain transition-all duration-200")}
+      style={{
+        filter: active
+          ? "brightness(0) opacity(0.85)"
+          : "brightness(0) opacity(0.38)",
+      }}
+    />
+  );
   if (Icon) return <Icon className={cn(iconSize, "shrink-0", active ? "text-primary" : "text-gray-400")} />;
   return null;
 }
