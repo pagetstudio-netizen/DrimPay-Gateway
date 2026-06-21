@@ -4,14 +4,11 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
 
 if (!connectionString) {
-  // Log clearly but do NOT throw — a synchronous throw here crashes the process
-  // before uncaughtException is registered, causing Passenger to show "We're sorry".
   console.error(
-    "[DB] FATAL: SUPABASE_DATABASE_URL or DATABASE_URL is not set. " +
-    "Set this variable in your Plesk environment (Node.js > Environment Variables). " +
+    "[DB] FATAL: DATABASE_URL is not set. " +
     "All database operations will fail until this is fixed."
   );
 }
