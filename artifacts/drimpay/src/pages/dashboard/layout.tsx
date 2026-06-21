@@ -81,8 +81,9 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "COMPTE",
     entries: [
-      { label: "Vérification KYB", href: "/dashboard/kyb",       img: kybImg },
-      { label: "Paramètres",       href: "/dashboard/settings",  img: settingsImg },
+      { label: "Clés API",          href: "/dashboard/api-keys", icon: KeyRound },
+      { label: "Vérification KYB",  href: "/dashboard/kyb",      img: kybImg },
+      { label: "Paramètres",        href: "/dashboard/settings", img: settingsImg },
     ],
   },
   {

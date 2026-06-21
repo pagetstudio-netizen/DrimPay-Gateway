@@ -78,6 +78,7 @@ import AdminBroadcast from "@/pages/admin/broadcast";
 import DashboardNotifications from "@/pages/dashboard/notifications";
 import DashboardVerifyCode from "@/pages/dashboard/verify-code";
 import DashboardSupport from "@/pages/dashboard/support";
+import DashboardApiKeys from "@/pages/dashboard/api-keys";
 import AdminSettings from "@/pages/admin/settings";
 import AdminContract from "@/pages/admin/contract";
 import AdminSocialLinks from "@/pages/admin/social-links";
@@ -287,6 +288,7 @@ function DashboardSwitch() {
       <Route path="/dashboard/wallets" component={DashboardWallets} />
       <Route path="/dashboard/payments" component={DashboardPayments} />
       <Route path="/dashboard/reversement" component={DashboardReversement} />
+      <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
       <Route path="/dashboard/kyb" component={DashboardKyb} />
       <Route path="/dashboard/settings" component={DashboardSettings} />
       <Route path="/dashboard/profile" component={DashboardProfile} />
