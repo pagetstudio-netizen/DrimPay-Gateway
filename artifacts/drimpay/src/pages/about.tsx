@@ -66,10 +66,10 @@ const STATS = [
 
 /* ── milestones ─────────────────────────────────────────────────────────── */
 const MILESTONES = [
-  { year: "J1", title: "Fondation de DrimPay", desc: "Naissance de DrimPay. Premières intégrations TMoney & Moov Money." },
-  { year: "2024", title: "Expansion régionale", desc: "Lancement au Bénin, Sénégal et Côte d'Ivoire. Intégration Orange Money, Wave et MTN MoMo." },
-  { year: "2024", title: "API v2.0", desc: "Refonte complète de l'infrastructure API. Support multi-pays unifié, webhooks temps réel et dashboard marchand." },
-  { year: "2025", title: "Prochaine étape", desc: "Expansion vers le Nigeria et le Ghana. Lancement des cartes virtuelles et du Mass Payout automatisé." },
+  { year: "2026", title: "Fondation de DrimPay", desc: "Naissance de DrimPay. Premières intégrations TMoney & Moov Money." },
+  { year: "2026", title: "Expansion régionale", desc: "Lancement au Bénin, Sénégal et Côte d'Ivoire. Intégration Orange Money, Wave et MTN MoMo." },
+  { year: "2026", title: "API v2.0", desc: "Refonte complète de l'infrastructure API. Support multi-pays unifié, webhooks temps réel et dashboard marchand." },
+  { year: "2027", title: "Prochaine étape", desc: "Expansion vers la RDC et Congo Brazzaville. Lancement des cartes virtuelles et du Mass Payout automatisé." },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
