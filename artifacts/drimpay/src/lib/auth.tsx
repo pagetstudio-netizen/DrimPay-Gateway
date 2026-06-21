@@ -10,11 +10,13 @@ export type User = {
   mode?: "sandbox" | "live";
 };
 
+type AuthResult = { error?: string; requiresVerification?: boolean; email?: string };
+
 type AuthState = {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ error?: string }>;
-  signup: (data: { email: string; password: string; companyName: string; country: string; accountType: "enterprise" | "personal" }) => Promise<{ error?: string }>;
+  login: (email: string, password: string) => Promise<AuthResult>;
+  signup: (data: { email: string; password: string; companyName: string; country: string; accountType: "enterprise" | "personal" }) => Promise<AuthResult>;
   logout: () => Promise<void>;
 };
 
@@ -32,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     const r = await fetch("/api/auth/login", {
       method: "POST",
       credentials: "include",
@@ -40,12 +42,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     const data = await r.json();
+    if (r.status === 202 && data.requiresVerification) {
+      return { requiresVerification: true, email: data.email };
+    }
     if (!r.ok) return { error: data.error ?? "Connexion échouée." };
     setUser(data);
     return {};
   }, []);
 
-  const signup = useCallback(async (body: { email: string; password: string; companyName: string; country: string; accountType: "enterprise" | "personal" }) => {
+  const signup = useCallback(async (body: { email: string; password: string; companyName: string; country: string; accountType: "enterprise" | "personal" }): Promise<AuthResult> => {
     const r = await fetch("/api/auth/signup", {
       method: "POST",
       credentials: "include",
@@ -53,6 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify(body),
     });
     const data = await r.json();
+    if (r.status === 202 && data.requiresVerification) {
+      return { requiresVerification: true, email: data.email };
+    }
     if (!r.ok) return { error: data.error ?? "Inscription échouée." };
     setUser(data);
     return {};

@@ -28,6 +28,7 @@ export const usersTable = pgTable("users", {
   staticIp: text("static_ip"),
   payinFeePercent: numeric("payin_fee_percent", { precision: 5, scale: 2 }),
   payoutFeePercent: numeric("payout_fee_percent", { precision: 5, scale: 2 }),
+  emailVerified: boolean("email_verified").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -537,6 +538,26 @@ export const passwordResetTokensTable = pgTable("password_reset_tokens", {
   token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const emailVerificationTokensTable = pgTable("email_verification_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  email: text("email").notNull(),
+  code: text("code").notNull(),
+  token: text("token").notNull().unique(),
+  type: text("type").notNull().default("signup"),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const knownDevicesTable = pgTable("known_devices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  deviceHash: text("device_hash").notNull(),
+  lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

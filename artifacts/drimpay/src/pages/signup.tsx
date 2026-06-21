@@ -215,14 +215,18 @@ export default function Signup() {
     const displayName = isPersonal
       ? `${values.firstName} ${values.lastName}`.trim()
       : values.companyName;
-    const { error } = await signup({
+    const result = await signup({
       companyName: displayName,
       email: values.email,
       password: values.password,
       country: values.country,
       accountType,
     });
-    if (error) { setServerError(error); setStatus("idle"); return; }
+    if (result.error) { setServerError(result.error); setStatus("idle"); return; }
+    if (result.requiresVerification && result.email) {
+      window.location.assign(`/verify-email?email=${encodeURIComponent(result.email)}&type=signup`);
+      return;
+    }
     window.location.assign("/dashboard");
   };
 

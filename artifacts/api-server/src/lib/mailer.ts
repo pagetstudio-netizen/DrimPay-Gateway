@@ -14,6 +14,94 @@ function getResend(): Resend | null {
 
 export function invalidateMailerCache() {}
 
+export async function sendEmailVerificationEmail(opts: {
+  to: string;
+  companyName: string;
+  code: string;
+  activationLink: string;
+  type: "signup" | "new_device";
+}): Promise<{ ok: boolean; error?: string }> {
+  const resend = getResend();
+  if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
+
+  const isNewDevice = opts.type === "new_device";
+  const subject = isNewDevice
+    ? "DrimPay — Connexion depuis un nouvel appareil"
+    : "DrimPay — Confirmez votre adresse email";
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: opts.to,
+      subject,
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#0f0f0f;padding:24px 40px;text-align:center;">
+            <span style="font-size:26px;font-weight:bold;color:#ffffff;">Drim<span style="color:#C5FF4A;">Pay</span></span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 40px 32px;">
+            <h2 style="color:#111111;margin:0 0 12px;font-size:20px;text-align:center;">
+              ${isNewDevice ? "Connexion depuis un nouvel appareil" : "Confirmez votre email"}
+            </h2>
+            <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 8px;text-align:center;">
+              Bonjour <strong>${opts.companyName}</strong>,
+            </p>
+            <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 32px;text-align:center;">
+              ${isNewDevice
+                ? "Une connexion a été initiée depuis un appareil que nous ne reconnaissons pas. Utilisez le code ci-dessous pour confirmer que c'est bien vous."
+                : "Merci de vous être inscrit sur DrimPay. Entrez le code ci-dessous pour activer votre compte."}
+            </p>
+            <div style="text-align:center;margin:0 0 28px;">
+              <div style="display:inline-block;background:#f8f8f8;border:2px solid #e5e5e5;border-radius:16px;padding:24px 40px;">
+                <p style="margin:0 0 6px;font-size:11px;font-weight:bold;color:#999;text-transform:uppercase;letter-spacing:2px;">Votre code</p>
+                <p style="margin:0;font-size:42px;font-weight:bold;color:#0f0f0f;letter-spacing:10px;font-family:monospace;">${opts.code}</p>
+                <p style="margin:8px 0 0;font-size:12px;color:#aaa;">Valable 15 minutes</p>
+              </div>
+            </div>
+            <div style="text-align:center;margin:0 0 28px;">
+              <p style="margin:0 0 12px;font-size:13px;color:#777;">Ou cliquez directement sur le lien d'activation :</p>
+              <a href="${opts.activationLink}" style="display:inline-block;background:#C5FF4A;color:#0f0f0f;font-weight:bold;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+                Activer mon compte
+              </a>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 20px;margin:0 0 8px;">
+              <p style="margin:0;font-size:12px;color:#92400e;line-height:1.6;">
+                Si vous n'êtes pas à l'origine de cette demande, ignorez cet email. Votre compte reste sécurisé.
+              </p>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:18px 40px;border-top:1px solid #eeeeee;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#aaa;">
+              DrimPay — Infrastructure de paiement pour l'Afrique<br>
+              Cet email a été envoyé à ${opts.to}
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+    });
+    console.log(`[Mailer] Email vérification (${opts.type}) envoyé à ${opts.to}`);
+    return { ok: true };
+  } catch (e: any) {
+    console.error("[Mailer] Erreur envoi vérification:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
 export async function sendWelcomeEmail(opts: {
   to: string;
   companyName: string;

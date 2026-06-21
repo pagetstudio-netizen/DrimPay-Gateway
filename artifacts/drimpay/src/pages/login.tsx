@@ -46,10 +46,14 @@ export default function Login() {
   const onSubmit = async (values: FormData) => {
     setStatus("loading");
     setServerError("");
-    const { error } = await login(values.email, values.password);
-    if (error) {
-      setServerError(error);
+    const result = await login(values.email, values.password);
+    if (result.error) {
+      setServerError(result.error);
       setStatus("idle");
+      return;
+    }
+    if (result.requiresVerification && result.email) {
+      window.location.assign(`/verify-email?email=${encodeURIComponent(result.email)}&type=new_device`);
       return;
     }
     const meRes = await fetch("/api/auth/me", { credentials: "include" });
