@@ -89,3 +89,9 @@ id = "lpHSkSlV_OmPw3aEEClSE"
 uri = "file://artifacts/drimpay/public/blog-qr-restaurant.png"
 type = "image"
 title = "Photo blog — Restaurant avec QR DrimPay"
+
+[[outputs]]
+id = "LzNmHsB3L17HhX8gkYvXV"
+uri = "file://lib/db/drizzle/supabase_schema.txt"
+type = "text"
+title = "Schema Supabase — toutes les tables DrimPay"
