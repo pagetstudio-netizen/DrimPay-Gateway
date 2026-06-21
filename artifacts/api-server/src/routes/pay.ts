@@ -367,18 +367,18 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
   }).returning();
 
   // Route through aggregator
-  // WEBHOOK_BASE_URL prend la priorité (à configurer en prod sur Replit/Plesk).
-  // En développement (NODE_ENV !== production), on utilise REPLIT_DEV_DOMAIN.
-  // En production sans WEBHOOK_BASE_URL configuré, on fallback sur api.drimpay.com.
+  // WEBHOOK_BASE_URL prend la priorité absolue.
+  // Sinon, REPLIT_DEV_DOMAIN est utilisé dès qu'il est disponible (dev ET prod sur Replit).
+  // Fallback sur api.drimpay.com uniquement si aucun des deux n'est configuré.
   const baseCallbackUrl =
     process.env.WEBHOOK_BASE_URL ??
-    (process.env.NODE_ENV !== "production" && process.env.REPLIT_DEV_DOMAIN
+    (process.env.REPLIT_DEV_DOMAIN
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       : "https://api.drimpay.com");
 
   const frontendBaseUrl =
     process.env.FRONTEND_BASE_URL ??
-    (process.env.NODE_ENV !== "production" && process.env.REPLIT_DEV_DOMAIN
+    (process.env.REPLIT_DEV_DOMAIN
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       : "https://drimpay.com");
 

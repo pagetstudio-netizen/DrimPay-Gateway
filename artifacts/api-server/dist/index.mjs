@@ -280991,8 +280991,8 @@ router17.post("/api/pay/:token", async (req, res) => {
     expiresAt,
     requestPayload: JSON.stringify(req.body)
   }).returning();
-  const baseCallbackUrl = process.env.WEBHOOK_BASE_URL ?? (process.env.NODE_ENV !== "production" && process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com");
-  const frontendBaseUrl = process.env.FRONTEND_BASE_URL ?? (process.env.NODE_ENV !== "production" && process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://drimpay.com");
+  const baseCallbackUrl = process.env.WEBHOOK_BASE_URL ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com");
+  const frontendBaseUrl = process.env.FRONTEND_BASE_URL ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://drimpay.com");
   const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
   const opCheck = await checkOperatorAvailable(countryCode, operator, "paymentLinks");
   if (!opCheck.ok) {
