@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { pool } from "@workspace/db";
 
 const FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <support@drimpay.com>";
 const SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "Support DrimPay <support@drimpay.com>";
@@ -13,6 +14,56 @@ function getResend(): Resend | null {
 }
 
 export function invalidateMailerCache() {}
+
+async function buildEmailFooter(): Promise<string> {
+  let links: { name: string; url: string }[] = [];
+  let siteUrl = "https://drimpay.com";
+
+  try {
+    const { rows: socialRows } = await pool.query<{ name: string; url: string }>(
+      `SELECT name, url FROM social_links WHERE active = true ORDER BY sort_order, id`
+    );
+    links = socialRows;
+
+    const { rows: settingRows } = await pool.query<{ value: string }>(
+      `SELECT value FROM admin_settings WHERE key = 'site_url' LIMIT 1`
+    );
+    if (settingRows[0]?.value) siteUrl = settingRows[0].value;
+  } catch {}
+
+  const logoUrl = `${siteUrl}/logo-drimpay.png`;
+
+  function getSocialColor(name: string, url: string): string {
+    const n = name.toLowerCase();
+    const u = url.toLowerCase();
+    if (u.includes("wa.me") || u.includes("whatsapp.com") || n.includes("whatsapp")) return "#25D366";
+    if (u.includes("youtube.com") || n.includes("youtube")) return "#FF0000";
+    if (u.includes("facebook.com") || n.includes("facebook")) return "#1877F2";
+    if (u.includes("t.me") || n.includes("telegram")) return "#0088cc";
+    if (u.includes("instagram.com") || n.includes("instagram")) return "#E1306C";
+    return "#374151";
+  }
+
+  const buttons = links
+    .map(({ name, url }) => {
+      const bg = getSocialColor(name, url);
+      return `<a href="${url}" style="display:inline-block;margin:4px 5px;background:${bg};color:#ffffff;font-size:11px;font-weight:bold;padding:7px 13px;border-radius:20px;text-decoration:none;">${name}</a>`;
+    })
+    .join("");
+
+  return `<tr>
+  <td style="background:#0f172a;padding:28px 32px;border-top:2px solid #C5FF4A;text-align:center;">
+    <a href="${siteUrl}" style="display:inline-block;margin-bottom:14px;text-decoration:none;">
+      <img src="${logoUrl}" alt="DrimPay" width="130" height="auto" style="display:block;margin:0 auto;max-height:44px;" />
+    </a>
+    ${buttons ? `<div style="margin:0 0 14px;line-height:2.2;">${buttons}</div>` : ""}
+    <p style="margin:0;font-size:11px;color:#475569;line-height:1.8;">
+      DrimPay &middot; Infrastructure de paiement Mobile Money pour l'Afrique<br>
+      &copy; ${new Date().getFullYear()} DrimPay. Tous droits r&eacute;serv&eacute;s.
+    </p>
+  </td>
+</tr>`;
+}
 
 export async function sendPasswordResetSupportEmail(opts: {
   userEmail: string;
@@ -91,6 +142,8 @@ export async function sendEmailVerificationEmail(opts: {
     ? "DrimPay — Connexion depuis un nouvel appareil"
     : "DrimPay — Confirmez votre adresse email";
 
+  const footer = await buildEmailFooter();
+
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
@@ -142,14 +195,7 @@ export async function sendEmailVerificationEmail(opts: {
             </div>
           </td>
         </tr>
-        <tr>
-          <td style="background:#f8f9fa;padding:18px 40px;border-top:1px solid #eeeeee;text-align:center;">
-            <p style="margin:0;font-size:11px;color:#aaa;">
-              DrimPay — Infrastructure de paiement pour l'Afrique<br>
-              Cet email a été envoyé à ${opts.to}
-            </p>
-          </td>
-        </tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
@@ -170,6 +216,8 @@ export async function sendWelcomeEmail(opts: {
 }): Promise<{ ok: boolean; error?: string }> {
   const resend = getResend();
   if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
+
+  const footer = await buildEmailFooter();
 
   try {
     await resend.emails.send({
@@ -192,7 +240,7 @@ export async function sendWelcomeEmail(opts: {
         </tr>
         <tr>
           <td style="padding:36px 40px;">
-            <h2 style="color:#111;margin:0 0 16px;">Bienvenue sur DrimPay ! 🎉</h2>
+            <h2 style="color:#111;margin:0 0 16px;">Bienvenue sur DrimPay !</h2>
             <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
               Bonjour <strong>${opts.companyName}</strong>,
             </p>
@@ -216,14 +264,7 @@ export async function sendWelcomeEmail(opts: {
             </p>
           </td>
         </tr>
-        <tr>
-          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
-            <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay<br>
-              Cet email vous est envoyé suite à votre inscription sur DrimPay.
-            </p>
-          </td>
-        </tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
@@ -328,6 +369,8 @@ export async function sendKybProcessingEmail(opts: {
   const resend = getResend();
   if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
 
+  const footer = await buildEmailFooter();
+
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
@@ -349,7 +392,7 @@ export async function sendKybProcessingEmail(opts: {
         </tr>
         <tr>
           <td style="padding:36px 40px;">
-            <h2 style="color:#111;margin:0 0 16px;">Votre dossier KYB est en cours de traitement ⏳</h2>
+            <h2 style="color:#111;margin:0 0 16px;">Votre dossier KYB est en cours de traitement</h2>
             <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
               Bonjour <strong>${opts.companyName}</strong>,
             </p>
@@ -359,16 +402,16 @@ export async function sendKybProcessingEmail(opts: {
             <div style="background:#fff8e1;border-left:4px solid #f59e0b;border-radius:4px;padding:16px 20px;margin:0 0 24px;">
               <p style="margin:0 0 8px;font-size:13px;color:#78350f;font-weight:bold;">Délai de traitement estimé</p>
               <p style="margin:0;font-size:13px;color:#92400e;line-height:1.6;">
-                ⏱ <strong>24 à 72 heures ouvrables</strong> à partir de la réception de votre dossier.<br>
+                <strong>24 à 72 heures ouvrables</strong> à partir de la réception de votre dossier.<br>
                 Vous recevrez une notification dès que votre dossier sera validé ou si des informations complémentaires sont nécessaires.
               </p>
             </div>
             <div style="background:#f0faf4;border-left:4px solid #1a7a3c;border-radius:4px;padding:16px 20px;margin:0 0 24px;">
               <p style="margin:0;font-size:13px;color:#1a5c2e;line-height:1.8;">
                 <strong>Pendant l'examen de votre dossier :</strong><br>
-                • Votre environnement sandbox reste disponible pour tester votre intégration<br>
-                • Assurez-vous que vos documents soient lisibles et à jour<br>
-                • Vérifiez votre boîte email pour toute demande complémentaire de notre part
+                - Votre environnement sandbox reste disponible pour tester votre intégration<br>
+                - Assurez-vous que vos documents soient lisibles et à jour<br>
+                - Vérifiez votre boîte email pour toute demande complémentaire de notre part
               </p>
             </div>
             <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
@@ -376,14 +419,7 @@ export async function sendKybProcessingEmail(opts: {
             </p>
           </td>
         </tr>
-        <tr>
-          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
-            <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay<br>
-              Cet email fait suite à votre soumission de dossier KYB sur DrimPay.
-            </p>
-          </td>
-        </tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
@@ -406,11 +442,13 @@ export async function sendKybApprovedEmail(opts: {
   const resend = getResend();
   if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
 
+  const footer = await buildEmailFooter();
+
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
       to: opts.to,
-      subject: "✅ Votre dossier KYB a été approuvé — Bienvenue en production !",
+      subject: "Votre dossier KYB a été approuvé — Bienvenue en production !",
       html: `
 <!DOCTYPE html>
 <html>
@@ -440,10 +478,10 @@ export async function sendKybApprovedEmail(opts: {
             <div style="background:#f0faf4;border:1px solid #86efac;border-radius:10px;padding:20px 24px;margin:0 0 24px;">
               <p style="margin:0 0 10px;font-size:14px;font-weight:bold;color:#15803d;">Ce que vous pouvez faire maintenant :</p>
               <p style="margin:0;font-size:13px;color:#166534;line-height:2;">
-                🔑 Générer vos clés API de production<br>
-                💳 Accepter des paiements Mobile Money en production<br>
-                📊 Suivre vos transactions en temps réel sur le tableau de bord<br>
-                🌍 Encaisser dans les 7 pays supportés par DrimPay
+                Générer vos clés API de production<br>
+                Accepter des paiements Mobile Money en production<br>
+                Suivre vos transactions en temps réel sur le tableau de bord<br>
+                Encaisser dans les pays supportés par DrimPay
               </p>
             </div>
             <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
@@ -451,11 +489,7 @@ export async function sendKybApprovedEmail(opts: {
             </p>
           </td>
         </tr>
-        <tr>
-          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
-            <p style="margin:0;font-size:12px;color:#999;text-align:center;">DrimPay</p>
-          </td>
-        </tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
@@ -479,11 +513,13 @@ export async function sendKybRejectedEmail(opts: {
   const resend = getResend();
   if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
 
+  const footer = await buildEmailFooter();
+
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
       to: opts.to,
-      subject: "❌ Dossier KYB — Des corrections sont nécessaires",
+      subject: "Dossier KYB — Des corrections sont nécessaires",
       html: `
 <!DOCTYPE html>
 <html>
@@ -501,7 +537,7 @@ export async function sendKybRejectedEmail(opts: {
         <tr>
           <td style="padding:36px 40px;">
             <div style="text-align:center;margin-bottom:28px;">
-              <div style="display:inline-block;background:#fee2e2;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">❌</div>
+              <div style="display:inline-block;background:#fee2e2;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">&#10006;</div>
             </div>
             <h2 style="color:#111;margin:0 0 16px;text-align:center;">Des corrections sont nécessaires</h2>
             <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
@@ -528,11 +564,7 @@ export async function sendKybRejectedEmail(opts: {
             </p>
           </td>
         </tr>
-        <tr>
-          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
-            <p style="margin:0;font-size:12px;color:#999;text-align:center;">DrimPay</p>
-          </td>
-        </tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
@@ -555,6 +587,8 @@ export async function sendContractEmail(opts: {
 }): Promise<{ ok: boolean; error?: string }> {
   const resend = getResend();
   if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
+
+  const footer = await buildEmailFooter();
 
   try {
     await resend.emails.send({
@@ -611,14 +645,7 @@ export async function sendContractEmail(opts: {
             </p>
           </td>
         </tr>
-        <tr>
-          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
-            <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay<br>
-              Cet email et ses pièces jointes sont confidentiels et destinés uniquement au destinataire.
-            </p>
-          </td>
-        </tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
@@ -642,6 +669,8 @@ export async function sendBroadcastEmail(opts: {
 }): Promise<{ ok: boolean; error?: string }> {
   const resend = getResend();
   if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
+
+  const footer = await buildEmailFooter();
 
   try {
     await resend.emails.send({
@@ -670,14 +699,7 @@ export async function sendBroadcastEmail(opts: {
             ${opts.htmlBody}
           </td>
         </tr>
-        <tr>
-          <td style="background:#f8f9fa;padding:20px 40px;border-top:1px solid #eeeeee;">
-            <p style="margin:0;font-size:12px;color:#999;text-align:center;">
-              DrimPay<br>
-              Cet email est destiné uniquement au destinataire.
-            </p>
-          </td>
-        </tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
@@ -705,6 +727,7 @@ export async function sendSupportReplyEmail(opts: {
   }
 
   const bodyHtml = opts.replyBody.replace(/\n/g, "<br>");
+  const footer = await buildEmailFooter();
 
   try {
     await resend.emails.send({
@@ -726,9 +749,7 @@ export async function sendSupportReplyEmail(opts: {
           <div style="background:#f9fafb;border-left:3px solid #C5FF4A;border-radius:4px;padding:16px 20px;margin:20px 0;color:#374151;font-size:14px;line-height:1.8;">${bodyHtml}</div>
           <p style="color:#6b7280;font-size:13px;margin:24px 0 0;">— ${opts.agentName}<br><span style="color:#9ca3af;">Équipe Support DrimPay</span></p>
         </td></tr>
-        <tr><td style="background:#f8f9fa;padding:18px 36px;border-top:1px solid #eeeeee;">
-          <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">DrimPay · support@drimpay.com · Cet email est destiné uniquement au destinataire.</p>
-        </td></tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
@@ -752,11 +773,13 @@ export async function sendPasswordResetEmail(opts: {
     return { ok: false, error: "RESEND_API_KEY non configuré" };
   }
 
+  const footer = await buildEmailFooter();
+
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
       to: opts.to,
-      subject: "🔐 Réinitialisation de votre mot de passe DrimPay",
+      subject: "Réinitialisation de votre mot de passe DrimPay",
       html: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -771,7 +794,7 @@ export async function sendPasswordResetEmail(opts: {
         </tr>
         <tr><td style="padding:36px 36px 24px;">
           <div style="text-align:center;margin-bottom:24px;">
-            <div style="display:inline-block;background:#fef2f2;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:30px;text-align:center;">🔐</div>
+            <div style="display:inline-block;background:#fef2f2;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:30px;text-align:center;">&#128272;</div>
           </div>
           <h2 style="color:#0f172a;margin:0 0 8px;text-align:center;font-size:20px;">Réinitialisation du mot de passe</h2>
           <p style="color:#64748b;font-size:13px;text-align:center;margin:0 0 28px;">Bonjour <strong>${opts.companyName}</strong>, voici votre code de vérification :</p>
@@ -783,20 +806,16 @@ export async function sendPasswordResetEmail(opts: {
           <p style="color:#64748b;font-size:13px;text-align:center;margin:0 0 16px;">Ou cliquez directement sur le bouton ci-dessous :</p>
           <div style="text-align:center;margin:0 0 28px;">
             <a href="${opts.resetLink}" style="display:inline-block;background:#0f172a;color:#C5FF4A;font-size:14px;font-weight:bold;text-decoration:none;padding:14px 32px;border-radius:10px;letter-spacing:0.3px;">
-              Réinitialiser mon mot de passe →
+              Réinitialiser mon mot de passe
             </a>
           </div>
           <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:14px 18px;margin:0 0 8px;">
             <p style="margin:0;font-size:12px;color:#9a3412;line-height:1.6;">
-              ⚠️ Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe reste inchangé.
+              Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe reste inchangé.
             </p>
           </div>
         </td></tr>
-        <tr>
-          <td style="background:#f8f9fa;padding:18px 36px;border-top:1px solid #eeeeee;">
-            <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">DrimPay · Cet email expire dans 15 minutes · Ne partagez jamais ce code.</p>
-          </td>
-        </tr>
+        ${footer}
       </table>
     </td></tr>
   </table>
