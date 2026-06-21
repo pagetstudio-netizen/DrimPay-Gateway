@@ -256061,7 +256061,8 @@ var pool = new Pool3({
   connectionString: connectionString ?? "postgresql://localhost/placeholder",
   max: 10,
   idleTimeoutMillis: 3e4,
-  connectionTimeoutMillis: 1e4
+  connectionTimeoutMillis: 1e4,
+  ssl: connectionString?.includes("supabase") ? { rejectUnauthorized: false } : void 0
 });
 pool.on("error", (err) => {
   console.error("[DB Pool] Idle client error \u2014 connexion perdue, ignor\xE9e:", err.message);

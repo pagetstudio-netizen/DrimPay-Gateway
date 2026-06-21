@@ -21,6 +21,7 @@ export const pool = new Pool({
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
+  ssl: connectionString?.includes("supabase") ? { rejectUnauthorized: false } : undefined,
 });
 
 // CRITICAL: without this listener, idle-client errors from Supabase closing
