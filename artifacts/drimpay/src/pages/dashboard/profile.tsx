@@ -3,15 +3,13 @@ import { DashboardLayout } from "./layout";
 import { useAuth } from "@/lib/auth";
 import {
   Camera, CheckCircle2, AlertCircle,
-  Loader2, Eye, EyeOff, Copy,
+  Loader2, Eye, EyeOff, Copy, ShieldCheck, ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import companyImg   from "@assets/production_2252197_1779041971733.png";
 import identityImg  from "@assets/55fd2ef307e059909ae9431bbf24eb0c_1779041950589.png";
 import userImg      from "@assets/avatar.b95a699_1779041950327.png";
 import passwordImg  from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466c-8a76-4127fc639_1778791973301.png";
-import webhookImg   from "@assets/17496245_1778791973344.png";
-import ipImg        from "@assets/6146731_1778791973372.png";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -40,8 +38,6 @@ function Feedback({ status, error }: { status: Status; error?: string }) {
 const MENU_ITEMS = [
   { key: "profil",   label: "Profil",       img: userImg,     imgClass: "" },
   { key: "securite", label: "Mot de passe", img: passwordImg, imgClass: "" },
-  { key: "webhook",  label: "Webhook",      img: webhookImg,  imgClass: "opacity-90" },
-  { key: "ip",       label: "Adresse IP",   img: ipImg,       imgClass: "" },
   { key: "compte",   label: "Identifiant",  img: identityImg, imgClass: "" },
 ];
 
@@ -58,22 +54,9 @@ export default function DashboardProfile() {
   const [pwError, setPwError] = useState("");
   const [showPw, setShowPw] = useState({ current: false, new: false });
 
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [webhookStatus, setWebhookStatus] = useState<Status>("idle");
-  const [webhookError, setWebhookError] = useState("");
-
-  const [staticIp, setStaticIp] = useState("");
-  const [ipStatus, setIpStatus] = useState<Status>("idle");
-  const [ipError, setIpError] = useState("");
 
   useEffect(() => {
-    fetch(`${BASE}/api/dashboard/settings`, { credentials: "include" })
-      .then(r => r.json())
-      .then(d => {
-        if (d.webhookUrl) setWebhookUrl(d.webhookUrl);
-        if (d.staticIp) setStaticIp(d.staticIp);
-      })
-      .catch(console.error);
+    fetch(`${BASE}/api/dashboard/settings`, { credentials: "include" }).catch(() => {});
   }, []);
 
   const handleInfoSave = async () => {
@@ -94,24 +77,6 @@ export default function DashboardProfile() {
       if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? "Échec du changement de mot de passe."); }
       setPwStatus("success"); setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); setTimeout(() => setPwStatus("idle"), 3000);
     } catch (e: any) { setPwError(e.message); setPwStatus("error"); }
-  };
-
-  const handleWebhookSave = async () => {
-    setWebhookStatus("loading"); setWebhookError("");
-    try {
-      const r = await fetch(`${BASE}/api/dashboard/settings/webhook`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webhookUrl }) });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? "URL invalide."); }
-      setWebhookStatus("success"); setTimeout(() => setWebhookStatus("idle"), 3000);
-    } catch (e: any) { setWebhookError(e.message); setWebhookStatus("error"); }
-  };
-
-  const handleIpSave = async () => {
-    setIpStatus("loading"); setIpError("");
-    try {
-      const r = await fetch(`${BASE}/api/dashboard/settings/ip`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ staticIp }) });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? "Adresse IP invalide."); }
-      setIpStatus("success"); setTimeout(() => setIpStatus("idle"), 3000);
-    } catch (e: any) { setIpError(e.message); setIpStatus("error"); }
   };
 
   const countryLabel = (code: string) => {
@@ -337,117 +302,6 @@ export default function DashboardProfile() {
                     Changer le mot de passe
                   </button>
                   <Feedback status={pwStatus} error={pwError} />
-                </div>
-              </div>
-            )}
-
-            {/* ── Webhook ────────────────────────────────────── */}
-            {activeSection === "webhook" && (
-              <div className="p-4 sm:p-6">
-                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                    <img src={webhookImg} alt="" className="w-7 h-7 object-contain opacity-90" />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">URL Webhook</h2>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">DrimPay envoie les événements de paiement en temps réel à cette URL via HTTP POST.</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
-                    <AlertTriangle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-blue-700">
-                      Votre endpoint doit répondre avec un <span className="font-mono font-bold">HTTP 200</span> dans les 5 secondes. En cas d'échec, DrimPay effectue 3 nouvelles tentatives automatiques.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">URL de réception des événements</label>
-                    <input
-                      className={inputCls}
-                      value={webhookUrl}
-                      onChange={e => setWebhookUrl(e.target.value)}
-                      placeholder="https://votre-serveur.com/webhook/drimpay"
-                      type="url"
-                    />
-                    <p className="text-[11px] text-gray-400 mt-1.5">
-                      Laisser vide pour désactiver les notifications webhook.
-                    </p>
-                  </div>
-                  {webhookUrl && (
-                    <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 space-y-1.5">
-                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Événements envoyés</p>
-                      {["payment.success", "payment.failed", "payout.success", "payout.failed", "reversement.created"].map(ev => (
-                        <div key={ev} className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                          <span className="font-mono text-xs text-gray-600">{ev}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    onClick={handleWebhookSave}
-                    disabled={webhookStatus === "loading"}
-                    className="flex items-center gap-2 bg-primary text-black text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60"
-                  >
-                    {webhookStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    Enregistrer l'URL
-                  </button>
-                  <Feedback status={webhookStatus} error={webhookError} />
-                </div>
-              </div>
-            )}
-
-            {/* ── Adresse IP ─────────────────────────────────── */}
-            {activeSection === "ip" && (
-              <div className="p-4 sm:p-6">
-                <div className="flex items-start gap-3 sm:gap-4 mb-5 sm:mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0">
-                    <img src={ipImg} alt="" className="w-8 h-8 object-contain" />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-sm sm:text-base text-gray-900">IP statique autorisée</h2>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Restreignez les appels API à une seule adresse IP pour renforcer la sécurité.</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-pink-50 border border-pink-100">
-                    <AlertTriangle className="w-4 h-4 text-pink-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-pink-700">
-                      Si vous définissez une IP, toute requête API provenant d'une autre adresse sera automatiquement rejetée. Assurez-vous que votre serveur dispose d'une IP fixe.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Adresse IPv4 autorisée</label>
-                    <input
-                      className={inputCls}
-                      value={staticIp}
-                      onChange={e => setStaticIp(e.target.value)}
-                      placeholder="Ex : 41.74.15.200"
-                      type="text"
-                      maxLength={15}
-                    />
-                    <p className="text-[11px] text-gray-400 mt-1.5">
-                      Format : <span className="font-mono">xxx.xxx.xxx.xxx</span> · Laisser vide pour désactiver la restriction IP.
-                    </p>
-                  </div>
-                  {staticIp && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                      <img src={ipImg} alt="" className="w-6 h-6 object-contain shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">IP enregistrée</p>
-                        <p className="font-mono text-sm font-bold text-gray-900">{staticIp}</p>
-                      </div>
-                    </div>
-                  )}
-                  <button
-                    onClick={handleIpSave}
-                    disabled={ipStatus === "loading"}
-                    className="flex items-center gap-2 bg-primary text-black text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60"
-                  >
-                    {ipStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    Enregistrer l'adresse IP
-                  </button>
-                  <Feedback status={ipStatus} error={ipError} />
                 </div>
               </div>
             )}
