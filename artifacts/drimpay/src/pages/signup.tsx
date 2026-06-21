@@ -34,16 +34,16 @@ const BUSINESS_COUNTRIES = [
 ];
 
 const ENTERPRISE_FEATURES = [
-  "Frais de 3% par transaction",
+  "Frais de 3,5% par transaction",
   "Accès Pay-in et Pay-out",
   "API Pay-in et Pay-out complètes",
-  "KYB entreprise requis pour le live",
+  "Fiabilité assurée — KYB entreprise requis",
 ];
 const PERSONAL_FEATURES = [
-  "Frais de 5% par transaction",
-  "Accès Pay-in uniquement",
-  "API Pay-in disponible",
-  "KYC identité requis pour le live",
+  "Frais de 3,5% par transaction",
+  "Accès Pay-in et Pay-out",
+  "API Pay-in et Pay-out disponibles",
+  "KYC — pièce d'identité ou autre document requis",
 ];
 
 type AccountType = "enterprise" | "personal";
