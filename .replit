@@ -57,3 +57,23 @@ LOG_LEVEL = "info"
 ACTIVE_AGGREGATOR = "clapay"
 CLAPAY_BASE_URL = "https://nw-api.clapay.app/nowallet/api"
 RESEND_FROM_EMAIL = "DrimPay <support@drimpay.com>"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 8082
+externalPort = 3001
+
+[[ports]]
+localPort = 22390
+externalPort = 3000
