@@ -256029,6 +256029,8 @@ var securityEventTypeEnum = pgEnum("security_event_type", [
   "IP_BLOCKED",
   "SUSPICIOUS_ACTIVITY",
   "PASSWORD_CHANGED",
+  "PASSWORD_RESET",
+  "LOGIN_NEW_DEVICE",
   "API_KEY_CREATED",
   "API_KEY_REVOKED",
   "WEBHOOK_INVALID",
@@ -256108,7 +256110,7 @@ var globalBannersTable = pgTable("global_banners", {
 
 // ../../lib/db/src/index.ts
 var { Pool: Pool3 } = esm_default;
-var connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+var connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
 if (!connectionString) {
   console.error(
     "[DB] FATAL: DATABASE_URL is not set. All database operations will fail until this is fixed."

@@ -490,7 +490,8 @@ export type QrCode = typeof qrCodesTable.$inferSelect;
 export const securityEventTypeEnum = pgEnum("security_event_type", [
   "LOGIN_SUCCESS", "LOGIN_FAILED", "LOGOUT", "REGISTER",
   "BRUTE_FORCE", "RATE_LIMITED", "IP_BLOCKED", "SUSPICIOUS_ACTIVITY",
-  "PASSWORD_CHANGED", "API_KEY_CREATED", "API_KEY_REVOKED",
+  "PASSWORD_CHANGED", "PASSWORD_RESET", "LOGIN_NEW_DEVICE",
+  "API_KEY_CREATED", "API_KEY_REVOKED",
   "WEBHOOK_INVALID", "SESSION_EXPIRED",
 ]);
 
