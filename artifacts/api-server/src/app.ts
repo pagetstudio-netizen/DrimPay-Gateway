@@ -15,6 +15,7 @@ import {
   ipBlockMiddleware,
   adminGeoMiddleware,
   adminRateLimiter,
+  honeypotMiddleware,
 } from "./middlewares/security";
 import { subdomainMiddleware } from "./middlewares/subdomain";
 
@@ -124,6 +125,9 @@ app.get("/health", (_req, res) => {
     env: process.env["NODE_ENV"] ?? "unknown",
   });
 });
+
+// ── Honeypot: trap scanner/bot probe paths before anything else ───────────────
+app.use(honeypotMiddleware);
 
 // ── Security middleware (IP block + global rate limit) ─────────────────────────
 app.use(ipBlockMiddleware);

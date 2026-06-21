@@ -264434,17 +264434,91 @@ var helmetMiddleware = helmet({
       connectSrc: ["'self'", "https:"],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"]
-      // upgradeInsecureRequests removed — it causes internal HTTP→HTTPS redirect
-      // loops when Passenger communicates with the Node.js process over HTTP.
+      // upgradeInsecureRequests removed — causes HTTP→HTTPS loop inside Passenger
     }
   },
-  // HSTS is set by Nginx/Plesk already; let Nginx handle it to avoid conflicts.
+  // HSTS handled by Nginx/Plesk — avoid conflicts
   hsts: false,
   frameguard: { action: "deny" },
   xContentTypeOptions: true,
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  // Explicitly hide Express fingerprint
+  hidePoweredBy: true
 });
+var SCANNER_PATHS = [
+  "/graphql",
+  "/.well-known/apollo",
+  "/v1/graphql",
+  "/hasura",
+  "/actuator",
+  "/actuator/env",
+  "/actuator/health",
+  "/actuator/dump",
+  "/actuator/metrics",
+  "/actuator/shutdown",
+  "/actuator/beans",
+  "/.env",
+  "/.env.local",
+  "/.env.production",
+  "/.env.backup",
+  "/.git",
+  "/.git/config",
+  "/.git/HEAD",
+  "/wp-admin",
+  "/wp-login.php",
+  "/wp-config.php",
+  "/wordpress",
+  "/phpmyadmin",
+  "/pma",
+  "/mysql",
+  "/adminer",
+  "/config.php",
+  "/configuration.php",
+  "/config.json",
+  "/config.yml",
+  "/backup",
+  "/backup.sql",
+  "/dump.sql",
+  "/database.sql",
+  "/server-status",
+  "/server-info",
+  "/.htaccess",
+  "/.htpasswd",
+  "/cgi-bin",
+  "/shell",
+  "/cmd",
+  "/exec",
+  "/openid-configuration",
+  "/.well-known/openid-configuration",
+  "/oauth/token",
+  "/oauth2/token",
+  "/console",
+  "/h2-console",
+  "/spring",
+  "/swagger-ui.html",
+  "/v2/api-docs"
+];
+async function honeypotMiddleware(req, res, next) {
+  const reqPath = req.path.toLowerCase();
+  const isScanner = SCANNER_PATHS.some(
+    (p) => reqPath === p || reqPath.startsWith(p + "/")
+  );
+  if (!isScanner) return next();
+  const ip = getClientIp(req);
+  try {
+    await db.insert(securityEventsTable).values({
+      eventType: "SUSPICIOUS_ACTIVITY",
+      userId: null,
+      ipAddress: ip,
+      userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+      details: `Scanner honeypot \u2014 ${req.method} ${req.path}`,
+      riskLevel: "high"
+    });
+  } catch {
+  }
+  res.status(404).end();
+}
 function getClientIp(req) {
   const forwarded = req.headers["x-forwarded-for"];
   if (forwarded) {
@@ -279711,6 +279785,7 @@ app.get("/health", (_req, res) => {
     env: process.env["NODE_ENV"] ?? "unknown"
   });
 });
+app.use(honeypotMiddleware);
 app.use(ipBlockMiddleware);
 app.use(globalRateLimiter);
 app.use("/api/admin", adminRateLimiter, adminGeoMiddleware);

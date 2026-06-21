@@ -163,17 +163,65 @@ export const helmetMiddleware = helmet({
       connectSrc: ["'self'", "https:"],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
-      // upgradeInsecureRequests removed — it causes internal HTTP→HTTPS redirect
-      // loops when Passenger communicates with the Node.js process over HTTP.
+      // upgradeInsecureRequests removed — causes HTTP→HTTPS loop inside Passenger
     },
   },
-  // HSTS is set by Nginx/Plesk already; let Nginx handle it to avoid conflicts.
+  // HSTS handled by Nginx/Plesk — avoid conflicts
   hsts: false,
   frameguard: { action: "deny" },
   xContentTypeOptions: true,
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   crossOriginEmbedderPolicy: false,
+  // Explicitly hide Express fingerprint
+  hidePoweredBy: true,
 });
+
+// ── Honeypot: block scanner probe paths ───────────────────────────────────────
+// These paths do not exist in DrimPay. Any request to them is a scanner/bot.
+// Log it as suspicious and return a generic 404 (never 403 which confirms existence).
+const SCANNER_PATHS = [
+  "/graphql", "/.well-known/apollo", "/v1/graphql", "/hasura",
+  "/actuator", "/actuator/env", "/actuator/health", "/actuator/dump",
+  "/actuator/metrics", "/actuator/shutdown", "/actuator/beans",
+  "/.env", "/.env.local", "/.env.production", "/.env.backup",
+  "/.git", "/.git/config", "/.git/HEAD",
+  "/wp-admin", "/wp-login.php", "/wp-config.php", "/wordpress",
+  "/phpmyadmin", "/pma", "/mysql", "/adminer",
+  "/config.php", "/configuration.php", "/config.json", "/config.yml",
+  "/backup", "/backup.sql", "/dump.sql", "/database.sql",
+  "/server-status", "/server-info", "/.htaccess", "/.htpasswd",
+  "/cgi-bin", "/shell", "/cmd", "/exec",
+  "/openid-configuration", "/.well-known/openid-configuration",
+  "/oauth/token", "/oauth2/token",
+  "/console", "/h2-console", "/spring", "/swagger-ui.html", "/v2/api-docs",
+];
+
+export async function honeypotMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const reqPath = req.path.toLowerCase();
+  const isScanner = SCANNER_PATHS.some(
+    (p) => reqPath === p || reqPath.startsWith(p + "/")
+  );
+  if (!isScanner) return next();
+
+  const ip = getClientIp(req);
+  try {
+    await db.insert(securityEventsTable).values({
+      eventType: "SUSPICIOUS_ACTIVITY",
+      userId: null,
+      ipAddress: ip,
+      userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+      details: `Scanner honeypot — ${req.method} ${req.path}`,
+      riskLevel: "high",
+    });
+  } catch { /* never block on logging failure */ }
+
+  // Return a blank 404 — do not confirm the path exists or reveal the stack
+  res.status(404).end();
+}
 
 // ── IP helper ─────────────────────────────────────────────────────────────────
 
