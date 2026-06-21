@@ -266170,8 +266170,6 @@ router10.post("/auth/signup", signupRateLimiter, async (req, res) => {
   await logSecurityEvent({ eventType: "REGISTER", req, userId: user.id, details: `Nouveau compte : ${email3}`, riskLevel: "low" });
   notifyNewUser(user.email, user.companyName, user.country).catch(() => {
   });
-  sendAdminNewUserEmail({ userEmail: user.email, companyName: user.companyName, country: user.country, accountType: user.accountType }).catch(() => {
-  });
   try {
     const { code, token } = await generateVerificationToken(user.id, user.email, "signup");
     const activationLink = `${getBaseUrl(req)}/api/auth/activate?token=${token}`;
