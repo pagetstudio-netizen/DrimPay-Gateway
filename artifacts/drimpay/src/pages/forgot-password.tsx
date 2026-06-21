@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Mail, KeyRound, Eye, EyeOff, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, Mail, KeyRound, Eye, EyeOff, CheckCircle2, Loader2, MessageSquare, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Step = "email" | "code" | "password" | "done";
+type Step = "email" | "code" | "password" | "done" | "support_sent";
 
 const inputCls = (err?: boolean) =>
   cn(
@@ -24,9 +24,12 @@ export default function ForgotPassword() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showSupportForm, setShowSupportForm] = useState(false);
+  const [supportMessage, setSupportMessage] = useState("");
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportError, setSupportError] = useState("");
   const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Handle token from URL (email link click)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
@@ -36,7 +39,6 @@ export default function ForgotPassword() {
     }
   }, []);
 
-  // ── Step 1: submit email ──────────────────────────────────────────────────
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
@@ -48,7 +50,6 @@ export default function ForgotPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
-      // Always move to code step (security: don't reveal if email exists)
       setStep("code");
     } catch {
       setError("Une erreur est survenue. Veuillez réessayer.");
@@ -56,7 +57,6 @@ export default function ForgotPassword() {
     setLoading(false);
   };
 
-  // ── Step 2: verify 5-digit code ───────────────────────────────────────────
   const handleCodeChange = (i: number, val: string) => {
     if (!/^\d*$/.test(val)) return;
     const next = [...code];
@@ -99,7 +99,6 @@ export default function ForgotPassword() {
     setLoading(false);
   };
 
-  // ── Step 3: new password ──────────────────────────────────────────────────
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) { setError("Le mot de passe doit contenir au moins 8 caractères."); return; }
@@ -121,11 +120,36 @@ export default function ForgotPassword() {
     setLoading(false);
   };
 
+  const handleSupportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supportMessage.trim() || supportMessage.trim().length < 10) {
+      setSupportError("Veuillez décrire votre problème (10 caractères minimum).");
+      return;
+    }
+    setSupportLoading(true);
+    setSupportError("");
+    try {
+      const r = await fetch("/api/auth/forgot-password-support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), message: supportMessage.trim() }),
+      });
+      if (r.ok) {
+        setStep("support_sent");
+      } else {
+        const data = await r.json();
+        setSupportError(data.error ?? "Une erreur est survenue. Veuillez réessayer.");
+      }
+    } catch {
+      setSupportError("Une erreur est survenue. Veuillez réessayer.");
+    }
+    setSupportLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
 
-        {/* Logo */}
         <div className="flex items-center justify-center mb-8">
           <a href="/" className="flex items-center gap-1">
             <span className="text-2xl font-black text-gray-900 tracking-tight">Drim</span>
@@ -152,6 +176,29 @@ export default function ForgotPassword() {
                 className="w-full h-12 rounded-2xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 transition-colors"
               >
                 Se connecter
+              </button>
+            </div>
+          )}
+
+          {/* ── SUPPORT SENT ──────────────────────────────────────────────── */}
+          {step === "support_sent" && (
+            <div className="text-center space-y-5">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center">
+                  <CheckCircle2 className="w-8 h-8 text-blue-500" />
+                </div>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Demande envoyée</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Notre équipe support a bien reçu votre demande et vous contactera dans les meilleurs délais à l'adresse <strong className="text-gray-700">{email}</strong>.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate("/login")}
+                className="w-full h-12 rounded-2xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 transition-colors"
+              >
+                Retour à la connexion
               </button>
             </div>
           )}
@@ -198,8 +245,8 @@ export default function ForgotPassword() {
 
           {/* ── STEP CODE ─────────────────────────────────────────────────── */}
           {step === "code" && (
-            <form onSubmit={handleCodeSubmit} className="space-y-5">
-              <button type="button" onClick={() => { setStep("email"); setCode(["", "", "", "", ""]); setError(""); }}
+            <div className="space-y-5">
+              <button type="button" onClick={() => { setStep("email"); setCode(["", "", "", "", ""]); setError(""); setShowSupportForm(false); }}
                 className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-2">
                 <ArrowLeft className="w-4 h-4" /> Changer l'email
               </button>
@@ -214,44 +261,87 @@ export default function ForgotPassword() {
                 </p>
               </div>
 
-              {/* 5-digit code input */}
-              <div className="flex gap-2 justify-center" onPaste={handleCodePaste}>
-                {code.map((digit, i) => (
-                  <input
-                    key={i}
-                    ref={el => { codeRefs.current[i] = el; }}
-                    type="text" inputMode="numeric" maxLength={1}
-                    value={digit}
-                    onChange={e => handleCodeChange(i, e.target.value)}
-                    onKeyDown={e => handleCodeKeyDown(i, e)}
-                    autoFocus={i === 0}
-                    className={cn(
-                      "w-12 h-14 text-center text-xl font-bold rounded-2xl border outline-none transition-all",
-                      "focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10",
-                      digit ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-900"
-                    )}
-                  />
-                ))}
-              </div>
+              <form onSubmit={handleCodeSubmit} className="space-y-5">
+                <div className="flex gap-2 justify-center" onPaste={handleCodePaste}>
+                  {code.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={el => { codeRefs.current[i] = el; }}
+                      type="text" inputMode="numeric" maxLength={1}
+                      value={digit}
+                      onChange={e => handleCodeChange(i, e.target.value)}
+                      onKeyDown={e => handleCodeKeyDown(i, e)}
+                      autoFocus={i === 0}
+                      className={cn(
+                        "w-12 h-14 text-center text-xl font-bold rounded-2xl border outline-none transition-all",
+                        "focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10",
+                        digit ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-900"
+                      )}
+                    />
+                  ))}
+                </div>
 
-              {error && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">{error}</p>
-              )}
+                {error && (
+                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">{error}</p>
+                )}
 
-              <button type="submit" disabled={loading || code.join("").length < 5}
-                className="w-full h-12 rounded-2xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Vérifier le code
-              </button>
-
-              <div className="text-center">
-                <button type="button"
-                  onClick={() => { setCode(["", "", "", "", ""]); setError(""); handleEmailSubmit({ preventDefault: () => {} } as any); }}
-                  className="text-sm text-gray-500 hover:text-gray-900 underline underline-offset-2 transition-colors">
-                  Renvoyer le code
+                <button type="submit" disabled={loading || code.join("").length < 5}
+                  className="w-full h-12 rounded-2xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Vérifier le code
                 </button>
+
+                <div className="text-center">
+                  <button type="button"
+                    onClick={() => { setCode(["", "", "", "", ""]); setError(""); handleEmailSubmit({ preventDefault: () => {} } as any); }}
+                    className="text-sm text-gray-500 hover:text-gray-900 underline underline-offset-2 transition-colors">
+                    Renvoyer le code
+                  </button>
+                </div>
+              </form>
+
+              {/* ── Alternative : contact support direct ─────────────────── */}
+              <div className="border-t border-gray-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowSupportForm(v => !v); setSupportError(""); }}
+                  className="w-full flex items-center justify-between text-sm text-gray-500 hover:text-gray-800 transition-colors group"
+                >
+                  <span className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                    Vous n'avez pas reçu le code ?
+                  </span>
+                  <ChevronDown className={cn("w-4 h-4 transition-transform", showSupportForm && "rotate-180")} />
+                </button>
+
+                {showSupportForm && (
+                  <form onSubmit={handleSupportSubmit} className="mt-4 space-y-3">
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Décrivez votre problème directement — notre équipe vous contactera à <strong>{email}</strong> pour vous aider à récupérer l'accès à votre compte.
+                    </p>
+                    <textarea
+                      autoFocus
+                      value={supportMessage}
+                      onChange={e => setSupportMessage(e.target.value)}
+                      placeholder="Ex : Je n'ai pas reçu le code de réinitialisation. Mon compte est associé à cette adresse email depuis 2023..."
+                      rows={4}
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 resize-none"
+                    />
+                    {supportError && (
+                      <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{supportError}</p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={supportLoading || supportMessage.trim().length < 10}
+                      className="w-full h-11 rounded-2xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+                    >
+                      {supportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                      Envoyer ma demande au support
+                    </button>
+                  </form>
+                )}
               </div>
-            </form>
+            </div>
           )}
 
           {/* ── STEP PASSWORD ─────────────────────────────────────────────── */}
@@ -297,7 +387,6 @@ export default function ForgotPassword() {
                 </div>
               </div>
 
-              {/* Password strength indicator */}
               {password.length > 0 && (
                 <div className="space-y-1.5">
                   <div className="flex gap-1">

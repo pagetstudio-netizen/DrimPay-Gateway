@@ -52548,6 +52548,7 @@ __export(mailer_exports, {
   sendKybProcessingEmail: () => sendKybProcessingEmail,
   sendKybRejectedEmail: () => sendKybRejectedEmail,
   sendPasswordResetEmail: () => sendPasswordResetEmail,
+  sendPasswordResetSupportEmail: () => sendPasswordResetSupportEmail,
   sendSupportReplyEmail: () => sendSupportReplyEmail,
   sendWelcomeEmail: () => sendWelcomeEmail
 });
@@ -52560,6 +52561,62 @@ function getResend() {
   return new Resend(key);
 }
 function invalidateMailerCache() {
+}
+async function sendPasswordResetSupportEmail(opts) {
+  const resend = getResend();
+  const adminEmail = process.env["RESEND_SUPPORT_EMAIL"] ?? "support@drimpay.com";
+  if (!resend) {
+    console.warn("[Mailer] RESEND_API_KEY non configur\xE9 \u2014 demande support ignor\xE9e.");
+    return { ok: false, error: "RESEND_API_KEY non configur\xE9" };
+  }
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: adminEmail,
+      subject: `[Acc\xE8s compte] Demande manuelle \u2014 ${opts.userEmail}`,
+      html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09);">
+        <tr>
+          <td style="background:#0f172a;padding:26px 36px;">
+            <span style="font-size:22px;font-weight:bold;color:#C5FF4A;">Drim</span><span style="font-size:22px;font-weight:bold;color:#ffffff;">Pay</span>
+            <span style="font-size:12px;color:#94a3b8;margin-left:10px;">Support \xB7 Demande acc\xE8s compte</span>
+          </td>
+        </tr>
+        <tr><td style="padding:32px 36px;">
+          <h2 style="color:#0f172a;margin:0 0 16px;font-size:18px;">Demande de r\xE9initialisation manuelle</h2>
+          <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 8px;">Un utilisateur n'a pas re\xE7u le code de r\xE9initialisation par email et demande une assistance manuelle.</p>
+          <div style="background:#f1f5f9;border-radius:8px;padding:16px 20px;margin:20px 0;">
+            <p style="margin:0 0 8px;font-size:13px;color:#64748b;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">Email du compte</p>
+            <p style="margin:0;font-size:16px;font-weight:bold;color:#0f172a;">${opts.userEmail}</p>
+          </div>
+          <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:4px;padding:16px 20px;margin:0 0 20px;">
+            <p style="margin:0 0 8px;font-size:13px;color:#92400e;font-weight:bold;">Message de l'utilisateur :</p>
+            <p style="margin:0;font-size:14px;color:#78350f;line-height:1.7;white-space:pre-wrap;">${opts.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;margin:0;">Envoy\xE9 depuis la page de r\xE9initialisation de mot de passe \xB7 ${(/* @__PURE__ */ new Date()).toISOString()}</p>
+        </td></tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:16px 36px;border-top:1px solid #eeeeee;">
+            <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">DrimPay \xB7 Administration interne</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim()
+    });
+    console.log(`[Mailer] Demande support reset envoy\xE9e pour ${opts.userEmail}`);
+    return { ok: true };
+  } catch (e) {
+    console.error("[Mailer] Erreur envoi demande support:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
 }
 async function sendEmailVerificationEmail(opts) {
   const resend = getResend();
@@ -256051,10 +256108,10 @@ var globalBannersTable = pgTable("global_banners", {
 
 // ../../lib/db/src/index.ts
 var { Pool: Pool3 } = esm_default;
-var connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+var connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
 if (!connectionString) {
   console.error(
-    "[DB] FATAL: SUPABASE_DATABASE_URL or DATABASE_URL is not set. Set this variable in your Plesk environment (Node.js > Environment Variables). All database operations will fail until this is fixed."
+    "[DB] FATAL: DATABASE_URL is not set. All database operations will fail until this is fixed."
   );
 }
 var pool = new Pool3({
@@ -264968,6 +265025,25 @@ router10.post("/auth/reset-password", async (req, res) => {
   await db.update(passwordResetTokensTable).set({ usedAt: now }).where(eq(passwordResetTokensTable.id, record2.id));
   await logSecurityEvent({ eventType: "PASSWORD_RESET", req, userId: record2.userId, riskLevel: "medium" });
   res.json({ ok: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
+});
+router10.post("/auth/forgot-password-support", async (req, res) => {
+  const { email: email3, message } = req.body;
+  if (!email3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3)) {
+    res.status(400).json({ error: "Adresse email invalide." });
+    return;
+  }
+  if (!message || message.trim().length < 10) {
+    res.status(400).json({ error: "Veuillez d\xE9crire votre probl\xE8me (10 caract\xE8res minimum)." });
+    return;
+  }
+  const result = await sendPasswordResetSupportEmail({
+    userEmail: email3.toLowerCase().trim(),
+    message: message.trim()
+  });
+  if (!result.ok) {
+    console.warn("[Auth] Demande support reset non envoy\xE9e:", result.error);
+  }
+  res.json({ ok: true, message: "Votre demande a \xE9t\xE9 transmise au support." });
 });
 router10.get("/auth/me", async (req, res) => {
   if (!req.session.userId) {

@@ -9,7 +9,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, gt, isNull } from "drizzle-orm";
 import { notifyNewUser, notifyLoginAttempt } from "../lib/telegram";
-import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail } from "../lib/mailer";
+import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail, sendPasswordResetSupportEmail } from "../lib/mailer";
 import {
   logSecurityEvent,
   trackFailedLogin,
@@ -465,6 +465,33 @@ router.post("/auth/reset-password", async (req, res) => {
   await logSecurityEvent({ eventType: "PASSWORD_RESET", req, userId: record.userId, riskLevel: "medium" });
 
   res.json({ ok: true, message: "Mot de passe réinitialisé avec succès." });
+});
+
+// ─── FORGOT PASSWORD — CONTACT SUPPORT DIRECT ────────────────────────────────
+
+router.post("/auth/forgot-password-support", async (req, res) => {
+  const { email, message } = req.body as { email?: string; message?: string };
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: "Adresse email invalide." });
+    return;
+  }
+
+  if (!message || message.trim().length < 10) {
+    res.status(400).json({ error: "Veuillez décrire votre problème (10 caractères minimum)." });
+    return;
+  }
+
+  const result = await sendPasswordResetSupportEmail({
+    userEmail: email.toLowerCase().trim(),
+    message: message.trim(),
+  });
+
+  if (!result.ok) {
+    console.warn("[Auth] Demande support reset non envoyée:", result.error);
+  }
+
+  res.json({ ok: true, message: "Votre demande a été transmise au support." });
 });
 
 // ─── ME ───────────────────────────────────────────────────────────────────────

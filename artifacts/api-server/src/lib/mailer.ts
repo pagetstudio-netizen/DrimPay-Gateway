@@ -14,6 +14,68 @@ function getResend(): Resend | null {
 
 export function invalidateMailerCache() {}
 
+export async function sendPasswordResetSupportEmail(opts: {
+  userEmail: string;
+  message: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const resend = getResend();
+  const adminEmail = process.env["RESEND_SUPPORT_EMAIL"] ?? "support@drimpay.com";
+
+  if (!resend) {
+    console.warn("[Mailer] RESEND_API_KEY non configuré — demande support ignorée.");
+    return { ok: false, error: "RESEND_API_KEY non configuré" };
+  }
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: adminEmail,
+      subject: `[Accès compte] Demande manuelle — ${opts.userEmail}`,
+      html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09);">
+        <tr>
+          <td style="background:#0f172a;padding:26px 36px;">
+            <span style="font-size:22px;font-weight:bold;color:#C5FF4A;">Drim</span><span style="font-size:22px;font-weight:bold;color:#ffffff;">Pay</span>
+            <span style="font-size:12px;color:#94a3b8;margin-left:10px;">Support · Demande accès compte</span>
+          </td>
+        </tr>
+        <tr><td style="padding:32px 36px;">
+          <h2 style="color:#0f172a;margin:0 0 16px;font-size:18px;">Demande de réinitialisation manuelle</h2>
+          <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 8px;">Un utilisateur n'a pas reçu le code de réinitialisation par email et demande une assistance manuelle.</p>
+          <div style="background:#f1f5f9;border-radius:8px;padding:16px 20px;margin:20px 0;">
+            <p style="margin:0 0 8px;font-size:13px;color:#64748b;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">Email du compte</p>
+            <p style="margin:0;font-size:16px;font-weight:bold;color:#0f172a;">${opts.userEmail}</p>
+          </div>
+          <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:4px;padding:16px 20px;margin:0 0 20px;">
+            <p style="margin:0 0 8px;font-size:13px;color:#92400e;font-weight:bold;">Message de l'utilisateur :</p>
+            <p style="margin:0;font-size:14px;color:#78350f;line-height:1.7;white-space:pre-wrap;">${opts.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;margin:0;">Envoyé depuis la page de réinitialisation de mot de passe · ${new Date().toISOString()}</p>
+        </td></tr>
+        <tr>
+          <td style="background:#f8f9fa;padding:16px 36px;border-top:1px solid #eeeeee;">
+            <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">DrimPay · Administration interne</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+    });
+    console.log(`[Mailer] Demande support reset envoyée pour ${opts.userEmail}`);
+    return { ok: true };
+  } catch (e: any) {
+    console.error("[Mailer] Erreur envoi demande support:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
 export async function sendEmailVerificationEmail(opts: {
   to: string;
   companyName: string;
