@@ -276038,11 +276038,21 @@ router11.get("/support/contact-info", async (_req, res) => {
   res.json({ emails, phones });
 });
 router11.get("/support/links", async (_req, res) => {
-  const rows = await db.select().from(socialLinksTable).where(eq(socialLinksTable.active, true)).orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
+  const rows = await db.select({
+    name: socialLinksTable.name,
+    platform: socialLinksTable.platform,
+    url: socialLinksTable.url,
+    description: socialLinksTable.description
+  }).from(socialLinksTable).where(eq(socialLinksTable.active, true)).orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
 });
 router11.get("/banners/active", async (_req, res) => {
-  const rows = await db.select().from(globalBannersTable).where(eq(globalBannersTable.active, true)).orderBy(desc(globalBannersTable.createdAt));
+  const rows = await db.select({
+    message: globalBannersTable.message,
+    type: globalBannersTable.type,
+    link: globalBannersTable.link,
+    linkText: globalBannersTable.linkText
+  }).from(globalBannersTable).where(eq(globalBannersTable.active, true)).orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
 function generateQrReference() {
@@ -277121,12 +277131,44 @@ var contractUpload = (0, import_multer2.default)({
   }
 });
 var router13 = (0, import_express13.Router)();
+var _adminProbeCounter = /* @__PURE__ */ new Map();
+var PROBE_ALERT_THRESHOLD = 3;
+var PROBE_ALERT_COOLDOWN_MS = 15 * 60 * 1e3;
 function requireAdmin(req, res, next) {
   if (!req.session?.userId) {
+    const ip = getClientIp(req);
+    logSecurityEvent({ eventType: "SUSPICIOUS_ACTIVITY", req, details: `Admin probe sans session \u2014 ${req.method} ${req.path}`, riskLevel: "high" }).catch(() => {
+    });
+    const now = Date.now();
+    const entry = _adminProbeCounter.get(ip) ?? { count: 0, lastAlert: 0 };
+    entry.count++;
+    _adminProbeCounter.set(ip, entry);
+    if (entry.count >= PROBE_ALERT_THRESHOLD && now - entry.lastAlert > PROBE_ALERT_COOLDOWN_MS) {
+      entry.lastAlert = now;
+      notifyLoginAttempt({
+        type: "failed",
+        email: `Inconnu (${entry.count} tentatives admin)`,
+        role: "admin",
+        ip,
+        userId: void 0
+      }).catch(() => {
+      });
+    }
     res.status(401).json({ error: "Authentication required" });
     return;
   }
   if (req.session?.role !== "admin") {
+    const ip = getClientIp(req);
+    logSecurityEvent({ eventType: "SUSPICIOUS_ACTIVITY", req, userId: req.session.userId, details: `Acc\xE8s admin refus\xE9 \u2014 r\xF4le: ${req.session.role} \u2014 ${req.method} ${req.path}`, riskLevel: "high" }).catch(() => {
+    });
+    notifyLoginAttempt({
+      type: "failed",
+      email: `UserID ${req.session.userId} (pas admin)`,
+      role: "merchant",
+      ip,
+      userId: req.session.userId
+    }).catch(() => {
+    });
     res.status(403).json({ error: "Admin access required" });
     return;
   }

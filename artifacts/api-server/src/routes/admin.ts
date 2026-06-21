@@ -19,7 +19,9 @@ import multer from "multer";
 import {
   notifyKybDecision, notifyBlacklist,
   testConnection, detectChatId, invalidateTelegramCache,
+  notifyLoginAttempt,
 } from "../lib/telegram";
+import { logSecurityEvent, getClientIp } from "../middlewares/security";
 
 import { generateContractPdf } from "../lib/contract-pdf";
 import { sendBroadcastEmail, sendKybApprovedEmail, sendKybRejectedEmail } from "../lib/mailer";
@@ -36,12 +38,43 @@ const contractUpload = multer({
 
 const router = Router();
 
+// In-memory counter for unauthorized admin probe attempts (resets on restart)
+const _adminProbeCounter = new Map<string, { count: number; lastAlert: number }>();
+const PROBE_ALERT_THRESHOLD = 3;    // alert after N unauthorized attempts
+const PROBE_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // 15 min between repeated alerts
+
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.session?.userId) {
+    const ip = getClientIp(req);
+    // Log + count unauthorized admin probes
+    logSecurityEvent({ eventType: "SUSPICIOUS_ACTIVITY", req, details: `Admin probe sans session — ${req.method} ${req.path}`, riskLevel: "high" }).catch(() => {});
+    const now = Date.now();
+    const entry = _adminProbeCounter.get(ip) ?? { count: 0, lastAlert: 0 };
+    entry.count++;
+    _adminProbeCounter.set(ip, entry);
+    if (entry.count >= PROBE_ALERT_THRESHOLD && now - entry.lastAlert > PROBE_ALERT_COOLDOWN_MS) {
+      entry.lastAlert = now;
+      notifyLoginAttempt({
+        type: "failed",
+        email: `Inconnu (${entry.count} tentatives admin)`,
+        role: "admin",
+        ip,
+        userId: undefined,
+      }).catch(() => {});
+    }
     res.status(401).json({ error: "Authentication required" });
     return;
   }
   if (req.session?.role !== "admin") {
+    const ip = getClientIp(req);
+    logSecurityEvent({ eventType: "SUSPICIOUS_ACTIVITY", req, userId: req.session.userId, details: `Accès admin refusé — rôle: ${req.session.role} — ${req.method} ${req.path}`, riskLevel: "high" }).catch(() => {});
+    notifyLoginAttempt({
+      type: "failed",
+      email: `UserID ${req.session.userId} (pas admin)`,
+      role: "merchant",
+      ip,
+      userId: req.session.userId,
+    }).catch(() => {});
     res.status(403).json({ error: "Admin access required" });
     return;
   }

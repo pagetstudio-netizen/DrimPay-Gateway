@@ -2395,7 +2395,14 @@ router.get("/support/contact-info", async (_req, res) => {
 // ─── Public: Support social links ────────────────────────────────────────────
 
 router.get("/support/links", async (_req, res) => {
-  const rows = await db.select().from(socialLinksTable)
+  const rows = await db
+    .select({
+      name: socialLinksTable.name,
+      platform: socialLinksTable.platform,
+      url: socialLinksTable.url,
+      description: socialLinksTable.description,
+    })
+    .from(socialLinksTable)
     .where(eq(socialLinksTable.active, true))
     .orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
@@ -2404,7 +2411,14 @@ router.get("/support/links", async (_req, res) => {
 // ─── Public: Active global banners ───────────────────────────────────────────
 
 router.get("/banners/active", async (_req, res) => {
-  const rows = await db.select().from(globalBannersTable)
+  const rows = await db
+    .select({
+      message: globalBannersTable.message,
+      type: globalBannersTable.type,
+      link: globalBannersTable.link,
+      linkText: globalBannersTable.linkText,
+    })
+    .from(globalBannersTable)
     .where(eq(globalBannersTable.active, true))
     .orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
