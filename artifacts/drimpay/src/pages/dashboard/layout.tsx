@@ -69,7 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
         img: transactionsImg,
         children: [
           { href: "/dashboard/payments",      label: "Historique",         img: historiqueImg },
-          { href: "/dashboard/payment-links", label: "Liens de Paiement",  img: linkPaiementImg },
+          { href: "/dashboard/payment-links", label: "Liens de Paiement" },
           { href: "/dashboard/qr-codes",      label: "Pay with QR",        img: qrImg },
         ],
       },
@@ -77,8 +77,8 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Transferts",
         img: transfertsImg,
         children: [
-          { href: "/dashboard/mass-payout",  label: "Paiement de Masse", img: massPaiementImg },
-          { href: "/dashboard/reversement",  label: "Reversement",       img: reversImg },
+          { href: "/dashboard/mass-payout",  label: "Paiement de Masse" },
+          { href: "/dashboard/reversement",  label: "Reversement" },
         ],
       },
     ],
@@ -88,7 +88,7 @@ const NAV_SECTIONS: NavSection[] = [
     entries: [
       { label: "Clés API",          href: "/dashboard/api-keys", img: apiKeysImg },
       { label: "Vérification KYB",  href: "/dashboard/kyb",      img: kybImg },
-      { label: "Paramètres",        href: "/dashboard/profile",  img: settingsImg },
+      { label: "Paramètres",        href: "/dashboard/profile" },
     ],
   },
   {
@@ -96,20 +96,19 @@ const NAV_SECTIONS: NavSection[] = [
     entries: [
       {
         label: "Documentation API",
-        img: apiIconImg,
         children: [
-          { href: "/docs/payin",                          label: "API Pay-in",             img: apiDocImg },
-          { href: "/docs/payout",                         label: "API Pay-out",            img: apiDocImg },
-          { href: "/dashboard/docs/virtual-cards",        label: "Cartes Virtuelles",      img: apiDocImg },
-          { href: "/dashboard/docs/credits",              label: "Crédits Communication",  img: apiDocImg },
-          { href: "/dashboard/docs/mass-payout",          label: "Paiement de Masse",      img: apiDocImg },
+          { href: "/docs/payin",                          label: "API Pay-in" },
+          { href: "/docs/payout",                         label: "API Pay-out" },
+          { href: "/dashboard/docs/virtual-cards",        label: "Cartes Virtuelles" },
+          { href: "/dashboard/docs/credits",              label: "Crédits Communication" },
+          { href: "/dashboard/docs/mass-payout",          label: "Paiement de Masse" },
         ],
       },
     ],
   },
   {
     entries: [
-      { label: "Support Client", href: "/support", img: supportImg },
+      { label: "Support Client", href: "/support" },
     ],
   },
 ];
