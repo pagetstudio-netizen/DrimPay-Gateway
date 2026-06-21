@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { adminSettingsTable, usersTable, transactionsTable } from "@workspace/db/schema";
+import { adminSettingsTable, usersTable, transactionsTable, blockedIpsTable } from "@workspace/db/schema";
 import { eq, and, gte, lt, sum, count } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
@@ -30,6 +30,14 @@ async function getConfig(): Promise<TGConfig | null> {
   }
 }
 
+// ─── Africa country codes ──────────────────────────────────────────────────────
+const AFRICA_CODES = new Set([
+  "DZ","AO","BJ","BW","BF","BI","CM","CV","CF","TD","KM","CG","CD","CI","DJ",
+  "EG","GQ","ER","SZ","ET","GA","GM","GH","GN","GW","KE","LS","LR","LY","MG",
+  "MW","ML","MR","MU","MA","MZ","NA","NE","NG","RW","ST","SN","SC","SL","SO",
+  "ZA","SS","SD","TZ","TG","TN","UG","ZM","ZW",
+]);
+
 // ─── Core send ─────────────────────────────────────────────────────────────────
 export async function sendTo(token: string, chatId: string, text: string) {
   try {
@@ -48,6 +56,28 @@ async function send(text: string) {
   const cfg = await getConfig();
   if (!cfg) return;
   await sendTo(cfg.token, cfg.chatId, text);
+}
+
+// Send with inline keyboard buttons [[{text, callback_data}]]
+async function sendWithButtons(text: string, buttons: Array<Array<{ text: string; callback_data: string }>>) {
+  const cfg = await getConfig();
+  if (!cfg) return;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${cfg.token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: cfg.chatId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: { inline_keyboard: buttons },
+      }),
+    });
+    if (!r.ok) console.error("[Telegram] sendWithButtons failed:", await r.text());
+  } catch (e) {
+    console.error("[Telegram] sendWithButtons error:", e);
+  }
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -78,19 +108,19 @@ export async function notifyStartup() {
 `🚀 <b>DrimPay Bot Actif</b>
 
 Le serveur a démarré. Alertes actives :
-• Nouveaux utilisateurs
-• Dépôts
+• Toutes les tentatives de connexion (marchands + admin)
+• VPN / Proxy / Hébergement suspect
+• Connexion hors Afrique + bouton bloquer IP
+• Nouveaux marchands
 • Paiements reçus (liens + API)
 • Demandes &amp; traitements de retrait
 • KYB soumis
-• Retrait partenaire
 • Gros montants (≥500 000 FCFA)
-• Connexion admin
 • Erreurs système critiques
 • Rapport quotidien (minuit Lomé)
 • Surcharge marchand (≥10 tentatives)
 
-Commandes: /stats | /ip | /help
+Commandes: /stats | /ip | /stopretraits | /activetraits | /help
 
 📅 ${dt()}`
   );
@@ -124,14 +154,47 @@ export async function notifyNewUser(email: string, company: string, country: str
   );
 }
 
-export async function notifyAdminLogin(email: string, ip: string) {
-  await send(
-`🔐 <b>Connexion Admin</b>
+// ─── Login attempt notification (merchant + admin) ─────────────────────────────
+export async function notifyLoginAttempt(opts: {
+  type: "success" | "failed" | "new_device";
+  email: string;
+  role: "merchant" | "admin";
+  ip: string;
+  country?: string | null;
+  isVpn?: boolean;
+  isHosting?: boolean;
+  org?: string;
+  userId?: number;
+}) {
+  const icons: Record<string, string> = {
+    success: opts.role === "admin" ? "🔐" : "✅",
+    failed: "❌",
+    new_device: "📱",
+  };
+  const roleLabel = opts.role === "admin" ? "Admin" : "Marchand";
+  const statusLabel = opts.type === "success" ? "Réussie" : opts.type === "failed" ? "Échouée" : "Nouvel appareil";
+  const country = opts.country ?? "—";
+  const isAfrica = opts.country ? AFRICA_CODES.has(opts.country) : true;
 
-📧 ${email}
-🌐 IP: ${ip}
-📅 ${dt()}`
-  );
+  const warnings: string[] = [];
+  if (opts.isVpn) warnings.push("⚠️ <b>VPN / Proxy détecté !</b>");
+  if (opts.isHosting) warnings.push(`🖥️ <b>Hébergement suspect :</b> ${opts.org ?? "inconnu"}`);
+  if (!isAfrica && opts.country) warnings.push(`🌍 <b>Connexion hors Afrique !</b> (${opts.country})`);
+
+  const warningBlock = warnings.length > 0 ? "\n" + warnings.join("\n") : "";
+
+  const text =
+`${icons[opts.type] ?? "🔔"} <b>Connexion ${roleLabel} — ${statusLabel}</b>
+📧 ${opts.email}
+🌐 IP: <code>${opts.ip}</code>
+🏳️ Pays: ${country}${warningBlock}
+📅 ${dt()}`;
+
+  const buttons: Array<Array<{ text: string; callback_data: string }>> = [
+    [{ text: "🚫 Bloquer cette IP", callback_data: `block_ip:${opts.ip}` }],
+  ];
+
+  await sendWithButtons(text, buttons);
 }
 
 export async function notifyPayin(opts: {
@@ -297,37 +360,111 @@ async function handleCommand(token: string, chatId: string, text: string) {
     const [merchants] = await db.select({ c: count() }).from(usersTable).where(eq(usersTable.role, "user"));
     const [txAll] = await db.select({ c: count(), v: sum(transactionsTable.amount) })
       .from(transactionsTable).where(eq(transactionsTable.status, "success"));
+    // Check payout status
+    const [payoutSetting] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "payouts_enabled")).limit(1);
+    const payoutsEnabled = payoutSetting?.value !== "false";
     await sendTo(token, chatId,
 `📊 <b>Stats DrimPay</b>
 
 👥 Marchands: <b>${merchants.c}</b>
 ✅ Transactions réussies: <b>${txAll.c}</b>
 💰 Volume total: <b>${money(Number(txAll.v ?? 0))}</b>
+💸 Retraits: ${payoutsEnabled ? "🟢 Activés" : "🔴 <b>DÉSACTIVÉS</b>"}
 📅 ${dt()}`
     );
   } else if (cmd === "/ip") {
     let ip = "Inconnue";
     try { const r = await fetch("https://api.ipify.org?format=json"); const d = await r.json() as any; ip = d.ip; } catch {}
     await sendTo(token, chatId, `🌐 <b>IP Serveur</b>\n\n📍 ${ip}\n📅 ${dt()}`);
+  } else if (cmd === "/stopretraits") {
+    try {
+      await db.insert(adminSettingsTable).values({ key: "payouts_enabled", value: "false" })
+        .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: "false" } });
+      await sendTo(token, chatId,
+`🔴 <b>Retraits DÉSACTIVÉS</b>
+
+Tous les pay-outs sont bloqués instantanément sur la plateforme.
+Aucun marchand ne peut initier de retrait.
+
+Utilisez /activetraits pour réactiver.
+📅 ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `❌ Erreur lors de la désactivation des retraits: ${String(e).substring(0, 200)}`);
+    }
+  } else if (cmd === "/activetraits") {
+    try {
+      await db.insert(adminSettingsTable).values({ key: "payouts_enabled", value: "true" })
+        .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: "true" } });
+      await sendTo(token, chatId,
+`🟢 <b>Retraits RÉACTIVÉS</b>
+
+Les pay-outs sont à nouveau disponibles pour tous les marchands.
+📅 ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `❌ Erreur lors de la réactivation des retraits: ${String(e).substring(0, 200)}`);
+    }
   } else if (cmd === "/help") {
     await sendTo(token, chatId,
 `🤖 <b>DrimPay Bot — Aide</b>
 
-/stats — Statistiques de la plateforme
+<b>Commandes :</b>
+/stats — Statistiques + état des retraits
 /ip — Adresse IP du serveur
+/stopretraits — 🔴 Bloquer TOUS les retraits instantanément
+/activetraits — 🟢 Réactiver les retraits
 /help — Afficher cette aide
 
 <b>Alertes automatiques :</b>
+✅❌📱 Toutes les tentatives de connexion (marchands + admin)
+⚠️ VPN / Proxy / Hébergement suspect
+🌍 Connexion hors Afrique
+🚫 Bouton bloquer IP (inline)
 👤 Nouveaux marchands
 💰 Paiements reçus (API &amp; liens)
 🚨 Gros montants (≥500 000 FCFA)
 💸 Demandes de retrait
 📋 KYB soumis / traités
-🔐 Connexions admin
 🆘 Erreurs critiques
-📊 Rapport quotidien (minuit Lomé)
-⚠️ Surcharge marchand (≥10 tentatives / 10 min liens, 5 min API)`
+📊 Rapport quotidien (minuit Lomé)`
     );
+  }
+}
+
+// ─── Callback query handler (inline button presses) ────────────────────────────
+async function handleCallback(token: string, callbackId: string, chatId: string, data: string, fromName: string) {
+  // Acknowledge the callback immediately
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ callback_query_id: callbackId, text: "Traitement en cours..." }),
+    });
+  } catch { /* ignore */ }
+
+  if (data.startsWith("block_ip:")) {
+    const ip = data.slice(9).trim();
+    if (!ip) {
+      await sendTo(token, chatId, "❌ IP invalide.");
+      return;
+    }
+    try {
+      await db.insert(blockedIpsTable).values({
+        ip,
+        reason: `Bloqué via Telegram par ${fromName}`,
+        permanent: true,
+      }).onConflictDoNothing();
+      await sendTo(token, chatId,
+`🚫 <b>IP Bloquée</b>
+
+<code>${ip}</code> est désormais bloquée définitivement sur la plateforme.
+👤 Par: ${fromName}
+📅 ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `❌ Erreur lors du blocage de <code>${ip}</code>: ${String(e).substring(0, 200)}`);
+    }
   }
 }
 
@@ -337,13 +474,12 @@ export function startPolling() {
     if (!cfg) { setTimeout(poll, 15_000); return; }
     try {
       const r = await fetch(
-        `https://api.telegram.org/bot${cfg.token}/getUpdates?offset=${_lastId + 1}&timeout=20&allowed_updates=["message","channel_post"]`,
+        `https://api.telegram.org/bot${cfg.token}/getUpdates?offset=${_lastId + 1}&timeout=20&allowed_updates=["message","channel_post","callback_query"]`,
         { signal: AbortSignal.timeout(25_000) }
       );
       if (!r.ok) { setTimeout(poll, 5_000); return; }
       const data = await r.json() as any;
       if (!data.ok) {
-        // Webhook conflict — try to delete it then retry
         if (data.error_code === 409) {
           console.warn("[Telegram] Webhook conflict detected, deleting webhook...");
           await fetch(`https://api.telegram.org/bot${cfg.token}/deleteWebhook?drop_pending_updates=false`);
@@ -353,11 +489,19 @@ export function startPolling() {
       }
       for (const u of data.result as any[]) {
         _lastId = u.update_id;
-        const msg = u.message ?? u.channel_post;
-        if (msg?.text?.startsWith("/")) {
-          // Respond to the chat where the command was sent (supports groups + DMs)
-          const replyTo = String(msg.chat.id);
-          await handleCommand(cfg.token, replyTo, msg.text.trim());
+        if (u.callback_query) {
+          const cq = u.callback_query;
+          const replyTo = String(cq.message?.chat?.id ?? cfg.chatId);
+          const fromName = cq.from?.username
+            ? `@${cq.from.username}`
+            : `${cq.from?.first_name ?? "Admin"} ${cq.from?.last_name ?? ""}`.trim();
+          await handleCallback(cfg.token, cq.id, replyTo, cq.data ?? "", fromName);
+        } else {
+          const msg = u.message ?? u.channel_post;
+          if (msg?.text?.startsWith("/")) {
+            const replyTo = String(msg.chat.id);
+            await handleCommand(cfg.token, replyTo, msg.text.trim());
+          }
         }
       }
       setTimeout(poll, data.result.length ? 100 : 1_000);

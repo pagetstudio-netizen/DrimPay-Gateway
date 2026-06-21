@@ -8,7 +8,7 @@ import {
   emailVerificationTokensTable, knownDevicesTable,
 } from "@workspace/db/schema";
 import { eq, and, gt, isNull } from "drizzle-orm";
-import { notifyNewUser, notifyAdminLogin } from "../lib/telegram";
+import { notifyNewUser, notifyLoginAttempt } from "../lib/telegram";
 import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail } from "../lib/mailer";
 import {
   logSecurityEvent,
@@ -16,6 +16,8 @@ import {
   clearFailedLogins,
   loginRateLimiter,
   signupRateLimiter,
+  resolveGeoInfo,
+  getClientIp,
 } from "../middlewares/security";
 
 const router = Router();
@@ -114,25 +116,31 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
 
   const { email, password } = parsed.data;
 
+  const ip = getClientIp(req);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (!user) {
-    const ip = req.ip ?? "unknown";
     const isBrute = trackFailedLogin(ip);
     await logSecurityEvent({ eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED", req, details: `Email inconnu : ${email}`, riskLevel: isBrute ? "high" : "medium" });
+    // Fire-and-forget geo + notification
+    resolveGeoInfo(ip).then(geo => {
+      notifyLoginAttempt({ type: "failed", email, role: "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org }).catch(() => {});
+    }).catch(() => {});
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    const ip = req.ip ?? "unknown";
     const isBrute = trackFailedLogin(ip);
     await logSecurityEvent({ eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED", req, userId: user.id, details: `Mot de passe incorrect pour : ${email}`, riskLevel: isBrute ? "high" : "medium" });
+    resolveGeoInfo(ip).then(geo => {
+      notifyLoginAttempt({ type: "failed", email, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {});
+    }).catch(() => {});
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
 
-  clearFailedLogins(req.ip ?? "unknown");
+  clearFailedLogins(ip);
 
   // Check if email is verified (existing users without the column treated as verified)
   if (user.emailVerified === false) {
@@ -171,6 +179,9 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
       console.error("[Auth] Failed to send new device email:", e);
     }
     await logSecurityEvent({ eventType: "LOGIN_NEW_DEVICE", req, userId: user.id, details: `Nouvel appareil détecté : ${email}`, riskLevel: "medium" });
+    resolveGeoInfo(ip).then(geo => {
+      notifyLoginAttempt({ type: "new_device", email, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {});
+    }).catch(() => {});
     res.status(202).json({ requiresVerification: true, email: user.email, reason: "new_device" });
     return;
   }
@@ -186,10 +197,9 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
 
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Connexion réussie : ${email}`, riskLevel: "low" });
 
-  if (user.role === "admin") {
-    const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "?";
-    notifyAdminLogin(user.email, ip).catch(() => {});
-  }
+  resolveGeoInfo(ip).then(geo => {
+    notifyLoginAttempt({ type: "success", email, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {});
+  }).catch(() => {});
 
   res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
 });

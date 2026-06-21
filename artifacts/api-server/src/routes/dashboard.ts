@@ -615,6 +615,15 @@ const payoutSchema = z.object({
 });
 
 router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
+  // Check if payouts are globally disabled by admin
+  try {
+    const [payoutSetting] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "payouts_enabled")).limit(1);
+    if (payoutSetting?.value === "false") {
+      res.status(503).json({ error: "Les retraits sont temporairement désactivés par l'administrateur. Veuillez réessayer ultérieurement." });
+      return;
+    }
+  } catch { /* fail-open: if DB error just continue */ }
+
   const parsed = payoutSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });

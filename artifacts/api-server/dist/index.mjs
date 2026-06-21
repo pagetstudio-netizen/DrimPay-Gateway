@@ -260412,6 +260412,62 @@ async function getConfig() {
     return null;
   }
 }
+var AFRICA_CODES = /* @__PURE__ */ new Set([
+  "DZ",
+  "AO",
+  "BJ",
+  "BW",
+  "BF",
+  "BI",
+  "CM",
+  "CV",
+  "CF",
+  "TD",
+  "KM",
+  "CG",
+  "CD",
+  "CI",
+  "DJ",
+  "EG",
+  "GQ",
+  "ER",
+  "SZ",
+  "ET",
+  "GA",
+  "GM",
+  "GH",
+  "GN",
+  "GW",
+  "KE",
+  "LS",
+  "LR",
+  "LY",
+  "MG",
+  "MW",
+  "ML",
+  "MR",
+  "MU",
+  "MA",
+  "MZ",
+  "NA",
+  "NE",
+  "NG",
+  "RW",
+  "ST",
+  "SN",
+  "SC",
+  "SL",
+  "SO",
+  "ZA",
+  "SS",
+  "SD",
+  "TZ",
+  "TG",
+  "TN",
+  "UG",
+  "ZM",
+  "ZW"
+]);
 async function sendTo(token, chatId, text2) {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -260428,6 +260484,26 @@ async function send(text2) {
   const cfg = await getConfig();
   if (!cfg) return;
   await sendTo(cfg.token, cfg.chatId, text2);
+}
+async function sendWithButtons(text2, buttons) {
+  const cfg = await getConfig();
+  if (!cfg) return;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${cfg.token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: cfg.chatId,
+        text: text2,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: { inline_keyboard: buttons }
+      })
+    });
+    if (!r.ok) console.error("[Telegram] sendWithButtons failed:", await r.text());
+  } catch (e) {
+    console.error("[Telegram] sendWithButtons error:", e);
+  }
 }
 function dt(d = /* @__PURE__ */ new Date()) {
   return d.toLocaleString("fr-FR", { timeZone: "Africa/Lome", hour12: false }).replace(",", "");
@@ -260452,19 +260528,19 @@ async function notifyStartup() {
     `\u{1F680} <b>DrimPay Bot Actif</b>
 
 Le serveur a d\xE9marr\xE9. Alertes actives :
-\u2022 Nouveaux utilisateurs
-\u2022 D\xE9p\xF4ts
+\u2022 Toutes les tentatives de connexion (marchands + admin)
+\u2022 VPN / Proxy / H\xE9bergement suspect
+\u2022 Connexion hors Afrique + bouton bloquer IP
+\u2022 Nouveaux marchands
 \u2022 Paiements re\xE7us (liens + API)
 \u2022 Demandes &amp; traitements de retrait
 \u2022 KYB soumis
-\u2022 Retrait partenaire
 \u2022 Gros montants (\u2265500 000 FCFA)
-\u2022 Connexion admin
 \u2022 Erreurs syst\xE8me critiques
 \u2022 Rapport quotidien (minuit Lom\xE9)
 \u2022 Surcharge marchand (\u226510 tentatives)
 
-Commandes: /stats | /ip | /help
+Commandes: /stats | /ip | /stopretraits | /activetraits | /help
 
 \u{1F4C5} ${dt()}`
   );
@@ -260494,14 +260570,30 @@ async function notifyNewUser(email3, company, country) {
 \u{1F4C5} ${dt()}`
   );
 }
-async function notifyAdminLogin(email3, ip) {
-  await send(
-    `\u{1F510} <b>Connexion Admin</b>
-
-\u{1F4E7} ${email3}
-\u{1F310} IP: ${ip}
-\u{1F4C5} ${dt()}`
-  );
+async function notifyLoginAttempt(opts) {
+  const icons = {
+    success: opts.role === "admin" ? "\u{1F510}" : "\u2705",
+    failed: "\u274C",
+    new_device: "\u{1F4F1}"
+  };
+  const roleLabel = opts.role === "admin" ? "Admin" : "Marchand";
+  const statusLabel = opts.type === "success" ? "R\xE9ussie" : opts.type === "failed" ? "\xC9chou\xE9e" : "Nouvel appareil";
+  const country = opts.country ?? "\u2014";
+  const isAfrica = opts.country ? AFRICA_CODES.has(opts.country) : true;
+  const warnings = [];
+  if (opts.isVpn) warnings.push("\u26A0\uFE0F <b>VPN / Proxy d\xE9tect\xE9 !</b>");
+  if (opts.isHosting) warnings.push(`\u{1F5A5}\uFE0F <b>H\xE9bergement suspect :</b> ${opts.org ?? "inconnu"}`);
+  if (!isAfrica && opts.country) warnings.push(`\u{1F30D} <b>Connexion hors Afrique !</b> (${opts.country})`);
+  const warningBlock = warnings.length > 0 ? "\n" + warnings.join("\n") : "";
+  const text2 = `${icons[opts.type] ?? "\u{1F514}"} <b>Connexion ${roleLabel} \u2014 ${statusLabel}</b>
+\u{1F4E7} ${opts.email}
+\u{1F310} IP: <code>${opts.ip}</code>
+\u{1F3F3}\uFE0F Pays: ${country}${warningBlock}
+\u{1F4C5} ${dt()}`;
+  const buttons = [
+    [{ text: "\u{1F6AB} Bloquer cette IP", callback_data: `block_ip:${opts.ip}` }]
+  ];
+  await sendWithButtons(text2, buttons);
 }
 async function notifyPayin(opts) {
   const large = opts.amount >= LARGE;
@@ -260632,6 +260724,8 @@ async function handleCommand(token, chatId, text2) {
   if (cmd === "/stats") {
     const [merchants] = await db.select({ c: count() }).from(usersTable).where(eq(usersTable.role, "user"));
     const [txAll] = await db.select({ c: count(), v: sum(transactionsTable.amount) }).from(transactionsTable).where(eq(transactionsTable.status, "success"));
+    const [payoutSetting] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "payouts_enabled")).limit(1);
+    const payoutsEnabled = payoutSetting?.value !== "false";
     await sendTo(
       token,
       chatId,
@@ -260640,6 +260734,7 @@ async function handleCommand(token, chatId, text2) {
 \u{1F465} Marchands: <b>${merchants.c}</b>
 \u2705 Transactions r\xE9ussies: <b>${txAll.c}</b>
 \u{1F4B0} Volume total: <b>${money(Number(txAll.v ?? 0))}</b>
+\u{1F4B8} Retraits: ${payoutsEnabled ? "\u{1F7E2} Activ\xE9s" : "\u{1F534} <b>D\xC9SACTIV\xC9S</b>"}
 \u{1F4C5} ${dt()}`
     );
   } else if (cmd === "/ip") {
@@ -260654,27 +260749,98 @@ async function handleCommand(token, chatId, text2) {
 
 \u{1F4CD} ${ip}
 \u{1F4C5} ${dt()}`);
+  } else if (cmd === "/stopretraits") {
+    try {
+      await db.insert(adminSettingsTable).values({ key: "payouts_enabled", value: "false" }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: "false" } });
+      await sendTo(
+        token,
+        chatId,
+        `\u{1F534} <b>Retraits D\xC9SACTIV\xC9S</b>
+
+Tous les pay-outs sont bloqu\xE9s instantan\xE9ment sur la plateforme.
+Aucun marchand ne peut initier de retrait.
+
+Utilisez /activetraits pour r\xE9activer.
+\u{1F4C5} ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `\u274C Erreur lors de la d\xE9sactivation des retraits: ${String(e).substring(0, 200)}`);
+    }
+  } else if (cmd === "/activetraits") {
+    try {
+      await db.insert(adminSettingsTable).values({ key: "payouts_enabled", value: "true" }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: "true" } });
+      await sendTo(
+        token,
+        chatId,
+        `\u{1F7E2} <b>Retraits R\xC9ACTIV\xC9S</b>
+
+Les pay-outs sont \xE0 nouveau disponibles pour tous les marchands.
+\u{1F4C5} ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `\u274C Erreur lors de la r\xE9activation des retraits: ${String(e).substring(0, 200)}`);
+    }
   } else if (cmd === "/help") {
     await sendTo(
       token,
       chatId,
       `\u{1F916} <b>DrimPay Bot \u2014 Aide</b>
 
-/stats \u2014 Statistiques de la plateforme
+<b>Commandes :</b>
+/stats \u2014 Statistiques + \xE9tat des retraits
 /ip \u2014 Adresse IP du serveur
+/stopretraits \u2014 \u{1F534} Bloquer TOUS les retraits instantan\xE9ment
+/activetraits \u2014 \u{1F7E2} R\xE9activer les retraits
 /help \u2014 Afficher cette aide
 
 <b>Alertes automatiques :</b>
+\u2705\u274C\u{1F4F1} Toutes les tentatives de connexion (marchands + admin)
+\u26A0\uFE0F VPN / Proxy / H\xE9bergement suspect
+\u{1F30D} Connexion hors Afrique
+\u{1F6AB} Bouton bloquer IP (inline)
 \u{1F464} Nouveaux marchands
 \u{1F4B0} Paiements re\xE7us (API &amp; liens)
 \u{1F6A8} Gros montants (\u2265500 000 FCFA)
 \u{1F4B8} Demandes de retrait
 \u{1F4CB} KYB soumis / trait\xE9s
-\u{1F510} Connexions admin
 \u{1F198} Erreurs critiques
-\u{1F4CA} Rapport quotidien (minuit Lom\xE9)
-\u26A0\uFE0F Surcharge marchand (\u226510 tentatives / 10 min liens, 5 min API)`
+\u{1F4CA} Rapport quotidien (minuit Lom\xE9)`
     );
+  }
+}
+async function handleCallback(token, callbackId, chatId, data, fromName) {
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ callback_query_id: callbackId, text: "Traitement en cours..." })
+    });
+  } catch {
+  }
+  if (data.startsWith("block_ip:")) {
+    const ip = data.slice(9).trim();
+    if (!ip) {
+      await sendTo(token, chatId, "\u274C IP invalide.");
+      return;
+    }
+    try {
+      await db.insert(blockedIpsTable).values({
+        ip,
+        reason: `Bloqu\xE9 via Telegram par ${fromName}`,
+        permanent: true
+      }).onConflictDoNothing();
+      await sendTo(
+        token,
+        chatId,
+        `\u{1F6AB} <b>IP Bloqu\xE9e</b>
+
+<code>${ip}</code> est d\xE9sormais bloqu\xE9e d\xE9finitivement sur la plateforme.
+\u{1F464} Par: ${fromName}
+\u{1F4C5} ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `\u274C Erreur lors du blocage de <code>${ip}</code>: ${String(e).substring(0, 200)}`);
+    }
   }
 }
 function startPolling() {
@@ -260686,7 +260852,7 @@ function startPolling() {
     }
     try {
       const r = await fetch(
-        `https://api.telegram.org/bot${cfg.token}/getUpdates?offset=${_lastId + 1}&timeout=20&allowed_updates=["message","channel_post"]`,
+        `https://api.telegram.org/bot${cfg.token}/getUpdates?offset=${_lastId + 1}&timeout=20&allowed_updates=["message","channel_post","callback_query"]`,
         { signal: AbortSignal.timeout(25e3) }
       );
       if (!r.ok) {
@@ -260704,10 +260870,17 @@ function startPolling() {
       }
       for (const u of data.result) {
         _lastId = u.update_id;
-        const msg = u.message ?? u.channel_post;
-        if (msg?.text?.startsWith("/")) {
-          const replyTo = String(msg.chat.id);
-          await handleCommand(cfg.token, replyTo, msg.text.trim());
+        if (u.callback_query) {
+          const cq = u.callback_query;
+          const replyTo = String(cq.message?.chat?.id ?? cfg.chatId);
+          const fromName = cq.from?.username ? `@${cq.from.username}` : `${cq.from?.first_name ?? "Admin"} ${cq.from?.last_name ?? ""}`.trim();
+          await handleCallback(cfg.token, cq.id, replyTo, cq.data ?? "", fromName);
+        } else {
+          const msg = u.message ?? u.channel_post;
+          if (msg?.text?.startsWith("/")) {
+            const replyTo = String(msg.chat.id);
+            await handleCommand(cfg.token, replyTo, msg.text.trim());
+          }
         }
       }
       setTimeout(poll, data.result.length ? 100 : 1e3);
@@ -264159,26 +264332,34 @@ var getAdminAllowedIps = () => (process.env["ADMIN_ALLOWED_IPS"] ?? "").split(",
 function isLocalIp(ip) {
   return ip === "::1" || ip === "unknown" || ip.startsWith("127.") || ip.startsWith("10.") || ip.startsWith("172.16.") || ip.startsWith("192.168.") || ip.startsWith("::ffff:127.") || ip.startsWith("::ffff:10.");
 }
-async function resolveCountry(ip) {
+async function resolveGeoInfo(ip) {
+  if (isLocalIp(ip)) return { country: "TG", isVpn: false, isHosting: false, org: "Local" };
   const cached2 = geoCache.get(ip);
   if (cached2 && Date.now() - cached2.cachedAt < GEO_CACHE_TTL_MS) {
-    return cached2.country;
+    return { country: cached2.country, isVpn: cached2.isVpn, isHosting: cached2.isHosting, org: cached2.org };
   }
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 4e3);
     const resp = await fetch(
-      `http://ip-api.com/json/${ip}?fields=status,countryCode`,
+      `http://ip-api.com/json/${ip}?fields=status,countryCode,proxy,hosting,org`,
       { signal: ctrl.signal }
     );
     clearTimeout(timer);
-    if (!resp.ok) return null;
+    if (!resp.ok) return { country: null, isVpn: false, isHosting: false, org: "" };
     const data = await resp.json();
-    if (data.status !== "success" || !data.countryCode) return null;
-    geoCache.set(ip, { country: data.countryCode, cachedAt: Date.now() });
-    return data.countryCode;
+    if (data.status !== "success" || !data.countryCode) return { country: null, isVpn: false, isHosting: false, org: "" };
+    const entry = {
+      country: data.countryCode,
+      isVpn: data.proxy ?? false,
+      isHosting: data.hosting ?? false,
+      org: data.org ?? "",
+      cachedAt: Date.now()
+    };
+    geoCache.set(ip, entry);
+    return { country: entry.country, isVpn: entry.isVpn, isHosting: entry.isHosting, org: entry.org };
   } catch {
-    return null;
+    return { country: null, isVpn: false, isHosting: false, org: "" };
   }
 }
 var BOT_UA_PATTERNS = [
@@ -264222,7 +264403,7 @@ async function adminGeoMiddleware(req, res, next) {
   }
   if (isLocalIp(ip)) return next();
   if (getAdminAllowedIps().includes(ip)) return next();
-  const country = await resolveCountry(ip);
+  const { country } = await resolveGeoInfo(ip);
   if (country !== null && !ADMIN_ALLOWED_COUNTRIES.includes(country)) {
     try {
       await db.insert(securityEventsTable).values({
@@ -264446,23 +264627,32 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
     return;
   }
   const { email: email3, password } = parsed.data;
+  const ip = getClientIp(req);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email3)).limit(1);
   if (!user) {
-    const ip = req.ip ?? "unknown";
     const isBrute = trackFailedLogin(ip);
     await logSecurityEvent({ eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED", req, details: `Email inconnu : ${email3}`, riskLevel: isBrute ? "high" : "medium" });
+    resolveGeoInfo(ip).then((geo) => {
+      notifyLoginAttempt({ type: "failed", email: email3, role: "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org }).catch(() => {
+      });
+    }).catch(() => {
+    });
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
   const valid = await bcryptjs_default.compare(password, user.passwordHash);
   if (!valid) {
-    const ip = req.ip ?? "unknown";
     const isBrute = trackFailedLogin(ip);
     await logSecurityEvent({ eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED", req, userId: user.id, details: `Mot de passe incorrect pour : ${email3}`, riskLevel: isBrute ? "high" : "medium" });
+    resolveGeoInfo(ip).then((geo) => {
+      notifyLoginAttempt({ type: "failed", email: email3, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {
+      });
+    }).catch(() => {
+    });
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
-  clearFailedLogins(req.ip ?? "unknown");
+  clearFailedLogins(ip);
   if (user.emailVerified === false) {
     try {
       const { code, token } = await generateVerificationToken(user.id, user.email, "signup");
@@ -264490,6 +264680,11 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
       console.error("[Auth] Failed to send new device email:", e);
     }
     await logSecurityEvent({ eventType: "LOGIN_NEW_DEVICE", req, userId: user.id, details: `Nouvel appareil d\xE9tect\xE9 : ${email3}`, riskLevel: "medium" });
+    resolveGeoInfo(ip).then((geo) => {
+      notifyLoginAttempt({ type: "new_device", email: email3, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {
+      });
+    }).catch(() => {
+    });
     res.status(202).json({ requiresVerification: true, email: user.email, reason: "new_device" });
     return;
   }
@@ -264500,11 +264695,11 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   req.session.userId = user.id;
   req.session.role = user.role;
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Connexion r\xE9ussie : ${email3}`, riskLevel: "low" });
-  if (user.role === "admin") {
-    const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "?";
-    notifyAdminLogin(user.email, ip).catch(() => {
+  resolveGeoInfo(ip).then((geo) => {
+    notifyLoginAttempt({ type: "success", email: email3, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {
     });
-  }
+  }).catch(() => {
+  });
   res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
 });
 router10.post("/auth/verify-email", async (req, res) => {
@@ -274275,6 +274470,14 @@ var payoutSchema = external_exports2.object({
   externalRef: external_exports2.string().optional()
 });
 router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
+  try {
+    const [payoutSetting] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "payouts_enabled")).limit(1);
+    if (payoutSetting?.value === "false") {
+      res.status(503).json({ error: "Les retraits sont temporairement d\xE9sactiv\xE9s par l'administrateur. Veuillez r\xE9essayer ult\xE9rieurement." });
+      return;
+    }
+  } catch {
+  }
   const parsed = payoutSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });

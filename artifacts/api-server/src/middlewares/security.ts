@@ -6,7 +6,15 @@ import { securityEventsTable, blockedIpsTable } from "@workspace/db/schema";
 import { eq, and, gt, or } from "drizzle-orm";
 
 // ── Geo-IP cache (in-memory, 24h TTL) ────────────────────────────────────────
-const geoCache = new Map<string, { country: string; cachedAt: number }>();
+export interface GeoInfo {
+  country: string | null;
+  isVpn: boolean;
+  isHosting: boolean;
+  org: string;
+}
+
+interface GeoCacheEntry extends GeoInfo { cachedAt: number }
+const geoCache = new Map<string, GeoCacheEntry>();
 const GEO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 // Countries allowed to access the admin panel (comma-separated env var)
@@ -33,26 +41,34 @@ function isLocalIp(ip: string): boolean {
   );
 }
 
-async function resolveCountry(ip: string): Promise<string | null> {
+export async function resolveGeoInfo(ip: string): Promise<GeoInfo> {
+  if (isLocalIp(ip)) return { country: "TG", isVpn: false, isHosting: false, org: "Local" };
   const cached = geoCache.get(ip);
   if (cached && Date.now() - cached.cachedAt < GEO_CACHE_TTL_MS) {
-    return cached.country;
+    return { country: cached.country, isVpn: cached.isVpn, isHosting: cached.isHosting, org: cached.org };
   }
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 4_000);
     const resp = await fetch(
-      `http://ip-api.com/json/${ip}?fields=status,countryCode`,
+      `http://ip-api.com/json/${ip}?fields=status,countryCode,proxy,hosting,org`,
       { signal: ctrl.signal }
     );
     clearTimeout(timer);
-    if (!resp.ok) return null;
-    const data = (await resp.json()) as { status?: string; countryCode?: string };
-    if (data.status !== "success" || !data.countryCode) return null;
-    geoCache.set(ip, { country: data.countryCode, cachedAt: Date.now() });
-    return data.countryCode;
+    if (!resp.ok) return { country: null, isVpn: false, isHosting: false, org: "" };
+    const data = (await resp.json()) as { status?: string; countryCode?: string; proxy?: boolean; hosting?: boolean; org?: string };
+    if (data.status !== "success" || !data.countryCode) return { country: null, isVpn: false, isHosting: false, org: "" };
+    const entry: GeoCacheEntry = {
+      country: data.countryCode,
+      isVpn: data.proxy ?? false,
+      isHosting: data.hosting ?? false,
+      org: data.org ?? "",
+      cachedAt: Date.now(),
+    };
+    geoCache.set(ip, entry);
+    return { country: entry.country, isVpn: entry.isVpn, isHosting: entry.isHosting, org: entry.org };
   } catch {
-    return null; // fail-open on timeout/network error
+    return { country: null, isVpn: false, isHosting: false, org: "" };
   }
 }
 
@@ -111,7 +127,7 @@ export async function adminGeoMiddleware(
   if (getAdminAllowedIps().includes(ip)) return next();
 
   // 4. Geo lookup
-  const country = await resolveCountry(ip);
+  const { country } = await resolveGeoInfo(ip);
 
   if (country !== null && !ADMIN_ALLOWED_COUNTRIES.includes(country)) {
     try {
