@@ -264152,6 +264152,96 @@ var rate_limit_default = rateLimit;
 
 // src/middlewares/security.ts
 init_drizzle_orm();
+var geoCache = /* @__PURE__ */ new Map();
+var GEO_CACHE_TTL_MS = 24 * 60 * 60 * 1e3;
+var ADMIN_ALLOWED_COUNTRIES = (process.env["ADMIN_ALLOWED_COUNTRIES"] ?? "TG").split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+var getAdminAllowedIps = () => (process.env["ADMIN_ALLOWED_IPS"] ?? "").split(",").map((ip) => ip.trim()).filter(Boolean);
+function isLocalIp(ip) {
+  return ip === "::1" || ip === "unknown" || ip.startsWith("127.") || ip.startsWith("10.") || ip.startsWith("172.16.") || ip.startsWith("192.168.") || ip.startsWith("::ffff:127.") || ip.startsWith("::ffff:10.");
+}
+async function resolveCountry(ip) {
+  const cached2 = geoCache.get(ip);
+  if (cached2 && Date.now() - cached2.cachedAt < GEO_CACHE_TTL_MS) {
+    return cached2.country;
+  }
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4e3);
+    const resp = await fetch(
+      `http://ip-api.com/json/${ip}?fields=status,countryCode`,
+      { signal: ctrl.signal }
+    );
+    clearTimeout(timer);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data.status !== "success" || !data.countryCode) return null;
+    geoCache.set(ip, { country: data.countryCode, cachedAt: Date.now() });
+    return data.countryCode;
+  } catch {
+    return null;
+  }
+}
+var BOT_UA_PATTERNS = [
+  "supabase",
+  "supabase-js",
+  "deno/",
+  "python-requests",
+  "python-urllib",
+  "go-http-client",
+  "curl/",
+  "wget/",
+  "scrapy",
+  "masscan",
+  "zgrab",
+  "nuclei",
+  "nmap",
+  "nikto",
+  "sqlmap",
+  "dirbuster",
+  "gobuster",
+  "hydra",
+  "openssl s_client"
+];
+async function adminGeoMiddleware(req, res, next) {
+  const ip = getClientIp(req);
+  const ua = (req.headers["user-agent"] ?? "").toLowerCase();
+  if (BOT_UA_PATTERNS.some((p) => ua.includes(p))) {
+    try {
+      await db.insert(securityEventsTable).values({
+        eventType: "SUSPICIOUS_ACTIVITY",
+        userId: null,
+        ipAddress: ip,
+        userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+        details: `Admin bot blocked \u2014 UA: ${ua.substring(0, 120)}`,
+        riskLevel: "high"
+      });
+    } catch {
+    }
+    res.status(403).json({ error: "Acc\xE8s refus\xE9." });
+    return;
+  }
+  if (isLocalIp(ip)) return next();
+  if (getAdminAllowedIps().includes(ip)) return next();
+  const country = await resolveCountry(ip);
+  if (country !== null && !ADMIN_ALLOWED_COUNTRIES.includes(country)) {
+    try {
+      await db.insert(securityEventsTable).values({
+        eventType: "IP_BLOCKED",
+        userId: null,
+        ipAddress: ip,
+        userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+        details: `Admin geo-blocked \u2014 country: ${country}`,
+        riskLevel: "high"
+      });
+    } catch {
+    }
+    res.status(403).json({
+      error: "Acc\xE8s refus\xE9. Le panel admin n'est pas accessible depuis votre r\xE9gion."
+    });
+    return;
+  }
+  next();
+}
 var helmetMiddleware = helmet({
   contentSecurityPolicy: {
     directives: {
@@ -264269,6 +264359,11 @@ var globalRateLimiter = makeRateLimiter(
   6e4,
   300,
   "Trop de requ\xEAtes. R\xE9essayez dans 1 minute."
+);
+var adminRateLimiter = makeRateLimiter(
+  6e4,
+  60,
+  "Trop de requ\xEAtes vers le panel admin. R\xE9essayez dans 1 minute."
 );
 
 // src/routes/auth.ts
@@ -279415,6 +279510,7 @@ app.get("/health", (_req, res) => {
 });
 app.use(ipBlockMiddleware);
 app.use(globalRateLimiter);
+app.use("/api/admin", adminRateLimiter, adminGeoMiddleware);
 app.use(subdomainMiddleware);
 app.use("/api", routes_default);
 app.use("/api", (_req, res) => {

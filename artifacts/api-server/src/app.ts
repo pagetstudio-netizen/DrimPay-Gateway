@@ -13,6 +13,8 @@ import {
   helmetMiddleware,
   globalRateLimiter,
   ipBlockMiddleware,
+  adminGeoMiddleware,
+  adminRateLimiter,
 } from "./middlewares/security";
 import { subdomainMiddleware } from "./middlewares/subdomain";
 
@@ -126,6 +128,11 @@ app.get("/health", (_req, res) => {
 // ── Security middleware (IP block + global rate limit) ─────────────────────────
 app.use(ipBlockMiddleware);
 app.use(globalRateLimiter);
+
+// ── Admin panel: rate limit + geo-restriction (Togo only by default) ──────────
+// ADMIN_ALLOWED_COUNTRIES: comma-separated country codes (default: "TG")
+// ADMIN_ALLOWED_IPS: comma-separated IP whitelist bypass
+app.use("/api/admin", adminRateLimiter, adminGeoMiddleware);
 
 // ── Subdomain routing (dashboard.drimpay.com → /dashboard, etc.) ─────────────
 app.use(subdomainMiddleware);

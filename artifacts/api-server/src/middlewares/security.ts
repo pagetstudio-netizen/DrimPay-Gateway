@@ -3,7 +3,136 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
 import { securityEventsTable, blockedIpsTable } from "@workspace/db/schema";
-import { eq, and, gt, or, isNull } from "drizzle-orm";
+import { eq, and, gt, or } from "drizzle-orm";
+
+// ── Geo-IP cache (in-memory, 24h TTL) ────────────────────────────────────────
+const geoCache = new Map<string, { country: string; cachedAt: number }>();
+const GEO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+// Countries allowed to access the admin panel (comma-separated env var)
+// Default: Togo only
+const ADMIN_ALLOWED_COUNTRIES = (process.env["ADMIN_ALLOWED_COUNTRIES"] ?? "TG")
+  .split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+
+// IPs that always bypass geo check (comma-separated env var)
+const getAdminAllowedIps = () =>
+  (process.env["ADMIN_ALLOWED_IPS"] ?? "")
+    .split(",").map((ip) => ip.trim()).filter(Boolean);
+
+// IPs/CIDR prefixes considered "local" — always trusted
+function isLocalIp(ip: string): boolean {
+  return (
+    ip === "::1" ||
+    ip === "unknown" ||
+    ip.startsWith("127.") ||
+    ip.startsWith("10.") ||
+    ip.startsWith("172.16.") ||
+    ip.startsWith("192.168.") ||
+    ip.startsWith("::ffff:127.") ||
+    ip.startsWith("::ffff:10.")
+  );
+}
+
+async function resolveCountry(ip: string): Promise<string | null> {
+  const cached = geoCache.get(ip);
+  if (cached && Date.now() - cached.cachedAt < GEO_CACHE_TTL_MS) {
+    return cached.country;
+  }
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4_000);
+    const resp = await fetch(
+      `http://ip-api.com/json/${ip}?fields=status,countryCode`,
+      { signal: ctrl.signal }
+    );
+    clearTimeout(timer);
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { status?: string; countryCode?: string };
+    if (data.status !== "success" || !data.countryCode) return null;
+    geoCache.set(ip, { country: data.countryCode, cachedAt: Date.now() });
+    return data.countryCode;
+  } catch {
+    return null; // fail-open on timeout/network error
+  }
+}
+
+// ── Bot / scanner UA patterns to block on admin routes ────────────────────────
+const BOT_UA_PATTERNS = [
+  "supabase",
+  "supabase-js",
+  "deno/",
+  "python-requests",
+  "python-urllib",
+  "go-http-client",
+  "curl/",
+  "wget/",
+  "scrapy",
+  "masscan",
+  "zgrab",
+  "nuclei",
+  "nmap",
+  "nikto",
+  "sqlmap",
+  "dirbuster",
+  "gobuster",
+  "hydra",
+  "openssl s_client",
+];
+
+// ── Admin geo-restriction + bot blocker ───────────────────────────────────────
+export async function adminGeoMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const ip = getClientIp(req);
+  const ua = (req.headers["user-agent"] ?? "").toLowerCase();
+
+  // 1. Block bot user-agents immediately
+  if (BOT_UA_PATTERNS.some((p) => ua.includes(p))) {
+    try {
+      await db.insert(securityEventsTable).values({
+        eventType: "SUSPICIOUS_ACTIVITY",
+        userId: null,
+        ipAddress: ip,
+        userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+        details: `Admin bot blocked — UA: ${ua.substring(0, 120)}`,
+        riskLevel: "high",
+      });
+    } catch {}
+    res.status(403).json({ error: "Accès refusé." });
+    return;
+  }
+
+  // 2. Local IPs always trusted (dev, Plesk loopback)
+  if (isLocalIp(ip)) return next();
+
+  // 3. Explicit IP whitelist
+  if (getAdminAllowedIps().includes(ip)) return next();
+
+  // 4. Geo lookup
+  const country = await resolveCountry(ip);
+
+  if (country !== null && !ADMIN_ALLOWED_COUNTRIES.includes(country)) {
+    try {
+      await db.insert(securityEventsTable).values({
+        eventType: "IP_BLOCKED",
+        userId: null,
+        ipAddress: ip,
+        userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+        details: `Admin geo-blocked — country: ${country}`,
+        riskLevel: "high",
+      });
+    } catch {}
+    res.status(403).json({
+      error: "Accès refusé. Le panel admin n'est pas accessible depuis votre région.",
+    });
+    return;
+  }
+
+  // If geo lookup failed (null) → fail-open to avoid false positives
+  next();
+}
 
 // ── Helmet security headers ───────────────────────────────────────────────────
 
@@ -165,4 +294,9 @@ export const webhookRateLimiter = makeRateLimiter(
 export const globalRateLimiter = makeRateLimiter(
   60_000, 300,
   "Trop de requêtes. Réessayez dans 1 minute."
+);
+
+export const adminRateLimiter = makeRateLimiter(
+  60_000, 60,
+  "Trop de requêtes vers le panel admin. Réessayez dans 1 minute."
 );
