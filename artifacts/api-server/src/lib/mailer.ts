@@ -1,14 +1,16 @@
 import { Resend } from "resend";
 import { pool } from "@workspace/db";
 
-function buildFromEmail(): string {
-  const raw = process.env["RESEND_FROM_EMAIL"];
-  if (!raw) return "DrimPay <support@drimpay.com>";
-  if (raw.includes("<")) return raw;
-  return `DrimPay <${raw}>`;
+function extractEmail(raw: string | undefined, fallback: string): string {
+  if (!raw?.trim()) return `DrimPay <${fallback}>`;
+  const bracketed = raw.match(/<([^>]+)>/);
+  if (bracketed) return `DrimPay <${bracketed[1].trim()}>`;
+  const plain = raw.match(/^[^\s<>]+@[^\s<>]+$/);
+  if (plain) return `DrimPay <${raw.trim()}>`;
+  return `DrimPay <${fallback}>`;
 }
-const FROM_EMAIL = buildFromEmail();
-const SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "DrimPay <support@drimpay.com>";
+const FROM_EMAIL    = extractEmail(process.env["RESEND_FROM_EMAIL"],    "support@drimpay.com");
+const SUPPORT_EMAIL = extractEmail(process.env["RESEND_SUPPORT_EMAIL"], "support@drimpay.com");
 
 function getResend(): Resend | null {
   const key = process.env["RESEND_API_KEY"];

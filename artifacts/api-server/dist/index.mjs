@@ -69628,11 +69628,13 @@ __export(mailer_exports, {
   sendSupportReplyEmail: () => sendSupportReplyEmail,
   sendWelcomeEmail: () => sendWelcomeEmail
 });
-function buildFromEmail() {
-  const raw = process.env["RESEND_FROM_EMAIL"];
-  if (!raw) return "DrimPay <support@drimpay.com>";
-  if (raw.includes("<")) return raw;
-  return `DrimPay <${raw}>`;
+function extractEmail(raw, fallback) {
+  if (!raw?.trim()) return `DrimPay <${fallback}>`;
+  const bracketed = raw.match(/<([^>]+)>/);
+  if (bracketed) return `DrimPay <${bracketed[1].trim()}>`;
+  const plain = raw.match(/^[^\s<>]+@[^\s<>]+$/);
+  if (plain) return `DrimPay <${raw.trim()}>`;
+  return `DrimPay <${fallback}>`;
 }
 function getResend() {
   const key = process.env["RESEND_API_KEY"];
@@ -70410,8 +70412,8 @@ var init_mailer = __esm({
     "use strict";
     init_dist();
     init_src();
-    FROM_EMAIL = buildFromEmail();
-    SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "DrimPay <support@drimpay.com>";
+    FROM_EMAIL = extractEmail(process.env["RESEND_FROM_EMAIL"], "support@drimpay.com");
+    SUPPORT_EMAIL = extractEmail(process.env["RESEND_SUPPORT_EMAIL"], "support@drimpay.com");
     BREVO_FROM_EMAIL = process.env["BREVO_FROM_EMAIL"] ?? "support@drimpay.com";
     BREVO_FROM_NAME = "DrimPay";
   }
