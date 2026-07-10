@@ -160,8 +160,8 @@ export default function DashboardOverview() {
   const stats = [
     {
       label: "Total Reçu",
-      value: fmt(totalPayin),
-      sub: fmtFull(totalPayin) + " XOF",
+      value: fmtFull(totalPayin),
+      sub: "Pay-in",
       imgSrc: "/stat-payin.png",
       color: "bg-emerald-500",
       trend: "up" as const,
@@ -169,8 +169,8 @@ export default function DashboardOverview() {
     },
     {
       label: "Total Envoyé",
-      value: fmt(totalPayout),
-      sub: fmtFull(totalPayout) + " XOF",
+      value: fmtFull(totalPayout),
+      sub: "Pay-out",
       imgSrc: "/stat-payout.png",
       color: "bg-blue-500",
       trend: "neutral" as const,
@@ -178,7 +178,7 @@ export default function DashboardOverview() {
     },
     {
       label: "Frais Totaux",
-      value: fmt(totalFees),
+      value: fmtFull(totalFees),
       sub: "Commission plateforme",
       imgSrc: "/stat-fees.png",
       color: "bg-violet-500",

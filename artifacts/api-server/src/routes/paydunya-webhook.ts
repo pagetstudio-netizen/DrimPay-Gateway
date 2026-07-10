@@ -12,7 +12,7 @@ import { transactionsTable, walletsTable, usersTable, reversementsTable } from "
 import { eq, sql, and } from "drizzle-orm";
 import crypto from "crypto";
 import { getPayDunyaClient, isPayDunyaConfigured, type PayDunyaWebhookPayload } from "../lib/paydunya";
-import { notifyPayinConfirmed } from "../lib/telegram";
+import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
 
 const router = Router();
@@ -147,6 +147,14 @@ router.post("/webhooks/paydunya", async (req: any, res: any) => {
       });
       if (refunded) {
         console.log(`[PayDunya Webhook] Payout échoué — wallet ${tx.walletId} remboursé de ${totalDebit} ${tx.currency}`);
+        try {
+          const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, tx.userId));
+          notifyTransactionFailure({
+            type: "payout", company: merchant?.companyName ?? "?",
+            amount: parseFloat(tx.amount), currency: tx.currency, operator: tx.operator, phone: tx.phone, country: tx.countryCode,
+            reference: tx.reference, gateway: "paydunya", reason: event.failure_reason ?? "Rejeté par le fournisseur", mode: tx.mode,
+          }).catch(() => {});
+        } catch {}
       } else {
         console.log(`[PayDunya Webhook] Payout ${tx.reference} déjà réglé — remboursement ignoré (idempotence)`);
       }

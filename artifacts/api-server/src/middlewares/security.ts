@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
-import { securityEventsTable, blockedIpsTable } from "@workspace/db/schema";
+import { securityEventsTable, blockedIpsTable, usersTable } from "@workspace/db/schema";
 import { eq, and, gt, or } from "drizzle-orm";
 
 // ── Geo-IP cache (in-memory, 24h TTL) ────────────────────────────────────────
@@ -364,3 +364,59 @@ export const adminRateLimiter = makeRateLimiter(
   60_000, 60,
   "Trop de requêtes vers le panel admin. Réessayez dans 1 minute."
 );
+
+// Envoi d'emails (resend verification, forgot password, verify email/code) :
+// protège contre le clic répété sur "Envoyer" / "Renvoyer".
+export const emailSendRateLimiter = makeRateLimiter(
+  60_000, 3,
+  "Trop de tentatives. Réessayez dans 1 minute."
+);
+
+// ── Blocage retrait (payout/reversement) par compte après échecs répétés ──────
+
+export const WITHDRAWAL_LOCK_THRESHOLD = 4;
+export const WITHDRAWAL_LOCK_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+
+export async function getWithdrawalLockStatus(userId: number): Promise<{ locked: boolean; lockedUntil?: Date; retryAfterSeconds?: number }> {
+  const [user] = await db
+    .select({ withdrawalLockedUntil: usersTable.withdrawalLockedUntil })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  if (user?.withdrawalLockedUntil && new Date(user.withdrawalLockedUntil) > new Date()) {
+    const lockedUntil = new Date(user.withdrawalLockedUntil);
+    return { locked: true, lockedUntil, retryAfterSeconds: Math.ceil((lockedUntil.getTime() - Date.now()) / 1000) };
+  }
+  return { locked: false };
+}
+
+export async function recordWithdrawalFailure(userId: number, req: Request): Promise<{ locked: boolean; lockedUntil?: Date; attemptsRemaining?: number }> {
+  const [user] = await db
+    .select({ withdrawalFailedAttempts: usersTable.withdrawalFailedAttempts })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  const nextCount = (user?.withdrawalFailedAttempts ?? 0) + 1;
+
+  if (nextCount >= WITHDRAWAL_LOCK_THRESHOLD) {
+    const lockedUntil = new Date(Date.now() + WITHDRAWAL_LOCK_DURATION_MS);
+    await db.update(usersTable)
+      .set({ withdrawalFailedAttempts: 0, withdrawalLockedUntil: lockedUntil })
+      .where(eq(usersTable.id, userId));
+    logSecurityEvent({
+      eventType: "SUSPICIOUS_ACTIVITY", req, userId,
+      details: `Compte bloqué pour les retraits 30 minutes après ${WITHDRAWAL_LOCK_THRESHOLD} échecs consécutifs.`,
+      riskLevel: "high",
+    }).catch(() => {});
+    return { locked: true, lockedUntil };
+  }
+
+  await db.update(usersTable)
+    .set({ withdrawalFailedAttempts: nextCount })
+    .where(eq(usersTable.id, userId));
+  return { locked: false, attemptsRemaining: WITHDRAWAL_LOCK_THRESHOLD - nextCount };
+}
+
+export async function clearWithdrawalFailures(userId: number) {
+  await db.update(usersTable)
+    .set({ withdrawalFailedAttempts: 0, withdrawalLockedUntil: null })
+    .where(eq(usersTable.id, userId));
+}

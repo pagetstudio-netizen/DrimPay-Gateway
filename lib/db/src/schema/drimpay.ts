@@ -29,6 +29,10 @@ export const usersTable = pgTable("users", {
   payinFeePercent: numeric("payin_fee_percent", { precision: 5, scale: 2 }),
   payoutFeePercent: numeric("payout_fee_percent", { precision: 5, scale: 2 }),
   emailVerified: boolean("email_verified").notNull().default(false),
+  failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+  accountLockedUntil: timestamp("account_locked_until"),
+  withdrawalFailedAttempts: integer("withdrawal_failed_attempts").notNull().default(0),
+  withdrawalLockedUntil: timestamp("withdrawal_locked_until"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

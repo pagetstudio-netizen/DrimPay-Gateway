@@ -285,6 +285,35 @@ ${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
   );
 }
 
+export async function notifyTransactionFailure(opts: {
+  type: "payin" | "payout";
+  company: string;
+  amount: number;
+  currency: string;
+  operator: string;
+  phone: string;
+  country: string;
+  reference: string;
+  gateway: string;
+  reason: string;
+  mode: string;
+}) {
+  const label = opts.type === "payin" ? "Paiement" : "Retrait";
+  await send(
+`❌ <b>Échec ${label}</b>
+
+🏢 ${opts.company}
+💵 Montant: <b>${money(opts.amount, opts.currency)}</b>
+📱 ${opts.operator} → ${opts.phone}
+🌍 ${opts.country}
+🔖 <code>${opts.reference}</code>
+🔗 Gateway: ${opts.gateway}
+📝 Raison réelle: ${opts.reason}
+${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
+📅 ${dt()}`
+  );
+}
+
 export async function notifyBlacklist(action: "added" | "removed", phone: string, reason?: string, adminEmail?: string) {
   const icon = action === "added" ? "🚫" : "✅";
   const label = action === "added" ? "Numéro Bloqué" : "Numéro Débloqué";

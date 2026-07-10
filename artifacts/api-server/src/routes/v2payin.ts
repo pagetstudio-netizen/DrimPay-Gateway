@@ -14,8 +14,9 @@ import bcrypt from "bcryptjs";
 import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
-import { notifyPayin, notifyAttemptSpam } from "../lib/telegram";
+import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure } from "../lib/telegram";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
+import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 
 const router = Router();
 
@@ -435,8 +436,8 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         res.status(502).json({
           error: "PAYMENT_REJECTED",
-          message: verifiedFailureReason ?? "Paiement rejeté par le fournisseur",
-          reference, status: verifiedStatus, gateway: aggregator,
+          message: GENERIC_ERROR_MESSAGE,
+          reference, status: verifiedStatus,
         });
         return;
       }
@@ -457,20 +458,25 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       return;
 
     } catch (err: any) {
-      let message: string;
+      const realReason = err?.message ?? String(err);
+      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
       if (err instanceof AggregatorNotConfiguredError) {
-        message = err.message;
-        res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message, reference });
-      } else if (err instanceof ClapayError || err instanceof PayDunyaError) {
-        message = err.message;
-        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+        res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message: GENERIC_ERROR_MESSAGE, reference });
       } else {
-        message = err?.message ?? String(err);
-        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+        res.status(502).json({ error: "GATEWAY_ERROR", message: GENERIC_ERROR_MESSAGE, reference });
       }
       await db.update(transactionsTable)
-        .set({ status: "failed", failureReason: message, updatedAt: new Date() })
+        .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
         .where(eq(transactionsTable.id, tx.id));
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payin",
+          company: merchant?.companyName ?? "?",
+          amount, currency, operator, phone, country: country_code,
+          reference, gateway: gatewayName, reason: realReason, mode,
+        }).catch(() => {});
+      } catch {}
       return;
     }
   }

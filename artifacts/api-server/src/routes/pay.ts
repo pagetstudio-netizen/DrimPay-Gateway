@@ -25,8 +25,9 @@ import crypto from "crypto";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
-import { notifyPayinConfirmed } from "../lib/telegram";
+import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
+import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 
 const router = Router();
@@ -448,8 +449,8 @@ router.post("/pay/:token", async (req: any, res: any) => {
 
     if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
       res.status(502).json({
-        error: verifiedFailureReason ?? "Paiement rejeté par le fournisseur",
-        reference, status: verifiedStatus, gateway: aggregator,
+        error: GENERIC_ERROR_MESSAGE,
+        reference, status: verifiedStatus,
       });
       return;
     }
@@ -471,20 +472,22 @@ router.post("/pay/:token", async (req: any, res: any) => {
     });
 
   } catch (err: any) {
-    let message: string;
-    if (err instanceof AggregatorNotConfiguredError) {
-      message = err.message;
-      res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message });
-    } else if (err instanceof ClapayError || err instanceof PayDunyaError) {
-      message = err.message;
-      res.status(502).json({ error: "GATEWAY_ERROR", message });
-    } else {
-      message = err?.message ?? String(err);
-      res.status(502).json({ error: "GATEWAY_ERROR", message });
-    }
+    const realReason = err?.message ?? String(err);
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+    res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference });
     await db.update(transactionsTable)
-      .set({ status: "failed", failureReason: message, updatedAt: new Date() })
+      .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
       .where(eq(transactionsTable.id, tx.id));
+    try {
+      const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, tx.userId));
+      notifyTransactionFailure({
+        type: "payin",
+        company: merchant?.companyName ?? "?",
+        amount: parseFloat(tx.amount), currency: tx.currency,
+        operator: tx.operator, phone: tx.phone, country: tx.countryCode,
+        reference: tx.reference, gateway: gatewayName, reason: realReason, mode: tx.mode,
+      }).catch(() => {});
+    } catch {}
   }
 });
 

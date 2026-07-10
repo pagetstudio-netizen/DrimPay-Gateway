@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { payoutRateLimiter, apiKeyRateLimiter } from "../middlewares/security";
+import { payoutRateLimiter, apiKeyRateLimiter, getWithdrawalLockStatus, recordWithdrawalFailure, clearWithdrawalFailures } from "../middlewares/security";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import {
@@ -27,7 +27,8 @@ import { eq, and, desc, sum, count, sql, gte, asc } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam } from "../lib/telegram";
+import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure } from "../lib/telegram";
+import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
@@ -557,8 +558,8 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
 
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         res.status(502).json({
-          error: verifiedFailureReason ?? "Paiement rejeté par le fournisseur",
-          reference, status: verifiedStatus, gateway: aggregator,
+          error: GENERIC_ERROR_MESSAGE,
+          reference, status: verifiedStatus,
         });
         return;
       }
@@ -574,12 +575,23 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
           : "Prompt envoyé au téléphone du client — statut final via webhook.",
       });
     } catch (err: any) {
-      const msg = err?.message ?? String(err);
+      const realReason = err?.message ?? String(err);
+      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
       await db.update(transactionsTable)
-        .set({ status: "failed", failureReason: msg, updatedAt: new Date() })
+        .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
         .where(eq(transactionsTable.id, tx.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: msg, reference });
+      res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payin",
+          company: merchant?.companyName ?? "?",
+          amount: parseFloat(tx.amount), currency: tx.currency,
+          operator: tx.operator, phone: tx.phone, country: tx.countryCode,
+          reference: tx.reference, gateway: gatewayName, reason: realReason, mode: tx.mode,
+        }).catch(() => {});
+      } catch {}
     }
     return;
   }
@@ -620,6 +632,16 @@ const payoutSchema = z.object({
 });
 
 router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
+  const withdrawalLock = await getWithdrawalLockStatus(req.session.userId!);
+  if (withdrawalLock.locked) {
+    res.status(423).json({
+      error: `Trop de tentatives de retrait échouées. Réessayez dans 30 minutes.`,
+      lockedUntil: withdrawalLock.lockedUntil,
+      retryAfterSeconds: withdrawalLock.retryAfterSeconds,
+    });
+    return;
+  }
+
   // Check if payouts are globally disabled by admin
   try {
     const [payoutSetting] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "payouts_enabled")).limit(1);
@@ -696,12 +718,21 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
       await db.update(walletsTable)
         .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
         .where(eq(walletsTable.id, wallet.id));
-      const msg = err?.message ?? String(err);
+      const realReason = err?.message ?? String(err);
       await db.update(transactionsTable)
-        .set({ status: "failed", failureReason: msg, updatedAt: new Date() })
+        .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
         .where(eq(transactionsTable.id, tx.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: msg, reference });
+      await recordWithdrawalFailure(userId, req);
+      res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payout", company: merchant?.companyName ?? "?",
+          amount, currency, operator, phone, country: countryCode,
+          reference, gateway: "?", reason: realReason, mode: currentMode,
+        }).catch(() => {});
+      } catch {}
       return;
     }
 
@@ -729,19 +760,30 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         gatewayRef = r.paydunya_reference;
       }
     } catch (err: any) {
-      // Rollback balance on failure — on remonte le message d'erreur EXACT du fournisseur.
+      // Rollback balance on failure — la vraie raison fournisseur va en DB + Telegram admin uniquement.
       await db.update(walletsTable)
         .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
         .where(eq(walletsTable.id, wallet.id));
-      const msg = err?.message ?? String(err);
-      console.error(`[Payout] ✗ Initiation ${aggregator} échouée pour ${reference}: ${msg}`, err?.raw ?? "");
+      const realReason = err?.message ?? String(err);
+      console.error(`[Payout] ✗ Initiation ${aggregator} échouée pour ${reference}: ${realReason}`, err?.raw ?? "");
       await db.update(transactionsTable)
-        .set({ status: "failed", failureReason: msg, updatedAt: new Date() })
+        .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
         .where(eq(transactionsTable.id, tx.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: msg, reference, gateway: aggregator });
+      await recordWithdrawalFailure(userId, req);
+      res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payout", company: merchant?.companyName ?? "?",
+          amount, currency, operator, phone, country: countryCode,
+          reference, gateway: aggregator, reason: realReason, mode: currentMode,
+        }).catch(() => {});
+      } catch {}
       return;
     }
+
+    await clearWithdrawalFailures(userId);
 
     // ── Répondre immédiatement une fois le payout accepté par le fournisseur ──
     // On NE bloque PAS la réponse HTTP sur les ~30s de polling : un proxy inverse
@@ -802,6 +844,14 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
           } else {
             console.log(`[Payout][BG] ${reference} déjà réglé — remboursement ignoré (idempotence)`);
           }
+          try {
+            const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+            notifyTransactionFailure({
+              type: "payout", company: merchant?.companyName ?? "?",
+              amount, currency, operator, phone, country: countryCode,
+              reference, gateway: aggregator, reason: statusCheck.failureReason ?? "Rejeté par le fournisseur", mode: currentMode,
+            }).catch(() => {});
+          } catch {}
         } else if (statusCheck.status === "success") {
           await db.update(transactionsTable)
             .set({ status: "success", externalRef: gatewayRef, updatedAt: new Date() })
@@ -842,6 +892,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
     .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
     .where(eq(walletsTable.id, wallet.id));
 
+  await clearWithdrawalFailures(userId);
   createNotification(
     userId, "success", "transaction",
     `Pay-out effectué — ${amount.toLocaleString("fr-FR")} ${currency}`,
@@ -1352,6 +1403,16 @@ router.get("/dashboard/reversements", requireAuth, async (req, res) => {
 });
 
 router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (req, res) => {
+  const withdrawalLock = await getWithdrawalLockStatus(req.session.userId!);
+  if (withdrawalLock.locked) {
+    res.status(423).json({
+      error: `Trop de tentatives de retrait échouées. Réessayez dans 30 minutes.`,
+      lockedUntil: withdrawalLock.lockedUntil,
+      retryAfterSeconds: withdrawalLock.retryAfterSeconds,
+    });
+    return;
+  }
+
   const parsed = reversementSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
@@ -1402,7 +1463,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
     resolvedAggregator = aggregator;
   } catch (err: any) {
     const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 400;
-    res.status(statusCode).json({ error: err.message ?? "Agrégateur non disponible" });
+    res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE });
     return;
   }
 
@@ -1461,7 +1522,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
       });
       console.info(`[Reversement] ← ${resolvedAggregator} a accepté ${reference} | gatewayRef: ${result.externalRef}`);
     } catch (err: any) {
-      // Remboursement wallet + marquage échec — message d'erreur EXACT du fournisseur.
+      // Remboursement wallet + marquage échec — la vraie raison fournisseur reste en DB + Telegram admin.
       await db.update(walletsTable)
         .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
         .where(eq(walletsTable.id, wallet.id));
@@ -1476,10 +1537,20 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
         .where(eq(reversementsTable.id, reversement.id));
 
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: errMsg, gateway: resolvedAggregator });
+      await recordWithdrawalFailure(userId, req);
+      res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE });
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payout", company: merchant?.companyName ?? "?",
+          amount, currency: countryMeta.currency, operator, phone, country: countryCode,
+          reference, gateway: resolvedAggregator, reason: errMsg, mode: currentMode,
+        }).catch(() => {});
+      } catch {}
       return;
     }
 
+    await clearWithdrawalFailures(userId);
     await db.update(transactionsTable)
       .set({ status: "processing", externalRef: result.externalRef, updatedAt: new Date() })
       .where(eq(transactionsTable.id, tx.id));
@@ -1523,6 +1594,14 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
           } else {
             console.log(`[Reversement][BG] ${reference} déjà réglé — remboursement ignoré (idempotence)`);
           }
+          try {
+            const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+            notifyTransactionFailure({
+              type: "payout", company: merchant?.companyName ?? "?",
+              amount, currency: countryMeta.currency, operator, phone, country: countryCode,
+              reference, gateway: resolvedAggregator, reason: statusCheck.failureReason ?? "Rejeté par le fournisseur", mode: currentMode,
+            }).catch(() => {});
+          } catch {}
         } else if (statusCheck.status === "success") {
           await db.update(transactionsTable)
             .set({ status: "success", updatedAt: new Date() })
@@ -1545,6 +1624,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
     await db.update(reversementsTable)
       .set({ status: "completed" })
       .where(eq(reversementsTable.id, reversement.id));
+    await clearWithdrawalFailures(userId);
   }
 
   createNotification(
@@ -2113,11 +2193,21 @@ router.post("/pay/:token", async (req, res) => {
       message: "Prompt de paiement envoyé. Confirmez sur votre téléphone.",
     });
   } catch (err: any) {
+    const realReason = err?.message ?? "Erreur agrégateur";
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
     await db.update(transactionsTable)
-      .set({ status: "failed", failureReason: err?.message ?? "Erreur agrégateur", updatedAt: new Date() })
+      .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
       .where(eq(transactionsTable.id, tx.id));
     const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-    res.status(statusCode).json({ error: err?.message ?? "Erreur de paiement", reference });
+    res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
+    try {
+      const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, link.userId));
+      notifyTransactionFailure({
+        type: "payin", company: merchant?.companyName ?? "?",
+        amount, currency: effectiveCurrency, operator: effectiveOperator, phone, country: effectiveCountry,
+        reference, gateway: gatewayName, reason: realReason, mode: linkMode,
+      }).catch(() => {});
+    } catch {}
   }
 });
 

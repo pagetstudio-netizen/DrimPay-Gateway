@@ -55833,6 +55833,10 @@ var init_drimpay = __esm({
       payinFeePercent: numeric("payin_fee_percent", { precision: 5, scale: 2 }),
       payoutFeePercent: numeric("payout_fee_percent", { precision: 5, scale: 2 }),
       emailVerified: boolean("email_verified").notNull().default(false),
+      failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+      accountLockedUntil: timestamp("account_locked_until"),
+      withdrawalFailedAttempts: integer("withdrawal_failed_attempts").notNull().default(0),
+      withdrawalLockedUntil: timestamp("withdrawal_locked_until"),
       createdAt: timestamp("created_at").notNull().defaultNow()
     });
     kybSubmissionsTable = pgTable("kyb_submissions", {
@@ -262445,6 +262449,22 @@ ${opts.mode === "live" ? "\u{1F7E2} LIVE" : "\u{1F535} SANDBOX"}
 \u{1F4C5} ${dt()}`
   );
 }
+async function notifyTransactionFailure(opts) {
+  const label = opts.type === "payin" ? "Paiement" : "Retrait";
+  await send(
+    `\u274C <b>\xC9chec ${label}</b>
+
+\u{1F3E2} ${opts.company}
+\u{1F4B5} Montant: <b>${money(opts.amount, opts.currency)}</b>
+\u{1F4F1} ${opts.operator} \u2192 ${opts.phone}
+\u{1F30D} ${opts.country}
+\u{1F516} <code>${opts.reference}</code>
+\u{1F517} Gateway: ${opts.gateway}
+\u{1F4DD} Raison r\xE9elle: ${opts.reason}
+${opts.mode === "live" ? "\u{1F7E2} LIVE" : "\u{1F535} SANDBOX"}
+\u{1F4C5} ${dt()}`
+  );
+}
 async function notifyBlacklist(action, phone, reason, adminEmail) {
   const icon = action === "added" ? "\u{1F6AB}" : "\u2705";
   const label = action === "added" ? "Num\xE9ro Bloqu\xE9" : "Num\xE9ro D\xE9bloqu\xE9";
@@ -266410,9 +266430,49 @@ var adminRateLimiter = makeRateLimiter(
   60,
   "Trop de requ\xEAtes vers le panel admin. R\xE9essayez dans 1 minute."
 );
+var emailSendRateLimiter = makeRateLimiter(
+  6e4,
+  3,
+  "Trop de tentatives. R\xE9essayez dans 1 minute."
+);
+var WITHDRAWAL_LOCK_THRESHOLD = 4;
+var WITHDRAWAL_LOCK_DURATION_MS = 30 * 60 * 1e3;
+async function getWithdrawalLockStatus(userId) {
+  const [user] = await db.select({ withdrawalLockedUntil: usersTable.withdrawalLockedUntil }).from(usersTable).where(eq(usersTable.id, userId));
+  if (user?.withdrawalLockedUntil && new Date(user.withdrawalLockedUntil) > /* @__PURE__ */ new Date()) {
+    const lockedUntil = new Date(user.withdrawalLockedUntil);
+    return { locked: true, lockedUntil, retryAfterSeconds: Math.ceil((lockedUntil.getTime() - Date.now()) / 1e3) };
+  }
+  return { locked: false };
+}
+async function recordWithdrawalFailure(userId, req) {
+  const [user] = await db.select({ withdrawalFailedAttempts: usersTable.withdrawalFailedAttempts }).from(usersTable).where(eq(usersTable.id, userId));
+  const nextCount = (user?.withdrawalFailedAttempts ?? 0) + 1;
+  if (nextCount >= WITHDRAWAL_LOCK_THRESHOLD) {
+    const lockedUntil = new Date(Date.now() + WITHDRAWAL_LOCK_DURATION_MS);
+    await db.update(usersTable).set({ withdrawalFailedAttempts: 0, withdrawalLockedUntil: lockedUntil }).where(eq(usersTable.id, userId));
+    logSecurityEvent({
+      eventType: "SUSPICIOUS_ACTIVITY",
+      req,
+      userId,
+      details: `Compte bloqu\xE9 pour les retraits 30 minutes apr\xE8s ${WITHDRAWAL_LOCK_THRESHOLD} \xE9checs cons\xE9cutifs.`,
+      riskLevel: "high"
+    }).catch(() => {
+    });
+    return { locked: true, lockedUntil };
+  }
+  await db.update(usersTable).set({ withdrawalFailedAttempts: nextCount }).where(eq(usersTable.id, userId));
+  return { locked: false, attemptsRemaining: WITHDRAWAL_LOCK_THRESHOLD - nextCount };
+}
+async function clearWithdrawalFailures(userId) {
+  await db.update(usersTable).set({ withdrawalFailedAttempts: 0, withdrawalLockedUntil: null }).where(eq(usersTable.id, userId));
+}
 
 // src/routes/auth.ts
 var router10 = (0, import_express10.Router)();
+var ACCOUNT_LOCK_THRESHOLD = 5;
+var ACCOUNT_LOCK_DURATION_MS = 30 * 60 * 1e3;
+var KNOWN_DEVICE_TRUST_MS = 3 * 24 * 60 * 60 * 1e3;
 var signupSchema = external_exports2.object({
   email: external_exports2.string().email(),
   password: external_exports2.string().min(8),
@@ -266504,19 +266564,52 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
     res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
+  if (user.accountLockedUntil && user.accountLockedUntil.getTime() > Date.now()) {
+    const remainingMs = user.accountLockedUntil.getTime() - Date.now();
+    await logSecurityEvent({ eventType: "LOGIN_FAILED", req, userId: user.id, details: `Tentative sur compte verrouill\xE9 : ${email3}`, riskLevel: "high" });
+    res.status(423).json({
+      error: "Compte temporairement bloqu\xE9 suite \xE0 trop de tentatives. R\xE9essayez dans 30 minutes.",
+      lockedUntil: user.accountLockedUntil.toISOString(),
+      retryAfterSeconds: Math.ceil(remainingMs / 1e3)
+    });
+    return;
+  }
   const valid = await bcryptjs_default.compare(password, user.passwordHash);
   if (!valid) {
     const isBrute = trackFailedLogin(ip);
-    await logSecurityEvent({ eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED", req, userId: user.id, details: `Mot de passe incorrect pour : ${email3}`, riskLevel: isBrute ? "high" : "medium" });
+    const newAttempts = (user.failedLoginAttempts ?? 0) + 1;
+    const shouldLock = newAttempts >= ACCOUNT_LOCK_THRESHOLD;
+    await db.update(usersTable).set({
+      failedLoginAttempts: shouldLock ? 0 : newAttempts,
+      accountLockedUntil: shouldLock ? new Date(Date.now() + ACCOUNT_LOCK_DURATION_MS) : null
+    }).where(eq(usersTable.id, user.id));
+    await logSecurityEvent({
+      eventType: isBrute || shouldLock ? "BRUTE_FORCE" : "LOGIN_FAILED",
+      req,
+      userId: user.id,
+      details: shouldLock ? `Compte verrouill\xE9 30 min apr\xE8s ${ACCOUNT_LOCK_THRESHOLD} tentatives \xE9chou\xE9es : ${email3}` : `Mot de passe incorrect pour : ${email3} (${newAttempts}/${ACCOUNT_LOCK_THRESHOLD})`,
+      riskLevel: shouldLock ? "high" : isBrute ? "high" : "medium"
+    });
     resolveGeoInfo(ip).then((geo) => {
       notifyLoginAttempt({ type: "failed", email: email3, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {
       });
     }).catch(() => {
     });
-    res.status(401).json({ error: "Email ou mot de passe incorrect." });
+    if (shouldLock) {
+      res.status(423).json({
+        error: "Trop de tentatives incorrectes. Votre compte est bloqu\xE9 pendant 30 minutes.",
+        lockedUntil: new Date(Date.now() + ACCOUNT_LOCK_DURATION_MS).toISOString(),
+        retryAfterSeconds: Math.ceil(ACCOUNT_LOCK_DURATION_MS / 1e3)
+      });
+      return;
+    }
+    res.status(401).json({ error: "Email ou mot de passe incorrect.", attemptsRemaining: ACCOUNT_LOCK_THRESHOLD - newAttempts });
     return;
   }
   clearFailedLogins(ip);
+  if ((user.failedLoginAttempts ?? 0) > 0 || user.accountLockedUntil) {
+    await db.update(usersTable).set({ failedLoginAttempts: 0, accountLockedUntil: null }).where(eq(usersTable.id, user.id));
+  }
   if (user.emailVerified === false) {
     try {
       const { code, token } = await generateVerificationToken(user.id, user.email, "signup");
@@ -266531,11 +266624,12 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   const hash2 = deviceFingerprint(req, user.id);
   let knownDevice = [];
   try {
-    knownDevice = await db.select({ id: knownDevicesTable.id }).from(knownDevicesTable).where(and(eq(knownDevicesTable.userId, user.id), eq(knownDevicesTable.deviceHash, hash2))).limit(1);
+    knownDevice = await db.select({ id: knownDevicesTable.id, lastSeenAt: knownDevicesTable.lastSeenAt }).from(knownDevicesTable).where(and(eq(knownDevicesTable.userId, user.id), eq(knownDevicesTable.deviceHash, hash2))).limit(1);
   } catch {
-    knownDevice = [{ id: 0 }];
+    knownDevice = [{ id: 0, lastSeenAt: /* @__PURE__ */ new Date() }];
   }
-  if (knownDevice.length === 0) {
+  const deviceTrustExpired = knownDevice.length > 0 && Date.now() - knownDevice[0].lastSeenAt.getTime() > KNOWN_DEVICE_TRUST_MS;
+  if (knownDevice.length === 0 || deviceTrustExpired) {
     try {
       const { code, token } = await generateVerificationToken(user.id, user.email, "new_device");
       const activationLink = `${getBaseUrl(req)}/api/auth/activate?token=${token}`;
@@ -266543,7 +266637,13 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
     } catch (e) {
       console.error("[Auth] Failed to send new device email:", e);
     }
-    await logSecurityEvent({ eventType: "LOGIN_NEW_DEVICE", req, userId: user.id, details: `Nouvel appareil d\xE9tect\xE9 : ${email3}`, riskLevel: "medium" });
+    await logSecurityEvent({
+      eventType: "LOGIN_NEW_DEVICE",
+      req,
+      userId: user.id,
+      details: deviceTrustExpired ? `Appareil non revu depuis plus de 3 jours, rev\xE9rification requise : ${email3}` : `Nouvel appareil d\xE9tect\xE9 : ${email3}`,
+      riskLevel: "medium"
+    });
     resolveGeoInfo(ip).then((geo) => {
       notifyLoginAttempt({ type: "new_device", email: email3, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {
       });
@@ -266566,7 +266666,7 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   });
   res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
 });
-router10.post("/auth/verify-email", async (req, res) => {
+router10.post("/auth/verify-email", emailSendRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
   if (!email3 || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -266661,7 +266761,7 @@ router10.get("/auth/activate", async (req, res) => {
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Activation lien email : ${user.email}`, riskLevel: "low" });
   res.redirect(user.role === "admin" ? "/admin" : "/dashboard");
 });
-router10.post("/auth/resend-verification", async (req, res) => {
+router10.post("/auth/resend-verification", emailSendRateLimiter, async (req, res) => {
   const { email: email3 } = req.body;
   if (!email3) {
     res.status(400).json({ error: "Email requis." });
@@ -266689,7 +266789,7 @@ router10.post("/auth/logout", async (req, res) => {
     res.json({ ok: true });
   });
 });
-router10.post("/auth/forgot-password", async (req, res) => {
+router10.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) => {
   const { email: email3 } = req.body;
   if (!email3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3)) {
     res.status(400).json({ error: "Adresse email invalide." });
@@ -266713,7 +266813,7 @@ router10.post("/auth/forgot-password", async (req, res) => {
   }
   res.json({ ok: true, message: "Si ce compte existe, un email a \xE9t\xE9 envoy\xE9." });
 });
-router10.post("/auth/verify-reset-code", async (req, res) => {
+router10.post("/auth/verify-reset-code", emailSendRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
   if (!email3 || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -266758,7 +266858,7 @@ router10.post("/auth/reset-password", async (req, res) => {
   await logSecurityEvent({ eventType: "PASSWORD_RESET", req, userId: record2.userId, riskLevel: "medium" });
   res.json({ ok: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
 });
-router10.post("/auth/forgot-password-support", async (req, res) => {
+router10.post("/auth/forgot-password-support", emailSendRateLimiter, async (req, res) => {
   const { email: email3, message } = req.body;
   if (!email3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3)) {
     res.status(400).json({ error: "Adresse email invalide." });
@@ -266799,6 +266899,11 @@ init_schema2();
 init_drizzle_orm();
 import crypto5 from "crypto";
 var import_multer = __toESM(require_multer(), 1);
+
+// src/lib/merchant-error.ts
+var GENERIC_ERROR_MESSAGE = "Une erreur s'est produite. Veuillez r\xE9essayer plus tard.";
+
+// src/routes/dashboard.ts
 init_mailer();
 
 // src/lib/whatsapp.ts
@@ -275961,6 +276066,27 @@ async function settlePayinStatus(params) {
     return { credited: false };
   }
   if (status !== "success") {
+    if (status === "failed" || status === "cancelled" || status === "expired") {
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, updated.userId));
+        notifyTransactionFailure({
+          type: "payin",
+          company: merchant?.companyName ?? "?",
+          amount: parseFloat(updated.amount),
+          currency: updated.currency,
+          operator: updated.operator,
+          phone: updated.phone,
+          country: updated.countryCode,
+          reference: updated.reference,
+          gateway,
+          reason: failureReason ?? updated.failureReason ?? "Raison inconnue",
+          mode: updated.mode
+        }).catch(() => {
+        });
+      } catch (err) {
+        console.warn(`[Settlement] Notification Telegram (\xE9chec) rat\xE9e: ${err?.message}`);
+      }
+    }
     return { credited: false };
   }
   console.log(
@@ -276395,10 +276521,9 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
       });
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         res.status(502).json({
-          error: verifiedFailureReason ?? "Paiement rejet\xE9 par le fournisseur",
+          error: GENERIC_ERROR_MESSAGE,
           reference,
-          status: verifiedStatus,
-          gateway: aggregator
+          status: verifiedStatus
         });
         return;
       }
@@ -276414,10 +276539,29 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
         message: verifiedStatus === "success" ? "Paiement confirm\xE9 par le fournisseur. Le wallet a \xE9t\xE9 cr\xE9dit\xE9." : "Prompt envoy\xE9 au t\xE9l\xE9phone du client \u2014 statut final via webhook."
       });
     } catch (err) {
-      const msg = err?.message ?? String(err);
-      await db.update(transactionsTable).set({ status: "failed", failureReason: msg, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
+      const realReason = err?.message ?? String(err);
+      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+      await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: msg, reference });
+      res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payin",
+          company: merchant?.companyName ?? "?",
+          amount: parseFloat(tx2.amount),
+          currency: tx2.currency,
+          operator: tx2.operator,
+          phone: tx2.phone,
+          country: tx2.countryCode,
+          reference: tx2.reference,
+          gateway: gatewayName,
+          reason: realReason,
+          mode: tx2.mode
+        }).catch(() => {
+        });
+      } catch {
+      }
     }
     return;
   }
@@ -276461,6 +276605,15 @@ var payoutSchema = external_exports2.object({
   externalRef: external_exports2.string().optional()
 });
 router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
+  const withdrawalLock = await getWithdrawalLockStatus(req.session.userId);
+  if (withdrawalLock.locked) {
+    res.status(423).json({
+      error: `Trop de tentatives de retrait \xE9chou\xE9es. R\xE9essayez dans 30 minutes.`,
+      lockedUntil: withdrawalLock.lockedUntil,
+      retryAfterSeconds: withdrawalLock.retryAfterSeconds
+    });
+    return;
+  }
   try {
     const [payoutSetting] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "payouts_enabled")).limit(1);
     if (payoutSetting?.value === "false") {
@@ -276522,10 +276675,29 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       ({ aggregator, client } = await resolveAggregator(countryCode, operator, "payout"));
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
-      const msg = err?.message ?? String(err);
-      await db.update(transactionsTable).set({ status: "failed", failureReason: msg, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
+      const realReason = err?.message ?? String(err);
+      await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: msg, reference });
+      await recordWithdrawalFailure(userId, req);
+      res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payout",
+          company: merchant?.companyName ?? "?",
+          amount,
+          currency,
+          operator,
+          phone,
+          country: countryCode,
+          reference,
+          gateway: "?",
+          reason: realReason,
+          mode: currentMode
+        }).catch(() => {
+        });
+      } catch {
+      }
       return;
     }
     const baseUrl2 = getWebhookBaseUrl();
@@ -276564,13 +276736,33 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       }
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
-      const msg = err?.message ?? String(err);
-      console.error(`[Payout] \u2717 Initiation ${aggregator} \xE9chou\xE9e pour ${reference}: ${msg}`, err?.raw ?? "");
-      await db.update(transactionsTable).set({ status: "failed", failureReason: msg, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
+      const realReason = err?.message ?? String(err);
+      console.error(`[Payout] \u2717 Initiation ${aggregator} \xE9chou\xE9e pour ${reference}: ${realReason}`, err?.raw ?? "");
+      await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: msg, reference, gateway: aggregator });
+      await recordWithdrawalFailure(userId, req);
+      res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payout",
+          company: merchant?.companyName ?? "?",
+          amount,
+          currency,
+          operator,
+          phone,
+          country: countryCode,
+          reference,
+          gateway: aggregator,
+          reason: realReason,
+          mode: currentMode
+        }).catch(() => {
+        });
+      } catch {
+      }
       return;
     }
+    await clearWithdrawalFailures(userId);
     await db.update(transactionsTable).set({ status: "processing", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
     createNotification(
       userId,
@@ -276615,6 +276807,24 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
           } else {
             console.log(`[Payout][BG] ${reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
           }
+          try {
+            const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+            notifyTransactionFailure({
+              type: "payout",
+              company: merchant?.companyName ?? "?",
+              amount,
+              currency,
+              operator,
+              phone,
+              country: countryCode,
+              reference,
+              gateway: aggregator,
+              reason: statusCheck.failureReason ?? "Rejet\xE9 par le fournisseur",
+              mode: currentMode
+            }).catch(() => {
+            });
+          } catch {
+          }
         } else if (statusCheck.status === "success") {
           await db.update(transactionsTable).set({ status: "success", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
         }
@@ -276642,6 +276852,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     mode: currentMode
   }).returning();
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
+  await clearWithdrawalFailures(userId);
   createNotification(
     userId,
     "success",
@@ -277071,6 +277282,15 @@ router11.get("/dashboard/reversements", requireAuth, async (req, res) => {
   res.json(rows);
 });
 router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (req, res) => {
+  const withdrawalLock = await getWithdrawalLockStatus(req.session.userId);
+  if (withdrawalLock.locked) {
+    res.status(423).json({
+      error: `Trop de tentatives de retrait \xE9chou\xE9es. R\xE9essayez dans 30 minutes.`,
+      lockedUntil: withdrawalLock.lockedUntil,
+      retryAfterSeconds: withdrawalLock.retryAfterSeconds
+    });
+    return;
+  }
   const parsed = reversementSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
@@ -277109,7 +277329,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     resolvedAggregator = aggregator;
   } catch (err) {
     const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 400;
-    res.status(statusCode).json({ error: err.message ?? "Agr\xE9gateur non disponible" });
+    res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE });
     return;
   }
   const reference = `REV-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
@@ -277169,9 +277389,29 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
       await db.update(transactionsTable).set({ status: "failed", failureReason: errMsg, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
       await db.update(reversementsTable).set({ status: "failed", failureReason: errMsg }).where(eq(reversementsTable.id, reversement.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: errMsg, gateway: resolvedAggregator });
+      await recordWithdrawalFailure(userId, req);
+      res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE });
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payout",
+          company: merchant?.companyName ?? "?",
+          amount,
+          currency: countryMeta.currency,
+          operator,
+          phone,
+          country: countryCode,
+          reference,
+          gateway: resolvedAggregator,
+          reason: errMsg,
+          mode: currentMode
+        }).catch(() => {
+        });
+      } catch {
+      }
       return;
     }
+    await clearWithdrawalFailures(userId);
     await db.update(transactionsTable).set({ status: "processing", externalRef: result.externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     (async () => {
       try {
@@ -277199,6 +277439,24 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
           } else {
             console.log(`[Reversement][BG] ${reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
           }
+          try {
+            const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+            notifyTransactionFailure({
+              type: "payout",
+              company: merchant?.companyName ?? "?",
+              amount,
+              currency: countryMeta.currency,
+              operator,
+              phone,
+              country: countryCode,
+              reference,
+              gateway: resolvedAggregator,
+              reason: statusCheck.failureReason ?? "Rejet\xE9 par le fournisseur",
+              mode: currentMode
+            }).catch(() => {
+            });
+          } catch {
+          }
         } else if (statusCheck.status === "success") {
           await db.update(transactionsTable).set({ status: "success", updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
           await db.update(reversementsTable).set({ status: "completed" }).where(eq(reversementsTable.id, reversement.id));
@@ -277211,6 +277469,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     console.info(`[Reversement][SANDBOX] Simulation via ${resolvedAggregator} (${operator} / ${countryCode})`);
     await db.update(transactionsTable).set({ status: "success", updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     await db.update(reversementsTable).set({ status: "completed" }).where(eq(reversementsTable.id, reversement.id));
+    await clearWithdrawalFailures(userId);
   }
   createNotification(
     userId,
@@ -277729,9 +277988,29 @@ router11.post("/pay/:token", async (req, res) => {
       message: "Prompt de paiement envoy\xE9. Confirmez sur votre t\xE9l\xE9phone."
     });
   } catch (err) {
-    await db.update(transactionsTable).set({ status: "failed", failureReason: err?.message ?? "Erreur agr\xE9gateur", updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+    const realReason = err?.message ?? "Erreur agr\xE9gateur";
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+    await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-    res.status(statusCode).json({ error: err?.message ?? "Erreur de paiement", reference });
+    res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
+    try {
+      const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, link.userId));
+      notifyTransactionFailure({
+        type: "payin",
+        company: merchant?.companyName ?? "?",
+        amount,
+        currency: effectiveCurrency,
+        operator: effectiveOperator,
+        phone,
+        country: effectiveCountry,
+        reference,
+        gateway: gatewayName,
+        reason: realReason,
+        mode: linkMode
+      }).catch(() => {
+      });
+    } catch {
+    }
   }
 });
 router11.post("/pay/:token/attempt", async (req, res) => {
@@ -278735,10 +279014,9 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         res.status(502).json({
           error: "PAYMENT_REJECTED",
-          message: verifiedFailureReason ?? "Paiement rejet\xE9 par le fournisseur",
+          message: GENERIC_ERROR_MESSAGE,
           reference,
-          status: verifiedStatus,
-          gateway: aggregator
+          status: verifiedStatus
         });
         return;
       }
@@ -278766,18 +279044,32 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       });
       return;
     } catch (err) {
-      let message;
+      const realReason = err?.message ?? String(err);
+      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
       if (err instanceof AggregatorNotConfiguredError) {
-        message = err.message;
-        res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message, reference });
-      } else if (err instanceof ClapayError || err instanceof PayDunyaError) {
-        message = err.message;
-        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+        res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message: GENERIC_ERROR_MESSAGE, reference });
       } else {
-        message = err?.message ?? String(err);
-        res.status(502).json({ error: "GATEWAY_ERROR", message, reference });
+        res.status(502).json({ error: "GATEWAY_ERROR", message: GENERIC_ERROR_MESSAGE, reference });
       }
-      await db.update(transactionsTable).set({ status: "failed", failureReason: message, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+      await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+      try {
+        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+        notifyTransactionFailure({
+          type: "payin",
+          company: merchant?.companyName ?? "?",
+          amount,
+          currency,
+          operator,
+          phone,
+          country: country_code,
+          reference,
+          gateway: gatewayName,
+          reason: realReason,
+          mode
+        }).catch(() => {
+        });
+      } catch {
+      }
       return;
     }
   }
@@ -280907,6 +281199,24 @@ router14.post("/webhooks/clapay", async (req, res) => {
       });
       if (refunded) {
         console.log(`[Clapay Webhook] Payout \xE9chou\xE9 \u2014 wallet ${tx.walletId} rembours\xE9 de ${totalDebit} ${tx.currency}`);
+        try {
+          const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, tx.userId));
+          notifyTransactionFailure({
+            type: "payout",
+            company: merchant?.companyName ?? "?",
+            amount: parseFloat(tx.amount),
+            currency: tx.currency,
+            operator: tx.operator,
+            phone: tx.phone,
+            country: tx.countryCode,
+            reference: tx.reference,
+            gateway: "clapay",
+            reason: event.failure_reason ?? "Rejet\xE9 par le fournisseur",
+            mode: tx.mode
+          }).catch(() => {
+          });
+        } catch {
+        }
       } else {
         console.log(`[Clapay Webhook] Payout ${tx.reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
       }
@@ -281071,6 +281381,24 @@ router15.post("/webhooks/paydunya", async (req, res) => {
       });
       if (refunded) {
         console.log(`[PayDunya Webhook] Payout \xE9chou\xE9 \u2014 wallet ${tx.walletId} rembours\xE9 de ${totalDebit} ${tx.currency}`);
+        try {
+          const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, tx.userId));
+          notifyTransactionFailure({
+            type: "payout",
+            company: merchant?.companyName ?? "?",
+            amount: parseFloat(tx.amount),
+            currency: tx.currency,
+            operator: tx.operator,
+            phone: tx.phone,
+            country: tx.countryCode,
+            reference: tx.reference,
+            gateway: "paydunya",
+            reason: event.failure_reason ?? "Rejet\xE9 par le fournisseur",
+            mode: tx.mode
+          }).catch(() => {
+          });
+        } catch {
+        }
       } else {
         console.log(`[PayDunya Webhook] Payout ${tx.reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
       }
@@ -281736,10 +282064,9 @@ router17.post("/pay/:token", async (req, res) => {
     });
     if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
       res.status(502).json({
-        error: verifiedFailureReason ?? "Paiement rejet\xE9 par le fournisseur",
+        error: GENERIC_ERROR_MESSAGE,
         reference,
-        status: verifiedStatus,
-        gateway: aggregator
+        status: verifiedStatus
       });
       return;
     }
@@ -281758,18 +282085,28 @@ router17.post("/pay/:token", async (req, res) => {
       verified_status: verifiedStatus
     });
   } catch (err) {
-    let message;
-    if (err instanceof AggregatorNotConfiguredError) {
-      message = err.message;
-      res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message });
-    } else if (err instanceof ClapayError || err instanceof PayDunyaError) {
-      message = err.message;
-      res.status(502).json({ error: "GATEWAY_ERROR", message });
-    } else {
-      message = err?.message ?? String(err);
-      res.status(502).json({ error: "GATEWAY_ERROR", message });
+    const realReason = err?.message ?? String(err);
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+    res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference });
+    await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+    try {
+      const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, tx.userId));
+      notifyTransactionFailure({
+        type: "payin",
+        company: merchant?.companyName ?? "?",
+        amount: parseFloat(tx.amount),
+        currency: tx.currency,
+        operator: tx.operator,
+        phone: tx.phone,
+        country: tx.countryCode,
+        reference: tx.reference,
+        gateway: gatewayName,
+        reason: realReason,
+        mode: tx.mode
+      }).catch(() => {
+      });
+    } catch {
     }
-    await db.update(transactionsTable).set({ status: "failed", failureReason: message, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
   }
 });
 var pay_default = router17;

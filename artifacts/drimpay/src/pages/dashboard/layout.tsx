@@ -13,22 +13,20 @@ import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { GlobalBanner } from "@/components/global-banner";
 
-import walletImg       from "@assets/mine-mod-bankcard-CLOhqwHj_1782036253681.png";
-import transactionsImg from "@assets/mine-mod-records-DgHXSKa1_1782036253767.png";
-import historiqueImg   from "@assets/téléchargement_(72)_1782036253794.png";
-import qrImg           from "@assets/241528_1782036283663.png";
-import transfertsImg   from "@assets/recharge-icon-BZHWSjQZ_1782036357452.png";
-import apiKeysImg      from "@assets/18405142_1782036357506.png";
-import kybImg          from "@assets/bankCard-CnRlNHo8_(1)_1782036357534.png";
-import apiDocImg       from "@assets/1437214_1778601764910.png";
+import walletImg       from "@assets/téléchargement_(80)_1783725551765.png";
+import transactionsImg from "@assets/téléchargement_(81)_1783725551930.png";
+import historiqueImg   from "@assets/téléchargement_(82)_1783725551951.png";
+import paymentLinkImg  from "@assets/téléchargement_(83)_1783725551972.png";
+import qrImg           from "@assets/téléchargement_(84)_1783725551994.png";
+import transfertsImg   from "@assets/téléchargement_(85)_1783725552021.png";
+import massPayoutImg   from "@assets/téléchargement_(86)_1783725552046.png";
+import reversementImg  from "@assets/téléchargement_(87)_1783725552070.png";
+import apiKeysImg      from "@assets/téléchargement_(88)_1783725552097.png";
+import kybImg          from "@assets/téléchargement_(89)_1783725552124.png";
+import apiDocImg       from "@assets/téléchargement_(90)_1783725552151.png";
+import supportImg      from "@assets/20260410_192649_1783725575787.png";
 import userImg         from "@assets/utilisateur_1778149009992.png";
 import logoutImg       from "@assets/3240728_1778601564288.png";
-
-// Public-folder icons (not bundled — served as static assets)
-const paymentLinkImg = "/icon-payment-link.png";
-const massPayoutImg  = "/icon-mass-payout.png";
-const reversementImg = "/stat-payout.png";
-const supportImg     = "/support-headset.png";
 
 // ─── Nav data types ───────────────────────────────────────────────────────────
 

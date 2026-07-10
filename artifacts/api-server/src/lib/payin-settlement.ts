@@ -15,7 +15,7 @@
 import { db } from "@workspace/db";
 import { transactionsTable, walletsTable, usersTable } from "@workspace/db/schema";
 import { eq, and, ne, sql } from "drizzle-orm";
-import { notifyPayinConfirmed } from "./telegram";
+import { notifyPayinConfirmed, notifyTransactionFailure } from "./telegram";
 
 export type SettledStatus = "pending" | "processing" | "success" | "failed" | "cancelled" | "expired";
 
@@ -70,6 +70,29 @@ export async function settlePayinStatus(params: SettlePayinParams): Promise<{ cr
   }
 
   if (status !== "success") {
+    if (status === "failed" || status === "cancelled" || status === "expired") {
+      try {
+        const [merchant] = await db
+          .select({ companyName: usersTable.companyName })
+          .from(usersTable)
+          .where(eq(usersTable.id, updated.userId));
+        notifyTransactionFailure({
+          type: "payin",
+          company: merchant?.companyName ?? "?",
+          amount: parseFloat(updated.amount),
+          currency: updated.currency,
+          operator: updated.operator,
+          phone: updated.phone,
+          country: updated.countryCode,
+          reference: updated.reference,
+          gateway,
+          reason: failureReason ?? updated.failureReason ?? "Raison inconnue",
+          mode: updated.mode,
+        }).catch(() => {});
+      } catch (err: any) {
+        console.warn(`[Settlement] Notification Telegram (échec) ratée: ${err?.message}`);
+      }
+    }
     return { credited: false };
   }
 

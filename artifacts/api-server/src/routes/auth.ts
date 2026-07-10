@@ -16,11 +16,21 @@ import {
   clearFailedLogins,
   loginRateLimiter,
   signupRateLimiter,
+  emailSendRateLimiter,
   resolveGeoInfo,
   getClientIp,
 } from "../middlewares/security";
 
 const router = Router();
+
+// Account-level brute-force lockout: 5 failed attempts locks the account for
+// 30 minutes, regardless of which IP/device the attempts come from.
+const ACCOUNT_LOCK_THRESHOLD = 5;
+const ACCOUNT_LOCK_DURATION_MS = 30 * 60 * 1000;
+
+// A known device is only trusted for 3 days of inactivity; past that, the
+// next login re-triggers the full email code + activation link flow.
+const KNOWN_DEVICE_TRUST_MS = 3 * 24 * 60 * 60 * 1000;
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -129,18 +139,61 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
     return;
   }
 
+  // Account-level lockout — applies regardless of IP/device, so switching
+  // phones or networks does not bypass it. Cleared automatically once
+  // accountLockedUntil elapses.
+  if (user.accountLockedUntil && user.accountLockedUntil.getTime() > Date.now()) {
+    const remainingMs = user.accountLockedUntil.getTime() - Date.now();
+    await logSecurityEvent({ eventType: "LOGIN_FAILED", req, userId: user.id, details: `Tentative sur compte verrouillé : ${email}`, riskLevel: "high" });
+    res.status(423).json({
+      error: "Compte temporairement bloqué suite à trop de tentatives. Réessayez dans 30 minutes.",
+      lockedUntil: user.accountLockedUntil.toISOString(),
+      retryAfterSeconds: Math.ceil(remainingMs / 1000),
+    });
+    return;
+  }
+
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     const isBrute = trackFailedLogin(ip);
-    await logSecurityEvent({ eventType: isBrute ? "BRUTE_FORCE" : "LOGIN_FAILED", req, userId: user.id, details: `Mot de passe incorrect pour : ${email}`, riskLevel: isBrute ? "high" : "medium" });
+    const newAttempts = (user.failedLoginAttempts ?? 0) + 1;
+    const shouldLock = newAttempts >= ACCOUNT_LOCK_THRESHOLD;
+    await db.update(usersTable).set({
+      failedLoginAttempts: shouldLock ? 0 : newAttempts,
+      accountLockedUntil: shouldLock ? new Date(Date.now() + ACCOUNT_LOCK_DURATION_MS) : null,
+    }).where(eq(usersTable.id, user.id));
+
+    await logSecurityEvent({
+      eventType: isBrute || shouldLock ? "BRUTE_FORCE" : "LOGIN_FAILED",
+      req, userId: user.id,
+      details: shouldLock
+        ? `Compte verrouillé 30 min après ${ACCOUNT_LOCK_THRESHOLD} tentatives échouées : ${email}`
+        : `Mot de passe incorrect pour : ${email} (${newAttempts}/${ACCOUNT_LOCK_THRESHOLD})`,
+      riskLevel: shouldLock ? "high" : (isBrute ? "high" : "medium"),
+    });
     resolveGeoInfo(ip).then(geo => {
       notifyLoginAttempt({ type: "failed", email, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {});
     }).catch(() => {});
-    res.status(401).json({ error: "Email ou mot de passe incorrect." });
+
+    if (shouldLock) {
+      res.status(423).json({
+        error: "Trop de tentatives incorrectes. Votre compte est bloqué pendant 30 minutes.",
+        lockedUntil: new Date(Date.now() + ACCOUNT_LOCK_DURATION_MS).toISOString(),
+        retryAfterSeconds: Math.ceil(ACCOUNT_LOCK_DURATION_MS / 1000),
+      });
+      return;
+    }
+
+    res.status(401).json({ error: "Email ou mot de passe incorrect.", attemptsRemaining: ACCOUNT_LOCK_THRESHOLD - newAttempts });
     return;
   }
 
   clearFailedLogins(ip);
+
+  // Successful password check clears the account's failed-attempt counter.
+  if ((user.failedLoginAttempts ?? 0) > 0 || user.accountLockedUntil) {
+    await db.update(usersTable).set({ failedLoginAttempts: 0, accountLockedUntil: null }).where(eq(usersTable.id, user.id));
+  }
 
   // Check if email is verified (existing users without the column treated as verified)
   if (user.emailVerified === false) {
@@ -156,20 +209,24 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
     return;
   }
 
-  // Check known device fingerprint
+  // Check known device fingerprint. A match only counts if it was seen
+  // within the last 3 days — otherwise treat it like a brand-new device.
   const hash = deviceFingerprint(req, user.id);
-  let knownDevice: { id: number }[] = [];
+  let knownDevice: { id: number; lastSeenAt: Date }[] = [];
   try {
-    knownDevice = await db.select({ id: knownDevicesTable.id })
+    knownDevice = await db.select({ id: knownDevicesTable.id, lastSeenAt: knownDevicesTable.lastSeenAt })
       .from(knownDevicesTable)
       .where(and(eq(knownDevicesTable.userId, user.id), eq(knownDevicesTable.deviceHash, hash)))
       .limit(1);
   } catch {
     // Table may not exist yet — treat as known device to avoid blocking all logins
-    knownDevice = [{ id: 0 }];
+    knownDevice = [{ id: 0, lastSeenAt: new Date() }];
   }
 
-  if (knownDevice.length === 0) {
+  const deviceTrustExpired = knownDevice.length > 0 &&
+    Date.now() - knownDevice[0].lastSeenAt.getTime() > KNOWN_DEVICE_TRUST_MS;
+
+  if (knownDevice.length === 0 || deviceTrustExpired) {
     // New device — send verification code
     try {
       const { code, token } = await generateVerificationToken(user.id, user.email, "new_device");
@@ -178,7 +235,13 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
     } catch (e) {
       console.error("[Auth] Failed to send new device email:", e);
     }
-    await logSecurityEvent({ eventType: "LOGIN_NEW_DEVICE", req, userId: user.id, details: `Nouvel appareil détecté : ${email}`, riskLevel: "medium" });
+    await logSecurityEvent({
+      eventType: "LOGIN_NEW_DEVICE", req, userId: user.id,
+      details: deviceTrustExpired
+        ? `Appareil non revu depuis plus de 3 jours, revérification requise : ${email}`
+        : `Nouvel appareil détecté : ${email}`,
+      riskLevel: "medium",
+    });
     resolveGeoInfo(ip).then(geo => {
       notifyLoginAttempt({ type: "new_device", email, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {});
     }).catch(() => {});
@@ -206,7 +269,7 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
 
 // ─── VERIFY EMAIL (code or after activation link) ────────────────────────────
 
-router.post("/auth/verify-email", async (req, res) => {
+router.post("/auth/verify-email", emailSendRateLimiter, async (req, res) => {
   const { email, code } = req.body as { email?: string; code?: string };
   if (!email || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -334,7 +397,7 @@ router.get("/auth/activate", async (req, res) => {
 
 // ─── RESEND CODE ──────────────────────────────────────────────────────────────
 
-router.post("/auth/resend-verification", async (req, res) => {
+router.post("/auth/resend-verification", emailSendRateLimiter, async (req, res) => {
   const { email } = req.body as { email?: string };
   if (!email) {
     res.status(400).json({ error: "Email requis." });
@@ -371,7 +434,7 @@ router.post("/auth/logout", async (req, res) => {
 
 // ─── FORGOT PASSWORD ──────────────────────────────────────────────────────────
 
-router.post("/auth/forgot-password", async (req, res) => {
+router.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) => {
   const { email } = req.body as { email?: string };
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     res.status(400).json({ error: "Adresse email invalide." });
@@ -403,7 +466,7 @@ router.post("/auth/forgot-password", async (req, res) => {
   res.json({ ok: true, message: "Si ce compte existe, un email a été envoyé." });
 });
 
-router.post("/auth/verify-reset-code", async (req, res) => {
+router.post("/auth/verify-reset-code", emailSendRateLimiter, async (req, res) => {
   const { email, code } = req.body as { email?: string; code?: string };
   if (!email || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -469,7 +532,7 @@ router.post("/auth/reset-password", async (req, res) => {
 
 // ─── FORGOT PASSWORD — CONTACT SUPPORT DIRECT ────────────────────────────────
 
-router.post("/auth/forgot-password-support", async (req, res) => {
+router.post("/auth/forgot-password-support", emailSendRateLimiter, async (req, res) => {
   const { email, message } = req.body as { email?: string; message?: string };
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
