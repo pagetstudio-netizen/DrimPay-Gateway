@@ -7,7 +7,7 @@
  *
  * Priorité :
  *   WEBHOOK_BASE_URL  → URL explicite (Plesk, prod, staging)
- *   Fallback          → https://api.drimpay.com
+ *   Fallback          → https://drimpay.com
  *
  * REPLIT_DEV_DOMAIN n'est JAMAIS utilisé ici : les agrégateurs externes ne
  * peuvent pas atteindre les URLs de preview Replit (proxy mTLS, inaccessible).
@@ -19,12 +19,12 @@ function normalizeBase(url: string): string {
 
 /**
  * URL de base pour les webhooks/callbacks envoyés aux agrégateurs de paiement.
- * Utilise WEBHOOK_BASE_URL si défini et non vide, sinon https://api.drimpay.com.
+ * Utilise WEBHOOK_BASE_URL si défini et non vide, sinon https://drimpay.com.
  */
 export function getWebhookBaseUrl(): string {
   const raw = process.env.WEBHOOK_BASE_URL?.trim();
   if (raw) return normalizeBase(raw);
-  return "https://api.drimpay.com";
+  return "https://drimpay.com";
 }
 
 /**

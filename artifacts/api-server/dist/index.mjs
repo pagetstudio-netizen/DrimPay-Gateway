@@ -275935,7 +275935,7 @@ function normalizeBase(url2) {
 function getWebhookBaseUrl() {
   const raw = process.env.WEBHOOK_BASE_URL?.trim();
   if (raw) return normalizeBase(raw);
-  return "https://api.drimpay.com";
+  return "https://drimpay.com";
 }
 function getFrontendBaseUrl() {
   const raw = process.env.FRONTEND_BASE_URL?.trim();
