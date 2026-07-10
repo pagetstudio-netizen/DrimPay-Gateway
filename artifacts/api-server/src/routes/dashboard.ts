@@ -2561,10 +2561,14 @@ router.get("/support/links", async (_req, res) => {
 router.get("/banners/active", async (_req, res) => {
   const rows = await db
     .select({
+      id: globalBannersTable.id,
       message: globalBannersTable.message,
-      type: globalBannersTable.type,
-      link: globalBannersTable.link,
-      linkText: globalBannersTable.linkText,
+      color: globalBannersTable.color,
+      customColor: globalBannersTable.customColor,
+      buttonText: globalBannersTable.buttonText,
+      buttonLink: globalBannersTable.buttonLink,
+      imageUrl: globalBannersTable.imageUrl,
+      active: globalBannersTable.active,
     })
     .from(globalBannersTable)
     .where(eq(globalBannersTable.active, true))

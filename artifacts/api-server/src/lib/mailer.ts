@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import { pool } from "@workspace/db";
 
 const FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <support@drimpay.com>";
-const SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "Support DrimPay <support@drimpay.com>";
+const SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "DrimPay <support@drimpay.com>";
 
 function getResend(): Resend | null {
   const key = process.env["RESEND_API_KEY"];

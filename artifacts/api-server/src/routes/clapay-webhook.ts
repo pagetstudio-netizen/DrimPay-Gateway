@@ -13,10 +13,11 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { transactionsTable, walletsTable, usersTable, reversementsTable } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import crypto from "crypto";
 import { getClapayClient, isClapayConfigured, type ClapayWebhookPayload } from "../lib/clapay";
 import { notifyPayinConfirmed } from "../lib/telegram";
+import { settlePayinStatus } from "../lib/payin-settlement";
 
 const router = Router();
 
@@ -103,61 +104,56 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
     // Mapper le statut
     const newStatus = STATUS_MAP[event.status?.toLowerCase()] ?? "failed";
 
-    // Idempotence — éviter les mises à jour redondantes
-    if (tx.status === newStatus) {
-      console.log(`[Clapay Webhook] Statut déjà à jour: ${newStatus} — ignoré`);
-      return;
-    }
-
-    // Mettre à jour le statut en DB
-    await db
-      .update(transactionsTable)
-      .set({
+    if (tx.type === "payin") {
+      // Règlement atomique via le helper partagé — idempotent, crédite le wallet et notifie
+      // en une seule transaction DB (même garantie que le webhook PayDunya et le polling sync).
+      const { credited } = await settlePayinStatus({
+        txId: tx.id,
         status: newStatus as any,
         gatewayReference: event.clapay_reference,
-        failureReason: event.failure_reason ?? null,
-        updatedAt: new Date(),
-      })
-      .where(eq(transactionsTable.id, tx.id));
-
-    // Créditer le wallet si payin succès
-    if (newStatus === "success" && tx.type === "payin") {
-      await db
-        .update(walletsTable)
-        .set({ balance: sql`${walletsTable.balance} + ${tx.netAmount}` })
-        .where(eq(walletsTable.id, tx.walletId));
-      console.log(`[Clapay Webhook] Wallet ${tx.walletId} crédité de ${tx.netAmount} ${tx.currency}`);
-
-      // Notification Telegram — paiement réellement confirmé
-      try {
-        const [merchant] = await db.select({ companyName: usersTable.companyName })
-          .from(usersTable).where(eq(usersTable.id, tx.userId));
-        const source = tx.reference.startsWith("PL-") ? "link" : tx.reference.startsWith("QR-") ? "qr" : "api";
-        notifyPayinConfirmed({
-          company: merchant?.companyName ?? "?",
-          amount: parseFloat(tx.amount),
-          fee: parseFloat(tx.fee),
-          net: parseFloat(tx.netAmount),
-          currency: tx.currency,
-          operator: tx.operator,
-          phone: tx.phone,
-          country: tx.countryCode,
-          reference: tx.reference,
-          mode: tx.mode,
-          source,
-          gateway: "clapay",
-        }).catch(() => {});
-      } catch {}
-    }
-
-    // Si payout échoue → rembourser le solde (le montant a été pré-déduit)
-    if ((newStatus === "failed" || newStatus === "cancelled") && tx.type === "payout") {
+        failureReason: event.failure_reason,
+        gateway: "clapay",
+      });
+      console.log(`[Clapay Webhook] Transaction payin ${tx.reference} → ${newStatus} (crédité: ${credited})`);
+    } else if (tx.type === "payout" && (newStatus === "failed" || newStatus === "cancelled")) {
+      // Payout échoué → statut + remboursement atomique, idempotent via clause WHERE.
       const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
+      const refunded = await db.transaction(async (trx) => {
+        const [row] = await trx
+          .update(transactionsTable)
+          .set({
+            status: newStatus as any,
+            gatewayReference: event.clapay_reference,
+            failureReason: event.failure_reason ?? null,
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(transactionsTable.id, tx.id),
+            sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`,
+          ))
+          .returning();
+        if (!row) return false;
+        await trx.update(walletsTable)
+          .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+          .where(eq(walletsTable.id, tx.walletId));
+        return true;
+      });
+      if (refunded) {
+        console.log(`[Clapay Webhook] Payout échoué — wallet ${tx.walletId} remboursé de ${totalDebit} ${tx.currency}`);
+      } else {
+        console.log(`[Clapay Webhook] Payout ${tx.reference} déjà réglé — remboursement ignoré (idempotence)`);
+      }
+    } else {
+      // Payout succès ou statut intermédiaire — juste le statut, pas de crédit.
       await db
-        .update(walletsTable)
-        .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
-        .where(eq(walletsTable.id, tx.walletId));
-      console.log(`[Clapay Webhook] Payout échoué — wallet ${tx.walletId} remboursé de ${totalDebit} ${tx.currency}`);
+        .update(transactionsTable)
+        .set({
+          status: newStatus as any,
+          gatewayReference: event.clapay_reference,
+          failureReason: event.failure_reason ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(transactionsTable.id, tx.id));
     }
 
     // Synchroniser le statut du reversement si la transaction vient d'un REV-

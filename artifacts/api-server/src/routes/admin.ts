@@ -1826,6 +1826,20 @@ router.post("/admin/global-banners", requireAdmin, async (req, res) => {
   res.json(banner);
 });
 
+router.patch("/admin/global-banners/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Bannière introuvable" }); return; }
+  const parsed = bannerCreateSchema.partial().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Données invalides", details: parsed.error.issues }); return; }
+  const [updated] = await db.update(globalBannersTable)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(eq(globalBannersTable.id, id))
+    .returning();
+  await logAdminAction(req.session.userId!, "UPDATE_BANNER", "global_banner", String(id), parsed.data.message, req.ip);
+  res.json(updated);
+});
+
 router.patch("/admin/global-banners/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
