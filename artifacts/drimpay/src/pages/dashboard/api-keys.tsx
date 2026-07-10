@@ -26,8 +26,27 @@ type ApiKey = {
   createdAt: string;
 };
 
-type WebhookRow = { id: number; url: string; label?: string | null; createdAt: string };
-type IpRow      = { id: number; ip: string; label?: string | null; createdAt: string };
+type WebhookRow = {
+  id: number;
+  url: string;
+  label?: string | null;
+  apiKeyId?: number | null;
+  keyName?: string | null;
+  keyPrefix?: string | null;
+  keyEnv?: "sandbox" | "live" | null;
+  createdAt: string;
+};
+type IpRow = {
+  id: number;
+  ip: string;
+  label?: string | null;
+  apiKeyId?: number | null;
+  keyName?: string | null;
+  keyPrefix?: string | null;
+  keyEnv?: "sandbox" | "live" | null;
+  createdAt: string;
+};
+type ApiKeyOption = { id: number; name: string; prefix: string; env: "sandbox" | "live" };
 
 // pending action needing password
 type PendingAction =
@@ -618,42 +637,93 @@ function ApiKeysTab() {
   );
 }
 
+// ─── Shared: API key selector ─────────────────────────────────────────────────
+
+function KeyBadge({ keyName, keyPrefix, keyEnv }: { keyName?: string | null; keyPrefix?: string | null; keyEnv?: "sandbox" | "live" | null }) {
+  if (!keyName) return <span className="text-[10px] text-gray-400 italic">Aucune clé liée</span>;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={cn(
+        "text-[10px] px-1.5 py-0.5 rounded font-bold",
+        keyEnv === "live" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+      )}>
+        {keyEnv === "live" ? "LIVE" : "SANDBOX"}
+      </span>
+      <span className="text-[11px] text-gray-600 font-medium">{keyName}</span>
+      {keyPrefix && <span className="text-[10px] text-gray-400 font-mono">{keyPrefix}…</span>}
+    </span>
+  );
+}
+
+function ApiKeySelect({
+  value, onChange, apiKeys, placeholder,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+  apiKeys: ApiKeyOption[];
+  placeholder?: string;
+}) {
+  return (
+    <select
+      value={value ?? ""}
+      onChange={e => onChange(e.target.value ? parseInt(e.target.value) : null)}
+      className={cn(inputCls(), "cursor-pointer")}
+    >
+      <option value="">{placeholder ?? "Sélectionner une clé API *"}</option>
+      {apiKeys.map(k => (
+        <option key={k.id} value={k.id}>
+          [{k.env === "live" ? "LIVE" : "SANDBOX"}] {k.name} — {k.prefix}…
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // ─── Tab: Webhooks ────────────────────────────────────────────────────────────
 
 function WebhooksTab() {
-  const [hooks, setHooks] = useState<WebhookRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [url, setUrl] = useState("");
-  const [label, setLabel] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [err, setErr] = useState("");
+  const [hooks, setHooks]       = useState<WebhookRow[]>([]);
+  const [apiKeys, setApiKeys]   = useState<ApiKeyOption[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [url, setUrl]           = useState("");
+  const [label, setLabel]       = useState("");
+  const [selectedKey, setSelectedKey] = useState<number | null>(null);
+  const [adding, setAdding]     = useState(false);
+  const [err, setErr]           = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const fetch_ = () => {
+  const fetchHooks = () => {
     setLoading(true);
     fetch(`${BASE}/api/dashboard/webhooks`, { credentials: "include" })
       .then(r => r.json()).then(d => setHooks(Array.isArray(d) ? d : []))
       .catch(() => setHooks([])).finally(() => setLoading(false));
   };
-  useEffect(fetch_, []);
+  const fetchKeys = () => {
+    fetch(`${BASE}/api/dashboard/api-keys`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setApiKeys((Array.isArray(d) ? d : []).filter((k: ApiKey) => k.status === "active")))
+      .catch(() => {});
+  };
+  useEffect(() => { fetchHooks(); fetchKeys(); }, []);
 
   const add = async () => {
     if (!url.trim()) { setErr("L'URL est requise."); return; }
+    if (!selectedKey) { setErr("Veuillez sélectionner une clé API."); return; }
     setErr(""); setAdding(true);
     const res = await fetch(`${BASE}/api/dashboard/webhooks`, {
       method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: url.trim(), label: label.trim() || undefined }),
+      body: JSON.stringify({ url: url.trim(), label: label.trim() || undefined, apiKeyId: selectedKey }),
     });
     const data = await res.json();
     setAdding(false);
     if (!res.ok) { setErr(data.error ?? "Erreur"); return; }
-    setUrl(""); setLabel(""); fetch_();
+    setUrl(""); setLabel(""); setSelectedKey(null); fetchHooks();
   };
 
   const remove = async (id: number) => {
     await fetch(`${BASE}/api/dashboard/webhooks/${id}`, { method: "DELETE", credentials: "include" });
-    setDeleteId(null); fetch_();
+    setDeleteId(null); fetchHooks();
   };
 
   return (
@@ -667,6 +737,19 @@ function WebhooksTab() {
         <h3 className="font-bold text-gray-900 text-sm mb-4 flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" /> Ajouter un webhook
         </h3>
+
+        <div className="mb-3">
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Clé API associée *</label>
+          {apiKeys.length === 0 ? (
+            <div className="flex items-center gap-2 h-10 px-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              Aucune clé API active. Créez d'abord une clé dans l'onglet "Clés API".
+            </div>
+          ) : (
+            <ApiKeySelect value={selectedKey} onChange={setSelectedKey} apiKeys={apiKeys} />
+          )}
+        </div>
+
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">URL *</label>
@@ -681,7 +764,7 @@ function WebhooksTab() {
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Label (optionnel)</label>
             <input
-              placeholder="Ex: Production, Staging, App Mobile..."
+              placeholder="Ex: Production, Staging..."
               value={label}
               onChange={e => setLabel(e.target.value)}
               className={inputCls()}
@@ -691,7 +774,7 @@ function WebhooksTab() {
         {err && <p className="mt-2 text-xs text-red-500 flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> {err}</p>}
         <button
           onClick={add}
-          disabled={adding}
+          disabled={adding || apiKeys.length === 0}
           className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors disabled:opacity-60"
         >
           {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Webhook className="w-4 h-4" />}
@@ -724,7 +807,10 @@ function WebhooksTab() {
                     <Globe className="w-4 h-4 text-blue-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    {h.label && <p className="text-xs font-semibold text-gray-700">{h.label}</p>}
+                    <div className="flex items-center gap-2 mb-0.5">
+                      {h.label && <p className="text-xs font-semibold text-gray-700">{h.label}</p>}
+                      <KeyBadge keyName={h.keyName} keyPrefix={h.keyPrefix} keyEnv={h.keyEnv} />
+                    </div>
                     <p className="text-xs text-gray-500 font-mono truncate">{h.url}</p>
                     <p className="text-[10px] text-gray-400 mt-0.5">Ajouté le {new Date(h.createdAt).toLocaleDateString("fr-FR")}</p>
                   </div>
@@ -766,52 +852,74 @@ function WebhooksTab() {
 // ─── Tab: IP Whitelist ────────────────────────────────────────────────────────
 
 function IpTab() {
-  const [ips, setIps]         = useState<IpRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [ip, setIp]           = useState("");
-  const [label, setLabel]     = useState("");
-  const [adding, setAdding]   = useState(false);
-  const [err, setErr]         = useState("");
+  const [ips, setIps]           = useState<IpRow[]>([]);
+  const [apiKeys, setApiKeys]   = useState<ApiKeyOption[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [ip, setIp]             = useState("");
+  const [label, setLabel]       = useState("");
+  const [selectedKey, setSelectedKey] = useState<number | null>(null);
+  const [adding, setAdding]     = useState(false);
+  const [err, setErr]           = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const fetch_ = () => {
+  const fetchIps = () => {
     setLoading(true);
-    fetch(`${BASE}/api/dashboard/ip-whitelist`, { credentials: "include" })
+    fetch(`${BASE}/api/dashboard/allowed-ips`, { credentials: "include" })
       .then(r => r.json()).then(d => setIps(Array.isArray(d) ? d : []))
       .catch(() => setIps([])).finally(() => setLoading(false));
   };
-  useEffect(fetch_, []);
+  const fetchKeys = () => {
+    fetch(`${BASE}/api/dashboard/api-keys`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setApiKeys((Array.isArray(d) ? d : []).filter((k: ApiKey) => k.status === "active")))
+      .catch(() => {});
+  };
+  useEffect(() => { fetchIps(); fetchKeys(); }, []);
 
   const add = async () => {
     if (!ip.trim()) { setErr("L'adresse IP est requise."); return; }
+    if (!selectedKey) { setErr("Veuillez sélectionner une clé API."); return; }
     setErr(""); setAdding(true);
-    const res = await fetch(`${BASE}/api/dashboard/ip-whitelist`, {
+    const res = await fetch(`${BASE}/api/dashboard/allowed-ips`, {
       method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ip: ip.trim(), label: label.trim() || undefined }),
+      body: JSON.stringify({ ip: ip.trim(), label: label.trim() || undefined, apiKeyId: selectedKey }),
     });
     const data = await res.json();
     setAdding(false);
     if (!res.ok) { setErr(data.error ?? "Erreur"); return; }
-    setIp(""); setLabel(""); fetch_();
+    setIp(""); setLabel(""); setSelectedKey(null); fetchIps();
   };
 
   const remove = async (id: number) => {
-    await fetch(`${BASE}/api/dashboard/ip-whitelist/${id}`, { method: "DELETE", credentials: "include" });
-    setDeleteId(null); fetch_();
+    await fetch(`${BASE}/api/dashboard/allowed-ips/${id}`, { method: "DELETE", credentials: "include" });
+    setDeleteId(null); fetchIps();
   };
 
   return (
     <div className="space-y-5">
       <div className="rounded-xl bg-primary/5 border border-primary/15 px-4 py-3 text-xs text-gray-600 leading-relaxed">
         <span className="text-primary font-semibold">Restriction IP : </span>
-        Limitez l'accès à votre clé API à des adresses IP spécifiques. Toute requête provenant d'une IP non autorisée sera refusée. Laissez vide pour autoriser toutes les IPs.
+        Limitez l'accès à une clé API à des adresses IP spécifiques. Toute requête provenant d'une IP non autorisée sera refusée pour cette clé.
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
         <h3 className="font-bold text-gray-900 text-sm mb-4 flex items-center gap-2">
-          <Plus className="w-4 h-4 text-primary" /> Ajouter une IP
+          <Plus className="w-4 h-4 text-primary" /> Ajouter une IP autorisée
         </h3>
+
+        <div className="mb-3">
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Clé API associée *</label>
+          {apiKeys.length === 0 ? (
+            <div className="flex items-center gap-2 h-10 px-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              Aucune clé API active. Créez d'abord une clé dans l'onglet "Clés API".
+            </div>
+          ) : (
+            <ApiKeySelect value={selectedKey} onChange={setSelectedKey} apiKeys={apiKeys} />
+          )}
+        </div>
+
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Adresse IP *</label>
@@ -835,7 +943,7 @@ function IpTab() {
         {err && <p className="mt-2 text-xs text-red-500 flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> {err}</p>}
         <button
           onClick={add}
-          disabled={adding}
+          disabled={adding || apiKeys.length === 0}
           className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors disabled:opacity-60"
         >
           {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Network className="w-4 h-4" />}
@@ -868,7 +976,10 @@ function IpTab() {
                     <Network className="w-4 h-4 text-purple-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    {row.label && <p className="text-xs font-semibold text-gray-700">{row.label}</p>}
+                    <div className="flex items-center gap-2 mb-0.5">
+                      {row.label && <p className="text-xs font-semibold text-gray-700">{row.label}</p>}
+                      <KeyBadge keyName={row.keyName} keyPrefix={row.keyPrefix} keyEnv={row.keyEnv} />
+                    </div>
                     <p className="text-xs text-gray-500 font-mono">{row.ip}</p>
                     <p className="text-[10px] text-gray-400 mt-0.5">Ajoutée le {new Date(row.createdAt).toLocaleDateString("fr-FR")}</p>
                   </div>

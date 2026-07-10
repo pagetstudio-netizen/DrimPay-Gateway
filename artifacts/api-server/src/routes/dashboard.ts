@@ -1610,8 +1610,18 @@ router.patch("/dashboard/settings/ip", requireAuth, async (req, res) => {
 router.get("/dashboard/webhooks", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const rows = await db
-    .select()
+    .select({
+      id: userWebhooksTable.id,
+      apiKeyId: userWebhooksTable.apiKeyId,
+      url: userWebhooksTable.url,
+      label: userWebhooksTable.label,
+      createdAt: userWebhooksTable.createdAt,
+      keyName: apiKeysTable.name,
+      keyPrefix: apiKeysTable.prefix,
+      keyEnv: apiKeysTable.env,
+    })
     .from(userWebhooksTable)
+    .leftJoin(apiKeysTable, eq(userWebhooksTable.apiKeyId, apiKeysTable.id))
     .where(eq(userWebhooksTable.userId, userId))
     .orderBy(asc(userWebhooksTable.createdAt));
   res.json(rows);
@@ -1620,18 +1630,27 @@ router.get("/dashboard/webhooks", requireAuth, async (req, res) => {
 router.post("/dashboard/webhooks", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const schema = z.object({
-    url: z.string().url("URL invalide"),
-    label: z.string().max(80).optional(),
+    url:      z.string().url("URL invalide"),
+    label:    z.string().max(80).optional(),
+    apiKeyId: z.number().int().positive().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalide" }); return; }
+
+  // Verify apiKeyId belongs to this user (if provided)
+  if (parsed.data.apiKeyId) {
+    const [key] = await db.select({ id: apiKeysTable.id })
+      .from(apiKeysTable)
+      .where(and(eq(apiKeysTable.id, parsed.data.apiKeyId), eq(apiKeysTable.userId, userId)));
+    if (!key) { res.status(400).json({ error: "Clé API introuvable" }); return; }
+  }
 
   const existing = await db.select({ id: userWebhooksTable.id }).from(userWebhooksTable).where(eq(userWebhooksTable.userId, userId));
   if (existing.length >= 10) { res.status(400).json({ error: "Maximum 10 webhooks autorisés" }); return; }
 
   const [row] = await db
     .insert(userWebhooksTable)
-    .values({ userId, url: parsed.data.url, label: parsed.data.label ?? null })
+    .values({ userId, url: parsed.data.url, label: parsed.data.label ?? null, apiKeyId: parsed.data.apiKeyId ?? null })
     .returning();
   res.status(201).json(row);
 });
@@ -1650,8 +1669,18 @@ router.delete("/dashboard/webhooks/:id", requireAuth, async (req, res) => {
 router.get("/dashboard/allowed-ips", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const rows = await db
-    .select()
+    .select({
+      id: userAllowedIpsTable.id,
+      apiKeyId: userAllowedIpsTable.apiKeyId,
+      ip: userAllowedIpsTable.ip,
+      label: userAllowedIpsTable.label,
+      createdAt: userAllowedIpsTable.createdAt,
+      keyName: apiKeysTable.name,
+      keyPrefix: apiKeysTable.prefix,
+      keyEnv: apiKeysTable.env,
+    })
     .from(userAllowedIpsTable)
+    .leftJoin(apiKeysTable, eq(userAllowedIpsTable.apiKeyId, apiKeysTable.id))
     .where(eq(userAllowedIpsTable.userId, userId))
     .orderBy(asc(userAllowedIpsTable.createdAt));
   res.json(rows);
@@ -1660,18 +1689,27 @@ router.get("/dashboard/allowed-ips", requireAuth, async (req, res) => {
 router.post("/dashboard/allowed-ips", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const schema = z.object({
-    ip: z.string().regex(/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/, "Adresse IP invalide (ex: 192.168.1.1)"),
-    label: z.string().max(80).optional(),
+    ip:       z.string().regex(/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/, "Adresse IP invalide (ex: 192.168.1.1)"),
+    label:    z.string().max(80).optional(),
+    apiKeyId: z.number().int().positive().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalide" }); return; }
+
+  // Verify apiKeyId belongs to this user (if provided)
+  if (parsed.data.apiKeyId) {
+    const [key] = await db.select({ id: apiKeysTable.id })
+      .from(apiKeysTable)
+      .where(and(eq(apiKeysTable.id, parsed.data.apiKeyId), eq(apiKeysTable.userId, userId)));
+    if (!key) { res.status(400).json({ error: "Clé API introuvable" }); return; }
+  }
 
   const existing = await db.select({ id: userAllowedIpsTable.id }).from(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, userId));
   if (existing.length >= 20) { res.status(400).json({ error: "Maximum 20 adresses IP autorisées" }); return; }
 
   const [row] = await db
     .insert(userAllowedIpsTable)
-    .values({ userId, ip: parsed.data.ip, label: parsed.data.label ?? null })
+    .values({ userId, ip: parsed.data.ip, label: parsed.data.label ?? null, apiKeyId: parsed.data.apiKeyId ?? null })
     .returning();
   res.status(201).json(row);
 });

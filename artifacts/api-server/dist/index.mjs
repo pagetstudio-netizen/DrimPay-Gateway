@@ -55949,6 +55949,7 @@ var init_drimpay = __esm({
     userWebhooksTable = pgTable("user_webhooks", {
       id: serial("id").primaryKey(),
       userId: integer("user_id").notNull().references(() => usersTable.id),
+      apiKeyId: integer("api_key_id").references(() => apiKeysTable.id, { onDelete: "cascade" }),
       url: text("url").notNull(),
       label: text("label"),
       createdAt: timestamp("created_at").notNull().defaultNow()
@@ -55956,6 +55957,7 @@ var init_drimpay = __esm({
     userAllowedIpsTable = pgTable("user_allowed_ips", {
       id: serial("id").primaryKey(),
       userId: integer("user_id").notNull().references(() => usersTable.id),
+      apiKeyId: integer("api_key_id").references(() => apiKeysTable.id, { onDelete: "cascade" }),
       ip: text("ip").notNull(),
       label: text("label"),
       createdAt: timestamp("created_at").notNull().defaultNow()
@@ -277200,26 +277202,43 @@ router11.patch("/dashboard/settings/ip", requireAuth, async (req, res) => {
 });
 router11.get("/dashboard/webhooks", requireAuth, async (req, res) => {
   const userId = req.session.userId;
-  const rows = await db.select().from(userWebhooksTable).where(eq(userWebhooksTable.userId, userId)).orderBy(asc(userWebhooksTable.createdAt));
+  const rows = await db.select({
+    id: userWebhooksTable.id,
+    apiKeyId: userWebhooksTable.apiKeyId,
+    url: userWebhooksTable.url,
+    label: userWebhooksTable.label,
+    createdAt: userWebhooksTable.createdAt,
+    keyName: apiKeysTable.name,
+    keyPrefix: apiKeysTable.prefix,
+    keyEnv: apiKeysTable.env
+  }).from(userWebhooksTable).leftJoin(apiKeysTable, eq(userWebhooksTable.apiKeyId, apiKeysTable.id)).where(eq(userWebhooksTable.userId, userId)).orderBy(asc(userWebhooksTable.createdAt));
   res.json(rows);
 });
 router11.post("/dashboard/webhooks", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const schema = external_exports2.object({
     url: external_exports2.string().url("URL invalide"),
-    label: external_exports2.string().max(80).optional()
+    label: external_exports2.string().max(80).optional(),
+    apiKeyId: external_exports2.number().int().positive().optional()
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalide" });
     return;
   }
+  if (parsed.data.apiKeyId) {
+    const [key] = await db.select({ id: apiKeysTable.id }).from(apiKeysTable).where(and(eq(apiKeysTable.id, parsed.data.apiKeyId), eq(apiKeysTable.userId, userId)));
+    if (!key) {
+      res.status(400).json({ error: "Cl\xE9 API introuvable" });
+      return;
+    }
+  }
   const existing = await db.select({ id: userWebhooksTable.id }).from(userWebhooksTable).where(eq(userWebhooksTable.userId, userId));
   if (existing.length >= 10) {
     res.status(400).json({ error: "Maximum 10 webhooks autoris\xE9s" });
     return;
   }
-  const [row] = await db.insert(userWebhooksTable).values({ userId, url: parsed.data.url, label: parsed.data.label ?? null }).returning();
+  const [row] = await db.insert(userWebhooksTable).values({ userId, url: parsed.data.url, label: parsed.data.label ?? null, apiKeyId: parsed.data.apiKeyId ?? null }).returning();
   res.status(201).json(row);
 });
 router11.delete("/dashboard/webhooks/:id", requireAuth, async (req, res) => {
@@ -277235,26 +277254,43 @@ router11.delete("/dashboard/webhooks/:id", requireAuth, async (req, res) => {
 });
 router11.get("/dashboard/allowed-ips", requireAuth, async (req, res) => {
   const userId = req.session.userId;
-  const rows = await db.select().from(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, userId)).orderBy(asc(userAllowedIpsTable.createdAt));
+  const rows = await db.select({
+    id: userAllowedIpsTable.id,
+    apiKeyId: userAllowedIpsTable.apiKeyId,
+    ip: userAllowedIpsTable.ip,
+    label: userAllowedIpsTable.label,
+    createdAt: userAllowedIpsTable.createdAt,
+    keyName: apiKeysTable.name,
+    keyPrefix: apiKeysTable.prefix,
+    keyEnv: apiKeysTable.env
+  }).from(userAllowedIpsTable).leftJoin(apiKeysTable, eq(userAllowedIpsTable.apiKeyId, apiKeysTable.id)).where(eq(userAllowedIpsTable.userId, userId)).orderBy(asc(userAllowedIpsTable.createdAt));
   res.json(rows);
 });
 router11.post("/dashboard/allowed-ips", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const schema = external_exports2.object({
     ip: external_exports2.string().regex(/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/, "Adresse IP invalide (ex: 192.168.1.1)"),
-    label: external_exports2.string().max(80).optional()
+    label: external_exports2.string().max(80).optional(),
+    apiKeyId: external_exports2.number().int().positive().optional()
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalide" });
     return;
   }
+  if (parsed.data.apiKeyId) {
+    const [key] = await db.select({ id: apiKeysTable.id }).from(apiKeysTable).where(and(eq(apiKeysTable.id, parsed.data.apiKeyId), eq(apiKeysTable.userId, userId)));
+    if (!key) {
+      res.status(400).json({ error: "Cl\xE9 API introuvable" });
+      return;
+    }
+  }
   const existing = await db.select({ id: userAllowedIpsTable.id }).from(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, userId));
   if (existing.length >= 20) {
     res.status(400).json({ error: "Maximum 20 adresses IP autoris\xE9es" });
     return;
   }
-  const [row] = await db.insert(userAllowedIpsTable).values({ userId, ip: parsed.data.ip, label: parsed.data.label ?? null }).returning();
+  const [row] = await db.insert(userAllowedIpsTable).values({ userId, ip: parsed.data.ip, label: parsed.data.label ?? null, apiKeyId: parsed.data.apiKeyId ?? null }).returning();
   res.status(201).json(row);
 });
 router11.delete("/dashboard/allowed-ips/:id", requireAuth, async (req, res) => {

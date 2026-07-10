@@ -158,6 +158,7 @@ export const apiKeysTable = pgTable("api_keys", {
 export const userWebhooksTable = pgTable("user_webhooks", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
+  apiKeyId: integer("api_key_id").references(() => apiKeysTable.id, { onDelete: "cascade" }),
   url: text("url").notNull(),
   label: text("label"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -166,6 +167,7 @@ export const userWebhooksTable = pgTable("user_webhooks", {
 export const userAllowedIpsTable = pgTable("user_allowed_ips", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
+  apiKeyId: integer("api_key_id").references(() => apiKeysTable.id, { onDelete: "cascade" }),
   ip: text("ip").notNull(),
   label: text("label"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
