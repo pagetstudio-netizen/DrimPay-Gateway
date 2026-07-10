@@ -72,6 +72,7 @@ function DetailsPanel({ keyId, onClose, onStatusChange }: {
   onStatusChange: () => void;
 }) {
   const [details, setDetails] = useState<Details | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [blocking, setBlocking] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -81,9 +82,19 @@ function DetailsPanel({ keyId, onClose, onStatusChange }: {
   useEffect(() => {
     setLoading(true);
     setNewKey(null);
+    setFetchError(null);
+    setDetails(null);
     fetch(`/api/admin/api-keys/${keyId}/details`, { credentials: "include" })
-      .then(r => r.json())
-      .then(d => { setDetails(d); setLoading(false); });
+      .then(async r => {
+        const d = await r.json();
+        if (!r.ok || !d.key) {
+          setFetchError(d.error ?? "Erreur de chargement");
+        } else {
+          setDetails(d);
+        }
+      })
+      .catch(() => setFetchError("Impossible de joindre le serveur"))
+      .finally(() => setLoading(false));
   }, [keyId]);
 
   async function toggleStatus() {
