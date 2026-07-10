@@ -1121,18 +1121,37 @@ router.delete("/admin/api-keys/:id", requireAdmin, async (req: any, res: any) =>
 
 // ─── API KEY DETAILS (webhooks, IPs, website) ─────────────────────────────────
 router.get("/admin/api-keys/:id/details", requireAdmin, async (req: any, res: any) => {
-  const id = parseInt(req.params.id);
-  const [key] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id));
-  if (!key) { res.status(404).json({ error: "Clé introuvable" }); return; }
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
 
-  const [merchant] = await db
-    .select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email, website: usersTable.website, country: usersTable.country })
-    .from(usersTable).where(eq(usersTable.id, key.userId));
+    const [key] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id));
+    if (!key) { res.status(404).json({ error: "Clé introuvable" }); return; }
 
-  const webhooks = await db.select().from(userWebhooksTable).where(eq(userWebhooksTable.userId, key.userId));
-  const ips = await db.select().from(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, key.userId));
+    const [user] = await db
+      .select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email, country: usersTable.country })
+      .from(usersTable).where(eq(usersTable.id, key.userId));
 
-  res.json({ key, merchant: merchant ?? null, webhooks, ips });
+    // website is stored on the KYB submission, not on the user record
+    const [kyb] = await db
+      .select({ website: kybSubmissionsTable.website })
+      .from(kybSubmissionsTable)
+      .where(eq(kybSubmissionsTable.userId, key.userId));
+
+    const merchant = user
+      ? { ...user, website: kyb?.website ?? null }
+      : null;
+
+    const [webhooks, ips] = await Promise.all([
+      db.select().from(userWebhooksTable).where(eq(userWebhooksTable.userId, key.userId)),
+      db.select().from(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, key.userId)),
+    ]);
+
+    res.json({ key, merchant, webhooks, ips });
+  } catch (err: any) {
+    console.error("[admin/api-keys/:id/details]", err?.message ?? err);
+    res.status(500).json({ error: "Erreur serveur lors du chargement des détails" });
+  }
 });
 
 // ─── REGENERATE API KEY (admin) ────────────────────────────────────────────────
@@ -1153,7 +1172,7 @@ router.post("/admin/api-keys/:id/regenerate", requireAdmin, async (req: any, res
     .values({ userId: old.userId, name: old.name, description: old.description, keyHash, rawKey, prefix, env })
     .returning();
 
-  await logAdminAction(req.session.userId, "REGENERATE_API_KEY", "api_key", String(id), { oldPrefix: old.prefix, newPrefix: prefix }, req.ip);
+  await logAdminAction(req.session.userId, "REGENERATE_API_KEY", "api_key", String(id), JSON.stringify({ oldPrefix: old.prefix, newPrefix: prefix }), req.ip);
   res.json({ ...newKey, rawKey });
 });
 
