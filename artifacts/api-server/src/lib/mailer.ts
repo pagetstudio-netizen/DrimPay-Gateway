@@ -1,7 +1,13 @@
 import { Resend } from "resend";
 import { pool } from "@workspace/db";
 
-const FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <support@drimpay.com>";
+function buildFromEmail(): string {
+  const raw = process.env["RESEND_FROM_EMAIL"];
+  if (!raw) return "DrimPay <support@drimpay.com>";
+  if (raw.includes("<")) return raw;
+  return `DrimPay <${raw}>`;
+}
+const FROM_EMAIL = buildFromEmail();
 const SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "DrimPay <support@drimpay.com>";
 
 function getResend(): Resend | null {

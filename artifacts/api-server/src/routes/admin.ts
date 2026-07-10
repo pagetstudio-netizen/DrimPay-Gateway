@@ -1545,7 +1545,7 @@ router.post("/admin/message/individual", requireAdmin, async (req: any, res: any
     .from(usersTable).where(eq(usersTable.email, email.trim().toLowerCase()));
 
   const merchantName = user?.companyName ?? email.trim();
-  const htmlBody = body.replace(/\n/g, "<br>");
+  const htmlBody = /<[a-z][\s\S]*>/i.test(body) ? body : body.replace(/\n/g, "<br>");
 
   const result = await sendBroadcastEmail({
     to: email.trim(),
@@ -1605,7 +1605,7 @@ router.post("/admin/broadcast", requireAdmin, async (req: any, res: any) => {
     return;
   }
 
-  const htmlBody = body.replace(/\n/g, "<br>");
+  const htmlBody = /<[a-z][\s\S]*>/i.test(body) ? body : body.replace(/\n/g, "<br>");
   let sent = 0; let failed = 0;
   const errors: string[] = [];
   const remaining: { email: string; companyName: string }[] = [];
@@ -1657,7 +1657,7 @@ router.post("/admin/broadcast/resume-resend", requireAdmin, async (req: any, res
     res.status(400).json({ error: "subject et body requis." }); return;
   }
 
-  const htmlBody = body.replace(/\n/g, "<br>");
+  const htmlBody = /<[a-z][\s\S]*>/i.test(body) ? body : body.replace(/\n/g, "<br>");
   let sent = 0; let failed = 0; const errors: string[] = [];
 
   for (const u of recipients) {

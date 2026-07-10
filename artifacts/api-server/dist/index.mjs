@@ -69628,6 +69628,12 @@ __export(mailer_exports, {
   sendSupportReplyEmail: () => sendSupportReplyEmail,
   sendWelcomeEmail: () => sendWelcomeEmail
 });
+function buildFromEmail() {
+  const raw = process.env["RESEND_FROM_EMAIL"];
+  if (!raw) return "DrimPay <support@drimpay.com>";
+  if (raw.includes("<")) return raw;
+  return `DrimPay <${raw}>`;
+}
 function getResend() {
   const key = process.env["RESEND_API_KEY"];
   if (!key) {
@@ -70404,7 +70410,7 @@ var init_mailer = __esm({
     "use strict";
     init_dist();
     init_src();
-    FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <support@drimpay.com>";
+    FROM_EMAIL = buildFromEmail();
     SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "DrimPay <support@drimpay.com>";
     BREVO_FROM_EMAIL = process.env["BREVO_FROM_EMAIL"] ?? "support@drimpay.com";
     BREVO_FROM_NAME = "DrimPay";
@@ -280459,7 +280465,7 @@ router13.post("/admin/message/individual", requireAdmin, async (req, res) => {
   }
   const [user] = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.email, email3.trim().toLowerCase()));
   const merchantName = user?.companyName ?? email3.trim();
-  const htmlBody = body.replace(/\n/g, "<br>");
+  const htmlBody = /<[a-z][\s\S]*>/i.test(body) ? body : body.replace(/\n/g, "<br>");
   const result = await sendBroadcastEmail({
     to: email3.trim(),
     merchantName,
@@ -280510,7 +280516,7 @@ router13.post("/admin/broadcast", requireAdmin, async (req, res) => {
     res.json({ ok: true, sent: 0, failed: 0, errors: [], quotaExceeded: false, remaining: [] });
     return;
   }
-  const htmlBody = body.replace(/\n/g, "<br>");
+  const htmlBody = /<[a-z][\s\S]*>/i.test(body) ? body : body.replace(/\n/g, "<br>");
   let sent = 0;
   let failed = 0;
   const errors = [];
@@ -280557,7 +280563,7 @@ router13.post("/admin/broadcast/resume-resend", requireAdmin, async (req, res) =
     res.status(400).json({ error: "subject et body requis." });
     return;
   }
-  const htmlBody = body.replace(/\n/g, "<br>");
+  const htmlBody = /<[a-z][\s\S]*>/i.test(body) ? body : body.replace(/\n/g, "<br>");
   let sent = 0;
   let failed = 0;
   const errors = [];

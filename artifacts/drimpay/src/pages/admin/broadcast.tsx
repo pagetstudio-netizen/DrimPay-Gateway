@@ -3,6 +3,7 @@ import { Send, Users, CheckCircle2, AlertTriangle, Eye, Megaphone, RefreshCw, Ma
 import { AdminLayout } from "./layout";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import RichEditor from "@/components/admin/rich-editor";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -21,8 +22,6 @@ type BroadcastResult = {
   errors: string[];
   quotaExceeded?: boolean;
   remaining?: { email: string; companyName: string }[];
-  // Snapshot of the original payload — frozen at quota-hit time so resume
-  // always uses the correct content even if the admin edits the form.
   frozenSubject?: string;
   frozenBody?: string;
 } | null;
@@ -47,7 +46,6 @@ function loadPendingBroadcast(adminId: number | string): PendingBroadcast | null
     const raw = localStorage.getItem(pendingKey(adminId));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Runtime shape validation — discard malformed data
     if (
       !Array.isArray(parsed?.recipients) ||
       typeof parsed?.subject !== "string" ||
@@ -63,6 +61,10 @@ function loadPendingBroadcast(adminId: number | string): PendingBroadcast | null
 
 function clearPendingBroadcast(adminId: number | string) {
   localStorage.removeItem(pendingKey(adminId));
+}
+
+function isEmptyHtml(html: string): boolean {
+  return !html || html === "<p></p>" || html.replace(/<[^>]+>/g, "").trim() === "";
 }
 
 // ─── Onglet individuel ─────────────────────────────────────────────────────────
@@ -111,7 +113,7 @@ function IndividualTab() {
   };
 
   const send = async () => {
-    if (!emailInput.trim() || !subject.trim() || !body.trim()) return;
+    if (!emailInput.trim() || !subject.trim() || isEmptyHtml(body)) return;
     setSending(true); setResult(null);
     try {
       const r = await fetch(`${BASE}/api/admin/message/individual`, {
@@ -127,7 +129,7 @@ function IndividualTab() {
   };
 
   const reset = () => { setEmailInput(""); setSubject(""); setBody(""); setResult(null); setSelectedMerchant(null); };
-  const canSend = emailInput.trim().length > 3 && subject.trim().length > 0 && body.trim().length > 0;
+  const canSend = emailInput.trim().length > 3 && subject.trim().length > 0 && !isEmptyHtml(body);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
@@ -213,10 +215,12 @@ function IndividualTab() {
 
       <div>
         <label className="text-sm font-semibold text-gray-700 block mb-1.5">Message</label>
-        <textarea value={body} onChange={e => setBody(e.target.value)} rows={9}
+        <RichEditor
+          value={body}
+          onChange={setBody}
           placeholder={"Bonjour,\n\nNous souhaitons vous informer de…\n\nCordialement,\nL'équipe DrimPay"}
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" />
-        <p className="text-xs text-gray-400 mt-1">Chaque retour à la ligne sera conservé dans l'email.</p>
+          minHeight={220}
+        />
       </div>
 
       <button onClick={send} disabled={!canSend || sending || !!result?.ok}
@@ -244,7 +248,6 @@ function BroadcastTab() {
   const [confirm, setConfirm]                 = useState(false);
   const [pending, setPending]                 = useState<PendingBroadcast | null>(null);
 
-  // Load pending broadcast from localStorage on mount (per-admin key)
   useEffect(() => { setPending(loadPendingBroadcast(adminId)); }, [adminId]);
 
   const loadRecipients = async (f: string) => {
@@ -260,8 +263,7 @@ function BroadcastTab() {
   useEffect(() => { loadRecipients(filter); }, [filter]);
 
   const send = async () => {
-    if (!subject.trim() || !body.trim()) return;
-    // Freeze a snapshot of subject/body at send time
+    if (!subject.trim() || isEmptyHtml(body)) return;
     const frozenSubject = subject.trim();
     const frozenBody    = body;
     setSending(true); setResult(null); setConfirm(false); setResumeError(null);
@@ -279,7 +281,6 @@ function BroadcastTab() {
           errors: d.errors ?? [],
           quotaExceeded: d.quotaExceeded ?? false,
           remaining: d.remaining ?? [],
-          // Attach snapshot to result so resume always uses the original content
           frozenSubject,
           frozenBody,
         });
@@ -292,7 +293,6 @@ function BroadcastTab() {
     setSending(false);
   };
 
-  // Send remaining via Resend immediately — uses frozen snapshot, not live form
   const resumeWithResend = async () => {
     if (!result?.remaining?.length) return;
     const snap = { subject: result.frozenSubject!, body: result.frozenBody!, recipients: result.remaining };
@@ -322,7 +322,6 @@ function BroadcastTab() {
     setResuming(false);
   };
 
-  // Save remaining for tomorrow — uses frozen snapshot, namespaced by admin
   const scheduleForTomorrow = () => {
     if (!result?.remaining?.length || !result.frozenSubject || !result.frozenBody) return;
     const saved: PendingBroadcast = {
@@ -336,7 +335,6 @@ function BroadcastTab() {
     setResult(prev => prev ? { ...prev, quotaExceeded: false, remaining: [] } : null);
   };
 
-  // Resume pending broadcast (from localStorage) — r.ok gated
   const resumePending = async () => {
     if (!pending) return;
     setResuming(true); setResumeError(null);
@@ -362,7 +360,7 @@ function BroadcastTab() {
 
   const dismissPending = () => { clearPendingBroadcast(adminId); setPending(null); };
 
-  const canSend = subject.trim().length > 0 && body.trim().length > 0 && recipients.length > 0;
+  const canSend = subject.trim().length > 0 && !isEmptyHtml(body) && recipients.length > 0;
 
   return (
     <div className="space-y-4">
@@ -440,7 +438,6 @@ function BroadcastTab() {
             <p className="text-xs font-semibold text-orange-800 uppercase tracking-wide">Que faire avec les {result.remaining?.length} restants ?</p>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              {/* Option A — Resend maintenant */}
               <button
                 onClick={resumeWithResend}
                 disabled={resuming}
@@ -457,7 +454,6 @@ function BroadcastTab() {
                 </div>
               </button>
 
-              {/* Option B — Demain */}
               <button
                 onClick={scheduleForTomorrow}
                 className="flex items-start gap-3 p-4 rounded-xl bg-white border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
@@ -541,10 +537,12 @@ function BroadcastTab() {
 
         <div>
           <label className="text-sm font-semibold text-gray-700 block mb-1.5">Message</label>
-          <textarea value={body} onChange={e => setBody(e.target.value)} rows={9}
-            placeholder={"Chers marchands,\n\nNous souhaitons vous informer de…\n\nCordialement,\nL'équipe DrimPay"}
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none" />
-          <p className="text-xs text-gray-400 mt-1">Chaque retour à la ligne sera conservé dans l'email.</p>
+          <RichEditor
+            value={body}
+            onChange={setBody}
+            placeholder="Chers marchands, nous souhaitons vous informer de…"
+            minHeight={240}
+          />
         </div>
 
         {!confirm ? (
