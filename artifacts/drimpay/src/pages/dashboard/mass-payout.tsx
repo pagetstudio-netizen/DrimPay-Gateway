@@ -650,27 +650,6 @@ export default function MassPayout() {
               </button>
             </div>
 
-            {/* Opérateurs */}
-            <div className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Zap className="w-3.5 h-3.5 text-gray-400" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Opérateurs par pays</p>
-              </div>
-              <div className="space-y-3">
-                {COUNTRIES.map(c => (
-                  <div key={c.code}>
-                    <p className="text-[11px] font-bold text-gray-600 mb-1.5">
-                      {c.flag} {c.name}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {c.operators.map(op => (
-                        <OperatorLogo key={op} name={op} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
