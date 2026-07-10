@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Banknote, CheckCircle2, Clock, XCircle, AlertTriangle } from "lucide-react";
+import { Banknote, CheckCircle2, Clock, XCircle, AlertTriangle, ExternalLink } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProductionGate } from "@/components/ui/production-gate";
@@ -303,7 +303,7 @@ export default function DashboardReversement() {
                         <span>{amount.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>Frais DrimPay ({(feeRate * 100).toFixed(0)}%)</span>
+                        <span>Frais DrimPay (3,5%)</span>
                         <span>— {fee.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
                       <div className="flex justify-between font-semibold text-foreground border-t border-border pt-2 mt-2">
@@ -356,30 +356,44 @@ export default function DashboardReversement() {
                   description="Vos demandes de reversement apparaîtront ici une fois soumises."
                 />
               ) : (
-                <div className="space-y-3">
-                  {history.map((r) => {
-                    const st = STATUS_LABELS[r.status] ?? STATUS_LABELS.pending;
-                    const country = COUNTRIES.find((c) => c.code === r.countryCode);
-                    return (
-                      <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white">
-                        <div className="shrink-0">
-                          <OperatorLogo name={r.operator} size={36} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{r.operator}</p>
-                          <p className="text-xs text-muted-foreground truncate">{country?.flag ?? "🌍"} {r.phone} · {new Date(r.createdAt).toLocaleDateString("fr-FR")}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-semibold">{Number(r.net).toLocaleString()} {r.currency}</p>
-                          <div className={`flex items-center gap-1 justify-end text-xs ${st.color}`}>
-                            <st.icon className="w-3 h-3" />
-                            {st.label}
+                <>
+                  <div className="space-y-3">
+                    {history.slice(0, 3).map((r) => {
+                      const st = STATUS_LABELS[r.status] ?? STATUS_LABELS.pending;
+                      const country = COUNTRIES.find((c) => c.code === r.countryCode);
+                      return (
+                        <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white">
+                          <div className="shrink-0">
+                            <OperatorLogo name={r.operator} size={36} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{r.operator}</p>
+                            <p className="text-xs text-muted-foreground truncate">{country?.flag ?? "🌍"} {r.phone} · {new Date(r.createdAt).toLocaleDateString("fr-FR")}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold">{Number(r.net).toLocaleString()} {r.currency}</p>
+                            <div className={`flex items-center gap-1 justify-end text-xs ${st.color}`}>
+                              <st.icon className="w-3 h-3" />
+                              {st.label}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <a
+                      href="/dashboard/payments"
+                      className="flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      {history.length > 3
+                        ? `Voir toutes les transactions (${history.length})`
+                        : "Voir l'historique complet des transactions"}
+                    </a>
+                  </div>
+                </>
               )}
             </div>
 
@@ -392,7 +406,7 @@ export default function DashboardReversement() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>
-                  Frais de reversement : <span className="font-semibold text-foreground">{(feeRate * 100).toFixed(0)}%</span> du montant brut.
+                  Frais de reversement : <span className="font-semibold text-foreground">3,5%</span> du montant brut.
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>
