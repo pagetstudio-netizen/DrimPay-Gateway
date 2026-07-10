@@ -17,5 +17,10 @@ description: What's needed to get the DrimPay project running after a fresh impo
 - **Why:** without atomicity, two independent status-confirmation paths (webhook vs. synchronous poll) racing on the same transaction is exactly how "provider confirmed, wallet never credited" and "double refund" bugs happen in this app.
 - **How to apply:** whenever adding a new status-confirmation path (new aggregator, new webhook, admin manual override), route it through the shared settlement helper rather than writing ad hoc status/balance updates.
 
+## Operator name matching (API vs DB)
+- The public payin API docs tell merchants to send lowercase operator slugs (`tmoney`, `orange`, `mtn`, `moov`, `wave`), but `operators`/`operator_aggregators` tables store display names (`TMoney`, `Orange Money`, `MTN Mobile Money`...). Any lookup must compare normalized slugs (lowercase, strip "money"/"momo"/"mobile money", strip non-alphanumerics), not exact string equality — `aggregator-router.ts` now does this via `operatorSlug()`.
+- **Why:** exact-match lookups silently failed for every operator (not just one), surfacing as "OPERATOR_UNAVAILABLE" for all operators despite every operator row being active — a naming-format mismatch masquerading as a config/outage problem.
+- **How to apply:** any new code path that looks up an operator by name from external/API input must go through the slug-normalized helper, not `eq(operatorsTable.name, ...)`.
+
 ## Payout/reversement response latency
 - Payout/reversement initiation must respond to the client immediately after the provider *accepts* the request; do not block the HTTP response on the provider's full settlement polling (which can take up to ~30s). Reverse-proxy timeouts (nginx/Plesk) are often shorter than that and turn a successful-but-slow payout into a client-visible "network error" even though money moved. Poll for final settlement in a background task instead, same pattern as the existing mass-payout flow.
