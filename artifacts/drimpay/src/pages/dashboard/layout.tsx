@@ -20,15 +20,9 @@ import qrImg           from "@assets/241528_1782036283663.png";
 import transfertsImg   from "@assets/recharge-icon-BZHWSjQZ_1782036357452.png";
 import apiKeysImg      from "@assets/18405142_1782036357506.png";
 import kybImg          from "@assets/bankCard-CnRlNHo8_(1)_1782036357534.png";
-import reversImg       from "@assets/téléchargement_(58)_1778601564225.png";
-import settingsImg     from "@assets/apps.48434.14455387483127854.031a6d9c-9877-466c-8a76-4127fc639_1778149010010.png";
+import apiDocImg       from "@assets/1437214_1778601764910.png";
 import userImg         from "@assets/utilisateur_1778149009992.png";
 import logoutImg       from "@assets/3240728_1778601564288.png";
-import apiIconImg      from "@assets/6213702_1778508885407.png";
-import supportImg      from "@assets/contact-us.1e0b8969a82ca2f9bd2d0b6df0fc7b96_1778539656598.webp";
-import massPaiementImg from "@assets/téléchargement_(57)_1778601564265.png";
-import linkPaiementImg from "@assets/1751761_1778601564313.png";
-import apiDocImg       from "@assets/1437214_1778601764910.png";
 
 // ─── Nav data types ───────────────────────────────────────────────────────────
 
@@ -69,7 +63,7 @@ const NAV_SECTIONS: NavSection[] = [
         img: transactionsImg,
         children: [
           { href: "/dashboard/payments",      label: "Historique",         img: historiqueImg },
-          { href: "/dashboard/payment-links", label: "Liens de Paiement",  img: linkPaiementImg },
+          { href: "/dashboard/payment-links", label: "Liens de Paiement" },
           { href: "/dashboard/qr-codes",      label: "Pay with QR",        img: qrImg },
         ],
       },
@@ -77,8 +71,8 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Transferts",
         img: transfertsImg,
         children: [
-          { href: "/dashboard/mass-payout",  label: "Paiement de Masse",  img: massPaiementImg },
-          { href: "/dashboard/reversement",  label: "Reversement",         img: reversImg },
+          { href: "/dashboard/mass-payout",  label: "Paiement de Masse" },
+          { href: "/dashboard/reversement",  label: "Reversement" },
         ],
       },
     ],
@@ -88,7 +82,7 @@ const NAV_SECTIONS: NavSection[] = [
     entries: [
       { label: "Clés API",          href: "/dashboard/api-keys", img: apiKeysImg },
       { label: "Vérification KYB",  href: "/dashboard/kyb",      img: kybImg },
-      { label: "Paramètres",        href: "/dashboard/profile",  img: settingsImg },
+      { label: "Paramètres",        href: "/dashboard/profile" },
     ],
   },
   {
@@ -98,18 +92,18 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Documentation API",
         img: apiDocImg,
         children: [
-          { href: "/docs/payin",                          label: "API Pay-in",              img: apiIconImg },
-          { href: "/docs/payout",                         label: "API Pay-out",             img: apiIconImg },
-          { href: "/dashboard/docs/virtual-cards",        label: "Cartes Virtuelles",       img: apiKeysImg },
-          { href: "/dashboard/docs/credits",              label: "Crédits Communication",   img: massPaiementImg },
-          { href: "/dashboard/docs/mass-payout",          label: "Paiement de Masse",       img: massPaiementImg },
+          { href: "/docs/payin",                          label: "API Pay-in" },
+          { href: "/docs/payout",                         label: "API Pay-out" },
+          { href: "/dashboard/docs/virtual-cards",        label: "Cartes Virtuelles" },
+          { href: "/dashboard/docs/credits",              label: "Crédits Communication" },
+          { href: "/dashboard/docs/mass-payout",          label: "Paiement de Masse" },
         ],
       },
     ],
   },
   {
     entries: [
-      { label: "Support Client", href: "/support", img: supportImg },
+      { label: "Support Client", href: "/support" },
     ],
   },
 ];
