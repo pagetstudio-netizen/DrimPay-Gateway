@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, Plus, Trash2, Send, CheckCircle2,
   AlertTriangle, Download, FileText, ChevronDown, AlertCircle, Lock,
-  ArrowRight, Zap, RefreshCw
+  ArrowRight, Zap, RefreshCw, ExternalLink
 } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,16 @@ const COUNTRIES = [
   { code: "SN", name: "Sénégal",       flag: "🇸🇳", currency: "XOF", dialCode: "+221", phoneDigits: 9,  operators: ["Orange Money", "Wave"] },
   { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮", currency: "XOF", dialCode: "+225", phoneDigits: 10, operators: ["MTN", "Orange Money", "Wave", "Moov Money"] },
 ];
+
+const OPERATOR_META: Record<string, { bg: string; text: string; logo: string; label: string }> = {
+  "TMoney":           { bg: "#FFCC00", text: "#E60026", logo: "/op-tmoney.png",       label: "T-Money" },
+  "Moov Money":       { bg: "#F06400", text: "#fff",    logo: "/op-moov.png",         label: "Moov Money" },
+  "MTN Mobile Money": { bg: "#FFCC00", text: "#1a1a1a", logo: "/op-mtn.png",          label: "MTN MoMo" },
+  "MTN MoMo":         { bg: "#FFCC00", text: "#1a1a1a", logo: "/op-mtn.png",          label: "MTN MoMo" },
+  "MTN":              { bg: "#FFCC00", text: "#1a1a1a", logo: "/op-mtn.png",          label: "MTN" },
+  "Orange Money":     { bg: "#FF6600", text: "#fff",    logo: "/op-orange-money.png", label: "Orange Money" },
+  "Wave":             { bg: "#1AC9FF", text: "#fff",    logo: "/op-wave.png",         label: "Wave" },
+};
 
 type Recipient = {
   id: string;
@@ -197,7 +207,8 @@ function JobStatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; dot: string; text: string; bg: string }> = {
     pending:    { label: "En attente", dot: "bg-amber-400",  text: "text-amber-700",  bg: "bg-amber-50 border-amber-100"  },
     processing: { label: "En cours",   dot: "bg-blue-400",   text: "text-blue-700",   bg: "bg-blue-50 border-blue-100"    },
-    completed:  { label: "Terminé",    dot: "bg-green-500",  text: "text-green-700",  bg: "bg-green-50 border-green-100"  },
+    completed:  { label: "Succès",     dot: "bg-green-500",  text: "text-green-700",  bg: "bg-green-50 border-green-100"  },
+    success:    { label: "Succès",     dot: "bg-green-500",  text: "text-green-700",  bg: "bg-green-50 border-green-100"  },
     failed:     { label: "Échoué",     dot: "bg-red-500",    text: "text-red-700",    bg: "bg-red-50 border-red-100"      },
   };
   const s = map[status] ?? map.pending;
@@ -206,6 +217,31 @@ function JobStatusBadge({ status }: { status: string }) {
       <span className={cn("w-1.5 h-1.5 rounded-full", s.dot)} />
       {s.label}
     </span>
+  );
+}
+
+function OperatorLogo({ name }: { name: string }) {
+  const meta = OPERATOR_META[name];
+  const [imgOk, setImgOk] = useState(true);
+  return (
+    <div
+      className="flex items-center justify-center rounded-lg h-7 px-2 shrink-0"
+      style={{ backgroundColor: meta?.bg ?? "#e5e7eb", minWidth: "2.5rem" }}
+      title={meta?.label ?? name}
+    >
+      {meta?.logo && imgOk ? (
+        <img
+          src={meta.logo}
+          alt={meta.label}
+          className="h-4 w-auto object-contain"
+          onError={() => setImgOk(false)}
+        />
+      ) : (
+        <span className="text-[10px] font-bold leading-none px-0.5" style={{ color: meta?.text ?? "#111" }}>
+          {meta?.label ?? name}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -616,15 +652,21 @@ export default function MassPayout() {
 
             {/* Opérateurs */}
             <div className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-4">
                 <Zap className="w-3.5 h-3.5 text-gray-400" />
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Opérateurs par pays</p>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-3">
                 {COUNTRIES.map(c => (
-                  <div key={c.code} className="text-xs text-gray-600">
-                    <span className="font-semibold">{c.flag} {c.name} :</span>{" "}
-                    <span className="text-gray-500">{c.operators.join(", ")}</span>
+                  <div key={c.code}>
+                    <p className="text-[11px] font-bold text-gray-600 mb-1.5">
+                      {c.flag} {c.name}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {c.operators.map(op => (
+                        <OperatorLogo key={op} name={op} />
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -662,53 +704,79 @@ export default function MassPayout() {
               <p className="text-xs text-gray-400">Vos opérations apparaîtront ici après le premier envoi.</p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[560px]">
-                  <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50">
-                      {["Référence", "Destinataires", "Montant", "Statut", "Date"].map(h => (
-                        <th key={h} className="text-left px-5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {jobs.map((job, i) => (
-                      <motion.tr key={job.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
-                        className="hover:bg-gray-50/60 transition-colors">
-                        <td className="px-5 py-4">
-                          <p className="font-mono text-xs font-bold text-gray-900">{job.reference}</p>
-                          {job.description && <p className="text-xs text-gray-400 truncate max-w-[180px]">{job.description}</p>}
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="inline-flex items-center gap-1 font-semibold text-green-600 bg-green-50 border border-green-100 rounded-full px-2 py-0.5">
-                              <CheckCircle2 className="w-3 h-3" />{job.successCount}
-                            </span>
-                            {job.failedCount > 0 && (
-                              <span className="inline-flex items-center gap-1 font-semibold text-red-500 bg-red-50 border border-red-100 rounded-full px-2 py-0.5">
-                                ✗ {job.failedCount}
+            <>
+              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[560px]">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50">
+                        {["Référence", "Destinataires", "Montant", "Statut", "Date"].map(h => (
+                          <th key={h} className="text-left px-5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {jobs.slice(0, 3).map((job, i) => (
+                        <motion.tr key={job.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
+                          className="hover:bg-gray-50/60 transition-colors">
+                          <td className="px-5 py-4">
+                            <p className="font-mono text-xs font-bold text-gray-900">{job.reference}</p>
+                            {job.description && <p className="text-xs text-gray-400 truncate max-w-[180px]">{job.description}</p>}
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="inline-flex items-center gap-1 font-semibold text-green-600 bg-green-50 border border-green-100 rounded-full px-2 py-0.5">
+                                <CheckCircle2 className="w-3 h-3" />{job.successCount}
                               </span>
-                            )}
-                            <span className="text-gray-400">/ {job.totalCount}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="text-sm font-bold text-gray-900">
-                            {parseFloat(job.totalAmount).toLocaleString("fr-FR")}{" "}
-                            <span className="text-xs font-normal text-gray-400">{job.currency}</span>
-                          </span>
-                        </td>
-                        <td className="px-5 py-4"><JobStatusBadge status={job.status} /></td>
-                        <td className="px-5 py-4 text-xs text-gray-400">
-                          {new Date(job.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
+                              {job.failedCount > 0 && (
+                                <span className="inline-flex items-center gap-1 font-semibold text-red-500 bg-red-50 border border-red-100 rounded-full px-2 py-0.5">
+                                  ✗ {job.failedCount}
+                                </span>
+                              )}
+                              <span className="text-gray-400">/ {job.totalCount}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-sm font-bold text-gray-900">
+                              {parseFloat(job.totalAmount).toLocaleString("fr-FR")}{" "}
+                              <span className="text-xs font-normal text-gray-400">{job.currency}</span>
+                            </span>
+                          </td>
+                          <td className="px-5 py-4"><JobStatusBadge status={job.status} /></td>
+                          <td className="px-5 py-4 text-xs text-gray-400">
+                            {new Date(job.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {jobs.length > 3 && (
+                  <div className="border-t border-gray-100 px-5 py-3">
+                    <a
+                      href="/dashboard/payments"
+                      className="flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Voir toutes les transactions ({jobs.length})
+                    </a>
+                  </div>
+                )}
               </div>
-            </div>
+
+              {jobs.length <= 3 && (
+                <div className="mt-3 text-center">
+                  <a
+                    href="/dashboard/payments"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Voir l'historique complet des transactions
+                  </a>
+                </div>
+              )}
+            </>
           )}
         </div>
 
