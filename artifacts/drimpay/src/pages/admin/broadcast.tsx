@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Send, Users, CheckCircle2, AlertTriangle, Eye, Megaphone, RefreshCw, Mail, UserSearch, X, Clock, Zap, BellRing } from "lucide-react";
 import { AdminLayout } from "./layout";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -20,6 +21,10 @@ type BroadcastResult = {
   errors: string[];
   quotaExceeded?: boolean;
   remaining?: { email: string; companyName: string }[];
+  // Snapshot of the original payload — frozen at quota-hit time so resume
+  // always uses the correct content even if the admin edits the form.
+  frozenSubject?: string;
+  frozenBody?: string;
 } | null;
 
 type PendingBroadcast = {
@@ -29,19 +34,35 @@ type PendingBroadcast = {
   savedAt: string;
 };
 
-const PENDING_KEY = "drimpay_pending_broadcast";
-
-function savePendingBroadcast(data: PendingBroadcast) {
-  localStorage.setItem(PENDING_KEY, JSON.stringify(data));
+function pendingKey(adminId: number | string) {
+  return `drimpay_pending_broadcast_${adminId}`;
 }
-function loadPendingBroadcast(): PendingBroadcast | null {
+
+function savePendingBroadcast(adminId: number | string, data: PendingBroadcast) {
+  localStorage.setItem(pendingKey(adminId), JSON.stringify(data));
+}
+
+function loadPendingBroadcast(adminId: number | string): PendingBroadcast | null {
   try {
-    const raw = localStorage.getItem(PENDING_KEY);
-    return raw ? JSON.parse(raw) : null;
+    const raw = localStorage.getItem(pendingKey(adminId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Runtime shape validation — discard malformed data
+    if (
+      !Array.isArray(parsed?.recipients) ||
+      typeof parsed?.subject !== "string" ||
+      typeof parsed?.body !== "string" ||
+      typeof parsed?.savedAt !== "string"
+    ) {
+      localStorage.removeItem(pendingKey(adminId));
+      return null;
+    }
+    return parsed as PendingBroadcast;
   } catch { return null; }
 }
-function clearPendingBroadcast() {
-  localStorage.removeItem(PENDING_KEY);
+
+function clearPendingBroadcast(adminId: number | string) {
+  localStorage.removeItem(pendingKey(adminId));
 }
 
 // ─── Onglet individuel ─────────────────────────────────────────────────────────
@@ -208,6 +229,8 @@ function IndividualTab() {
 
 // ─── Onglet groupé ─────────────────────────────────────────────────────────────
 function BroadcastTab() {
+  const { user }                              = useAuth();
+  const adminId                               = user?.id ?? "anon";
   const [filter, setFilter]                   = useState("all");
   const [subject, setSubject]                 = useState("");
   const [body, setBody]                       = useState("");
@@ -215,13 +238,14 @@ function BroadcastTab() {
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [sending, setSending]                 = useState(false);
   const [resuming, setResuming]               = useState(false);
+  const [resumeError, setResumeError]         = useState<string | null>(null);
   const [result, setResult]                   = useState<BroadcastResult>(null);
   const [preview, setPreview]                 = useState(false);
   const [confirm, setConfirm]                 = useState(false);
   const [pending, setPending]                 = useState<PendingBroadcast | null>(null);
 
-  // Load pending broadcast from localStorage on mount
-  useEffect(() => { setPending(loadPendingBroadcast()); }, []);
+  // Load pending broadcast from localStorage on mount (per-admin key)
+  useEffect(() => { setPending(loadPendingBroadcast(adminId)); }, [adminId]);
 
   const loadRecipients = async (f: string) => {
     setLoadingRecipients(true);
@@ -237,12 +261,15 @@ function BroadcastTab() {
 
   const send = async () => {
     if (!subject.trim() || !body.trim()) return;
-    setSending(true); setResult(null); setConfirm(false);
+    // Freeze a snapshot of subject/body at send time
+    const frozenSubject = subject.trim();
+    const frozenBody    = body;
+    setSending(true); setResult(null); setConfirm(false); setResumeError(null);
     try {
       const r = await fetch(`${BASE}/api/admin/broadcast`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, filter }),
+        body: JSON.stringify({ subject: frozenSubject, body: frozenBody, filter }),
       });
       const d = await r.json();
       if (r.ok) {
@@ -252,6 +279,9 @@ function BroadcastTab() {
           errors: d.errors ?? [],
           quotaExceeded: d.quotaExceeded ?? false,
           remaining: d.remaining ?? [],
+          // Attach snapshot to result so resume always uses the original content
+          frozenSubject,
+          frozenBody,
         });
       } else {
         setResult({ sent: 0, failed: recipients.length, errors: [d.error ?? "Erreur serveur"] });
@@ -262,49 +292,54 @@ function BroadcastTab() {
     setSending(false);
   };
 
-  // Send remaining via Resend immediately
+  // Send remaining via Resend immediately — uses frozen snapshot, not live form
   const resumeWithResend = async () => {
     if (!result?.remaining?.length) return;
-    setResuming(true);
+    const snap = { subject: result.frozenSubject!, body: result.frozenBody!, recipients: result.remaining };
+    setResuming(true); setResumeError(null);
     try {
       const r = await fetch(`${BASE}/api/admin/broadcast/resume-resend`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipients: result.remaining, subject, body }),
+        body: JSON.stringify(snap),
       });
       const d = await r.json();
-      setResult(prev => prev ? {
-        ...prev,
-        sent: (prev.sent ?? 0) + (d.sent ?? 0),
-        failed: (prev.failed ?? 0) + (d.failed ?? 0),
-        errors: [...(prev.errors ?? []), ...(d.errors ?? [])],
-        quotaExceeded: false,
-        remaining: [],
-      } : null);
+      if (!r.ok) {
+        setResumeError(d.error ?? "Erreur serveur lors du relais Resend.");
+      } else {
+        setResult(prev => prev ? {
+          ...prev,
+          sent: (prev.sent ?? 0) + (d.sent ?? 0),
+          failed: (prev.failed ?? 0) + (d.failed ?? 0),
+          errors: [...(prev.errors ?? []), ...(d.errors ?? [])],
+          quotaExceeded: false,
+          remaining: [],
+        } : null);
+      }
     } catch {
-      alert("Erreur réseau lors du relais Resend.");
+      setResumeError("Erreur réseau lors du relais Resend.");
     }
     setResuming(false);
   };
 
-  // Save remaining for tomorrow
+  // Save remaining for tomorrow — uses frozen snapshot, namespaced by admin
   const scheduleForTomorrow = () => {
-    if (!result?.remaining?.length) return;
+    if (!result?.remaining?.length || !result.frozenSubject || !result.frozenBody) return;
     const saved: PendingBroadcast = {
       recipients: result.remaining,
-      subject,
-      body,
+      subject: result.frozenSubject,
+      body: result.frozenBody,
       savedAt: new Date().toISOString(),
     };
-    savePendingBroadcast(saved);
+    savePendingBroadcast(adminId, saved);
     setPending(saved);
     setResult(prev => prev ? { ...prev, quotaExceeded: false, remaining: [] } : null);
   };
 
-  // Resume pending broadcast (from localStorage)
+  // Resume pending broadcast (from localStorage) — r.ok gated
   const resumePending = async () => {
     if (!pending) return;
-    setResuming(true);
+    setResuming(true); setResumeError(null);
     try {
       const r = await fetch(`${BASE}/api/admin/broadcast/resume-resend`, {
         method: "POST", credentials: "include",
@@ -312,16 +347,20 @@ function BroadcastTab() {
         body: JSON.stringify({ recipients: pending.recipients, subject: pending.subject, body: pending.body }),
       });
       const d = await r.json();
-      clearPendingBroadcast();
-      setPending(null);
-      setResult({ sent: d.sent ?? 0, failed: d.failed ?? 0, errors: d.errors ?? [] });
+      if (!r.ok) {
+        setResumeError(d.error ?? "Erreur serveur lors de la reprise.");
+      } else {
+        clearPendingBroadcast(adminId);
+        setPending(null);
+        setResult({ sent: d.sent ?? 0, failed: d.failed ?? 0, errors: d.errors ?? [] });
+      }
     } catch {
-      alert("Erreur réseau lors de la reprise.");
+      setResumeError("Erreur réseau lors de la reprise.");
     }
     setResuming(false);
   };
 
-  const dismissPending = () => { clearPendingBroadcast(); setPending(null); };
+  const dismissPending = () => { clearPendingBroadcast(adminId); setPending(null); };
 
   const canSend = subject.trim().length > 0 && body.trim().length > 0 && recipients.length > 0;
 
@@ -435,6 +474,12 @@ function BroadcastTab() {
               </button>
             </div>
 
+            {resumeError && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mt-1">
+                <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                <p className="text-xs text-red-700 font-medium">{resumeError}</p>
+              </div>
+            )}
             {result.errors.length > 0 && (
               <div className="mt-1">
                 {result.errors.slice(0, 3).map((e, i) => <p key={i} className="text-xs text-red-600 font-mono">{e}</p>)}
