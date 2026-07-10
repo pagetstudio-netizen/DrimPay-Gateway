@@ -61,7 +61,7 @@ const T = {
     enterAmount: "Entrez le montant",
     yourName: "Votre Nom",
     yourNamePlaceholder: "John",
-    emailLabel: "Entrez adresse email",
+    emailLabel: "Adresse email (optionnel)",
     confirmPayment: "Confirmer le paiement",
     summary: "Récapitulatif",
     recipient: "Destinataire",
@@ -116,7 +116,7 @@ const T = {
     enterAmount: "Enter amount",
     yourName: "Your Name",
     yourNamePlaceholder: "John",
-    emailLabel: "Enter email address",
+    emailLabel: "Email address (optional)",
     confirmPayment: "Confirm payment",
     summary: "Summary",
     recipient: "Recipient",
@@ -479,20 +479,25 @@ export default function PayPage() {
       if (stopped) return;
       try {
         const r = await fetch(`${BASE}/api/pay/status/${txRef}`);
-        if (!r.ok) return;
-        const d = await r.json();
-        const s: string = d.status ?? "";
-        if (s === "success" || s === "completed") {
-          stopped = true;
-          if (attemptId) await updateAttempt(attemptId, "success", txRef);
-          setStep("success");
-        } else if (s === "failed" || s === "cancelled" || s === "expired") {
-          stopped = true;
-          if (attemptId) await updateAttempt(attemptId, "failed");
-          setError(d.failureReason ?? "Paiement annulé ou échoué. Veuillez réessayer.");
-          setStep("error");
+        if (r.ok) {
+          const d = await r.json();
+          const s: string = d.status ?? "";
+          if (s === "success" || s === "completed") {
+            stopped = true;
+            if (attemptId) await updateAttempt(attemptId, "success", txRef);
+            setStep("success");
+            return;
+          } else if (s === "failed" || s === "cancelled" || s === "expired") {
+            stopped = true;
+            if (attemptId) await updateAttempt(attemptId, "failed");
+            setError(d.failureReason ?? "Paiement annulé ou échoué. Veuillez réessayer.");
+            setStep("error");
+            return;
+          }
+          // statut intermédiaire (pending/processing) → continuer à poller
         }
-      } catch { /* ignore, keep polling */ }
+        // r non-ok (erreur réseau ou serveur transitoire) → continuer à poller
+      } catch { /* erreur réseau — continuer à poller */ }
 
       attempts++;
       if (!stopped && attempts < MAX_ATTEMPTS) {
