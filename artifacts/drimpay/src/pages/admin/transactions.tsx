@@ -127,6 +127,8 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
   const [resolving, setResolving] = useState(false);
   const [resolved, setResolved]   = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
+  const [syncing, setSyncing]     = useState(false);
+  const [syncResult, setSyncResult] = useState<{ gatewayStatus: string; credited: boolean; aggregator: string } | null>(null);
   const [tab, setTab]             = useState<"info" | "merchant" | "gateway">("info");
 
   const resendWebhook = async () => {
@@ -134,6 +136,22 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
     await fetch(`/api/dashboard/transactions/${tx.id}/resend-webhook`, { method: "POST", credentials: "include" });
     setResent(true);
     setResending(false);
+  };
+
+  const syncGateway = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    setResolveError(null);
+    try {
+      const r = await fetch(`/api/admin/transactions/${tx.id}/sync-gateway`, { method: "POST", credentials: "include" });
+      const d = await r.json();
+      if (!r.ok) { setResolveError(d.error ?? "Erreur sync"); setSyncing(false); return; }
+      setSyncResult({ gatewayStatus: d.gatewayStatus, credited: d.credited, aggregator: d.aggregator });
+      if (d.credited) onResolved?.();
+    } catch (e: any) {
+      setResolveError(e.message);
+    }
+    setSyncing(false);
   };
 
   const forceResolve = async () => {
@@ -239,21 +257,43 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
                   <p className="text-sm font-semibold text-green-700">Transaction résolue — wallet crédité</p>
                 </div>
               )}
+              {syncResult && (
+                <div className={cn("rounded-xl p-3 border", syncResult.credited ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100")}>
+                  <p className="text-xs font-semibold mb-1" style={{ color: syncResult.credited ? "#15803d" : "#1d4ed8" }}>
+                    Sync {syncResult.aggregator} — statut gateway : <strong>{syncResult.gatewayStatus}</strong>
+                  </p>
+                  <p className="text-sm" style={{ color: syncResult.credited ? "#166534" : "#1e40af" }}>
+                    {syncResult.credited ? "Wallet crédité avec succès." : "Statut mis à jour — aucun crédit (paiement non confirmé ou déjà traité)."}
+                  </p>
+                </div>
+              )}
               <div className="flex gap-3">
                 <button onClick={resendWebhook} disabled={resending || resent} className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
                   {resent ? "✓ Webhook renvoyé" : resending ? "Envoi…" : "Renvoyer webhook"}
                 </button>
                 <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Fermer</button>
               </div>
-              {tx.type === "payin" && ["pending", "processing"].includes(tx.status) && !resolved && (
-                <button
-                  onClick={forceResolve}
-                  disabled={resolving}
-                  className="w-full px-4 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  {resolving ? "Résolution en cours…" : "Forcer la résolution (crédit manuel)"}
-                </button>
+              {tx.type === "payin" && ["pending", "processing"].includes(tx.status) && !resolved && !syncResult?.credited && (
+                <div className="space-y-2">
+                  {tx.externalRef && (
+                    <button
+                      onClick={syncGateway}
+                      disabled={syncing}
+                      className="w-full px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
+                      {syncing ? "Vérification en cours…" : "Vérifier le statut chez PayDunya"}
+                    </button>
+                  )}
+                  <button
+                    onClick={forceResolve}
+                    disabled={resolving}
+                    className="w-full px-4 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    {resolving ? "Résolution en cours…" : "Forcer la résolution (crédit manuel)"}
+                  </button>
+                </div>
               )}
             </>
           )}

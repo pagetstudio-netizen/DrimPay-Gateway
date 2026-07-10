@@ -25,6 +25,8 @@ import { logSecurityEvent, getClientIp } from "../middlewares/security";
 
 import { generateContractPdf } from "../lib/contract-pdf";
 import { sendBroadcastEmail, sendKybApprovedEmail, sendKybRejectedEmail } from "../lib/mailer";
+import { settlePayinStatus } from "../lib/payin-settlement";
+import { resolveAggregator } from "../lib/aggregator-router";
 
 const contractUpload = multer({
   storage: multer.memoryStorage(),
@@ -832,41 +834,113 @@ router.get("/admin/transactions", requireAdmin, async (req: any, res: any) => {
 
 // ─── FORCE-RESOLVE TRANSACTION (résolution manuelle admin) ───────────────────
 router.post("/admin/transactions/:id/force-resolve", requireAdmin, async (req: any, res: any) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
 
-  const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
-  if (!tx) { res.status(404).json({ error: "Transaction introuvable" }); return; }
+    const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
+    if (!tx) { res.status(404).json({ error: "Transaction introuvable" }); return; }
 
-  if (tx.type !== "payin") {
-    res.status(400).json({ error: "Seules les transactions pay-in peuvent être force-résolues" });
-    return;
+    if (tx.type !== "payin") {
+      res.status(400).json({ error: "Seules les transactions pay-in peuvent être force-résolues" });
+      return;
+    }
+    if (tx.status === "success") {
+      res.status(400).json({ error: "Transaction déjà en succès" });
+      return;
+    }
+
+    // Atomique : statut + crédit wallet dans une seule transaction DB
+    const { credited } = await settlePayinStatus({
+      txId: tx.id,
+      status: "success",
+      gateway: "paydunya",
+    });
+
+    await logAdminAction(
+      req.session.userId,
+      "FORCE_RESOLVE_TRANSACTION",
+      "transaction",
+      String(id),
+      `ref: ${tx.reference} | amount: ${tx.amount} ${tx.currency} | net: ${tx.netAmount} | credited: ${credited}`,
+      req.ip,
+    );
+
+    res.json({ ok: true, credited, message: `Transaction ${tx.reference} résolue manuellement. Wallet crédité de ${tx.netAmount} ${tx.currency}.` });
+  } catch (err: any) {
+    console.error("[admin/force-resolve]", err?.message);
+    res.status(500).json({ error: "Erreur serveur" });
   }
-  if (tx.status === "success") {
-    res.status(400).json({ error: "Transaction déjà en succès" });
-    return;
+});
+
+// ─── SYNC FROM GATEWAY (vérifie le statut réel chez PayDunya/Clapay) ──────────
+router.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req: any, res: any) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
+
+    const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
+    if (!tx) { res.status(404).json({ error: "Transaction introuvable" }); return; }
+
+    if (tx.type !== "payin") {
+      res.status(400).json({ error: "Seules les pay-in peuvent être synchronisées" });
+      return;
+    }
+    if (!tx.externalRef) {
+      res.status(400).json({ error: "Pas de référence externe — impossible d'interroger la passerelle" });
+      return;
+    }
+
+    // Interroger la passerelle pour avoir le statut réel
+    const { aggregator, client } = await resolveAggregator(tx.countryCode, tx.operator);
+
+    let gatewayStatus: string;
+    let gatewayRef = tx.externalRef;
+
+    if (aggregator === "clapay") {
+      const { ClapayClient } = await import("../lib/clapay.js");
+      const r = await (client as InstanceType<typeof ClapayClient>).getStatus(tx.externalRef);
+      gatewayStatus = r.status;
+    } else {
+      const { PayDunyaClient } = await import("../lib/paydunya.js");
+      const pd = client as InstanceType<typeof PayDunyaClient>;
+      const r = await pd.getStatus(tx.externalRef);
+      gatewayStatus = r.status === "completed" ? "success"
+        : r.status === "failed"    ? "failed"
+        : r.status === "cancelled" ? "cancelled"
+        : r.status === "expired"   ? "expired"
+        : "pending";
+      if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
+    }
+
+    // Si confirmé chez la passerelle → créditer via settlePayinStatus (idempotent)
+    const isSettled = ["success", "failed", "cancelled", "expired"].includes(gatewayStatus);
+    let credited = false;
+
+    if (isSettled) {
+      const result = await settlePayinStatus({
+        txId: tx.id,
+        status: gatewayStatus as any,
+        gatewayReference: gatewayRef,
+        gateway: aggregator,
+      });
+      credited = result.credited;
+    }
+
+    await logAdminAction(
+      req.session.userId,
+      "SYNC_GATEWAY_TRANSACTION",
+      "transaction",
+      String(id),
+      JSON.stringify({ ref: tx.reference, aggregator, gatewayStatus, credited }),
+      req.ip,
+    );
+
+    res.json({ ok: true, aggregator, gatewayStatus, credited, settled: isSettled });
+  } catch (err: any) {
+    console.error("[admin/sync-gateway]", err?.message);
+    res.status(500).json({ error: err?.message ?? "Erreur lors de la synchronisation" });
   }
-
-  // Mettre le statut en succès
-  await db.update(transactionsTable)
-    .set({ status: "success", updatedAt: new Date() })
-    .where(eq(transactionsTable.id, tx.id));
-
-  // Créditer le wallet
-  await db.update(walletsTable)
-    .set({ balance: sql`${walletsTable.balance} + ${tx.netAmount}` })
-    .where(eq(walletsTable.id, tx.walletId));
-
-  await logAdminAction(
-    req.session.userId,
-    "FORCE_RESOLVE_TRANSACTION",
-    "transaction",
-    String(id),
-    `ref: ${tx.reference} | amount: ${tx.amount} ${tx.currency} | net: ${tx.netAmount}`,
-    req.ip,
-  );
-
-  res.json({ ok: true, message: `Transaction ${tx.reference} résolue manuellement. Wallet crédité de ${tx.netAmount} ${tx.currency}.` });
 });
 
 // ─── WALLETS ──────────────────────────────────────────────────────────────────

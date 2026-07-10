@@ -279796,35 +279796,102 @@ router13.get("/admin/transactions", requireAdmin, async (req, res) => {
   });
 });
 router13.post("/admin/transactions/:id/force-resolve", requireAdmin, async (req, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "ID invalide" });
-    return;
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "ID invalide" });
+      return;
+    }
+    const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
+    if (!tx) {
+      res.status(404).json({ error: "Transaction introuvable" });
+      return;
+    }
+    if (tx.type !== "payin") {
+      res.status(400).json({ error: "Seules les transactions pay-in peuvent \xEAtre force-r\xE9solues" });
+      return;
+    }
+    if (tx.status === "success") {
+      res.status(400).json({ error: "Transaction d\xE9j\xE0 en succ\xE8s" });
+      return;
+    }
+    const { credited } = await settlePayinStatus({
+      txId: tx.id,
+      status: "success",
+      gateway: "paydunya"
+    });
+    await logAdminAction(
+      req.session.userId,
+      "FORCE_RESOLVE_TRANSACTION",
+      "transaction",
+      String(id),
+      `ref: ${tx.reference} | amount: ${tx.amount} ${tx.currency} | net: ${tx.netAmount} | credited: ${credited}`,
+      req.ip
+    );
+    res.json({ ok: true, credited, message: `Transaction ${tx.reference} r\xE9solue manuellement. Wallet cr\xE9dit\xE9 de ${tx.netAmount} ${tx.currency}.` });
+  } catch (err) {
+    console.error("[admin/force-resolve]", err?.message);
+    res.status(500).json({ error: "Erreur serveur" });
   }
-  const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
-  if (!tx) {
-    res.status(404).json({ error: "Transaction introuvable" });
-    return;
+});
+router13.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "ID invalide" });
+      return;
+    }
+    const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
+    if (!tx) {
+      res.status(404).json({ error: "Transaction introuvable" });
+      return;
+    }
+    if (tx.type !== "payin") {
+      res.status(400).json({ error: "Seules les pay-in peuvent \xEAtre synchronis\xE9es" });
+      return;
+    }
+    if (!tx.externalRef) {
+      res.status(400).json({ error: "Pas de r\xE9f\xE9rence externe \u2014 impossible d'interroger la passerelle" });
+      return;
+    }
+    const { aggregator, client } = await resolveAggregator(tx.countryCode, tx.operator);
+    let gatewayStatus;
+    let gatewayRef = tx.externalRef;
+    if (aggregator === "clapay") {
+      const { ClapayClient: ClapayClient5 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
+      const r = await client.getStatus(tx.externalRef);
+      gatewayStatus = r.status;
+    } else {
+      const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
+      const pd = client;
+      const r = await pd.getStatus(tx.externalRef);
+      gatewayStatus = r.status === "completed" ? "success" : r.status === "failed" ? "failed" : r.status === "cancelled" ? "cancelled" : r.status === "expired" ? "expired" : "pending";
+      if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
+    }
+    const isSettled = ["success", "failed", "cancelled", "expired"].includes(gatewayStatus);
+    let credited = false;
+    if (isSettled) {
+      const result = await settlePayinStatus({
+        txId: tx.id,
+        status: gatewayStatus,
+        gatewayReference: gatewayRef,
+        gateway: aggregator
+      });
+      credited = result.credited;
+    }
+    await logAdminAction(
+      req.session.userId,
+      "SYNC_GATEWAY_TRANSACTION",
+      "transaction",
+      String(id),
+      JSON.stringify({ ref: tx.reference, aggregator, gatewayStatus, credited }),
+      req.ip
+    );
+    res.json({ ok: true, aggregator, gatewayStatus, credited, settled: isSettled });
+  } catch (err) {
+    console.error("[admin/sync-gateway]", err?.message);
+    res.status(500).json({ error: err?.message ?? "Erreur lors de la synchronisation" });
   }
-  if (tx.type !== "payin") {
-    res.status(400).json({ error: "Seules les transactions pay-in peuvent \xEAtre force-r\xE9solues" });
-    return;
-  }
-  if (tx.status === "success") {
-    res.status(400).json({ error: "Transaction d\xE9j\xE0 en succ\xE8s" });
-    return;
-  }
-  await db.update(transactionsTable).set({ status: "success", updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
-  await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${tx.netAmount}` }).where(eq(walletsTable.id, tx.walletId));
-  await logAdminAction(
-    req.session.userId,
-    "FORCE_RESOLVE_TRANSACTION",
-    "transaction",
-    String(id),
-    `ref: ${tx.reference} | amount: ${tx.amount} ${tx.currency} | net: ${tx.netAmount}`,
-    req.ip
-  );
-  res.json({ ok: true, message: `Transaction ${tx.reference} r\xE9solue manuellement. Wallet cr\xE9dit\xE9 de ${tx.netAmount} ${tx.currency}.` });
 });
 router13.get("/admin/wallets", requireAdmin, async (_req, res) => {
   const wallets = await db.select().from(walletsTable).orderBy(walletsTable.countryCode);
