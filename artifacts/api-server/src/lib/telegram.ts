@@ -4,7 +4,7 @@ import { eq, and, gte, lt, sum, count } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 
-const STARTUP_COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
+const STARTUP_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 heures
 const STARTUP_FLAG = path.join("/tmp", "drimpay-startup-notif.txt");
 
 // ─── Config cache ──────────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ export async function notifyStartup() {
     if (fs.existsSync(STARTUP_FLAG)) {
       const lastMs = parseInt(fs.readFileSync(STARTUP_FLAG, "utf8").trim(), 10);
       if (!isNaN(lastMs) && Date.now() - lastMs < STARTUP_COOLDOWN_MS) {
-        console.log("[Telegram] Startup notification skipped (cooldown 1h actif)");
+        console.log("[Telegram] Startup notification skipped (cooldown 4h actif)");
         return;
       }
     }

@@ -262174,7 +262174,7 @@ init_schema2();
 init_drizzle_orm();
 import fs from "fs";
 import path from "path";
-var STARTUP_COOLDOWN_MS = 60 * 60 * 1e3;
+var STARTUP_COOLDOWN_MS = 4 * 60 * 60 * 1e3;
 var STARTUP_FLAG = path.join("/tmp", "drimpay-startup-notif.txt");
 var _cache = null;
 var CACHE_TTL = 3e4;
@@ -262301,7 +262301,7 @@ async function notifyStartup() {
     if (fs.existsSync(STARTUP_FLAG)) {
       const lastMs = parseInt(fs.readFileSync(STARTUP_FLAG, "utf8").trim(), 10);
       if (!isNaN(lastMs) && Date.now() - lastMs < STARTUP_COOLDOWN_MS) {
-        console.log("[Telegram] Startup notification skipped (cooldown 1h actif)");
+        console.log("[Telegram] Startup notification skipped (cooldown 4h actif)");
         return;
       }
     }
