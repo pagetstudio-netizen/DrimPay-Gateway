@@ -70361,7 +70361,7 @@ var init_mailer = __esm({
     init_dist();
     init_src();
     FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <support@drimpay.com>";
-    SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "Support DrimPay <support@drimpay.com>";
+    SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "DrimPay <support@drimpay.com>";
   }
 });
 
@@ -278011,10 +278011,14 @@ router11.get("/support/links", async (_req, res) => {
 });
 router11.get("/banners/active", async (_req, res) => {
   const rows = await db.select({
+    id: globalBannersTable.id,
     message: globalBannersTable.message,
-    type: globalBannersTable.type,
-    link: globalBannersTable.link,
-    linkText: globalBannersTable.linkText
+    color: globalBannersTable.color,
+    customColor: globalBannersTable.customColor,
+    buttonText: globalBannersTable.buttonText,
+    buttonLink: globalBannersTable.buttonLink,
+    imageUrl: globalBannersTable.imageUrl,
+    active: globalBannersTable.active
   }).from(globalBannersTable).where(eq(globalBannersTable.active, true)).orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
@@ -280660,6 +280664,22 @@ router13.post("/admin/global-banners", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_BANNER", "global_banner", String(banner.id), parsed.data.message, req.ip);
   res.json(banner);
 });
+router13.patch("/admin/global-banners/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Banni\xE8re introuvable" });
+    return;
+  }
+  const parsed = bannerCreateSchema.partial().safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.issues });
+    return;
+  }
+  const [updated] = await db.update(globalBannersTable).set({ ...parsed.data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(globalBannersTable.id, id)).returning();
+  await logAdminAction(req.session.userId, "UPDATE_BANNER", "global_banner", String(id), parsed.data.message, req.ip);
+  res.json(updated);
+});
 router13.patch("/admin/global-banners/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
@@ -280742,44 +280762,43 @@ router14.post("/webhooks/clapay", async (req, res) => {
       return;
     }
     const newStatus = STATUS_MAP[event.status?.toLowerCase()] ?? "failed";
-    if (tx.status === newStatus) {
-      console.log(`[Clapay Webhook] Statut d\xE9j\xE0 \xE0 jour: ${newStatus} \u2014 ignor\xE9`);
-      return;
-    }
-    await db.update(transactionsTable).set({
-      status: newStatus,
-      gatewayReference: event.clapay_reference,
-      failureReason: event.failure_reason ?? null,
-      updatedAt: /* @__PURE__ */ new Date()
-    }).where(eq(transactionsTable.id, tx.id));
-    if (newStatus === "success" && tx.type === "payin") {
-      await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${tx.netAmount}` }).where(eq(walletsTable.id, tx.walletId));
-      console.log(`[Clapay Webhook] Wallet ${tx.walletId} cr\xE9dit\xE9 de ${tx.netAmount} ${tx.currency}`);
-      try {
-        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, tx.userId));
-        const source = tx.reference.startsWith("PL-") ? "link" : tx.reference.startsWith("QR-") ? "qr" : "api";
-        notifyPayinConfirmed({
-          company: merchant?.companyName ?? "?",
-          amount: parseFloat(tx.amount),
-          fee: parseFloat(tx.fee),
-          net: parseFloat(tx.netAmount),
-          currency: tx.currency,
-          operator: tx.operator,
-          phone: tx.phone,
-          country: tx.countryCode,
-          reference: tx.reference,
-          mode: tx.mode,
-          source,
-          gateway: "clapay"
-        }).catch(() => {
-        });
-      } catch {
-      }
-    }
-    if ((newStatus === "failed" || newStatus === "cancelled") && tx.type === "payout") {
+    if (tx.type === "payin") {
+      const { credited } = await settlePayinStatus({
+        txId: tx.id,
+        status: newStatus,
+        gatewayReference: event.clapay_reference,
+        failureReason: event.failure_reason,
+        gateway: "clapay"
+      });
+      console.log(`[Clapay Webhook] Transaction payin ${tx.reference} \u2192 ${newStatus} (cr\xE9dit\xE9: ${credited})`);
+    } else if (tx.type === "payout" && (newStatus === "failed" || newStatus === "cancelled")) {
       const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
-      await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, tx.walletId));
-      console.log(`[Clapay Webhook] Payout \xE9chou\xE9 \u2014 wallet ${tx.walletId} rembours\xE9 de ${totalDebit} ${tx.currency}`);
+      const refunded = await db.transaction(async (trx) => {
+        const [row] = await trx.update(transactionsTable).set({
+          status: newStatus,
+          gatewayReference: event.clapay_reference,
+          failureReason: event.failure_reason ?? null,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(and(
+          eq(transactionsTable.id, tx.id),
+          sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
+        )).returning();
+        if (!row) return false;
+        await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, tx.walletId));
+        return true;
+      });
+      if (refunded) {
+        console.log(`[Clapay Webhook] Payout \xE9chou\xE9 \u2014 wallet ${tx.walletId} rembours\xE9 de ${totalDebit} ${tx.currency}`);
+      } else {
+        console.log(`[Clapay Webhook] Payout ${tx.reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
+      }
+    } else {
+      await db.update(transactionsTable).set({
+        status: newStatus,
+        gatewayReference: event.clapay_reference,
+        failureReason: event.failure_reason ?? null,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(transactionsTable.id, tx.id));
     }
     if (tx.type === "payout" && tx.reference.startsWith("REV-")) {
       const revStatus = newStatus === "success" ? "completed" : newStatus === "failed" || newStatus === "cancelled" ? "failed" : "pending";
