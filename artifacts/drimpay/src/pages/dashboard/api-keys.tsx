@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Key, Plus, Trash2, Copy, Eye, EyeOff, CheckCircle2, AlertTriangle,
   Shield, Globe, Cpu, Webhook, Network, ChevronRight, X, Loader2,
-  AlertCircle, Lock, RefreshCw, ChevronDown, KeyRound,
+  AlertCircle, Lock, RefreshCw, KeyRound,
 } from "lucide-react";
 import apiIconImg from "@assets/6213702_1778508885407.png";
 import { DashboardLayout } from "./layout";
@@ -89,12 +89,12 @@ function PasswordModal({
   onClose,
 }: {
   pending: PendingAction;
-  onConfirm: (password: string) => Promise<string | null>; // returns error or null
+  onConfirm: (password: string) => Promise<string | null>;
   onClose: () => void;
 }) {
-  const [pw, setPw]         = useState("");
-  const [show, setShow]     = useState(false);
-  const [err, setErr]       = useState("");
+  const [pw, setPw]           = useState("");
+  const [show, setShow]       = useState(false);
+  const [err, setErr]         = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
@@ -106,80 +106,110 @@ function PasswordModal({
   };
 
   const isRegenerate = pending.mode === "regenerate";
+  const keyName = pending.mode === "reveal" ? (pending as Extract<PendingAction, { mode: "reveal" }>).keyName : null;
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Lock className="w-5 h-5 text-gray-700" />
-            {isRegenerate ? "Confirmer la régénération" : "Confirmer votre identité"}
-          </DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-md p-0 overflow-hidden">
+
+        {/* Header */}
+        <DialogHeader className={cn(
+          "flex-row items-center gap-3 px-6 pt-6 pb-5 border-b space-y-0",
+          isRegenerate ? "border-amber-100 bg-amber-50/60" : "border-gray-100 bg-gray-50/60"
+        )}>
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+            isRegenerate ? "bg-amber-100" : "bg-gray-900"
+          )}>
             {isRegenerate
-              ? `Entrez votre mot de passe pour régénérer la clé ${pending.env === "live" ? "Live" : "Sandbox"}. L'ancienne clé sera révoquée.`
-              : `Entrez votre mot de passe pour révéler la clé "${(pending as Extract<PendingAction, {mode:"reveal"}>).keyName}".`
+              ? <RefreshCw className="w-5 h-5 text-amber-600" />
+              : <Lock className="w-5 h-5 text-white" />
             }
-          </DialogDescription>
+          </div>
+          <div>
+            <DialogTitle className="text-base font-bold text-gray-900 text-left">
+              {isRegenerate ? "Régénérer la clé" : "Vérification requise"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500 mt-0.5 text-left">
+              {isRegenerate
+                ? `Clé ${pending.env === "live" ? "Live" : "Sandbox"} — cette action est irréversible`
+                : `Application : ${keyName}`
+              }
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        {isRegenerate && (
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-            <span>L'ancienne clé sera immédiatement révoquée et toutes les intégrations utilisant cette clé cesseront de fonctionner.</span>
-          </div>
-        )}
+        <div className="px-6 py-5 space-y-4">
 
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Mot de passe</label>
-          <div className="relative">
-            <input
-              type={show ? "text" : "password"}
-              value={pw}
-              onChange={e => { setPw(e.target.value); setErr(""); }}
-              onKeyDown={e => e.key === "Enter" && submit()}
-              placeholder="Votre mot de passe"
-              autoFocus
-              className={cn(inputCls(!!err), "pr-10")}
-            />
+          {/* Warning for regenerate */}
+          {isRegenerate && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+              <p className="text-xs text-amber-800 leading-relaxed">
+                L'ancienne clé sera <strong>immédiatement révoquée</strong>. Toutes les intégrations utilisant cette clé cesseront de fonctionner jusqu'à la mise à jour.
+              </p>
+            </div>
+          )}
+
+          {/* Password field */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+              Mot de passe du compte
+            </label>
+            <div className="relative">
+              <input
+                type={show ? "text" : "password"}
+                value={pw}
+                onChange={e => { setPw(e.target.value); setErr(""); }}
+                onKeyDown={e => e.key === "Enter" && submit()}
+                placeholder="••••••••••••"
+                autoFocus
+                className={cn(inputCls(!!err), "pr-11")}
+              />
+              <button
+                type="button"
+                onClick={() => setShow(s => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                tabIndex={-1}
+              >
+                {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {err && (
+              <p className="mt-2 text-xs text-red-500 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {err}
+              </p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-1">
             <button
-              type="button"
-              onClick={() => setShow(s => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={submit}
+              disabled={loading || !pw}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-bold transition-all disabled:opacity-50",
+                isRegenerate
+                  ? "bg-amber-500 hover:bg-amber-600 text-white"
+                  : "bg-gray-900 hover:bg-gray-800 text-white"
+              )}
             >
-              {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {loading
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : isRegenerate
+                  ? <><RefreshCw className="w-4 h-4" /> Régénérer la clé</>
+                  : <><Eye className="w-4 h-4" /> Afficher la clé</>
+              }
+            </button>
+            <button
+              onClick={onClose}
+              className="px-5 h-11 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Annuler
             </button>
           </div>
-          {err && (
-            <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5" /> {err}
-            </p>
-          )}
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={submit}
-            disabled={loading}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-bold transition-colors disabled:opacity-60",
-              isRegenerate
-                ? "bg-amber-500 hover:bg-amber-600 text-white"
-                : "bg-gray-900 hover:bg-gray-800 text-white"
-            )}
-          >
-            {loading
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : isRegenerate ? <><RefreshCw className="w-4 h-4" />Régénérer</> : <><Eye className="w-4 h-4" />Afficher la clé</>
-            }
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Annuler
-          </button>
-        </div>
       </DialogContent>
     </Dialog>
   );
@@ -198,8 +228,6 @@ function ApiKeysTab() {
   const [env, setEnv]                 = useState<"sandbox" | "live">("sandbox");
   const [formErr, setFormErr]         = useState("");
   const [kybStatus, setKybStatus]     = useState<KybStatus | null>(null);
-  const [showRevoked, setShowRevoked] = useState(false);
-
   // newly created key shown inline (not modal)
   const [newKeyBanner, setNewKeyBanner] = useState<{ rawKey: string; name: string } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -294,8 +322,7 @@ function ApiKeysTab() {
     return "Action inconnue";
   };
 
-  const activeKeys  = keys.filter(k => k.status === "active");
-  const revokedKeys = keys.filter(k => k.status === "revoked");
+  const activeKeys = keys.filter(k => k.status === "active");
 
   const KeyCard = ({ k }: { k: ApiKey }) => {
     const isRevealed = revealedKeys.has(k.id);
@@ -568,37 +595,6 @@ function ApiKeysTab() {
         )}
       </div>
 
-      {/* ── Clés révoquées (repliées) ── */}
-      {revokedKeys.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-          <button
-            onClick={() => setShowRevoked(v => !v)}
-            className="w-full px-5 py-3.5 flex items-center justify-between text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-          >
-            <span className="font-medium">
-              Clés révoquées
-              <span className="ml-2 text-[11px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded">{revokedKeys.length}</span>
-            </span>
-            <ChevronDown className={cn("w-4 h-4 transition-transform", showRevoked && "rotate-180")} />
-          </button>
-          <AnimatePresence initial={false}>
-            {showRevoked && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="overflow-hidden"
-              >
-                <div className="divide-y divide-gray-50 border-t border-gray-100">
-                  {revokedKeys.map(k => <KeyCard key={k.id} k={k} />)}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
       {/* ── Password modal ── */}
       {pendingAction && (
         <PasswordModal
@@ -669,10 +665,10 @@ function ApiKeySelect({
       onChange={e => onChange(e.target.value ? parseInt(e.target.value) : null)}
       className={cn(inputCls(), "cursor-pointer")}
     >
-      <option value="">{placeholder ?? "Sélectionner une clé API *"}</option>
+      <option value="">{placeholder ?? "— Sélectionner une application —"}</option>
       {apiKeys.map(k => (
         <option key={k.id} value={k.id}>
-          [{k.env === "live" ? "LIVE" : "SANDBOX"}] {k.name} — {k.prefix}…
+          [{k.env === "live" ? "LIVE" : "SANDBOX"}] {k.name}
         </option>
       ))}
     </select>
@@ -708,7 +704,7 @@ function WebhooksTab() {
 
   const add = async () => {
     if (!url.trim()) { setErr("L'URL est requise."); return; }
-    if (!selectedKey) { setErr("Veuillez sélectionner une clé API."); return; }
+    if (!selectedKey) { setErr("Veuillez sélectionner une application."); return; }
     setErr(""); setAdding(true);
     const res = await fetch(`${BASE}/api/dashboard/webhooks`, {
       method: "POST", credentials: "include",
@@ -739,11 +735,11 @@ function WebhooksTab() {
         </h3>
 
         <div className="mb-3">
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Clé API associée *</label>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Application *</label>
           {apiKeys.length === 0 ? (
             <div className="flex items-center gap-2 h-10 px-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              Aucune clé API active. Créez d'abord une clé dans l'onglet "Clés API".
+              Aucune application enregistrée. Créez d'abord une clé dans l'onglet "Clés API".
             </div>
           ) : (
             <ApiKeySelect value={selectedKey} onChange={setSelectedKey} apiKeys={apiKeys} />
@@ -878,7 +874,7 @@ function IpTab() {
 
   const add = async () => {
     if (!ip.trim()) { setErr("L'adresse IP est requise."); return; }
-    if (!selectedKey) { setErr("Veuillez sélectionner une clé API."); return; }
+    if (!selectedKey) { setErr("Veuillez sélectionner une application."); return; }
     setErr(""); setAdding(true);
     const res = await fetch(`${BASE}/api/dashboard/allowed-ips`, {
       method: "POST", credentials: "include",
@@ -909,11 +905,11 @@ function IpTab() {
         </h3>
 
         <div className="mb-3">
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Clé API associée *</label>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Application *</label>
           {apiKeys.length === 0 ? (
             <div className="flex items-center gap-2 h-10 px-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              Aucune clé API active. Créez d'abord une clé dans l'onglet "Clés API".
+              Aucune application enregistrée. Créez d'abord une clé dans l'onglet "Clés API".
             </div>
           ) : (
             <ApiKeySelect value={selectedKey} onChange={setSelectedKey} apiKeys={apiKeys} />

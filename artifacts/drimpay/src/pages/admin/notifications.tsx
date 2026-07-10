@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Bell, AlertTriangle, CheckCircle2, Info, TrendingUp, Users,
   ShieldCheck, ArrowLeftRight, Plus, Trash2, ToggleLeft, ToggleRight,
-  Loader2, Upload, X, ExternalLink, Megaphone, ImageIcon,
+  Loader2, Upload, X, ExternalLink, Megaphone, ImageIcon, Pencil, Check,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
@@ -80,8 +80,15 @@ export default function AdminNotifications() {
   const [creating, setCreating] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    message: "", color: "blue", customColor: "#3b82f6",
+    buttonText: "", buttonLink: "", imageUrl: "",
+  });
   const [uploadingImg, setUploadingImg] = useState(false);
+  const [uploadingEditImg, setUploadingEditImg] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     message: "",
@@ -134,6 +141,61 @@ export default function AdminNotifications() {
       await loadBanners();
     } catch {}
     setCreating(false);
+  }
+
+  // Start editing
+  function handleStartEdit(banner: Banner) {
+    setEditingId(banner.id);
+    setEditForm({
+      message: banner.message,
+      color: banner.color,
+      customColor: banner.customColor ?? "#3b82f6",
+      buttonText: banner.buttonText ?? "",
+      buttonLink: banner.buttonLink ?? "",
+      imageUrl: banner.imageUrl ?? "",
+    });
+  }
+
+  // Save edit
+  async function handleSaveEdit(id: number) {
+    if (!editForm.message.trim()) return;
+    setSavingId(id);
+    try {
+      const body = {
+        message: editForm.message.trim(),
+        color: editForm.color,
+        customColor: editForm.color === "custom" ? editForm.customColor : undefined,
+        buttonText: editForm.buttonText.trim() || undefined,
+        buttonLink: editForm.buttonLink.trim() || undefined,
+        imageUrl: editForm.imageUrl.trim() || undefined,
+      };
+      const r = await fetch(`${BASE}/api/admin/global-banners/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error("Erreur serveur");
+      const updated = await r.json();
+      setBanners(prev => prev.map(b => b.id === id ? updated : b));
+      setEditingId(null);
+    } catch {}
+    setSavingId(null);
+  }
+
+  // Upload image for edit form
+  async function handleEditImageUpload(file: File) {
+    setUploadingEditImg(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const r = await fetch(`${BASE}/api/admin/global-banners/upload-image`, {
+        method: "POST", credentials: "include", body: fd,
+      });
+      const d = await r.json();
+      if (d.url) setEditForm(f => ({ ...f, imageUrl: d.url }));
+    } catch {}
+    setUploadingEditImg(false);
   }
 
   // Toggle active
@@ -428,14 +490,17 @@ export default function AdminNotifications() {
             ) : (
               <div className="space-y-3">
                 {banners.map(banner => {
+                  const isEditing = editingId === banner.id;
                   const preview = banner.color === "custom" && banner.customColor
                     ? { bg: banner.customColor, text: "#fff" }
                     : PREVIEW_TEXT[banner.color] ?? PREVIEW_TEXT.blue;
+                  const editPreview = editForm.color === "custom"
+                    ? { bg: editForm.customColor, text: "#fff" }
+                    : PREVIEW_TEXT[editForm.color] ?? PREVIEW_TEXT.blue;
+
                   return (
-                    <div
-                      key={banner.id}
-                      className="border border-gray-100 rounded-xl overflow-hidden"
-                    >
+                    <div key={banner.id} className="border border-gray-200 rounded-xl overflow-hidden">
+
                       {/* Banner preview strip */}
                       <div
                         className="flex items-center gap-3 px-4 py-2 text-sm"
@@ -451,49 +516,60 @@ export default function AdminNotifications() {
                           </span>
                         )}
                       </div>
+
                       {/* Controls row */}
-                      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50">
-                        <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 border-t border-gray-100">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                           <span className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0",
                             banner.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-500"
                           )}>
                             {banner.active ? "Actif" : "Inactif"}
                           </span>
                           {banner.buttonLink && (
-                            <a
-                              href={banner.buttonLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-500 hover:underline flex items-center gap-0.5 truncate max-w-[160px]"
-                            >
-                              <ExternalLink className="w-3 h-3 shrink-0" />
-                              {banner.buttonLink}
+                            <a href={banner.buttonLink} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-blue-500 hover:underline flex items-center gap-0.5 truncate max-w-[140px]">
+                              <ExternalLink className="w-3 h-3 shrink-0" />{banner.buttonLink}
                             </a>
                           )}
-                          {banner.imageUrl && (
+                          {banner.imageUrl && !banner.buttonLink && (
                             <span className="flex items-center gap-1 text-xs text-gray-400">
                               <ImageIcon className="w-3 h-3" /> Image
                             </span>
                           )}
-                          <span className="text-xs text-gray-400 ml-auto">
+                          <span className="text-xs text-gray-400 ml-auto shrink-0">
                             {new Date(banner.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Edit */}
+                          <button
+                            onClick={() => isEditing ? setEditingId(null) : handleStartEdit(banner)}
+                            title={isEditing ? "Annuler" : "Modifier"}
+                            className={cn(
+                              "p-1.5 rounded-lg transition text-sm",
+                              isEditing
+                                ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                : "hover:bg-blue-50 text-gray-400 hover:text-blue-500"
+                            )}
+                          >
+                            {isEditing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+                          </button>
+                          {/* Toggle */}
                           <button
                             onClick={() => handleToggle(banner.id)}
-                            disabled={savingId === banner.id}
+                            disabled={savingId === banner.id && !isEditing}
                             title={banner.active ? "Désactiver" : "Activer"}
                             className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-500 disabled:opacity-50"
                           >
-                            {savingId === banner.id
+                            {savingId === banner.id && !isEditing
                               ? <Loader2 className="w-4 h-4 animate-spin" />
                               : banner.active
                                 ? <ToggleRight className="w-5 h-5 text-emerald-500" />
                                 : <ToggleLeft className="w-5 h-5 text-gray-400" />
                             }
                           </button>
+                          {/* Delete */}
                           <button
                             onClick={() => handleDelete(banner.id)}
                             disabled={deletingId === banner.id}
@@ -507,6 +583,127 @@ export default function AdminNotifications() {
                           </button>
                         </div>
                       </div>
+
+                      {/* Inline edit form */}
+                      {isEditing && (
+                        <div className="px-4 py-4 border-t border-gray-100 bg-white space-y-3">
+                          {/* Message */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Message</label>
+                            <textarea
+                              rows={2}
+                              value={editForm.message}
+                              onChange={e => setEditForm(f => ({ ...f, message: e.target.value }))}
+                              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 resize-none outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* Couleur */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Couleur</label>
+                              <div className="flex flex-wrap gap-2">
+                                {COLOR_OPTIONS.filter(c => c.value !== "custom").map(c => (
+                                  <button key={c.value} type="button" title={c.label}
+                                    onClick={() => setEditForm(f => ({ ...f, color: c.value }))}
+                                    className={cn("w-6 h-6 rounded-full border-2 transition-transform hover:scale-110",
+                                      editForm.color === c.value ? "border-gray-900 scale-110" : "border-white shadow")}
+                                    style={{ background: c.bg }} />
+                                ))}
+                                <button type="button" title="Personnalisé"
+                                  onClick={() => setEditForm(f => ({ ...f, color: "custom" }))}
+                                  className={cn("w-6 h-6 rounded-full border-2 transition-transform hover:scale-110",
+                                    editForm.color === "custom" ? "border-gray-900 scale-110" : "border-white shadow")}
+                                  style={{ background: "conic-gradient(red,orange,yellow,green,blue,violet,red)" }} />
+                              </div>
+                              {editForm.color === "custom" && (
+                                <div className="flex items-center gap-2 mt-2">
+                                  <input type="color" value={editForm.customColor}
+                                    onChange={e => setEditForm(f => ({ ...f, customColor: e.target.value }))}
+                                    className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent" />
+                                  <input type="text" value={editForm.customColor}
+                                    onChange={e => setEditForm(f => ({ ...f, customColor: e.target.value }))}
+                                    className="flex-1 px-2 py-1 rounded-lg border border-gray-200 text-xs font-mono text-gray-700 outline-none" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Image */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Image (optionnel)</label>
+                              <div className="flex gap-2">
+                                <input type="text" placeholder="https://..."
+                                  value={editForm.imageUrl}
+                                  onChange={e => setEditForm(f => ({ ...f, imageUrl: e.target.value }))}
+                                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400" />
+                                <button type="button" onClick={() => editImageInputRef.current?.click()}
+                                  disabled={uploadingEditImg}
+                                  className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-50">
+                                  {uploadingEditImg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                </button>
+                                <input ref={editImageInputRef} type="file" accept="image/*" className="hidden"
+                                  onChange={e => { const f = e.target.files?.[0]; if (f) handleEditImageUpload(f); e.target.value = ""; }} />
+                              </div>
+                              {editForm.imageUrl && (
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <img src={editForm.imageUrl} alt="" className="w-7 h-7 rounded object-cover border border-gray-200" />
+                                  <button type="button" onClick={() => setEditForm(f => ({ ...f, imageUrl: "" }))} className="text-xs text-red-500 hover:text-red-700">Supprimer</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Texte du bouton</label>
+                              <input type="text" value={editForm.buttonText} maxLength={60}
+                                onChange={e => setEditForm(f => ({ ...f, buttonText: e.target.value }))}
+                                placeholder="Ex: Cliquez ici"
+                                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Lien du bouton</label>
+                              <input type="text" value={editForm.buttonLink}
+                                onChange={e => setEditForm(f => ({ ...f, buttonLink: e.target.value }))}
+                                placeholder="https://..."
+                                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition" />
+                            </div>
+                          </div>
+
+                          {/* Preview */}
+                          {editForm.message && (
+                            <div className="rounded-xl overflow-hidden">
+                              <div className="flex items-center gap-3 px-4 py-2.5 text-sm"
+                                style={{ backgroundColor: editPreview.bg, color: editPreview.text }}>
+                                {editForm.imageUrl && <img src={editForm.imageUrl} alt="" className="w-6 h-6 rounded object-cover shrink-0" />}
+                                <span className="flex-1 text-center font-medium">{editForm.message}</span>
+                                {editForm.buttonText && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "rgba(255,255,255,0.25)" }}>
+                                    {editForm.buttonText}
+                                  </span>
+                                )}
+                                <X className="w-3.5 h-3.5 opacity-40 shrink-0" />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex justify-end gap-2 pt-1">
+                            <button type="button" onClick={() => setEditingId(null)}
+                              className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+                              Annuler
+                            </button>
+                            <button type="button" onClick={() => handleSaveEdit(banner.id)}
+                              disabled={savingId === banner.id || !editForm.message.trim()}
+                              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-50">
+                              {savingId === banner.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Check className="w-4 h-4" />}
+                              Enregistrer
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   );
                 })}
