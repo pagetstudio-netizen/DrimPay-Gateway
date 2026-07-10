@@ -860,7 +860,6 @@ router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
       name: apiKeysTable.name,
       description: apiKeysTable.description,
       prefix: apiKeysTable.prefix,
-      rawKey: apiKeysTable.rawKey,
       env: apiKeysTable.env,
       status: apiKeysTable.status,
       lastUsedAt: apiKeysTable.lastUsedAt,
@@ -871,6 +870,37 @@ router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
     .orderBy(desc(apiKeysTable.createdAt));
 
   res.json(keys);
+});
+
+// Reveal full API key — requires password confirmation
+router.post("/dashboard/api-keys/:id/reveal", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const keyId = parseInt(String(req.params.id));
+  const { password } = req.body as { password?: string };
+
+  if (!password) {
+    res.status(400).json({ error: "Mot de passe requis" });
+    return;
+  }
+
+  const [user] = await db
+    .select({ passwordHash: usersTable.passwordHash })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+
+  if (!user) { res.status(401).json({ error: "Non autorisé" }); return; }
+
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) { res.status(401).json({ error: "Mot de passe incorrect" }); return; }
+
+  const [key] = await db
+    .select({ rawKey: apiKeysTable.rawKey, status: apiKeysTable.status })
+    .from(apiKeysTable)
+    .where(and(eq(apiKeysTable.id, keyId), eq(apiKeysTable.userId, userId)));
+
+  if (!key) { res.status(404).json({ error: "Clé introuvable" }); return; }
+
+  res.json({ rawKey: key.rawKey });
 });
 
 const createKeySchema = z.object({
@@ -946,12 +976,27 @@ router.delete("/dashboard/api-keys/:id", requireAuth, apiKeyRateLimiter, async (
 
 router.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const userId = req.session.userId!;
-  const { env } = req.body as { env: string };
+  const { env, password } = req.body as { env: string; password?: string };
 
   if (!["sandbox", "live"].includes(env)) {
     res.status(400).json({ error: "Paramètres invalides" });
     return;
   }
+
+  if (!password) {
+    res.status(400).json({ error: "Mot de passe requis pour régénérer une clé" });
+    return;
+  }
+
+  const [user] = await db
+    .select({ passwordHash: usersTable.passwordHash })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+
+  if (!user) { res.status(401).json({ error: "Non autorisé" }); return; }
+
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) { res.status(401).json({ error: "Mot de passe incorrect" }); return; }
 
   // Revoke all existing active keys for this env
   await db

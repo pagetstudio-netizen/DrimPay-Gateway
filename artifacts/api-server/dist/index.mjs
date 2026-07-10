@@ -276581,13 +276581,37 @@ router11.get("/dashboard/api-keys", requireAuth, async (req, res) => {
     name: apiKeysTable.name,
     description: apiKeysTable.description,
     prefix: apiKeysTable.prefix,
-    rawKey: apiKeysTable.rawKey,
     env: apiKeysTable.env,
     status: apiKeysTable.status,
     lastUsedAt: apiKeysTable.lastUsedAt,
     createdAt: apiKeysTable.createdAt
   }).from(apiKeysTable).where(eq(apiKeysTable.userId, userId)).orderBy(desc(apiKeysTable.createdAt));
   res.json(keys);
+});
+router11.post("/dashboard/api-keys/:id/reveal", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const keyId = parseInt(String(req.params.id));
+  const { password } = req.body;
+  if (!password) {
+    res.status(400).json({ error: "Mot de passe requis" });
+    return;
+  }
+  const [user] = await db.select({ passwordHash: usersTable.passwordHash }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(401).json({ error: "Non autoris\xE9" });
+    return;
+  }
+  const valid = await bcryptjs_default.compare(password, user.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Mot de passe incorrect" });
+    return;
+  }
+  const [key] = await db.select({ rawKey: apiKeysTable.rawKey, status: apiKeysTable.status }).from(apiKeysTable).where(and(eq(apiKeysTable.id, keyId), eq(apiKeysTable.userId, userId)));
+  if (!key) {
+    res.status(404).json({ error: "Cl\xE9 introuvable" });
+    return;
+  }
+  res.json({ rawKey: key.rawKey });
 });
 var createKeySchema = external_exports2.object({
   name: external_exports2.string().min(1).max(60),
@@ -276648,9 +276672,23 @@ router11.delete("/dashboard/api-keys/:id", requireAuth, apiKeyRateLimiter, async
 });
 router11.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const userId = req.session.userId;
-  const { env } = req.body;
+  const { env, password } = req.body;
   if (!["sandbox", "live"].includes(env)) {
     res.status(400).json({ error: "Param\xE8tres invalides" });
+    return;
+  }
+  if (!password) {
+    res.status(400).json({ error: "Mot de passe requis pour r\xE9g\xE9n\xE9rer une cl\xE9" });
+    return;
+  }
+  const [user] = await db.select({ passwordHash: usersTable.passwordHash }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(401).json({ error: "Non autoris\xE9" });
+    return;
+  }
+  const valid = await bcryptjs_default.compare(password, user.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Mot de passe incorrect" });
     return;
   }
   await db.update(apiKeysTable).set({ status: "revoked" }).where(and(eq(apiKeysTable.userId, userId), eq(apiKeysTable.env, env)));
