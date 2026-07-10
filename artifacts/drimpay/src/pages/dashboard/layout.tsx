@@ -23,8 +23,8 @@ import massPayoutImg   from "@assets/téléchargement_(86)_1783725552046.png";
 import reversementImg  from "@assets/téléchargement_(87)_1783725552070.png";
 import apiKeysImg      from "@assets/téléchargement_(88)_1783725552097.png";
 import kybImg          from "@assets/téléchargement_(89)_1783725552124.png";
-import apiDocImg       from "@assets/téléchargement_(90)_1783725552151.png";
-import supportImg      from "@assets/20260410_192649_1783725575787.png";
+import apiDocImg       from "@assets/20260710_224618_1783727562680.png";
+import supportImg      from "@assets/20260710_225016_1783727587882.png";
 import userImg         from "@assets/utilisateur_1778149009992.png";
 import logoutImg       from "@assets/3240728_1778601564288.png";
 
