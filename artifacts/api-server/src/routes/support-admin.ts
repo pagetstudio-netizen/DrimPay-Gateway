@@ -39,8 +39,9 @@ router.post("/support-admin/login", async (req, res) => {
   const schema = z.object({ email: z.string().email(), password: z.string().min(1) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Données invalides" }); return; }
-  const { email, password } = parsed.data;
-  const [user] = await db.select().from(supportUsersTable).where(eq(supportUsersTable.email, email));
+  const email = parsed.data.email.toLowerCase().trim();
+  const { password } = parsed.data;
+  const [user] = await db.select().from(supportUsersTable).where(eq(sql`lower(${supportUsersTable.email})`, email));
   if (!user) { res.status(401).json({ error: "Email ou mot de passe incorrect" }); return; }
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) { res.status(401).json({ error: "Email ou mot de passe incorrect" }); return; }

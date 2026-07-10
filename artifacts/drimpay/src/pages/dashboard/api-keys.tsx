@@ -114,30 +114,38 @@ function PasswordModal({
 
         {/* Icon */}
         <div className={cn(
-          "w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4",
+          "w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4",
           isRegenerate ? "bg-amber-100" : "bg-gray-100"
         )}>
           {isRegenerate
-            ? <RefreshCw className="w-7 h-7 text-amber-500" />
-            : <Lock className="w-7 h-7 text-gray-500" />
+            ? <RefreshCw className="w-6 h-6 text-amber-600" />
+            : <Lock className="w-6 h-6 text-gray-600" />
           }
         </div>
 
         {/* Title */}
-        <h2 className="text-base font-bold text-gray-900 text-center mb-1">
+        <h2 className="text-base font-bold text-gray-900 text-center mb-2">
           {isRegenerate ? "Régénérer la clé ?" : "Vérification requise"}
         </h2>
 
         {/* Description */}
-        <p className="text-sm text-gray-500 text-center mb-5 leading-relaxed">
+        <p className="text-sm text-gray-500 text-center leading-relaxed mb-4">
           {isRegenerate
-            ? <>L'ancienne clé sera <strong className="text-amber-700">immédiatement révoquée</strong>. Clé {pending.env === "live" ? "Live" : "Sandbox"}.</>
+            ? `En régénérant, une nouvelle clé ${pending.env === "live" ? "Live" : "Sandbox"} sera générée pour remplacer l'actuelle.`
             : <>Entrez votre mot de passe pour afficher la clé&nbsp;<strong className="text-gray-700">{keyName}</strong>.</>
           }
         </p>
 
+        {/* Warning callout */}
+        {isRegenerate && (
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-800">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+            <span>L'ancienne clé sera <strong>immédiatement révoquée</strong>. Toutes les intégrations utilisant cette clé cesseront de fonctionner jusqu'à la mise à jour.</span>
+          </div>
+        )}
+
         {/* Password field */}
-        <div className="mb-4">
+        <div className="mb-5">
           <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
             Mot de passe du compte
           </label>
@@ -168,7 +176,14 @@ function PasswordModal({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3">
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            Annuler
+          </button>
           <button
             onClick={submit}
             disabled={loading || !pw}
@@ -182,15 +197,9 @@ function PasswordModal({
             {loading
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : isRegenerate
-                ? <><RefreshCw className="w-4 h-4" /> Régénérer la clé</>
+                ? <><RefreshCw className="w-4 h-4" /> Régénérer</>
                 : <><Eye className="w-4 h-4" /> Afficher la clé</>
             }
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Annuler
           </button>
         </div>
 
@@ -589,30 +598,39 @@ function ApiKeysTab() {
       )}
 
       {/* ── Revoke confirm ── */}
-      <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="w-5 h-5 text-red-500" /> Révoquer cette clé ?
-            </DialogTitle>
-            <DialogDescription>Cette action est irréversible. La clé sera immédiatement désactivée.</DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-3 mt-2">
-            <button
-              onClick={() => deleteId && revoke(deleteId)}
-              className="flex-1 h-10 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors"
-            >
-              Révoquer
-            </button>
-            <button
-              onClick={() => setDeleteId(null)}
-              className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Annuler
-            </button>
+      {deleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-6 h-6 text-red-600" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 text-center mb-2">
+              Révoquer cette clé ?
+            </h2>
+            <p className="text-sm text-gray-500 text-center leading-relaxed mb-4">
+              Cette action est irréversible. La clé sera immédiatement désactivée.
+            </p>
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-5 text-xs text-red-800">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+              <span>Toutes les intégrations utilisant cette clé cesseront immédiatement de fonctionner.</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => deleteId && revoke(deleteId)}
+                className="flex-1 h-11 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors"
+              >
+                Révoquer
+              </button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }

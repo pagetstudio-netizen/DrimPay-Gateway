@@ -1236,9 +1236,8 @@ router.post("/admin/api-keys/:id/regenerate", requireAdmin, async (req: any, res
   if (!old) { res.status(404).json({ error: "Clé introuvable" }); return; }
 
   const env = old.env;
-  const prefix_str = env === "sandbox" ? "test" : "live";
-  const rawKey = `dp_${prefix_str}_sk_${crypto.randomBytes(24).toString("hex")}`;
-  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 15);
+  const rawKey = `dp_${env}_sk_${crypto.randomBytes(24).toString("hex")}`;
+  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcrypt.hash(rawKey, 10);
 
   await db.update(apiKeysTable).set({ status: "revoked" }).where(eq(apiKeysTable.id, id));
@@ -1784,9 +1783,10 @@ router.post("/admin/support-agents", requireAdmin, async (req, res) => {
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Données invalides" });
     return;
   }
-  const { email, name, password } = parsed.data;
+  const { name, password } = parsed.data;
+  const email = parsed.data.email.toLowerCase().trim();
 
-  const [existing] = await db.select({ id: supportUsersTable.id }).from(supportUsersTable).where(eq(supportUsersTable.email, email));
+  const [existing] = await db.select({ id: supportUsersTable.id }).from(supportUsersTable).where(eq(sql`lower(${supportUsersTable.email})`, email));
   if (existing) {
     res.status(409).json({ error: "Un agent avec cet email existe déjà" });
     return;

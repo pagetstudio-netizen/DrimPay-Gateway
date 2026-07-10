@@ -1081,7 +1081,7 @@ X-DrimPay-Event: payin.success`} />
               </p>
               <CodeBlock lang="bash" code={`HMAC_SHA256(key=DRIMPAY_WEBHOOK_SECRET, data="{timestamp}.{raw_body}")`} />
               <p className="text-sm text-muted-foreground mb-4">
-                The result is sent in <code className="font-mono text-xs text-primary">X-DrimPay-Signature</code> as <code className="font-mono text-xs">t=&#123;timestamp&#125;,v1=&#123;hex_signature&#125;</code>. Your webhook secret is shown once in the dashboard when you configure your endpoint.
+                The result is sent in <code className="font-mono text-xs text-primary">X-DrimPay-Signature</code> as <code className="font-mono text-xs">t=&#123;timestamp&#125;,v1=&#123;hex_signature&#125;</code>. The <code className="font-mono text-xs text-primary">DRIMPAY_WEBHOOK_SECRET</code> is provided by DrimPay when your integration is set up — contact <a href="mailto:api@drimpay.com" className="text-primary hover:underline">api@drimpay.com</a> if you need it.
               </p>
               <div className="flex gap-2 mb-2">
                 {LANGS.map(l => (

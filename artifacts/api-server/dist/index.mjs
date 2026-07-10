@@ -276697,8 +276697,8 @@ router11.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req,
   }
   const userId = req.session.userId;
   const { name: name2, description, env } = parsed.data;
-  const rawKey = `dp_${env}_${crypto5.randomBytes(24).toString("hex")}`;
-  const prefix = rawKey.substring(0, 14);
+  const rawKey = `dp_${env}_sk_${crypto5.randomBytes(24).toString("hex")}`;
+  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcryptjs_default.hash(rawKey, 10);
   const [key] = await db.insert(apiKeysTable).values({ userId, name: name2, description: description ?? null, keyHash, rawKey, prefix, env }).returning({
     id: apiKeysTable.id,
@@ -276763,8 +276763,8 @@ router11.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, 
     return;
   }
   await db.update(apiKeysTable).set({ status: "revoked" }).where(and(eq(apiKeysTable.userId, userId), eq(apiKeysTable.env, env)));
-  const rawKey = `dp_${env === "sandbox" ? "test" : "live"}_${crypto5.randomBytes(24).toString("hex")}`;
-  const prefix = rawKey.substring(0, env === "sandbox" ? 12 : 11);
+  const rawKey = `dp_${env}_sk_${crypto5.randomBytes(24).toString("hex")}`;
+  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcryptjs_default.hash(rawKey, 10);
   const name2 = env === "sandbox" ? "Cl\xE9 Sandbox" : "Cl\xE9 Live";
   const [key] = await db.insert(apiKeysTable).values({ userId, name: name2, keyHash, rawKey, prefix, env }).returning({
@@ -280238,9 +280238,8 @@ router13.post("/admin/api-keys/:id/regenerate", requireAdmin, async (req, res) =
     return;
   }
   const env = old.env;
-  const prefix_str = env === "sandbox" ? "test" : "live";
-  const rawKey = `dp_${prefix_str}_sk_${crypto7.randomBytes(24).toString("hex")}`;
-  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 15);
+  const rawKey = `dp_${env}_sk_${crypto7.randomBytes(24).toString("hex")}`;
+  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcryptjs_default.hash(rawKey, 10);
   await db.update(apiKeysTable).set({ status: "revoked" }).where(eq(apiKeysTable.id, id));
   const [newKey] = await db.insert(apiKeysTable).values({ userId: old.userId, name: old.name, description: old.description, keyHash, rawKey, prefix, env }).returning();
@@ -280683,8 +280682,9 @@ router13.post("/admin/support-agents", requireAdmin, async (req, res) => {
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Donn\xE9es invalides" });
     return;
   }
-  const { email: email3, name: name2, password } = parsed.data;
-  const [existing] = await db.select({ id: supportUsersTable.id }).from(supportUsersTable).where(eq(supportUsersTable.email, email3));
+  const { name: name2, password } = parsed.data;
+  const email3 = parsed.data.email.toLowerCase().trim();
+  const [existing] = await db.select({ id: supportUsersTable.id }).from(supportUsersTable).where(eq(sql`lower(${supportUsersTable.email})`, email3));
   if (existing) {
     res.status(409).json({ error: "Un agent avec cet email existe d\xE9j\xE0" });
     return;
@@ -281177,8 +281177,9 @@ router16.post("/support-admin/login", async (req, res) => {
     res.status(400).json({ error: "Donn\xE9es invalides" });
     return;
   }
-  const { email: email3, password } = parsed.data;
-  const [user] = await db.select().from(supportUsersTable).where(eq(supportUsersTable.email, email3));
+  const email3 = parsed.data.email.toLowerCase().trim();
+  const { password } = parsed.data;
+  const [user] = await db.select().from(supportUsersTable).where(eq(sql`lower(${supportUsersTable.email})`, email3));
   if (!user) {
     res.status(401).json({ error: "Email ou mot de passe incorrect" });
     return;

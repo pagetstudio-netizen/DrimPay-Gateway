@@ -918,8 +918,8 @@ router.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, r
   const userId = req.session.userId!;
   const { name, description, env } = parsed.data;
 
-  const rawKey = `dp_${env}_${crypto.randomBytes(24).toString("hex")}`;
-  const prefix = rawKey.substring(0, 14);
+  const rawKey = `dp_${env}_sk_${crypto.randomBytes(24).toString("hex")}`;
+  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcrypt.hash(rawKey, 10);
 
   const [key] = await db
@@ -1004,8 +1004,8 @@ router.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, as
     .where(and(eq(apiKeysTable.userId, userId), eq(apiKeysTable.env, env as any)));
 
   // Generate new unique key
-  const rawKey = `dp_${env === "sandbox" ? "test" : "live"}_${crypto.randomBytes(24).toString("hex")}`;
-  const prefix = rawKey.substring(0, env === "sandbox" ? 12 : 11);
+  const rawKey = `dp_${env}_sk_${crypto.randomBytes(24).toString("hex")}`;
+  const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcrypt.hash(rawKey, 10);
   const name = env === "sandbox" ? "Clé Sandbox" : "Clé Live";
 

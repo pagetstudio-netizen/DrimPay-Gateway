@@ -204,7 +204,7 @@ export default function DocPayin() {
             <Shield className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-blue-400 mb-1">Header de signature</p>
-              <p className="text-xs text-muted-foreground">Chaque webhook est signé avec votre <code className="font-mono text-primary">webhook_secret</code>. Vérifiez toujours la signature avant de traiter l'événement.</p>
+              <p className="text-xs text-muted-foreground">Chaque webhook est signé avec la clé secrète <code className="font-mono text-primary">WEBHOOK_SECRET</code> fournie par DrimPay lors de votre intégration. Vérifiez toujours la signature avant de traiter l'événement.</p>
             </div>
           </div>
           <CodeBlock lang="bash" code={`X-DrimPay-Signature: sha256=a3f9e1c2b4d5...`} />
