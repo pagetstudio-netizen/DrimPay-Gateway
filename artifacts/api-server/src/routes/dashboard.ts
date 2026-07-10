@@ -35,6 +35,7 @@ import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntil
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { settlePayinStatus } from "../lib/payin-settlement";
+import { getWebhookBaseUrl } from "../lib/base-urls";
 
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -511,8 +512,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
 
     try {
       const { aggregator, client } = await resolveAggregator(countryCode, operator);
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+      const baseUrl = getWebhookBaseUrl();
       const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
 
       let gatewayRef: string;
@@ -705,8 +705,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
       return;
     }
 
-    const baseUrl = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+    const baseUrl = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
 
     let gatewayRef: string;
@@ -1415,8 +1414,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
     .set({ balance: sql`${walletsTable.balance} - ${totalDebit}` })
     .where(eq(walletsTable.id, wallet.id));
 
-  const baseUrl = process.env.REPLIT_DEV_DOMAIN
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+  const baseUrl = getWebhookBaseUrl();
   const callbackUrl = `${baseUrl}/api/webhooks/${resolvedAggregator}`;
 
   // Créer la transaction (webhook peut la retrouver via reference)
@@ -2079,8 +2077,7 @@ router.post("/pay/:token", async (req, res) => {
   // ── LIVE: call real aggregator ────────────────────────────────────────────
   try {
     const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
-    const baseUrl = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+    const baseUrl = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
 
     let gatewayRef: string;
@@ -2370,8 +2367,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   let successCount = 0;
   let failedCount = 0;
 
-  const baseUrl = process.env.REPLIT_DEV_DOMAIN
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+  const baseUrl = getWebhookBaseUrl();
 
   for (const r of recipients) {
     try {

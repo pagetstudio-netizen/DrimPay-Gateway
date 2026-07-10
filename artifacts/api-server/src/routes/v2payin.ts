@@ -15,6 +15,7 @@ import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam } from "../lib/telegram";
+import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 
 const router = Router();
 
@@ -357,13 +358,8 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       res.status(opCheck.status).json({ error: opCheck.error, code: "OPERATOR_UNAVAILABLE" });
       return;
     }
-    const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "https://api.drimpay.com";
-
-    const frontendBaseUrl = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : (process.env.FRONTEND_BASE_URL ?? "https://drimpay.com");
+    const baseCallbackUrl = getWebhookBaseUrl();
+    const frontendBaseUrl = getFrontendBaseUrl();
 
     const defaultReturnUrl = `${frontendBaseUrl}/payment/success`;
 

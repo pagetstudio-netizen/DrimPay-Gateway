@@ -27,6 +27,7 @@ import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { notifyPayinConfirmed } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
+import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 
 const router = Router();
 
@@ -368,20 +369,8 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
   }).returning();
 
   // Route through aggregator
-  // WEBHOOK_BASE_URL prend la priorité absolue.
-  // Sinon, REPLIT_DEV_DOMAIN est utilisé dès qu'il est disponible (dev ET prod sur Replit).
-  // Fallback sur api.drimpay.com uniquement si aucun des deux n'est configuré.
-  const baseCallbackUrl =
-    process.env.WEBHOOK_BASE_URL ??
-    (process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "https://api.drimpay.com");
-
-  const frontendBaseUrl =
-    process.env.FRONTEND_BASE_URL ??
-    (process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "https://drimpay.com");
+  const baseCallbackUrl = getWebhookBaseUrl();
+  const frontendBaseUrl = getFrontendBaseUrl();
 
   const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
 

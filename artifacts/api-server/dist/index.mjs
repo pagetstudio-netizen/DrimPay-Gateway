@@ -275928,6 +275928,21 @@ async function settlePayinStatus(params) {
   return { credited: true };
 }
 
+// src/lib/base-urls.ts
+function normalizeBase(url2) {
+  return url2.trimEnd().replace(/\/+$/, "");
+}
+function getWebhookBaseUrl() {
+  const raw = process.env.WEBHOOK_BASE_URL?.trim();
+  if (raw) return normalizeBase(raw);
+  return "https://api.drimpay.com";
+}
+function getFrontendBaseUrl() {
+  const raw = process.env.FRONTEND_BASE_URL?.trim();
+  if (raw) return normalizeBase(raw);
+  return "https://drimpay.com";
+}
+
 // src/routes/dashboard.ts
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 var FEE_RATE = 0.035;
@@ -276270,7 +276285,7 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
     }).returning();
     try {
       const { aggregator, client } = await resolveAggregator(countryCode, operator);
-      const baseUrl2 = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+      const baseUrl2 = getWebhookBaseUrl();
       const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
       let gatewayRef;
       if (aggregator === "clapay") {
@@ -276451,7 +276466,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       res.status(statusCode).json({ error: msg, reference });
       return;
     }
-    const baseUrl2 = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+    const baseUrl2 = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
     let gatewayRef;
     try {
@@ -277037,7 +277052,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
   }
   const reference = `REV-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
-  const baseUrl2 = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+  const baseUrl2 = getWebhookBaseUrl();
   const callbackUrl = `${baseUrl2}/api/webhooks/${resolvedAggregator}`;
   const [tx] = await db.insert(transactionsTable).values({
     userId,
@@ -277607,7 +277622,7 @@ router11.post("/pay/:token", async (req, res) => {
   }
   try {
     const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
-    const baseUrl2 = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+    const baseUrl2 = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
     let gatewayRef;
     if (aggregator === "clapay") {
@@ -277837,7 +277852,7 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   }).returning();
   let successCount = 0;
   let failedCount = 0;
-  const baseUrl2 = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+  const baseUrl2 = getWebhookBaseUrl();
   for (const r of recipients) {
     try {
       const countryCurrency = COUNTRIES.find((c) => c.code === r.countryCode)?.currency ?? "XOF";
@@ -278577,8 +278592,8 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       res.status(opCheck.status).json({ error: opCheck.error, code: "OPERATOR_UNAVAILABLE" });
       return;
     }
-    const baseCallbackUrl = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
-    const frontendBaseUrl = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : process.env.FRONTEND_BASE_URL ?? "https://drimpay.com";
+    const baseCallbackUrl = getWebhookBaseUrl();
+    const frontendBaseUrl = getFrontendBaseUrl();
     const defaultReturnUrl = `${frontendBaseUrl}/payment/success`;
     try {
       const { aggregator, client } = await resolveAggregator(country_code, operator);
@@ -281430,8 +281445,8 @@ router17.post("/api/pay/:token", async (req, res) => {
     expiresAt,
     requestPayload: JSON.stringify(req.body)
   }).returning();
-  const baseCallbackUrl = process.env.WEBHOOK_BASE_URL ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com");
-  const frontendBaseUrl = process.env.FRONTEND_BASE_URL ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://drimpay.com");
+  const baseCallbackUrl = getWebhookBaseUrl();
+  const frontendBaseUrl = getFrontendBaseUrl();
   const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
   const opCheck = await checkOperatorAvailable(countryCode, operator, "paymentLinks");
   if (!opCheck.ok) {
