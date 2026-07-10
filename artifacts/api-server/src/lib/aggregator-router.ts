@@ -59,6 +59,8 @@ export async function resolveAggregator(
     );
 
   let aggregatorCode: AggregatorCode;
+  // true = operator is explicitly mapped in DB; false = using ACTIVE_AGGREGATOR fallback
+  const explicitMapping = !!opAgg;
 
   if (opAgg) {
     const code = opAgg.aggregatorCode.toLowerCase();
@@ -70,22 +72,48 @@ export async function resolveAggregator(
     }
     aggregatorCode = code;
   } else {
-    const preferred = (process.env.ACTIVE_AGGREGATOR ?? "clapay").toLowerCase();
+    const preferred = (process.env.ACTIVE_AGGREGATOR ?? "paydunya").toLowerCase();
     if (preferred !== "clapay" && preferred !== "paydunya") {
       throw new AggregatorUnavailableError(
-        "clapay",
+        "paydunya",
         `ACTIVE_AGGREGATOR invalide: "${preferred}"`,
       );
     }
     aggregatorCode = preferred;
   }
 
+  // ── Résolution finale avec fallback intelligent ────────────────────────────
+  // Si l'agrégateur choisi est configuré (a ses clés API), on l'utilise.
+  // Si ce n'est PAS le cas et qu'il n'y a PAS de mapping explicite en base,
+  // on bascule automatiquement vers l'autre agrégateur s'il est disponible.
+  // Un mapping explicite en base (opAgg) ne peut pas être ignoré — il faut
+  // que l'opérateur soit correctement configuré.
   if (aggregatorCode === "clapay") {
-    if (!isClapayConfigured()) throw new AggregatorNotConfiguredError("clapay");
-    return { aggregator: "clapay", client: getClapayClient(), opAgg: opAgg ?? null };
+    if (isClapayConfigured()) {
+      return { aggregator: "clapay", client: getClapayClient(), opAgg: opAgg ?? null };
+    }
+    // Clapay non configuré — fallback automatique sur PayDunya si pas de mapping explicite
+    if (!explicitMapping && isPayDunyaConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Clapay non configuré (CLAPAY_API_TOKEN manquant) — ` +
+        `bascule automatique sur PayDunya pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
+    }
+    throw new AggregatorNotConfiguredError("clapay");
   } else {
-    if (!isPayDunyaConfigured()) throw new AggregatorNotConfiguredError("paydunya");
-    return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
+    if (isPayDunyaConfigured()) {
+      return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
+    }
+    // PayDunya non configuré — fallback automatique sur Clapay si pas de mapping explicite
+    if (!explicitMapping && isClapayConfigured()) {
+      console.warn(
+        `[AggregatorRouter] PayDunya non configuré (clés manquantes) — ` +
+        `bascule automatique sur Clapay pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
+    }
+    throw new AggregatorNotConfiguredError("paydunya");
   }
 }
 

@@ -275691,6 +275691,7 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
     )
   );
   let aggregatorCode;
+  const explicitMapping = !!opAgg;
   if (opAgg) {
     const code = opAgg.aggregatorCode.toLowerCase();
     if (code !== "clapay" && code !== "paydunya") {
@@ -275701,21 +275702,37 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
     }
     aggregatorCode = code;
   } else {
-    const preferred = (process.env.ACTIVE_AGGREGATOR ?? "clapay").toLowerCase();
+    const preferred = (process.env.ACTIVE_AGGREGATOR ?? "paydunya").toLowerCase();
     if (preferred !== "clapay" && preferred !== "paydunya") {
       throw new AggregatorUnavailableError(
-        "clapay",
+        "paydunya",
         `ACTIVE_AGGREGATOR invalide: "${preferred}"`
       );
     }
     aggregatorCode = preferred;
   }
   if (aggregatorCode === "clapay") {
-    if (!isClapayConfigured()) throw new AggregatorNotConfiguredError("clapay");
-    return { aggregator: "clapay", client: getClapayClient(), opAgg: opAgg ?? null };
+    if (isClapayConfigured()) {
+      return { aggregator: "clapay", client: getClapayClient(), opAgg: opAgg ?? null };
+    }
+    if (!explicitMapping && isPayDunyaConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Clapay non configur\xE9 (CLAPAY_API_TOKEN manquant) \u2014 bascule automatique sur PayDunya pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
+    }
+    throw new AggregatorNotConfiguredError("clapay");
   } else {
-    if (!isPayDunyaConfigured()) throw new AggregatorNotConfiguredError("paydunya");
-    return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
+    if (isPayDunyaConfigured()) {
+      return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
+    }
+    if (!explicitMapping && isClapayConfigured()) {
+      console.warn(
+        `[AggregatorRouter] PayDunya non configur\xE9 (cl\xE9s manquantes) \u2014 bascule automatique sur Clapay pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
+    }
+    throw new AggregatorNotConfiguredError("paydunya");
   }
 }
 var SETTLED_STATUSES = /* @__PURE__ */ new Set(["success", "failed", "cancelled", "expired"]);
