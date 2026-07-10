@@ -97,7 +97,7 @@ router.get("/pay/status/:reference", async (req: any, res: any) => {
   }
 
   // Normaliser "completed" → "success" pour le frontend
-  const normalizedStatus = tx.status === "completed" ? "success" : tx.status;
+  const normalizedStatus = (tx.status as string) === "completed" ? "success" : tx.status;
 
   res.json({
     reference: tx.reference,

@@ -1028,7 +1028,7 @@ export default function ApiKeysPage() {
 
   return (
     <DashboardLayout>
-      <ProductionGate feature="api-keys">
+      <ProductionGate>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
           {/* Header */}
           <div className="flex items-center gap-3">

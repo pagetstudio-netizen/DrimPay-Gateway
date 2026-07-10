@@ -236,7 +236,7 @@ export function getClientIp(req: Request): string {
 // ── Security event logger ─────────────────────────────────────────────────────
 
 type SecurityEventType =
-  | "LOGIN_SUCCESS" | "LOGIN_FAILED" | "LOGOUT" | "REGISTER"
+  | "LOGIN_SUCCESS" | "LOGIN_FAILED" | "LOGIN_NEW_DEVICE" | "LOGOUT" | "REGISTER"
   | "BRUTE_FORCE" | "RATE_LIMITED" | "IP_BLOCKED" | "SUSPICIOUS_ACTIVITY"
   | "PASSWORD_CHANGED" | "PASSWORD_RESET" | "API_KEY_CREATED" | "API_KEY_REVOKED"
   | "WEBHOOK_INVALID" | "SESSION_EXPIRED";

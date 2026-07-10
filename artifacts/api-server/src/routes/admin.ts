@@ -905,10 +905,11 @@ router.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req: an
       const { PayDunyaClient } = await import("../lib/paydunya.js");
       const pd = client as InstanceType<typeof PayDunyaClient>;
       const r = await pd.getStatus(tx.externalRef);
-      gatewayStatus = r.status === "completed" ? "success"
-        : r.status === "failed"    ? "failed"
-        : r.status === "cancelled" ? "cancelled"
-        : r.status === "expired"   ? "expired"
+      const rs = r.status as string;
+      gatewayStatus = rs === "completed" ? "success"
+        : rs === "failed"    ? "failed"
+        : rs === "cancelled" ? "cancelled"
+        : rs === "expired"   ? "expired"
         : "pending";
       if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
     }

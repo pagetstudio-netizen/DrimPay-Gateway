@@ -279923,7 +279923,8 @@ router13.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req, 
       const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
       const pd = client;
       const r = await pd.getStatus(tx.externalRef);
-      gatewayStatus = r.status === "completed" ? "success" : r.status === "failed" ? "failed" : r.status === "cancelled" ? "cancelled" : r.status === "expired" ? "expired" : "pending";
+      const rs = r.status;
+      gatewayStatus = rs === "completed" ? "success" : rs === "failed" ? "failed" : rs === "cancelled" ? "cancelled" : rs === "expired" ? "expired" : "pending";
       if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
     }
     const isSettled = ["success", "failed", "cancelled", "expired"].includes(gatewayStatus);

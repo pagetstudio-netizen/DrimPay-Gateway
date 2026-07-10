@@ -374,7 +374,7 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = 2
     if (!editor) return;
     if (!value || value === "<p></p>") return;
     if (editor.getHTML() !== value) {
-      editor.commands.setContent(value, false);
+      editor.commands.setContent(value);
     }
   }, [value, editor]);
 

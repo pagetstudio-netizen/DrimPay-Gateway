@@ -13,7 +13,7 @@ const anonKey = process.env.SUPABASE_ANON_KEY;
 export const supabaseAdmin = (serviceRoleKey || anonKey)
   ? createClient(supabaseUrl, serviceRoleKey ?? anonKey!, {
       auth: { persistSession: false },
-      realtime: { transport: ws },
+      realtime: { transport: ws as any },
     })
   : null;
 
