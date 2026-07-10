@@ -34,6 +34,7 @@ import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
 import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
+import { settlePayinStatus } from "../lib/payin-settlement";
 
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -541,14 +542,18 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
 
+      // Point de règlement unique — crédite le wallet si succès, idempotent avec le
+      // webhook qui pourrait confirmer le même paiement un peu plus tard.
       await db.update(transactionsTable)
-        .set({
-          status: verifiedStatus as any,
-          externalRef: gatewayRef,
-          ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
-          updatedAt: new Date(),
-        })
+        .set({ externalRef: gatewayRef })
         .where(eq(transactionsTable.id, tx.id));
+      await settlePayinStatus({
+        txId: tx.id,
+        status: verifiedStatus as any,
+        gatewayReference: gatewayRef,
+        failureReason: verifiedFailureReason,
+        gateway: aggregator,
+      });
 
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         res.status(502).json({
@@ -682,78 +687,12 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
       })
       .returning();
 
+    // ── Résoudre l'agrégateur AVANT tout, pour échouer vite si mal configuré ──
+    let aggregator: "clapay" | "paydunya";
+    let client: ClapayClient | PayDunyaClient;
     try {
-      const { aggregator, client } = await resolveAggregator(countryCode, operator);
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
-      const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
-
-      let gatewayRef: string;
-      if (aggregator === "clapay") {
-        const r = await (client as ClapayClient).initiatePayout({
-          amount, currency, country_code: countryCode, operator, phone,
-          reference, callback_url: callbackUrl, description,
-        });
-        if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
-        gatewayRef = r.clapay_reference;
-      } else {
-        const r = await (client as PayDunyaClient).initiatePayout({
-          amount, currency, country_code: countryCode, operator, phone,
-          reference, callback_url: callbackUrl, description,
-        });
-        if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
-        gatewayRef = r.paydunya_reference;
-      }
-
-      // Polling du statut chez le fournisseur (payout = 3s × max 30s)
-      // Opération automatisée : le fournisseur traite sans intervention humaine.
-      // On poll jusqu'à 30s pour obtenir la réponse définitive avant de répondre au client.
-      const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
-        intervalMs: 3_000,
-        maxDurationMs: 30_000,
-      });
-      const verifiedStatus = statusCheck?.status ?? "processing";
-      const verifiedFailureReason = statusCheck?.failureReason;
-
-      await db.update(transactionsTable)
-        .set({
-          status: verifiedStatus as any,
-          externalRef: gatewayRef,
-          ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(transactionsTable.id, tx.id));
-
-      // Si le fournisseur confirme un échec → rembourser le wallet
-      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
-        await db.update(walletsTable)
-          .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
-          .where(eq(walletsTable.id, wallet.id));
-        res.status(502).json({
-          error: verifiedFailureReason ?? "Payout rejeté par le fournisseur",
-          reference, status: verifiedStatus, gateway: aggregator,
-        });
-        return;
-      }
-
-      createNotification(
-        userId, "info", "transaction",
-        `Pay-out en cours — ${amount.toLocaleString("fr-FR")} ${currency}`,
-        `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. Statut initial : ${verifiedStatus}. Réf : ${reference}.`,
-        "/dashboard/payments",
-      ).catch(() => {});
-
-      res.status(201).json({
-        transaction: { ...tx, status: verifiedStatus },
-        fee, totalDebit, feeRate: `${payoutFeeRate * 100}%`,
-        gateway: aggregator, gateway_reference: gatewayRef,
-        verified_status: verifiedStatus,
-        message: verifiedStatus === "success"
-          ? "Payout traité avec succès par le fournisseur."
-          : "Payout en cours de traitement. Le statut sera mis à jour via webhook.",
-      });
+      ({ aggregator, client } = await resolveAggregator(countryCode, operator, "payout"));
     } catch (err: any) {
-      // Rollback balance on failure
       await db.update(walletsTable)
         .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
         .where(eq(walletsTable.id, wallet.id));
@@ -763,7 +702,116 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         .where(eq(transactionsTable.id, tx.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
       res.status(statusCode).json({ error: msg, reference });
+      return;
     }
+
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+    const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+
+    let gatewayRef: string;
+    try {
+      console.log(`[Payout] → Initiation ${aggregator} | ref: ${reference} | ${amount} ${currency} | ${operator} (${countryCode}) → ${phone}`);
+      if (aggregator === "clapay") {
+        const r = await (client as ClapayClient).initiatePayout({
+          amount, currency, country_code: countryCode, operator, phone,
+          reference, callback_url: callbackUrl, description,
+        });
+        console.log(`[Payout] ← Réponse Clapay: ${JSON.stringify(r)}`);
+        if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
+        gatewayRef = r.clapay_reference;
+      } else {
+        const r = await (client as PayDunyaClient).initiatePayout({
+          amount, currency, country_code: countryCode, operator, phone,
+          reference, callback_url: callbackUrl, description,
+        });
+        console.log(`[Payout] ← Réponse PayDunya: ${JSON.stringify(r)}`);
+        if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
+        gatewayRef = r.paydunya_reference;
+      }
+    } catch (err: any) {
+      // Rollback balance on failure — on remonte le message d'erreur EXACT du fournisseur.
+      await db.update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+        .where(eq(walletsTable.id, wallet.id));
+      const msg = err?.message ?? String(err);
+      console.error(`[Payout] ✗ Initiation ${aggregator} échouée pour ${reference}: ${msg}`, err?.raw ?? "");
+      await db.update(transactionsTable)
+        .set({ status: "failed", failureReason: msg, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+      const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
+      res.status(statusCode).json({ error: msg, reference, gateway: aggregator });
+      return;
+    }
+
+    // ── Répondre immédiatement une fois le payout accepté par le fournisseur ──
+    // On NE bloque PAS la réponse HTTP sur les ~30s de polling : un proxy inverse
+    // (nginx/Plesk) a souvent un timeout plus court, ce qui provoquait une
+    // "Erreur réseau" côté client alors que le payout était bien en cours.
+    // Le statut définitif est confirmé en tâche de fond par le polling + le webhook.
+    await db.update(transactionsTable)
+      .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
+      .where(eq(transactionsTable.id, tx.id));
+
+    createNotification(
+      userId, "info", "transaction",
+      `Pay-out en cours — ${amount.toLocaleString("fr-FR")} ${currency}`,
+      `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. Réf : ${reference}.`,
+      "/dashboard/payments",
+    ).catch(() => {});
+
+    res.status(201).json({
+      transaction: { ...tx, status: "processing" },
+      fee, totalDebit, feeRate: `${payoutFeeRate * 100}%`,
+      gateway: aggregator, gateway_reference: gatewayRef,
+      verified_status: "processing",
+      message: "Payout accepté par le fournisseur — traitement en cours. Le statut sera confirmé via webhook.",
+    });
+
+    // ── Vérification de statut en tâche de fond (ne bloque pas la réponse HTTP) ──
+    (async () => {
+      try {
+        const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
+          intervalMs: 3_000,
+          maxDurationMs: 30_000,
+        });
+        if (!statusCheck) return;
+        console.log(`[Payout][BG] ${reference} → statut fournisseur: ${statusCheck.status}`);
+
+        if (statusCheck.status === "failed" || statusCheck.status === "cancelled" || statusCheck.status === "expired") {
+          // Transition atomique + remboursement dans la même transaction DB, gardée
+          // par la clause WHERE status NOT IN (...) pour empêcher un double
+          // remboursement si le webhook traite le même échec en parallèle.
+          const refunded = await db.transaction(async (trx) => {
+            const [row] = await trx
+              .update(transactionsTable)
+              .set({ status: statusCheck.status as any, failureReason: statusCheck.failureReason ?? "Rejeté par le fournisseur", externalRef: gatewayRef, updatedAt: new Date() })
+              .where(and(
+                eq(transactionsTable.id, tx.id),
+                sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`,
+              ))
+              .returning();
+            if (!row) return false;
+            await trx.update(walletsTable)
+              .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+              .where(eq(walletsTable.id, wallet.id));
+            return true;
+          });
+          if (refunded) {
+            console.log(`[Payout][BG] ${reference} remboursé — wallet ${wallet.id} +${totalDebit} ${currency}`);
+          } else {
+            console.log(`[Payout][BG] ${reference} déjà réglé — remboursement ignoré (idempotence)`);
+          }
+        } else if (statusCheck.status === "success") {
+          await db.update(transactionsTable)
+            .set({ status: "success", externalRef: gatewayRef, updatedAt: new Date() })
+            .where(eq(transactionsTable.id, tx.id));
+        }
+      } catch (e: any) {
+        console.warn(`[Payout][BG] Polling ${reference} en erreur (non bloquant, le webhook confirmera): ${e?.message}`);
+      }
+    })();
+
     return;
   }
 
@@ -1305,7 +1353,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
   // Résoudre l'agrégateur AVANT de débiter (fail-fast si non configuré)
   let resolvedAggregator: "clapay" | "paydunya";
   try {
-    const { aggregator } = await resolveAggregator(countryCode, operator);
+    const { aggregator } = await resolveAggregator(countryCode, operator, "payout");
     resolvedAggregator = aggregator;
   } catch (err: any) {
     const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 400;
@@ -1349,10 +1397,15 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
 
   if (currentMode === "live") {
     // ── MODE LIVE : appel réel à Clapay ou PayDunya selon l'opérateur configuré ──
+    // On n'appelle QUE l'initiation de façon synchrone, puis on répond tout de
+    // suite : le polling (jusqu'à 30s) tournait auparavant AVANT la réponse HTTP,
+    // ce qui dépassait le timeout du reverse-proxy (nginx/Plesk) et provoquait une
+    // "Erreur réseau" côté client alors que le retrait était bien initié.
+    let result: { externalRef: string };
     try {
-      console.info(`[Reversement] Routing ${reference} via ${resolvedAggregator} (${operator} / ${countryCode})`);
+      console.info(`[Reversement] → Initiation ${resolvedAggregator} | ref: ${reference} | ${net} ${countryMeta.currency} | ${operator} (${countryCode}) → ${phone}`);
 
-      const result = await routePayout({
+      result = await routePayout({
         amount: net,
         currency: countryMeta.currency,
         country_code: countryCode,
@@ -1362,55 +1415,15 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
         callback_url: callbackUrl,
         description: note ?? "Reversement DrimPay",
       });
-
-      // Polling du statut chez le fournisseur (reversement = 3s × max 30s)
-      // Même stratégie que payout : opération automatisée, règle en quelques secondes.
-      const { client } = await resolveAggregator(countryCode, operator);
-      const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
-        intervalMs: 3_000,
-        maxDurationMs: 30_000,
-      });
-      const verifiedStatus = statusCheck?.status ?? "processing";
-      const verifiedFailureReason = statusCheck?.failureReason;
-
-      await db.update(transactionsTable)
-        .set({
-          status: verifiedStatus as any,
-          externalRef: result.externalRef,
-          ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(transactionsTable.id, tx.id));
-
-      // Échec immédiat → remboursement
-      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
-        await db.update(walletsTable)
-          .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
-          .where(eq(walletsTable.id, wallet.id));
-        await db.update(reversementsTable)
-          .set({ status: "failed", failureReason: verifiedFailureReason ?? "Rejeté par le fournisseur" })
-          .where(eq(reversementsTable.id, reversement.id));
-        res.status(502).json({
-          error: verifiedFailureReason ?? "Reversement rejeté par le fournisseur",
-          reference, status: verifiedStatus, gateway: resolvedAggregator,
-        });
-        return;
-      }
-
-      // Succès immédiat
-      if (verifiedStatus === "success") {
-        await db.update(reversementsTable)
-          .set({ status: "completed" })
-          .where(eq(reversementsTable.id, reversement.id));
-      }
-
+      console.info(`[Reversement] ← ${resolvedAggregator} a accepté ${reference} | gatewayRef: ${result.externalRef}`);
     } catch (err: any) {
-      // Remboursement wallet + marquage échec
+      // Remboursement wallet + marquage échec — message d'erreur EXACT du fournisseur.
       await db.update(walletsTable)
         .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
         .where(eq(walletsTable.id, wallet.id));
 
       const errMsg = err?.message ?? String(err);
+      console.error(`[Reversement] ✗ Initiation ${resolvedAggregator} échouée pour ${reference}: ${errMsg}`, err?.raw ?? "");
       await db.update(transactionsTable)
         .set({ status: "failed", failureReason: errMsg, updatedAt: new Date() })
         .where(eq(transactionsTable.id, tx.id));
@@ -1418,11 +1431,65 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
         .set({ status: "failed", failureReason: errMsg })
         .where(eq(reversementsTable.id, reversement.id));
 
-      console.error(`[Reversement] Erreur ${resolvedAggregator}: ${errMsg}`);
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
       res.status(statusCode).json({ error: errMsg, gateway: resolvedAggregator });
       return;
     }
+
+    await db.update(transactionsTable)
+      .set({ status: "processing", externalRef: result.externalRef, updatedAt: new Date() })
+      .where(eq(transactionsTable.id, tx.id));
+
+    // ── Vérification de statut en tâche de fond (ne bloque pas la réponse HTTP) ──
+    (async () => {
+      try {
+        const { client } = await resolveAggregator(countryCode, operator, "payout");
+        const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
+          intervalMs: 3_000,
+          maxDurationMs: 30_000,
+        });
+        if (!statusCheck) return;
+        console.info(`[Reversement][BG] ${reference} → statut fournisseur: ${statusCheck.status}`);
+
+        if (statusCheck.status === "failed" || statusCheck.status === "cancelled" || statusCheck.status === "expired") {
+          // Transition atomique + remboursement dans la même transaction DB, gardée
+          // par la clause WHERE status NOT IN (...) pour empêcher un double
+          // remboursement si le webhook traite le même échec en parallèle.
+          const refunded = await db.transaction(async (trx) => {
+            const [row] = await trx
+              .update(transactionsTable)
+              .set({ status: statusCheck.status as any, failureReason: statusCheck.failureReason ?? "Rejeté par le fournisseur", updatedAt: new Date() })
+              .where(and(
+                eq(transactionsTable.id, tx.id),
+                sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`,
+              ))
+              .returning();
+            if (!row) return false;
+            await trx.update(walletsTable)
+              .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+              .where(eq(walletsTable.id, wallet.id));
+            await trx.update(reversementsTable)
+              .set({ status: "failed", failureReason: statusCheck.failureReason ?? "Rejeté par le fournisseur" })
+              .where(eq(reversementsTable.id, reversement.id));
+            return true;
+          });
+          if (refunded) {
+            console.log(`[Reversement][BG] ${reference} remboursé — wallet ${wallet.id} +${totalDebit} ${countryMeta.currency}`);
+          } else {
+            console.log(`[Reversement][BG] ${reference} déjà réglé — remboursement ignoré (idempotence)`);
+          }
+        } else if (statusCheck.status === "success") {
+          await db.update(transactionsTable)
+            .set({ status: "success", updatedAt: new Date() })
+            .where(eq(transactionsTable.id, tx.id));
+          await db.update(reversementsTable)
+            .set({ status: "completed" })
+            .where(eq(reversementsTable.id, reversement.id));
+        }
+      } catch (e: any) {
+        console.warn(`[Reversement][BG] Polling ${reference} en erreur (non bloquant, le webhook confirmera): ${e?.message}`);
+      }
+    })();
   } else {
     // ── MODE SANDBOX : simulation immédiate (aucun argent réel) ──
     // L'agrégateur qui SERAIT utilisé en live est résolu et inclus dans la réponse.
@@ -2265,7 +2332,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
       if (currentMode === "live") {
         ;(async () => {
           try {
-            const { aggregator, client } = await resolveAggregator(r.countryCode, r.operator);
+            const { aggregator, client } = await resolveAggregator(r.countryCode, r.operator, "payout");
             const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
             let gatewayRef: string;
             if (aggregator === "clapay") {

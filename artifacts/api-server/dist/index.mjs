@@ -105641,15 +105641,57 @@ var init_clapay = __esm({
           "Authorization": `Bearer ${this.config.apiToken}`
         };
       }
+      // ─── HTTP helper — logs complets (requête, réponse, statut), jamais crash silencieux ──
       async request(method, path5, body) {
         const url2 = `${this.config.baseUrl}${path5}`;
-        const response = await fetch(url2, {
-          method,
-          headers: this.headers(),
-          body: body ? JSON.stringify(body) : void 0,
-          signal: AbortSignal.timeout(3e4)
-        });
-        const data = await response.json();
+        const startMs = Date.now();
+        console.log(`[Clapay] \u2192 ${method} ${url2}`);
+        if (body) {
+          console.log(`[Clapay]   payload: ${JSON.stringify(body)}`);
+        }
+        let response;
+        try {
+          response = await fetch(url2, {
+            method,
+            headers: this.headers(),
+            body: body ? JSON.stringify(body) : void 0,
+            signal: AbortSignal.timeout(3e4)
+          });
+        } catch (err) {
+          const isTimeout = err?.name === "TimeoutError" || err?.code === "ETIMEDOUT";
+          console.error(`[Clapay] \u2717 Erreur r\xE9seau (${method} ${url2}): ${err?.message}`);
+          throw new ClapayError(
+            `Erreur r\xE9seau Clapay : ${err?.message}`,
+            isTimeout ? 408 : 503,
+            { url: url2, error: err?.message, retryable: true }
+          );
+        }
+        const elapsed = Date.now() - startMs;
+        const contentType = response.headers.get("content-type") ?? "";
+        console.log(`[Clapay] \u2190 HTTP ${response.status} | content-type: ${contentType} | ${elapsed}ms`);
+        const rawText = await response.text();
+        if (contentType.includes("text/html") || rawText.trimStart().startsWith("<!DOCTYPE")) {
+          const preview = rawText.slice(0, 300).replace(/\s+/g, " ").trim();
+          console.error(`[Clapay] \u2717 HTML re\xE7u au lieu de JSON sur ${url2} \u2014 preview: ${preview}`);
+          throw new ClapayError(
+            "Clapay a retourn\xE9 une page HTML au lieu de JSON. V\xE9rifiez l'URL de base et le token API.",
+            response.status,
+            { url: url2, html_preview: preview, retryable: false }
+          );
+        }
+        let data;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          const preview = rawText.slice(0, 300);
+          console.error(`[Clapay] \u2717 R\xE9ponse non-JSON (HTTP ${response.status}) sur ${url2} \u2014 raw: ${preview}`);
+          throw new ClapayError(
+            `Clapay a retourn\xE9 une r\xE9ponse invalide (HTTP ${response.status}).`,
+            response.status,
+            { url: url2, raw_preview: preview, retryable: false }
+          );
+        }
+        console.log(`[Clapay]   r\xE9ponse JSON: ${JSON.stringify(data).slice(0, 400)}`);
         if (!response.ok) {
           throw new ClapayError(
             data?.message ?? data?.error ?? `Clapay API error ${response.status}`,
@@ -106445,24 +106487,32 @@ var init_paydunya = __esm({
         return expected === receivedHash;
       }
       // ─── Parse webhook event from PayDunya ───────────────────────────────────
+      // IMPORTANT : l'IPN "checkout-invoice" officielle de PayDunya envoie ses
+      // champs sous une clé racine "data" (form-urlencoded `data[invoice][status]=...`,
+      // `data[custom_data][drimpay_reference]=...`, `data[hash]=...`). Si on ne
+      // "déballe" pas ce wrapper, `invoice`/`custom_data`/`our_reference` sont tous
+      // vides, le webhook ne retrouve pas la transaction et l'abandonne — alors que
+      // PayDunya a bien confirmé le paiement. On accepte donc les deux formats :
+      // avec ou sans wrapper "data".
       parseWebhookEvent(body) {
-        const invoice = body.invoice ?? body;
-        const customData = body.custom_data ?? {};
-        const status = this.mapStatus(invoice.status ?? body.status ?? "");
+        const root = body && typeof body === "object" && body.data && typeof body.data === "object" ? body.data : body ?? {};
+        const invoice = root.invoice ?? root;
+        const customData = root.custom_data ?? {};
+        const status = this.mapStatus(invoice.status ?? root.status ?? "");
         return {
-          event: body.event_type ?? (status === "completed" ? "payin.success" : "payin.failed"),
-          paydunya_reference: invoice.token ?? body.token ?? body.paydunya_reference ?? "",
-          our_reference: customData.drimpay_reference ?? body.external_reference ?? body.our_reference ?? "",
+          event: root.event_type ?? (status === "completed" ? "payin.success" : "payin.failed"),
+          paydunya_reference: invoice.token ?? root.token ?? root.paydunya_reference ?? "",
+          our_reference: customData.drimpay_reference ?? root.external_reference ?? root.our_reference ?? "",
           status,
-          amount: parseFloat(invoice.total_amount ?? body.amount ?? "0"),
-          currency: invoice.currency ?? body.currency ?? "XOF",
-          operator: customData.operator ?? body.operator ?? "unknown",
-          phone: customData.phone ?? body.phone ?? "",
-          country_code: customData.country_code ?? body.country_code ?? "",
-          failure_reason: invoice.fail_reason ?? body.failure_reason,
-          completed_at: invoice.completed_at ?? body.completed_at,
-          timestamp: body.timestamp ?? Math.floor(Date.now() / 1e3),
-          hash: body.hash
+          amount: parseFloat(invoice.total_amount ?? root.amount ?? "0"),
+          currency: invoice.currency ?? root.currency ?? "XOF",
+          operator: customData.operator ?? root.operator ?? "unknown",
+          phone: customData.phone ?? root.phone ?? "",
+          country_code: customData.country_code ?? root.country_code ?? "",
+          failure_reason: invoice.fail_reason ?? root.failure_reason,
+          completed_at: invoice.completed_at ?? root.completed_at,
+          timestamp: root.timestamp ?? Math.floor(Date.now() / 1e3),
+          hash: root.hash
         };
       }
       // ─── Map PayDunya status strings to internal format ───────────────────────
@@ -275434,7 +275484,7 @@ var AggregatorUnavailableError = class extends Error {
   }
   aggregator;
 };
-async function resolveAggregator(countryCode, operatorName) {
+async function resolveAggregator(countryCode, operatorName, operation = "payin") {
   const [opAgg] = await db.select().from(operatorAggregatorsTable).where(
     and(
       eq(operatorAggregatorsTable.countryCode, countryCode),
@@ -275460,6 +275510,19 @@ async function resolveAggregator(countryCode, operatorName) {
       );
     }
     aggregatorCode = preferred;
+  }
+  if (operation === "payout" && aggregatorCode === "paydunya") {
+    if (isClapayConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Op\xE9rateur ${operatorName} (${countryCode}) mapp\xE9 sur PayDunya pour les payouts, mais PayDunya ne supporte pas les retraits automatis\xE9s \u2014 bascule sur Clapay.`
+      );
+      aggregatorCode = "clapay";
+    } else {
+      throw new AggregatorUnavailableError(
+        "paydunya",
+        "Les retraits PayDunya ne sont pas disponibles sur cette int\xE9gration, et Clapay n'est pas configur\xE9 en secours."
+      );
+    }
   }
   if (aggregatorCode === "clapay") {
     if (!isClapayConfigured()) throw new AggregatorNotConfiguredError("clapay");
@@ -275578,7 +275641,7 @@ async function checkOperatorAvailable(countryCode, operatorName, blockKind) {
   return { ok: true };
 }
 async function routePayout(params) {
-  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator);
+  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
   if (aggregator === "clapay") {
     const c = client;
     const res = await c.initiatePayout(params);
@@ -275603,6 +275666,62 @@ async function routePayout(params) {
 // src/routes/dashboard.ts
 init_clapay();
 init_paydunya();
+
+// src/lib/payin-settlement.ts
+init_src();
+init_schema2();
+init_drizzle_orm();
+async function settlePayinStatus(params) {
+  const { txId, status, gatewayReference, failureReason, gateway } = params;
+  const dbStatus = status === "success" ? "success" : status;
+  const updated = await db.transaction(async (trx) => {
+    const [row] = await trx.update(transactionsTable).set({
+      status: dbStatus,
+      ...gatewayReference ? { externalRef: gatewayReference } : {},
+      ...failureReason ? { failureReason } : {},
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(and(eq(transactionsTable.id, txId), ne(transactionsTable.status, "success"))).returning();
+    if (!row || status !== "success") {
+      return row ?? null;
+    }
+    await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${row.netAmount}` }).where(eq(walletsTable.id, row.walletId));
+    return row;
+  });
+  if (!updated) {
+    console.log(`[Settlement] Transaction #${txId} d\xE9j\xE0 r\xE9gl\xE9e en "success" \u2014 statut "${status}" ignor\xE9 (idempotence)`);
+    return { credited: false };
+  }
+  if (status !== "success") {
+    return { credited: false };
+  }
+  console.log(
+    `[Settlement] \u2713 Wallet ${updated.walletId} cr\xE9dit\xE9 de ${updated.netAmount} ${updated.currency} (ref ${updated.reference}, gateway ${gateway}, gatewayRef ${gatewayReference ?? updated.externalRef ?? "?"})`
+  );
+  try {
+    const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, updated.userId));
+    const source = updated.reference.startsWith("PL-") ? "link" : updated.reference.startsWith("QR-") ? "qr" : "api";
+    notifyPayinConfirmed({
+      company: merchant?.companyName ?? "?",
+      amount: parseFloat(updated.amount),
+      fee: parseFloat(updated.fee),
+      net: parseFloat(updated.netAmount),
+      currency: updated.currency,
+      operator: updated.operator,
+      phone: updated.phone,
+      country: updated.countryCode,
+      reference: updated.reference,
+      mode: updated.mode,
+      source,
+      gateway
+    }).catch(() => {
+    });
+  } catch (err) {
+    console.warn(`[Settlement] Notification Telegram \xE9chou\xE9e: ${err?.message}`);
+  }
+  return { credited: true };
+}
+
+// src/routes/dashboard.ts
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 var FEE_RATE = 0.035;
 var router11 = (0, import_express11.Router)();
@@ -275982,12 +276101,14 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
       });
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
-      await db.update(transactionsTable).set({
+      await db.update(transactionsTable).set({ externalRef: gatewayRef }).where(eq(transactionsTable.id, tx2.id));
+      await settlePayinStatus({
+        txId: tx2.id,
         status: verifiedStatus,
-        externalRef: gatewayRef,
-        ...verifiedFailureReason ? { failureReason: verifiedFailureReason } : {},
-        updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq(transactionsTable.id, tx2.id));
+        gatewayReference: gatewayRef,
+        failureReason: verifiedFailureReason,
+        gateway: aggregator
+      });
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         res.status(502).json({
           error: verifiedFailureReason ?? "Paiement rejet\xE9 par le fournisseur",
@@ -276111,11 +276232,23 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       externalRef,
       mode: currentMode
     }).returning();
+    let aggregator;
+    let client;
     try {
-      const { aggregator, client } = await resolveAggregator(countryCode, operator);
-      const baseUrl2 = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
-      const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
-      let gatewayRef;
+      ({ aggregator, client } = await resolveAggregator(countryCode, operator, "payout"));
+    } catch (err) {
+      await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
+      const msg = err?.message ?? String(err);
+      await db.update(transactionsTable).set({ status: "failed", failureReason: msg, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
+      const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
+      res.status(statusCode).json({ error: msg, reference });
+      return;
+    }
+    const baseUrl2 = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://api.drimpay.com";
+    const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
+    let gatewayRef;
+    try {
+      console.log(`[Payout] \u2192 Initiation ${aggregator} | ref: ${reference} | ${amount} ${currency} | ${operator} (${countryCode}) \u2192 ${phone}`);
       if (aggregator === "clapay") {
         const r = await client.initiatePayout({
           amount,
@@ -276127,6 +276260,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
           callback_url: callbackUrl,
           description
         });
+        console.log(`[Payout] \u2190 R\xE9ponse Clapay: ${JSON.stringify(r)}`);
         if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
       } else {
@@ -276140,57 +276274,69 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
           callback_url: callbackUrl,
           description
         });
+        console.log(`[Payout] \u2190 R\xE9ponse PayDunya: ${JSON.stringify(r)}`);
         if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
       }
-      const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
-        intervalMs: 3e3,
-        maxDurationMs: 3e4
-      });
-      const verifiedStatus = statusCheck?.status ?? "processing";
-      const verifiedFailureReason = statusCheck?.failureReason;
-      await db.update(transactionsTable).set({
-        status: verifiedStatus,
-        externalRef: gatewayRef,
-        ...verifiedFailureReason ? { failureReason: verifiedFailureReason } : {},
-        updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq(transactionsTable.id, tx2.id));
-      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
-        await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
-        res.status(502).json({
-          error: verifiedFailureReason ?? "Payout rejet\xE9 par le fournisseur",
-          reference,
-          status: verifiedStatus,
-          gateway: aggregator
-        });
-        return;
-      }
-      createNotification(
-        userId,
-        "info",
-        "transaction",
-        `Pay-out en cours \u2014 ${amount.toLocaleString("fr-FR")} ${currency}`,
-        `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. Statut initial : ${verifiedStatus}. R\xE9f : ${reference}.`,
-        "/dashboard/payments"
-      ).catch(() => {
-      });
-      res.status(201).json({
-        transaction: { ...tx2, status: verifiedStatus },
-        fee,
-        totalDebit,
-        feeRate: `${payoutFeeRate * 100}%`,
-        gateway: aggregator,
-        gateway_reference: gatewayRef,
-        verified_status: verifiedStatus,
-        message: verifiedStatus === "success" ? "Payout trait\xE9 avec succ\xE8s par le fournisseur." : "Payout en cours de traitement. Le statut sera mis \xE0 jour via webhook."
-      });
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
       const msg = err?.message ?? String(err);
+      console.error(`[Payout] \u2717 Initiation ${aggregator} \xE9chou\xE9e pour ${reference}: ${msg}`, err?.raw ?? "");
       await db.update(transactionsTable).set({ status: "failed", failureReason: msg, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
-      res.status(statusCode).json({ error: msg, reference });
+      res.status(statusCode).json({ error: msg, reference, gateway: aggregator });
+      return;
     }
+    await db.update(transactionsTable).set({ status: "processing", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
+    createNotification(
+      userId,
+      "info",
+      "transaction",
+      `Pay-out en cours \u2014 ${amount.toLocaleString("fr-FR")} ${currency}`,
+      `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. R\xE9f : ${reference}.`,
+      "/dashboard/payments"
+    ).catch(() => {
+    });
+    res.status(201).json({
+      transaction: { ...tx2, status: "processing" },
+      fee,
+      totalDebit,
+      feeRate: `${payoutFeeRate * 100}%`,
+      gateway: aggregator,
+      gateway_reference: gatewayRef,
+      verified_status: "processing",
+      message: "Payout accept\xE9 par le fournisseur \u2014 traitement en cours. Le statut sera confirm\xE9 via webhook."
+    });
+    (async () => {
+      try {
+        const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
+          intervalMs: 3e3,
+          maxDurationMs: 3e4
+        });
+        if (!statusCheck) return;
+        console.log(`[Payout][BG] ${reference} \u2192 statut fournisseur: ${statusCheck.status}`);
+        if (statusCheck.status === "failed" || statusCheck.status === "cancelled" || statusCheck.status === "expired") {
+          const refunded = await db.transaction(async (trx) => {
+            const [row] = await trx.update(transactionsTable).set({ status: statusCheck.status, failureReason: statusCheck.failureReason ?? "Rejet\xE9 par le fournisseur", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(and(
+              eq(transactionsTable.id, tx2.id),
+              sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
+            )).returning();
+            if (!row) return false;
+            await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
+            return true;
+          });
+          if (refunded) {
+            console.log(`[Payout][BG] ${reference} rembours\xE9 \u2014 wallet ${wallet.id} +${totalDebit} ${currency}`);
+          } else {
+            console.log(`[Payout][BG] ${reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
+          }
+        } else if (statusCheck.status === "success") {
+          await db.update(transactionsTable).set({ status: "success", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
+        }
+      } catch (e) {
+        console.warn(`[Payout][BG] Polling ${reference} en erreur (non bloquant, le webhook confirmera): ${e?.message}`);
+      }
+    })();
     return;
   }
   const [tx] = await db.insert(transactionsTable).values({
@@ -276636,7 +276782,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
   }
   let resolvedAggregator;
   try {
-    const { aggregator } = await resolveAggregator(countryCode, operator);
+    const { aggregator } = await resolveAggregator(countryCode, operator, "payout");
     resolvedAggregator = aggregator;
   } catch (err) {
     const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 400;
@@ -276679,9 +276825,10 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     mode: currentMode
   }).returning();
   if (currentMode === "live") {
+    let result;
     try {
-      console.info(`[Reversement] Routing ${reference} via ${resolvedAggregator} (${operator} / ${countryCode})`);
-      const result = await routePayout({
+      console.info(`[Reversement] \u2192 Initiation ${resolvedAggregator} | ref: ${reference} | ${net} ${countryMeta.currency} | ${operator} (${countryCode}) \u2192 ${phone}`);
+      result = await routePayout({
         amount: net,
         currency: countryMeta.currency,
         country_code: countryCode,
@@ -276691,43 +276838,51 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
         callback_url: callbackUrl,
         description: note ?? "Reversement DrimPay"
       });
-      const { client } = await resolveAggregator(countryCode, operator);
-      const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
-        intervalMs: 3e3,
-        maxDurationMs: 3e4
-      });
-      const verifiedStatus = statusCheck?.status ?? "processing";
-      const verifiedFailureReason = statusCheck?.failureReason;
-      await db.update(transactionsTable).set({
-        status: verifiedStatus,
-        externalRef: result.externalRef,
-        ...verifiedFailureReason ? { failureReason: verifiedFailureReason } : {},
-        updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq(transactionsTable.id, tx.id));
-      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
-        await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
-        await db.update(reversementsTable).set({ status: "failed", failureReason: verifiedFailureReason ?? "Rejet\xE9 par le fournisseur" }).where(eq(reversementsTable.id, reversement.id));
-        res.status(502).json({
-          error: verifiedFailureReason ?? "Reversement rejet\xE9 par le fournisseur",
-          reference,
-          status: verifiedStatus,
-          gateway: resolvedAggregator
-        });
-        return;
-      }
-      if (verifiedStatus === "success") {
-        await db.update(reversementsTable).set({ status: "completed" }).where(eq(reversementsTable.id, reversement.id));
-      }
+      console.info(`[Reversement] \u2190 ${resolvedAggregator} a accept\xE9 ${reference} | gatewayRef: ${result.externalRef}`);
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
       const errMsg = err?.message ?? String(err);
+      console.error(`[Reversement] \u2717 Initiation ${resolvedAggregator} \xE9chou\xE9e pour ${reference}: ${errMsg}`, err?.raw ?? "");
       await db.update(transactionsTable).set({ status: "failed", failureReason: errMsg, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
       await db.update(reversementsTable).set({ status: "failed", failureReason: errMsg }).where(eq(reversementsTable.id, reversement.id));
-      console.error(`[Reversement] Erreur ${resolvedAggregator}: ${errMsg}`);
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
       res.status(statusCode).json({ error: errMsg, gateway: resolvedAggregator });
       return;
     }
+    await db.update(transactionsTable).set({ status: "processing", externalRef: result.externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+    (async () => {
+      try {
+        const { client } = await resolveAggregator(countryCode, operator, "payout");
+        const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
+          intervalMs: 3e3,
+          maxDurationMs: 3e4
+        });
+        if (!statusCheck) return;
+        console.info(`[Reversement][BG] ${reference} \u2192 statut fournisseur: ${statusCheck.status}`);
+        if (statusCheck.status === "failed" || statusCheck.status === "cancelled" || statusCheck.status === "expired") {
+          const refunded = await db.transaction(async (trx) => {
+            const [row] = await trx.update(transactionsTable).set({ status: statusCheck.status, failureReason: statusCheck.failureReason ?? "Rejet\xE9 par le fournisseur", updatedAt: /* @__PURE__ */ new Date() }).where(and(
+              eq(transactionsTable.id, tx.id),
+              sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
+            )).returning();
+            if (!row) return false;
+            await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
+            await trx.update(reversementsTable).set({ status: "failed", failureReason: statusCheck.failureReason ?? "Rejet\xE9 par le fournisseur" }).where(eq(reversementsTable.id, reversement.id));
+            return true;
+          });
+          if (refunded) {
+            console.log(`[Reversement][BG] ${reference} rembours\xE9 \u2014 wallet ${wallet.id} +${totalDebit} ${countryMeta.currency}`);
+          } else {
+            console.log(`[Reversement][BG] ${reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
+          }
+        } else if (statusCheck.status === "success") {
+          await db.update(transactionsTable).set({ status: "success", updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+          await db.update(reversementsTable).set({ status: "completed" }).where(eq(reversementsTable.id, reversement.id));
+        }
+      } catch (e) {
+        console.warn(`[Reversement][BG] Polling ${reference} en erreur (non bloquant, le webhook confirmera): ${e?.message}`);
+      }
+    })();
   } else {
     console.info(`[Reversement][SANDBOX] Simulation via ${resolvedAggregator} (${operator} / ${countryCode})`);
     await db.update(transactionsTable).set({ status: "success", updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
@@ -277442,7 +277597,7 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
         ;
         (async () => {
           try {
-            const { aggregator, client } = await resolveAggregator(r.countryCode, r.operator);
+            const { aggregator, client } = await resolveAggregator(r.countryCode, r.operator, "payout");
             const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
             let gatewayRef;
             if (aggregator === "clapay") {
@@ -280341,7 +280496,7 @@ router15.post("/webhooks/paydunya", async (req, res) => {
     }
     const client = getPayDunyaClient();
     const rawBody = JSON.stringify(req.body);
-    const receivedHash = req.headers["x-paydunya-hash"] ?? req.headers["x-hash"] ?? req.body?.hash ?? "";
+    const receivedHash = req.headers["x-paydunya-hash"] ?? req.headers["x-hash"] ?? req.body?.data?.hash ?? req.body?.hash ?? "";
     const event = client.parseWebhookEvent(req.body);
     console.log(`[PayDunya Webhook] \xC9v\xE9nement: ${event.event} | ref: ${event.our_reference}`);
     if (!event.our_reference) {
@@ -280376,40 +280531,43 @@ router15.post("/webhooks/paydunya", async (req, res) => {
       console.log(`[PayDunya Webhook] Statut d\xE9j\xE0 \xE0 jour: ${newStatus} \u2014 ignor\xE9`);
       return;
     }
-    await db.update(transactionsTable).set({
-      status: newStatus,
-      gatewayReference: event.paydunya_reference,
-      failureReason: event.failure_reason ?? null,
-      updatedAt: /* @__PURE__ */ new Date()
-    }).where(eq(transactionsTable.id, tx.id));
-    if (newStatus === "success" && tx.type === "payin") {
-      await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${tx.netAmount}` }).where(eq(walletsTable.id, tx.walletId));
-      console.log(`[PayDunya Webhook] Wallet ${tx.walletId} cr\xE9dit\xE9 de ${tx.netAmount} ${tx.currency}`);
-      try {
-        const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, tx.userId));
-        const source = tx.reference.startsWith("PL-") ? "link" : tx.reference.startsWith("QR-") ? "qr" : "api";
-        notifyPayinConfirmed({
-          company: merchant?.companyName ?? "?",
-          amount: parseFloat(tx.amount),
-          fee: parseFloat(tx.fee),
-          net: parseFloat(tx.netAmount),
-          currency: tx.currency,
-          operator: tx.operator,
-          phone: tx.phone,
-          country: tx.countryCode,
-          reference: tx.reference,
-          mode: tx.mode,
-          source,
-          gateway: "paydunya"
-        }).catch(() => {
-        });
-      } catch {
-      }
-    }
-    if ((newStatus === "failed" || newStatus === "cancelled") && tx.type === "payout") {
+    if (tx.type === "payin") {
+      const { credited } = await settlePayinStatus({
+        txId: tx.id,
+        status: newStatus,
+        gatewayReference: event.paydunya_reference,
+        failureReason: event.failure_reason,
+        gateway: "paydunya"
+      });
+      console.log(`[PayDunya Webhook] Transaction payin ${tx.reference} \u2192 ${newStatus} (cr\xE9dit\xE9: ${credited})`);
+    } else if (tx.type === "payout" && (newStatus === "failed" || newStatus === "cancelled" || newStatus === "expired")) {
       const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
-      await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, tx.walletId));
-      console.log(`[PayDunya Webhook] Payout \xE9chou\xE9 \u2014 wallet ${tx.walletId} rembours\xE9 de ${totalDebit} ${tx.currency}`);
+      const refunded = await db.transaction(async (trx) => {
+        const [row] = await trx.update(transactionsTable).set({
+          status: newStatus,
+          gatewayReference: event.paydunya_reference,
+          failureReason: event.failure_reason ?? null,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(and(
+          eq(transactionsTable.id, tx.id),
+          sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
+        )).returning();
+        if (!row) return false;
+        await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, tx.walletId));
+        return true;
+      });
+      if (refunded) {
+        console.log(`[PayDunya Webhook] Payout \xE9chou\xE9 \u2014 wallet ${tx.walletId} rembours\xE9 de ${totalDebit} ${tx.currency}`);
+      } else {
+        console.log(`[PayDunya Webhook] Payout ${tx.reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
+      }
+    } else {
+      await db.update(transactionsTable).set({
+        status: newStatus,
+        gatewayReference: event.paydunya_reference,
+        failureReason: event.failure_reason ?? null,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(transactionsTable.id, tx.id));
     }
     if (tx.type === "payout" && tx.reference.startsWith("REV-")) {
       const revStatus = newStatus === "success" ? "completed" : newStatus === "failed" || newStatus === "cancelled" ? "failed" : "pending";
@@ -281054,12 +281212,14 @@ router17.post("/api/pay/:token", async (req, res) => {
     });
     const verifiedStatus = statusCheck?.status ?? "processing";
     const verifiedFailureReason = statusCheck?.failureReason;
-    await db.update(transactionsTable).set({
+    await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
+    await settlePayinStatus({
+      txId: tx.id,
       status: verifiedStatus,
-      externalRef,
-      ...verifiedFailureReason ? { failureReason: verifiedFailureReason } : {},
-      updatedAt: /* @__PURE__ */ new Date()
-    }).where(eq(transactionsTable.id, tx.id));
+      gatewayReference: externalRef,
+      failureReason: verifiedFailureReason,
+      gateway: aggregator
+    });
     if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
       res.status(502).json({
         error: verifiedFailureReason ?? "Paiement rejet\xE9 par le fournisseur",
@@ -281070,23 +281230,6 @@ router17.post("/api/pay/:token", async (req, res) => {
       return;
     }
     await db.update(paymentLinksTable).set({ uses: sql`${paymentLinksTable.uses} + 1` }).where(eq(paymentLinksTable.id, link.id));
-    if (verifiedStatus === "success") {
-      notifyPayinConfirmed({
-        company: merchantInfo?.companyName ?? "?",
-        amount,
-        fee,
-        net: netAmount,
-        currency,
-        operator,
-        phone,
-        country: countryCode,
-        reference,
-        mode: "live",
-        source: "link",
-        gateway: aggregator
-      }).catch(() => {
-      });
-    }
     res.status(201).json({
       reference,
       status: verifiedStatus,

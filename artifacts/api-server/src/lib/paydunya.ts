@@ -410,25 +410,33 @@ export class PayDunyaClient {
   }
 
   // ─── Parse webhook event from PayDunya ───────────────────────────────────
+  // IMPORTANT : l'IPN "checkout-invoice" officielle de PayDunya envoie ses
+  // champs sous une clé racine "data" (form-urlencoded `data[invoice][status]=...`,
+  // `data[custom_data][drimpay_reference]=...`, `data[hash]=...`). Si on ne
+  // "déballe" pas ce wrapper, `invoice`/`custom_data`/`our_reference` sont tous
+  // vides, le webhook ne retrouve pas la transaction et l'abandonne — alors que
+  // PayDunya a bien confirmé le paiement. On accepte donc les deux formats :
+  // avec ou sans wrapper "data".
   parseWebhookEvent(body: any): PayDunyaWebhookPayload {
-    const invoice    = body.invoice ?? body;
-    const customData = body.custom_data ?? {};
-    const status     = this.mapStatus(invoice.status ?? body.status ?? "");
+    const root       = (body && typeof body === "object" && body.data && typeof body.data === "object") ? body.data : (body ?? {});
+    const invoice    = root.invoice ?? root;
+    const customData = root.custom_data ?? {};
+    const status     = this.mapStatus(invoice.status ?? root.status ?? "");
 
     return {
-      event:               body.event_type ?? (status === "completed" ? "payin.success" : "payin.failed"),
-      paydunya_reference:  invoice.token ?? body.token ?? body.paydunya_reference ?? "",
-      our_reference:       customData.drimpay_reference ?? body.external_reference ?? body.our_reference ?? "",
+      event:               root.event_type ?? (status === "completed" ? "payin.success" : "payin.failed"),
+      paydunya_reference:  invoice.token ?? root.token ?? root.paydunya_reference ?? "",
+      our_reference:       customData.drimpay_reference ?? root.external_reference ?? root.our_reference ?? "",
       status,
-      amount:              parseFloat(invoice.total_amount ?? body.amount ?? "0"),
-      currency:            invoice.currency ?? body.currency ?? "XOF",
-      operator:            customData.operator ?? body.operator ?? "unknown",
-      phone:               customData.phone    ?? body.phone    ?? "",
-      country_code:        customData.country_code ?? body.country_code ?? "",
-      failure_reason:      invoice.fail_reason ?? body.failure_reason,
-      completed_at:        invoice.completed_at ?? body.completed_at,
-      timestamp:           body.timestamp ?? Math.floor(Date.now() / 1000),
-      hash:                body.hash,
+      amount:              parseFloat(invoice.total_amount ?? root.amount ?? "0"),
+      currency:            invoice.currency ?? root.currency ?? "XOF",
+      operator:            customData.operator ?? root.operator ?? "unknown",
+      phone:               customData.phone    ?? root.phone    ?? "",
+      country_code:        customData.country_code ?? root.country_code ?? "",
+      failure_reason:      invoice.fail_reason ?? root.failure_reason,
+      completed_at:        invoice.completed_at ?? root.completed_at,
+      timestamp:           root.timestamp ?? Math.floor(Date.now() / 1000),
+      hash:                root.hash,
     };
   }
 

@@ -9,10 +9,11 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { transactionsTable, walletsTable, usersTable, reversementsTable } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import crypto from "crypto";
 import { getPayDunyaClient, isPayDunyaConfigured, type PayDunyaWebhookPayload } from "../lib/paydunya";
 import { notifyPayinConfirmed } from "../lib/telegram";
+import { settlePayinStatus } from "../lib/payin-settlement";
 
 const router = Router();
 
@@ -39,9 +40,12 @@ router.post("/webhooks/paydunya", async (req: any, res: any) => {
 
     // Vérifier la signature PayDunya
     // TODO: Adapter selon le header exact envoyé par PayDunya
+    // Note: l'IPN officielle "checkout-invoice" place le hash sous data.hash
+    // (voir parseWebhookEvent dans lib/paydunya.ts pour le même "déballage").
     const receivedHash = (
       req.headers["x-paydunya-hash"] ??
       req.headers["x-hash"] ??
+      req.body?.data?.hash ??
       req.body?.hash ??
       ""
     ) as string;
@@ -97,61 +101,66 @@ router.post("/webhooks/paydunya", async (req: any, res: any) => {
     };
     const newStatus = statusMap[event.status?.toLowerCase()] ?? "failed";
 
-    // Idempotence
+    // Idempotence (le payin peut déjà être réglé "success" via le polling synchrone —
+    // settlePayinStatus() gère aussi cette idempotence de façon atomique côté DB)
     if (tx.status === newStatus) {
       console.log(`[PayDunya Webhook] Statut déjà à jour: ${newStatus} — ignoré`);
       return;
     }
 
-    // Mettre à jour en DB
-    await db
-      .update(transactionsTable)
-      .set({
+    if (tx.type === "payin") {
+      // Passe par le point de règlement partagé — crédite le wallet une seule fois
+      // même si le polling synchrone de l'initiation a déjà réglé la transaction.
+      const { credited } = await settlePayinStatus({
+        txId: tx.id,
         status: newStatus as any,
         gatewayReference: event.paydunya_reference,
-        failureReason: event.failure_reason ?? null,
-        updatedAt: new Date(),
-      })
-      .where(eq(transactionsTable.id, tx.id));
-
-    // Créditer le wallet si payin succès
-    if (newStatus === "success" && tx.type === "payin") {
-      await db
-        .update(walletsTable)
-        .set({ balance: sql`${walletsTable.balance} + ${tx.netAmount}` })
-        .where(eq(walletsTable.id, tx.walletId));
-      console.log(`[PayDunya Webhook] Wallet ${tx.walletId} crédité de ${tx.netAmount} ${tx.currency}`);
-
-      // Notification Telegram — paiement réellement confirmé
-      try {
-        const [merchant] = await db.select({ companyName: usersTable.companyName })
-          .from(usersTable).where(eq(usersTable.id, tx.userId));
-        const source = tx.reference.startsWith("PL-") ? "link" : tx.reference.startsWith("QR-") ? "qr" : "api";
-        notifyPayinConfirmed({
-          company: merchant?.companyName ?? "?",
-          amount: parseFloat(tx.amount),
-          fee: parseFloat(tx.fee),
-          net: parseFloat(tx.netAmount),
-          currency: tx.currency,
-          operator: tx.operator,
-          phone: tx.phone,
-          country: tx.countryCode,
-          reference: tx.reference,
-          mode: tx.mode,
-          source,
-          gateway: "paydunya",
-        }).catch(() => {});
-      } catch {}
-    }
-
-    // Si payout échoue → rembourser le solde
-    if ((newStatus === "failed" || newStatus === "cancelled") && tx.type === "payout") {
+        failureReason: event.failure_reason,
+        gateway: "paydunya",
+      });
+      console.log(`[PayDunya Webhook] Transaction payin ${tx.reference} → ${newStatus} (crédité: ${credited})`);
+    } else if (tx.type === "payout" && (newStatus === "failed" || newStatus === "cancelled" || newStatus === "expired")) {
+      // Payout échoué → statut + remboursement dans UNE SEULE transaction
+      // atomique, gardée par la clause WHERE pour ne jamais rembourser deux
+      // fois si le polling en tâche de fond de dashboard.ts traite le même
+      // échec en parallèle.
       const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
+      const refunded = await db.transaction(async (trx) => {
+        const [row] = await trx
+          .update(transactionsTable)
+          .set({
+            status: newStatus as any,
+            gatewayReference: event.paydunya_reference,
+            failureReason: event.failure_reason ?? null,
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(transactionsTable.id, tx.id),
+            sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`,
+          ))
+          .returning();
+        if (!row) return false;
+        await trx.update(walletsTable)
+          .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+          .where(eq(walletsTable.id, tx.walletId));
+        return true;
+      });
+      if (refunded) {
+        console.log(`[PayDunya Webhook] Payout échoué — wallet ${tx.walletId} remboursé de ${totalDebit} ${tx.currency}`);
+      } else {
+        console.log(`[PayDunya Webhook] Payout ${tx.reference} déjà réglé — remboursement ignoré (idempotence)`);
+      }
+    } else {
+      // Payout / reversement (succès ou statut intermédiaire) — pas de crédit à ce stade, juste le statut.
       await db
-        .update(walletsTable)
-        .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
-        .where(eq(walletsTable.id, tx.walletId));
-      console.log(`[PayDunya Webhook] Payout échoué — wallet ${tx.walletId} remboursé de ${totalDebit} ${tx.currency}`);
+        .update(transactionsTable)
+        .set({
+          status: newStatus as any,
+          gatewayReference: event.paydunya_reference,
+          failureReason: event.failure_reason ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(transactionsTable.id, tx.id));
     }
 
     // Synchroniser le statut du reversement si la transaction vient d'un REV-

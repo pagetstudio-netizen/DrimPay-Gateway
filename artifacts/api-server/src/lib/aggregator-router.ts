@@ -46,6 +46,7 @@ export class AggregatorUnavailableError extends Error {
 export async function resolveAggregator(
   countryCode: string,
   operatorName: string,
+  operation: "payin" | "payout" = "payin",
 ): Promise<RouteResult> {
   const [opAgg] = await db
     .select()
@@ -77,6 +78,25 @@ export async function resolveAggregator(
       );
     }
     aggregatorCode = preferred;
+  }
+
+  // PayDunya ne supporte pas les payouts automatisés sur cette intégration
+  // (voir PayDunyaClient.initiatePayout — endpoint non disponible / Direct Pay
+  // non activé). Tous les retraits mappés sur "paydunya" échouaient donc à
+  // 100% du temps. On bascule automatiquement sur Clapay pour les payouts.
+  if (operation === "payout" && aggregatorCode === "paydunya") {
+    if (isClapayConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Opérateur ${operatorName} (${countryCode}) mappé sur PayDunya pour les payouts, ` +
+        `mais PayDunya ne supporte pas les retraits automatisés — bascule sur Clapay.`,
+      );
+      aggregatorCode = "clapay";
+    } else {
+      throw new AggregatorUnavailableError(
+        "paydunya",
+        "Les retraits PayDunya ne sont pas disponibles sur cette intégration, et Clapay n'est pas configuré en secours.",
+      );
+    }
   }
 
   if (aggregatorCode === "clapay") {
@@ -361,7 +381,7 @@ export async function routePayin(params: PayinParams): Promise<NormalizedPayinRe
 }
 
 export async function routePayout(params: PayoutParams): Promise<NormalizedPayoutResult> {
-  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator);
+  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
 
   if (aggregator === "clapay") {
     const c = client as ClapayClient;

@@ -191,20 +191,68 @@ export class ClapayClient {
     };
   }
 
+  // ─── HTTP helper — logs complets (requête, réponse, statut), jamais crash silencieux ──
   private async request<T>(
     method: "GET" | "POST" | "PUT",
     path: string,
     body?: object
   ): Promise<T> {
     const url = `${this.config.baseUrl}${path}`;
-    const response = await fetch(url, {
-      method,
-      headers: this.headers(),
-      body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(30_000),
-    });
+    const startMs = Date.now();
 
-    const data = await response.json() as any;
+    console.log(`[Clapay] → ${method} ${url}`);
+    if (body) {
+      console.log(`[Clapay]   payload: ${JSON.stringify(body)}`);
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: this.headers(),
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err: any) {
+      const isTimeout = err?.name === "TimeoutError" || err?.code === "ETIMEDOUT";
+      console.error(`[Clapay] ✗ Erreur réseau (${method} ${url}): ${err?.message}`);
+      throw new ClapayError(
+        `Erreur réseau Clapay : ${err?.message}`,
+        isTimeout ? 408 : 503,
+        { url, error: err?.message, retryable: true },
+      );
+    }
+
+    const elapsed = Date.now() - startMs;
+    const contentType = response.headers.get("content-type") ?? "";
+    console.log(`[Clapay] ← HTTP ${response.status} | content-type: ${contentType} | ${elapsed}ms`);
+
+    const rawText = await response.text();
+
+    if (contentType.includes("text/html") || rawText.trimStart().startsWith("<!DOCTYPE")) {
+      const preview = rawText.slice(0, 300).replace(/\s+/g, " ").trim();
+      console.error(`[Clapay] ✗ HTML reçu au lieu de JSON sur ${url} — preview: ${preview}`);
+      throw new ClapayError(
+        "Clapay a retourné une page HTML au lieu de JSON. Vérifiez l'URL de base et le token API.",
+        response.status,
+        { url, html_preview: preview, retryable: false },
+      );
+    }
+
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      const preview = rawText.slice(0, 300);
+      console.error(`[Clapay] ✗ Réponse non-JSON (HTTP ${response.status}) sur ${url} — raw: ${preview}`);
+      throw new ClapayError(
+        `Clapay a retourné une réponse invalide (HTTP ${response.status}).`,
+        response.status,
+        { url, raw_preview: preview, retryable: false },
+      );
+    }
+
+    console.log(`[Clapay]   réponse JSON: ${JSON.stringify(data).slice(0, 400)}`);
 
     if (!response.ok) {
       throw new ClapayError(

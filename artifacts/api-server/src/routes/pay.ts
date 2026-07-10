@@ -26,6 +26,7 @@ import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, chec
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { notifyPayinConfirmed } from "../lib/telegram";
+import { settlePayinStatus } from "../lib/payin-settlement";
 
 const router = Router();
 
@@ -443,14 +444,18 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
     const verifiedStatus = statusCheck?.status ?? "processing";
     const verifiedFailureReason = statusCheck?.failureReason;
 
+    // Point de règlement unique — crédite le wallet si succès, idempotent avec le
+    // webhook qui pourrait confirmer le même paiement un peu plus tard.
     await db.update(transactionsTable)
-      .set({
-        status: verifiedStatus as any,
-        externalRef,
-        ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
-        updatedAt: new Date(),
-      })
+      .set({ externalRef })
       .where(eq(transactionsTable.id, tx.id));
+    await settlePayinStatus({
+      txId: tx.id,
+      status: verifiedStatus as any,
+      gatewayReference: externalRef,
+      failureReason: verifiedFailureReason,
+      gateway: aggregator,
+    });
 
     if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
       res.status(502).json({
@@ -464,18 +469,6 @@ router.post("/api/pay/:token", async (req: any, res: any) => {
     await db.update(paymentLinksTable)
       .set({ uses: sql`${paymentLinksTable.uses} + 1` })
       .where(eq(paymentLinksTable.id, link.id));
-
-    // Telegram : notifier UNIQUEMENT si le fournisseur confirme le succès immédiatement.
-    // Si le statut est encore "processing/pending", le webhook enverra la notification
-    // quand le paiement sera réellement confirmé côté fournisseur.
-    if (verifiedStatus === "success") {
-      notifyPayinConfirmed({
-        company: merchantInfo?.companyName ?? "?",
-        amount, fee, net: netAmount, currency, operator, phone,
-        country: countryCode, reference, mode: "live", source: "link",
-        gateway: aggregator,
-      }).catch(() => {});
-    }
 
     res.status(201).json({
       reference,
