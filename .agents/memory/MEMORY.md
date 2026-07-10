@@ -1,0 +1,1 @@
+- [DrimPay import setup](drimpay-import-setup.md) — required Supabase secrets and start.cjs quirk for this fintech monorepo.
