@@ -661,24 +661,56 @@ export async function sendContractEmail(opts: {
   }
 }
 
-export async function sendBroadcastEmail(opts: {
+// ─── Brevo sender (admin broadcast) ──────────────────────────────────────────
+
+const BREVO_FROM_EMAIL = process.env["BREVO_FROM_EMAIL"] ?? "support@drimpay.com";
+const BREVO_FROM_NAME  = "DrimPay";
+
+async function sendViaBrevo(opts: {
   to: string;
-  merchantName: string;
+  toName: string;
   subject: string;
-  htmlBody: string;
-}): Promise<{ ok: boolean; error?: string }> {
-  const resend = getResend();
-  if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
+  html: string;
+}): Promise<{ ok: boolean; quotaExceeded?: boolean; error?: string }> {
+  const apiKey = process.env["BREVO_API_KEY"];
+  if (!apiKey) return { ok: false, error: "BREVO_API_KEY non configuré" };
 
-  const footer = await buildEmailFooter();
-
+  let res: Response;
   try {
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: opts.to,
-      subject: opts.subject,
-      html: `
-<!DOCTYPE html>
+    res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "api-key": apiKey },
+      body: JSON.stringify({
+        sender:      { name: BREVO_FROM_NAME, email: BREVO_FROM_EMAIL },
+        to:          [{ email: opts.to, name: opts.toName }],
+        subject:     opts.subject,
+        htmlContent: opts.html,
+      }),
+    });
+  } catch (e: any) {
+    return { ok: false, error: `Brevo réseau: ${e?.message ?? e}` };
+  }
+
+  if (res.ok) return { ok: true };
+
+  let body: any = {};
+  try { body = await res.json(); } catch {}
+
+  const msg = (body?.message ?? "").toLowerCase();
+  const quotaExceeded =
+    res.status === 429 ||
+    res.status === 402 ||
+    msg.includes("quota")  ||
+    msg.includes("limit")  ||
+    msg.includes("daily")  ||
+    msg.includes("allowance");
+
+  console.warn(`[Brevo] HTTP ${res.status} — ${body?.message ?? "?"}`);
+  return { ok: false, quotaExceeded, error: body?.message ?? `HTTP ${res.status}` };
+}
+
+function buildBroadcastHtml(merchantName: string, htmlBody: string, footer: string): string {
+  return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
@@ -694,9 +726,9 @@ export async function sendBroadcastEmail(opts: {
         <tr>
           <td style="padding:36px 40px;">
             <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
-              Bonjour <strong>${opts.merchantName}</strong>,
+              Bonjour <strong>${merchantName}</strong>,
             </p>
-            ${opts.htmlBody}
+            ${htmlBody}
           </td>
         </tr>
         ${footer}
@@ -704,10 +736,49 @@ export async function sendBroadcastEmail(opts: {
     </td></tr>
   </table>
 </body>
-</html>`.trim(),
-    });
+</html>`.trim();
+}
 
-    return { ok: true };
+// provider: "brevo" (default) | "resend" (forced fallback for resume)
+export async function sendBroadcastEmail(opts: {
+  to: string;
+  merchantName: string;
+  subject: string;
+  htmlBody: string;
+  provider?: "brevo" | "resend";
+}): Promise<{ ok: boolean; quotaExceeded?: boolean; provider?: string; error?: string }> {
+  const footer = await buildEmailFooter();
+  const html   = buildBroadcastHtml(opts.merchantName, opts.htmlBody, footer);
+
+  // ── Force Resend (resume flow after quota) ────────────────────────────────
+  if (opts.provider === "resend") {
+    const resend = getResend();
+    if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
+    try {
+      await resend.emails.send({ from: FROM_EMAIL, to: opts.to, subject: opts.subject, html });
+      return { ok: true, provider: "resend" };
+    } catch (e: any) {
+      return { ok: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  // ── Try Brevo first ───────────────────────────────────────────────────────
+  const brevo = await sendViaBrevo({ to: opts.to, toName: opts.merchantName, subject: opts.subject, html });
+  if (brevo.ok) return { ok: true, provider: "brevo" };
+
+  // Quota atteint → on remonte l'info au caller (pas de fallback auto)
+  if (brevo.quotaExceeded) {
+    console.warn(`[Mailer] Brevo quota dépassé pour ${opts.to} — arrêt broadcast.`);
+    return { ok: false, quotaExceeded: true, error: brevo.error };
+  }
+
+  // Autre erreur Brevo → on tente Resend en fallback silencieux
+  console.warn(`[Mailer] Brevo erreur non-quota (${brevo.error}) — fallback Resend pour ${opts.to}`);
+  const resend = getResend();
+  if (!resend) return { ok: false, error: `Brevo: ${brevo.error} | Resend: clé non configurée` };
+  try {
+    await resend.emails.send({ from: FROM_EMAIL, to: opts.to, subject: opts.subject, html });
+    return { ok: true, provider: "resend-fallback" };
   } catch (e: any) {
     return { ok: false, error: e?.message ?? String(e) };
   }

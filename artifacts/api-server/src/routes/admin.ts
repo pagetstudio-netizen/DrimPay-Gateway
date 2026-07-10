@@ -1601,25 +1601,80 @@ router.post("/admin/broadcast", requireAdmin, async (req: any, res: any) => {
   }
 
   if (users.length === 0) {
-    res.json({ ok: true, sent: 0, failed: 0, errors: [] });
+    res.json({ ok: true, sent: 0, failed: 0, errors: [], quotaExceeded: false, remaining: [] });
     return;
   }
 
   const htmlBody = body.replace(/\n/g, "<br>");
-  let sent = 0; let failed = 0; const errors: string[] = [];
+  let sent = 0; let failed = 0;
+  const errors: string[] = [];
+  const remaining: { email: string; companyName: string }[] = [];
+  let quotaExceeded = false;
 
   for (const u of users) {
+    // Once quota is hit, collect the rest without attempting to send
+    if (quotaExceeded) {
+      remaining.push({ email: u.email, companyName: u.companyName });
+      continue;
+    }
+
     const result = await sendBroadcastEmail({
       to: u.email,
       merchantName: u.companyName,
       subject: subject.trim(),
       htmlBody,
     });
+
+    if (result.ok) {
+      sent++;
+    } else if (result.quotaExceeded) {
+      quotaExceeded = true;
+      remaining.push({ email: u.email, companyName: u.companyName });
+    } else {
+      failed++;
+      errors.push(`${u.email}: ${result.error}`);
+    }
+  }
+
+  await logAdminAction(req.session.userId, "BROADCAST_EMAIL", "users", undefined,
+    JSON.stringify({ subject, filter, sent, failed, quotaExceeded, remainingCount: remaining.length }), req.ip);
+
+  res.json({ ok: true, sent, failed, errors, quotaExceeded, remaining });
+});
+
+// ── Resume broadcast via Resend after Brevo quota ─────────────────────────────
+router.post("/admin/broadcast/resume-resend", requireAdmin, async (req: any, res: any) => {
+  const { recipients, subject, body } = req.body as {
+    recipients?: { email: string; companyName: string }[];
+    subject?: string;
+    body?: string;
+  };
+
+  if (!Array.isArray(recipients) || recipients.length === 0) {
+    res.status(400).json({ error: "recipients requis." }); return;
+  }
+  if (!subject?.trim() || !body?.trim()) {
+    res.status(400).json({ error: "subject et body requis." }); return;
+  }
+
+  const htmlBody = body.replace(/\n/g, "<br>");
+  let sent = 0; let failed = 0; const errors: string[] = [];
+
+  for (const u of recipients) {
+    const result = await sendBroadcastEmail({
+      to: u.email,
+      merchantName: u.companyName,
+      subject: subject.trim(),
+      htmlBody,
+      provider: "resend",
+    });
     if (result.ok) sent++;
     else { failed++; errors.push(`${u.email}: ${result.error}`); }
   }
 
-  await logAdminAction(req.session.userId, "BROADCAST_EMAIL", "users", undefined, JSON.stringify({ subject, filter, sent, failed }), req.ip);
+  await logAdminAction(req.session.userId, "BROADCAST_EMAIL_RESUME_RESEND", "users", undefined,
+    JSON.stringify({ subject, sent, failed }), req.ip);
+
   res.json({ ok: true, sent, failed, errors });
 });
 

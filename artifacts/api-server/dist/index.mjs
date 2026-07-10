@@ -70211,17 +70211,37 @@ async function sendContractEmail(opts) {
     return { ok: false, error: e?.message ?? String(e) };
   }
 }
-async function sendBroadcastEmail(opts) {
-  const resend = getResend();
-  if (!resend) return { ok: false, error: "RESEND_API_KEY non configur\xE9" };
-  const footer = await buildEmailFooter();
+async function sendViaBrevo(opts) {
+  const apiKey = process.env["BREVO_API_KEY"];
+  if (!apiKey) return { ok: false, error: "BREVO_API_KEY non configur\xE9" };
+  let res;
   try {
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: opts.to,
-      subject: opts.subject,
-      html: `
-<!DOCTYPE html>
+    res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "api-key": apiKey },
+      body: JSON.stringify({
+        sender: { name: BREVO_FROM_NAME, email: BREVO_FROM_EMAIL },
+        to: [{ email: opts.to, name: opts.toName }],
+        subject: opts.subject,
+        htmlContent: opts.html
+      })
+    });
+  } catch (e) {
+    return { ok: false, error: `Brevo r\xE9seau: ${e?.message ?? e}` };
+  }
+  if (res.ok) return { ok: true };
+  let body = {};
+  try {
+    body = await res.json();
+  } catch {
+  }
+  const msg = (body?.message ?? "").toLowerCase();
+  const quotaExceeded = res.status === 429 || res.status === 402 || msg.includes("quota") || msg.includes("limit") || msg.includes("daily") || msg.includes("allowance");
+  console.warn(`[Brevo] HTTP ${res.status} \u2014 ${body?.message ?? "?"}`);
+  return { ok: false, quotaExceeded, error: body?.message ?? `HTTP ${res.status}` };
+}
+function buildBroadcastHtml(merchantName, htmlBody, footer) {
+  return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
@@ -70237,9 +70257,9 @@ async function sendBroadcastEmail(opts) {
         <tr>
           <td style="padding:36px 40px;">
             <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
-              Bonjour <strong>${opts.merchantName}</strong>,
+              Bonjour <strong>${merchantName}</strong>,
             </p>
-            ${opts.htmlBody}
+            ${htmlBody}
           </td>
         </tr>
         ${footer}
@@ -70247,9 +70267,33 @@ async function sendBroadcastEmail(opts) {
     </td></tr>
   </table>
 </body>
-</html>`.trim()
-    });
-    return { ok: true };
+</html>`.trim();
+}
+async function sendBroadcastEmail(opts) {
+  const footer = await buildEmailFooter();
+  const html = buildBroadcastHtml(opts.merchantName, opts.htmlBody, footer);
+  if (opts.provider === "resend") {
+    const resend2 = getResend();
+    if (!resend2) return { ok: false, error: "RESEND_API_KEY non configur\xE9" };
+    try {
+      await resend2.emails.send({ from: FROM_EMAIL, to: opts.to, subject: opts.subject, html });
+      return { ok: true, provider: "resend" };
+    } catch (e) {
+      return { ok: false, error: e?.message ?? String(e) };
+    }
+  }
+  const brevo = await sendViaBrevo({ to: opts.to, toName: opts.merchantName, subject: opts.subject, html });
+  if (brevo.ok) return { ok: true, provider: "brevo" };
+  if (brevo.quotaExceeded) {
+    console.warn(`[Mailer] Brevo quota d\xE9pass\xE9 pour ${opts.to} \u2014 arr\xEAt broadcast.`);
+    return { ok: false, quotaExceeded: true, error: brevo.error };
+  }
+  console.warn(`[Mailer] Brevo erreur non-quota (${brevo.error}) \u2014 fallback Resend pour ${opts.to}`);
+  const resend = getResend();
+  if (!resend) return { ok: false, error: `Brevo: ${brevo.error} | Resend: cl\xE9 non configur\xE9e` };
+  try {
+    await resend.emails.send({ from: FROM_EMAIL, to: opts.to, subject: opts.subject, html });
+    return { ok: true, provider: "resend-fallback" };
   } catch (e) {
     return { ok: false, error: e?.message ?? String(e) };
   }
@@ -70354,7 +70398,7 @@ async function sendPasswordResetEmail(opts) {
     return { ok: false, error: e?.message ?? String(e) };
   }
 }
-var FROM_EMAIL, SUPPORT_EMAIL;
+var FROM_EMAIL, SUPPORT_EMAIL, BREVO_FROM_EMAIL, BREVO_FROM_NAME;
 var init_mailer = __esm({
   "src/lib/mailer.ts"() {
     "use strict";
@@ -70362,6 +70406,8 @@ var init_mailer = __esm({
     init_src();
     FROM_EMAIL = process.env["RESEND_FROM_EMAIL"] ?? "DrimPay <support@drimpay.com>";
     SUPPORT_EMAIL = process.env["RESEND_SUPPORT_EMAIL"] ?? "DrimPay <support@drimpay.com>";
+    BREVO_FROM_EMAIL = process.env["BREVO_FROM_EMAIL"] ?? "support@drimpay.com";
+    BREVO_FROM_NAME = "DrimPay";
   }
 });
 
@@ -280461,19 +280507,67 @@ router13.post("/admin/broadcast", requireAdmin, async (req, res) => {
     users = users.filter((u) => !ids.has(u.id));
   }
   if (users.length === 0) {
-    res.json({ ok: true, sent: 0, failed: 0, errors: [] });
+    res.json({ ok: true, sent: 0, failed: 0, errors: [], quotaExceeded: false, remaining: [] });
     return;
   }
   const htmlBody = body.replace(/\n/g, "<br>");
   let sent = 0;
   let failed = 0;
   const errors = [];
+  const remaining = [];
+  let quotaExceeded = false;
   for (const u of users) {
+    if (quotaExceeded) {
+      remaining.push({ email: u.email, companyName: u.companyName });
+      continue;
+    }
     const result = await sendBroadcastEmail({
       to: u.email,
       merchantName: u.companyName,
       subject: subject.trim(),
       htmlBody
+    });
+    if (result.ok) {
+      sent++;
+    } else if (result.quotaExceeded) {
+      quotaExceeded = true;
+      remaining.push({ email: u.email, companyName: u.companyName });
+    } else {
+      failed++;
+      errors.push(`${u.email}: ${result.error}`);
+    }
+  }
+  await logAdminAction(
+    req.session.userId,
+    "BROADCAST_EMAIL",
+    "users",
+    void 0,
+    JSON.stringify({ subject, filter, sent, failed, quotaExceeded, remainingCount: remaining.length }),
+    req.ip
+  );
+  res.json({ ok: true, sent, failed, errors, quotaExceeded, remaining });
+});
+router13.post("/admin/broadcast/resume-resend", requireAdmin, async (req, res) => {
+  const { recipients, subject, body } = req.body;
+  if (!Array.isArray(recipients) || recipients.length === 0) {
+    res.status(400).json({ error: "recipients requis." });
+    return;
+  }
+  if (!subject?.trim() || !body?.trim()) {
+    res.status(400).json({ error: "subject et body requis." });
+    return;
+  }
+  const htmlBody = body.replace(/\n/g, "<br>");
+  let sent = 0;
+  let failed = 0;
+  const errors = [];
+  for (const u of recipients) {
+    const result = await sendBroadcastEmail({
+      to: u.email,
+      merchantName: u.companyName,
+      subject: subject.trim(),
+      htmlBody,
+      provider: "resend"
     });
     if (result.ok) sent++;
     else {
@@ -280481,7 +280575,14 @@ router13.post("/admin/broadcast", requireAdmin, async (req, res) => {
       errors.push(`${u.email}: ${result.error}`);
     }
   }
-  await logAdminAction(req.session.userId, "BROADCAST_EMAIL", "users", void 0, JSON.stringify({ subject, filter, sent, failed }), req.ip);
+  await logAdminAction(
+    req.session.userId,
+    "BROADCAST_EMAIL_RESUME_RESEND",
+    "users",
+    void 0,
+    JSON.stringify({ subject, sent, failed }),
+    req.ip
+  );
   res.json({ ok: true, sent, failed, errors });
 });
 router13.get("/admin/social-links", requireAdmin, async (req, res) => {

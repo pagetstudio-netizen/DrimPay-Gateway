@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Users, CheckCircle2, AlertTriangle, Eye, Megaphone, RefreshCw, Mail, UserSearch, X } from "lucide-react";
+import { Send, Users, CheckCircle2, AlertTriangle, Eye, Megaphone, RefreshCw, Mail, UserSearch, X, Clock, Zap, BellRing } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,36 @@ const FILTERS = [
 ];
 
 type Recipient = { id: number; email: string; companyName: string; country: string; createdAt: string };
-type BroadcastResult = { sent: number; failed: number; errors: string[] } | null;
+
+type BroadcastResult = {
+  sent: number;
+  failed: number;
+  errors: string[];
+  quotaExceeded?: boolean;
+  remaining?: { email: string; companyName: string }[];
+} | null;
+
+type PendingBroadcast = {
+  recipients: { email: string; companyName: string }[];
+  subject: string;
+  body: string;
+  savedAt: string;
+};
+
+const PENDING_KEY = "drimpay_pending_broadcast";
+
+function savePendingBroadcast(data: PendingBroadcast) {
+  localStorage.setItem(PENDING_KEY, JSON.stringify(data));
+}
+function loadPendingBroadcast(): PendingBroadcast | null {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function clearPendingBroadcast() {
+  localStorage.removeItem(PENDING_KEY);
+}
 
 // ─── Onglet individuel ─────────────────────────────────────────────────────────
 function IndividualTab() {
@@ -179,15 +208,20 @@ function IndividualTab() {
 
 // ─── Onglet groupé ─────────────────────────────────────────────────────────────
 function BroadcastTab() {
-  const [filter, setFilter] = useState("all");
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [filter, setFilter]                   = useState("all");
+  const [subject, setSubject]                 = useState("");
+  const [body, setBody]                       = useState("");
+  const [recipients, setRecipients]           = useState<Recipient[]>([]);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<BroadcastResult>(null);
-  const [preview, setPreview] = useState(false);
-  const [confirm, setConfirm] = useState(false);
+  const [sending, setSending]                 = useState(false);
+  const [resuming, setResuming]               = useState(false);
+  const [result, setResult]                   = useState<BroadcastResult>(null);
+  const [preview, setPreview]                 = useState(false);
+  const [confirm, setConfirm]                 = useState(false);
+  const [pending, setPending]                 = useState<PendingBroadcast | null>(null);
+
+  // Load pending broadcast from localStorage on mount
+  useEffect(() => { setPending(loadPendingBroadcast()); }, []);
 
   const loadRecipients = async (f: string) => {
     setLoadingRecipients(true);
@@ -211,119 +245,292 @@ function BroadcastTab() {
         body: JSON.stringify({ subject, body, filter }),
       });
       const d = await r.json();
-      if (r.ok) setResult({ sent: d.sent, failed: d.failed, errors: d.errors ?? [] });
-      else setResult({ sent: 0, failed: recipients.length, errors: [d.error ?? "Erreur serveur"] });
-    } catch { setResult({ sent: 0, failed: recipients.length, errors: ["Erreur réseau"] }); }
+      if (r.ok) {
+        setResult({
+          sent: d.sent,
+          failed: d.failed,
+          errors: d.errors ?? [],
+          quotaExceeded: d.quotaExceeded ?? false,
+          remaining: d.remaining ?? [],
+        });
+      } else {
+        setResult({ sent: 0, failed: recipients.length, errors: [d.error ?? "Erreur serveur"] });
+      }
+    } catch {
+      setResult({ sent: 0, failed: recipients.length, errors: ["Erreur réseau"] });
+    }
     setSending(false);
   };
+
+  // Send remaining via Resend immediately
+  const resumeWithResend = async () => {
+    if (!result?.remaining?.length) return;
+    setResuming(true);
+    try {
+      const r = await fetch(`${BASE}/api/admin/broadcast/resume-resend`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipients: result.remaining, subject, body }),
+      });
+      const d = await r.json();
+      setResult(prev => prev ? {
+        ...prev,
+        sent: (prev.sent ?? 0) + (d.sent ?? 0),
+        failed: (prev.failed ?? 0) + (d.failed ?? 0),
+        errors: [...(prev.errors ?? []), ...(d.errors ?? [])],
+        quotaExceeded: false,
+        remaining: [],
+      } : null);
+    } catch {
+      alert("Erreur réseau lors du relais Resend.");
+    }
+    setResuming(false);
+  };
+
+  // Save remaining for tomorrow
+  const scheduleForTomorrow = () => {
+    if (!result?.remaining?.length) return;
+    const saved: PendingBroadcast = {
+      recipients: result.remaining,
+      subject,
+      body,
+      savedAt: new Date().toISOString(),
+    };
+    savePendingBroadcast(saved);
+    setPending(saved);
+    setResult(prev => prev ? { ...prev, quotaExceeded: false, remaining: [] } : null);
+  };
+
+  // Resume pending broadcast (from localStorage)
+  const resumePending = async () => {
+    if (!pending) return;
+    setResuming(true);
+    try {
+      const r = await fetch(`${BASE}/api/admin/broadcast/resume-resend`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipients: pending.recipients, subject: pending.subject, body: pending.body }),
+      });
+      const d = await r.json();
+      clearPendingBroadcast();
+      setPending(null);
+      setResult({ sent: d.sent ?? 0, failed: d.failed ?? 0, errors: d.errors ?? [] });
+    } catch {
+      alert("Erreur réseau lors de la reprise.");
+    }
+    setResuming(false);
+  };
+
+  const dismissPending = () => { clearPendingBroadcast(); setPending(null); };
 
   const canSend = subject.trim().length > 0 && body.trim().length > 0 && recipients.length > 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
-      {result && (
-        <div className={cn("rounded-2xl p-5 border", result.failed === 0 ? "bg-green-50 border-green-200" : result.sent === 0 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200")}>
-          <div className="flex items-center gap-3 mb-2">
-            {result.failed === 0
-              ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-              : <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />}
-            <p className="font-semibold text-gray-900">
-              {result.sent} email{result.sent > 1 ? "s" : ""} envoyé{result.sent > 1 ? "s" : ""}
-              {result.failed > 0 && ` — ${result.failed} échec${result.failed > 1 ? "s" : ""}`}
-            </p>
+    <div className="space-y-4">
+
+      {/* ── Bannière rappel "demain" ─────────────────────────────────────── */}
+      {pending && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <BellRing className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-800">Envoi en attente — {pending.recipients.length} destinataire{pending.recipients.length > 1 ? "s" : ""}</p>
+              <p className="text-xs text-blue-600 mt-0.5 truncate">
+                Sujet : <strong>"{pending.subject}"</strong> · Sauvegardé le {new Date(pending.savedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+              </p>
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={resumePending}
+                  disabled={resuming}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {resuming ? <><RefreshCw className="w-3 h-3 animate-spin" /> Envoi…</> : <><Zap className="w-3 h-3" /> Envoyer maintenant via Resend</>}
+                </button>
+                <button onClick={dismissPending} className="px-3 py-1.5 rounded-lg text-xs text-blue-600 hover:bg-blue-100 transition-colors">
+                  Ignorer
+                </button>
+              </div>
+            </div>
           </div>
-          {result.errors.slice(0, 5).map((e, i) => <p key={i} className="text-xs text-red-600 font-mono">{e}</p>)}
-          <button onClick={() => { setResult(null); setSubject(""); setBody(""); }} className="mt-2 text-xs text-emerald-700 font-semibold hover:underline">
-            Nouveau message →
-          </button>
         </div>
       )}
 
-      <div>
-        <label className="text-sm font-semibold text-gray-700 block mb-2">Destinataires</label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {FILTERS.map(f => (
-            <button key={f.value} onClick={() => setFilter(f.value)}
-              className={cn("p-3 rounded-xl border text-left transition-all", filter === f.value ? "border-emerald-500 bg-emerald-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50")}>
-              <p className={cn("text-xs font-semibold", filter === f.value ? "text-emerald-700" : "text-gray-800")}>{f.label}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{f.desc}</p>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+
+        {/* ── Résultat normal ──────────────────────────────────────────────── */}
+        {result && !result.quotaExceeded && (
+          <div className={cn("rounded-2xl p-5 border",
+            result.failed === 0 ? "bg-green-50 border-green-200"
+            : result.sent === 0 ? "bg-red-50 border-red-200"
+            : "bg-amber-50 border-amber-200"
+          )}>
+            <div className="flex items-center gap-3 mb-2">
+              {result.failed === 0
+                ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                : <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />}
+              <p className="font-semibold text-gray-900">
+                {result.sent} email{result.sent > 1 ? "s" : ""} envoyé{result.sent > 1 ? "s" : ""}
+                {result.failed > 0 && ` — ${result.failed} échec${result.failed > 1 ? "s" : ""}`}
+              </p>
+            </div>
+            {result.errors.slice(0, 5).map((e, i) => <p key={i} className="text-xs text-red-600 font-mono">{e}</p>)}
+            <button onClick={() => { setResult(null); setSubject(""); setBody(""); }} className="mt-2 text-xs text-emerald-700 font-semibold hover:underline">
+              Nouveau message →
             </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 mt-3">
-          {loadingRecipients
-            ? <span className="text-xs text-gray-400 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Chargement…</span>
-            : <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
-                <Users className="w-3.5 h-3.5 text-gray-400" />
-                {recipients.length} destinataire{recipients.length > 1 ? "s" : ""} sélectionné{recipients.length > 1 ? "s" : ""}
-              </span>}
-          {recipients.length > 0 && (
-            <button onClick={() => setPreview(v => !v)} className="ml-auto flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
-              <Eye className="w-3.5 h-3.5" /> {preview ? "Masquer" : "Voir la liste"}
-            </button>
+          </div>
+        )}
+
+        {/* ── Quota Brevo dépassé ──────────────────────────────────────────── */}
+        {result?.quotaExceeded && (
+          <div className="rounded-2xl border-2 border-orange-300 bg-orange-50 p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <p className="font-bold text-orange-900 text-sm">Quota Brevo atteint</p>
+                <p className="text-xs text-orange-700 mt-1 leading-relaxed">
+                  <strong>{result.sent} email{result.sent > 1 ? "s" : ""}</strong> envoyé{result.sent > 1 ? "s" : ""} via Brevo.{" "}
+                  <strong>{result.remaining?.length ?? 0} destinataire{(result.remaining?.length ?? 0) > 1 ? "s" : ""}</strong> restant{(result.remaining?.length ?? 0) > 1 ? "s" : ""} n'ont pas reçu le message.
+                </p>
+              </div>
+            </div>
+
+            <div className="h-px bg-orange-200" />
+
+            <p className="text-xs font-semibold text-orange-800 uppercase tracking-wide">Que faire avec les {result.remaining?.length} restants ?</p>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              {/* Option A — Resend maintenant */}
+              <button
+                onClick={resumeWithResend}
+                disabled={resuming}
+                className="flex items-start gap-3 p-4 rounded-xl bg-white border-2 border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left group disabled:opacity-50"
+              >
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 group-hover:bg-emerald-200 transition-colors">
+                  {resuming ? <RefreshCw className="w-4 h-4 text-emerald-600 animate-spin" /> : <Zap className="w-4 h-4 text-emerald-600" />}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Envoyer maintenant</p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                    Les {result.remaining?.length} emails restants sont envoyés immédiatement via <strong>Resend</strong>.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option B — Demain */}
+              <button
+                onClick={scheduleForTomorrow}
+                className="flex items-start gap-3 p-4 rounded-xl bg-white border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
+                  <Clock className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Envoyer demain</p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                    Les {result.remaining?.length} destinataires sont sauvegardés. Une bannière de rappel s'affichera à votre prochaine connexion.
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {result.errors.length > 0 && (
+              <div className="mt-1">
+                {result.errors.slice(0, 3).map((e, i) => <p key={i} className="text-xs text-red-600 font-mono">{e}</p>)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Filtres destinataires ────────────────────────────────────────── */}
+        <div>
+          <label className="text-sm font-semibold text-gray-700 block mb-2">Destinataires</label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {FILTERS.map(f => (
+              <button key={f.value} onClick={() => setFilter(f.value)}
+                className={cn("p-3 rounded-xl border text-left transition-all", filter === f.value ? "border-emerald-500 bg-emerald-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50")}>
+                <p className={cn("text-xs font-semibold", filter === f.value ? "text-emerald-700" : "text-gray-800")}>{f.label}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{f.desc}</p>
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            {loadingRecipients
+              ? <span className="text-xs text-gray-400 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Chargement…</span>
+              : <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                  <Users className="w-3.5 h-3.5 text-gray-400" />
+                  {recipients.length} destinataire{recipients.length > 1 ? "s" : ""} sélectionné{recipients.length > 1 ? "s" : ""}
+                </span>}
+            {recipients.length > 0 && (
+              <button onClick={() => setPreview(v => !v)} className="ml-auto flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
+                <Eye className="w-3.5 h-3.5" /> {preview ? "Masquer" : "Voir la liste"}
+              </button>
+            )}
+          </div>
+          {preview && recipients.length > 0 && (
+            <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-gray-100 divide-y divide-gray-50">
+              {recipients.map(r => (
+                <div key={r.id} className="flex items-center gap-3 px-3 py-2">
+                  <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                    <span className="text-[10px] font-bold text-emerald-600">{r.companyName[0]}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 truncate">{r.companyName}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{r.email}</p>
+                  </div>
+                  <span className="text-[10px] text-gray-400 shrink-0">{r.country}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-        {preview && recipients.length > 0 && (
-          <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-gray-100 divide-y divide-gray-50">
-            {recipients.map(r => (
-              <div key={r.id} className="flex items-center gap-3 px-3 py-2">
-                <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-bold text-emerald-600">{r.companyName[0]}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800 truncate">{r.companyName}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{r.email}</p>
-                </div>
-                <span className="text-[10px] text-gray-400 shrink-0">{r.country}</span>
+
+        {/* ── Formulaire ───────────────────────────────────────────────────── */}
+        <div>
+          <label className="text-sm font-semibold text-gray-700 block mb-1.5">Sujet de l'email</label>
+          <input value={subject} onChange={e => setSubject(e.target.value)}
+            placeholder="Ex : Mise à jour importante — DrimPay"
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+        </div>
+
+        <div>
+          <label className="text-sm font-semibold text-gray-700 block mb-1.5">Message</label>
+          <textarea value={body} onChange={e => setBody(e.target.value)} rows={9}
+            placeholder={"Chers marchands,\n\nNous souhaitons vous informer de…\n\nCordialement,\nL'équipe DrimPay"}
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none" />
+          <p className="text-xs text-gray-400 mt-1">Chaque retour à la ligne sera conservé dans l'email.</p>
+        </div>
+
+        {!confirm ? (
+          <button onClick={() => setConfirm(true)} disabled={!canSend || sending}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors">
+            <Send className="w-4 h-4" />
+            Envoyer à {recipients.length} marchand{recipients.length > 1 ? "s" : ""}
+          </button>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Confirmer l'envoi groupé</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Vous allez envoyer <strong>"{subject}"</strong> à <strong>{recipients.length} marchand{recipients.length > 1 ? "s" : ""}</strong>. Cette action est irréversible.
+                </p>
               </div>
-            ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={send} disabled={sending}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors">
+                {sending ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Envoi…</> : <><Send className="w-3.5 h-3.5" /> Confirmer l'envoi</>}
+              </button>
+              <button onClick={() => setConfirm(false)} disabled={sending} className="px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition-colors">
+                Annuler
+              </button>
+            </div>
           </div>
         )}
       </div>
-
-      <div>
-        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Sujet de l'email</label>
-        <input value={subject} onChange={e => setSubject(e.target.value)}
-          placeholder="Ex : Mise à jour importante — DrimPay"
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-      </div>
-
-      <div>
-        <label className="text-sm font-semibold text-gray-700 block mb-1.5">Message</label>
-        <textarea value={body} onChange={e => setBody(e.target.value)} rows={9}
-          placeholder={"Chers marchands,\n\nNous souhaitons vous informer de…\n\nCordialement,\nL'équipe DrimPay"}
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none" />
-        <p className="text-xs text-gray-400 mt-1">Chaque retour à la ligne sera conservé dans l'email.</p>
-      </div>
-
-      {!confirm ? (
-        <button onClick={() => setConfirm(true)} disabled={!canSend || sending}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors">
-          <Send className="w-4 h-4" />
-          Envoyer à {recipients.length} marchand{recipients.length > 1 ? "s" : ""}
-        </button>
-      ) : (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800">Confirmer l'envoi groupé</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                Vous allez envoyer <strong>"{subject}"</strong> à <strong>{recipients.length} marchand{recipients.length > 1 ? "s" : ""}</strong>. Cette action est irréversible.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={send} disabled={sending}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors">
-              {sending ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Envoi…</> : <><Send className="w-3.5 h-3.5" /> Confirmer l'envoi</>}
-            </button>
-            <button onClick={() => setConfirm(false)} disabled={sending} className="px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition-colors">
-              Annuler
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
