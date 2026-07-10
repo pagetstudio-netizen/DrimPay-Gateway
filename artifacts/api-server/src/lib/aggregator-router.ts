@@ -80,25 +80,6 @@ export async function resolveAggregator(
     aggregatorCode = preferred;
   }
 
-  // PayDunya ne supporte pas les payouts automatisés sur cette intégration
-  // (voir PayDunyaClient.initiatePayout — endpoint non disponible / Direct Pay
-  // non activé). Tous les retraits mappés sur "paydunya" échouaient donc à
-  // 100% du temps. On bascule automatiquement sur Clapay pour les payouts.
-  if (operation === "payout" && aggregatorCode === "paydunya") {
-    if (isClapayConfigured()) {
-      console.warn(
-        `[AggregatorRouter] Opérateur ${operatorName} (${countryCode}) mappé sur PayDunya pour les payouts, ` +
-        `mais PayDunya ne supporte pas les retraits automatisés — bascule sur Clapay.`,
-      );
-      aggregatorCode = "clapay";
-    } else {
-      throw new AggregatorUnavailableError(
-        "paydunya",
-        "Les retraits PayDunya ne sont pas disponibles sur cette intégration, et Clapay n'est pas configuré en secours.",
-      );
-    }
-  }
-
   if (aggregatorCode === "clapay") {
     if (!isClapayConfigured()) throw new AggregatorNotConfiguredError("clapay");
     return { aggregator: "clapay", client: getClapayClient(), opAgg: opAgg ?? null };
@@ -178,6 +159,7 @@ async function fetchStatus(
   aggregator: AggregatorCode,
   client: ClapayClient | PayDunyaClient,
   gatewayRef: string,
+  operation: "payin" | "payout" = "payin",
 ): Promise<StatusCheckResult> {
   if (aggregator === "clapay") {
     const r = await (client as ClapayClient).getStatus(gatewayRef);
@@ -187,7 +169,12 @@ async function fetchStatus(
       failureReason: r.failure_reason,
     };
   } else {
-    const r = await (client as PayDunyaClient).getStatus(gatewayRef);
+    // PayDunya payouts use the disbursement check-status endpoint (disburse_token)
+    // PayDunya payins use the checkout-invoice confirm endpoint (payment_token)
+    const pd = client as PayDunyaClient;
+    const r = operation === "payout"
+      ? await pd.getPayoutStatus(gatewayRef)
+      : await pd.getStatus(gatewayRef);
     return {
       status: mapPayDunyaStatus(r.status),
       gatewayReference: r.paydunya_reference || gatewayRef,
@@ -213,12 +200,14 @@ export async function pollUntilSettled(
   options?: {
     intervalMs?: number;
     maxDurationMs?: number;
+    operation?: "payin" | "payout";
   },
 ): Promise<StatusCheckResult | null> {
   if (!gatewayRef) return null;
 
   const intervalMs    = options?.intervalMs    ?? 3_000;
   const maxDurationMs = options?.maxDurationMs ?? 25_000;
+  const operation     = options?.operation     ?? "payin";
   const deadline      = Date.now() + maxDurationMs;
   let lastResult: StatusCheckResult | null = null;
   let attempt = 0;
@@ -229,7 +218,7 @@ export async function pollUntilSettled(
   while (Date.now() < deadline) {
     attempt++;
     try {
-      const result = await fetchStatus(aggregator, client, gatewayRef);
+      const result = await fetchStatus(aggregator, client, gatewayRef, operation);
       lastResult = result;
 
       console.info(

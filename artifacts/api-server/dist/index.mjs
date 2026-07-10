@@ -106211,6 +106211,20 @@ __export(paydunya_exports, {
   isPayDunyaConfigured: () => isPayDunyaConfigured
 });
 import crypto4 from "crypto";
+function getWithdrawMode(operator, countryCode) {
+  const key = `${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`;
+  return WITHDRAW_MODE_MAP[key] ?? null;
+}
+function stripCountryCode(phone, countryCode) {
+  const code = COUNTRY_DIAL_CODES[countryCode.toUpperCase()];
+  let p = phone.replace(/\s+/g, "");
+  if (code) {
+    if (p.startsWith(`+${code}`)) return p.slice(1 + code.length);
+    if (p.startsWith(`00${code}`)) return p.slice(2 + code.length);
+    if (p.startsWith(code) && p.length > code.length + 5) return p.slice(code.length);
+  }
+  return p.replace(/^\+\d{1,4}/, "").replace(/^00\d{1,4}/, "");
+}
 function getPayDunyaClient() {
   if (!_client2) {
     const baseUrl2 = process.env.PAYDUNYA_BASE_URL ?? PAYDUNYA_LIVE_URL;
@@ -106235,11 +106249,73 @@ function getPayDunyaClient() {
 function isPayDunyaConfigured() {
   return !!(process.env.PAYDUNYA_MASTER_KEY && process.env.PAYDUNYA_PRIVATE_KEY && process.env.PAYDUNYA_TOKEN);
 }
-var PayDunyaClient, PayDunyaError, _client2, PAYDUNYA_LIVE_URL;
+var WITHDRAW_MODE_MAP, COUNTRY_DIAL_CODES, PayDunyaClient, PayDunyaError, _client2, PAYDUNYA_LIVE_URL;
 var init_paydunya = __esm({
   "src/lib/paydunya.ts"() {
     "use strict";
     init_paydunya_softpay_map();
+    WITHDRAW_MODE_MAP = {
+      // Togo
+      "tmoney|TG": "t-money-togo",
+      "t-money|TG": "t-money-togo",
+      "moov money|TG": "moov-togo",
+      "moov|TG": "moov-togo",
+      "flooz|TG": "moov-togo",
+      // Bénin
+      "mtn mobile money|BJ": "mtn-benin",
+      "mtn momo|BJ": "mtn-benin",
+      "mtn|BJ": "mtn-benin",
+      "moov money|BJ": "moov-benin",
+      "moov|BJ": "moov-benin",
+      // Côte d'Ivoire
+      "mtn|CI": "mtn-ci",
+      "mtn mobile money|CI": "mtn-ci",
+      "orange money|CI": "orange-money-ci",
+      "orange|CI": "orange-money-ci",
+      "wave|CI": "wave-ci",
+      "moov money|CI": "moov-ci",
+      "moov|CI": "moov-ci",
+      "djamo|CI": "djamo-ci",
+      // Sénégal
+      "orange money|SN": "orange-money-senegal",
+      "orange|SN": "orange-money-senegal",
+      "wave|SN": "wave-senegal",
+      "free money|SN": "free-money-senegal",
+      "freemoney|SN": "free-money-senegal",
+      "expresso|SN": "expresso-senegal",
+      "e-money|SN": "expresso-senegal",
+      "emoney|SN": "expresso-senegal",
+      "djamo|SN": "djamo-sn",
+      // Mali
+      "orange money|ML": "orange-money-mali",
+      "orange|ML": "orange-money-mali",
+      "moov money|ML": "moov-mali",
+      "moov|ML": "moov-mali",
+      // Burkina Faso
+      "orange money|BF": "orange-money-burkina",
+      "orange|BF": "orange-money-burkina",
+      "moov money|BF": "moov-burkina-faso",
+      "moov|BF": "moov-burkina-faso",
+      // Cameroun
+      "mtn momo|CM": "mtn-cameroun",
+      "mtn|CM": "mtn-cameroun",
+      "orange money|CM": "orange-money-cameroun",
+      "orange|CM": "orange-money-cameroun"
+    };
+    COUNTRY_DIAL_CODES = {
+      TG: "228",
+      BJ: "229",
+      CI: "225",
+      SN: "221",
+      ML: "223",
+      BF: "226",
+      CM: "237",
+      GH: "233",
+      GN: "224",
+      SL: "232",
+      LR: "231",
+      NG: "234"
+    };
     PayDunyaClient = class {
       config;
       constructor(config2) {
@@ -106256,9 +106332,13 @@ var init_paydunya = __esm({
           "PAYDUNYA-TOKEN": this.config.token
         };
       }
+      // ─── v2 base URL (for disbursement endpoints) ─────────────────────────────
+      get v2BaseUrl() {
+        return this.config.baseUrl.includes("sandbox") ? "https://app.paydunya.com/sandbox-api/v2" : "https://app.paydunya.com/api/v2";
+      }
       // ─── HTTP helper — logs complets, détecte HTML, jamais crash ─────────────
-      async request(method, path5, body) {
-        const url2 = `${this.config.baseUrl}${path5}`;
+      async request(method, path5, body, baseUrlOverride) {
+        const url2 = `${baseUrlOverride ?? this.config.baseUrl}${path5}`;
         const startMs = Date.now();
         const sentHeaders = this.headers();
         console.log(`[PayDunya] \u2192 ${method} ${url2}`);
@@ -106455,13 +106535,132 @@ var init_paydunya = __esm({
           message: `Prompt ${softPayConfig.label} envoy\xE9 sur le t\xE9l\xE9phone du client`
         };
       }
-      // ─── Initiate Pay-Out ─────────────────────────────────────────────────────
-      async initiatePayout(_params) {
-        throw new PayDunyaError(
-          "Le payout via PayDunya n'est pas disponible sur cet endpoint. Configurez Clapay pour les payouts ou contactez PayDunya pour activer le Direct Pay API.",
-          503,
-          { code: "PAYOUT_NOT_SUPPORTED", retryable: false }
+      // ─── Initiate Pay-Out (Disbursement) — API v2 two-step flow ──────────────
+      // Step 1: POST /api/v2/disburse/get-invoice  → disburse_token
+      // Step 2: POST /api/v2/disburse/submit-invoice → final status
+      async initiatePayout(params) {
+        const withdrawMode = getWithdrawMode(params.operator, params.country_code);
+        if (!withdrawMode) {
+          console.error(
+            `[PayDunya] Payout \u2014 op\xE9rateur "${params.operator}" (${params.country_code}) non mapp\xE9 dans WITHDRAW_MODE_MAP.`
+          );
+          return {
+            success: false,
+            paydunya_reference: "",
+            status: "failed",
+            message: `Op\xE9rateur "${params.operator}" (${params.country_code}) non support\xE9 pour les d\xE9boursements PayDunya.`
+          };
+        }
+        const accountAlias = stripCountryCode(params.phone, params.country_code);
+        console.log(
+          `[PayDunya] Payout \u2014 mode: ${withdrawMode} | alias: ${accountAlias} | montant: ${params.amount} | ref: ${params.reference}`
         );
+        const getInvoicePayload = {
+          account_alias: accountAlias,
+          amount: params.amount,
+          withdraw_mode: withdrawMode,
+          callback_url: params.callback_url
+        };
+        if (params.reference) {
+          getInvoicePayload.disburse_id = params.reference;
+        }
+        let getInvoiceRaw;
+        try {
+          getInvoiceRaw = await this.request(
+            "POST",
+            "/disburse/get-invoice",
+            getInvoicePayload,
+            this.v2BaseUrl
+          );
+        } catch (err) {
+          console.error(`[PayDunya] Payout \xC9tape 1 \xE9chou\xE9e: ${err?.message}`);
+          return {
+            success: false,
+            paydunya_reference: "",
+            status: "failed",
+            message: err?.message ?? "Erreur lors de la cr\xE9ation du d\xE9boursement PayDunya"
+          };
+        }
+        if (getInvoiceRaw.response_code !== "00" || !getInvoiceRaw.disburse_token) {
+          console.error(
+            `[PayDunya] Payout \xC9tape 1 rejet\xE9e \u2014 code: ${getInvoiceRaw.response_code} | msg: ${getInvoiceRaw.response_text ?? getInvoiceRaw.message}`
+          );
+          return {
+            success: false,
+            paydunya_reference: getInvoiceRaw.disburse_token ?? "",
+            status: "failed",
+            message: getInvoiceRaw.response_text ?? getInvoiceRaw.message ?? "\xC9chec cr\xE9ation facture d\xE9boursement PayDunya"
+          };
+        }
+        const disburseToken = getInvoiceRaw.disburse_token;
+        console.log(`[PayDunya] \u2713 Payout \xC9tape 1 OK \u2014 disburse_token: ${disburseToken}`);
+        const submitPayload = {
+          disburse_invoice: disburseToken
+        };
+        if (params.reference) {
+          submitPayload.disburse_id = params.reference;
+        }
+        let submitRaw;
+        try {
+          submitRaw = await this.request(
+            "POST",
+            "/disburse/submit-invoice",
+            submitPayload,
+            this.v2BaseUrl
+          );
+        } catch (err) {
+          console.error(`[PayDunya] Payout \xC9tape 2 \xE9chou\xE9e: ${err?.message}`);
+          return {
+            success: false,
+            paydunya_reference: disburseToken,
+            status: "failed",
+            message: err?.message ?? "Erreur lors de la soumission du d\xE9boursement PayDunya"
+          };
+        }
+        if (submitRaw.response_code !== "00") {
+          console.error(
+            `[PayDunya] Payout \xC9tape 2 rejet\xE9e \u2014 code: ${submitRaw.response_code} | msg: ${submitRaw.response_text ?? submitRaw.message}`
+          );
+          return {
+            success: false,
+            paydunya_reference: disburseToken,
+            status: "failed",
+            message: submitRaw.response_text ?? submitRaw.message ?? "D\xE9boursement PayDunya refus\xE9"
+          };
+        }
+        const rawStatus = (submitRaw.status ?? "").toLowerCase();
+        const mappedStatus = rawStatus === "success" ? "completed" : "processing";
+        console.log(
+          `[PayDunya] \u2713 Payout \xC9tape 2 OK \u2014 statut: ${rawStatus || "non pr\xE9cis\xE9"} \u2192 ${mappedStatus} | transaction_id: ${submitRaw.transaction_id ?? "n/a"}`
+        );
+        return {
+          success: true,
+          paydunya_reference: disburseToken,
+          status: mappedStatus,
+          message: submitRaw.response_text ?? submitRaw.description ?? "D\xE9boursement PayDunya initi\xE9"
+        };
+      }
+      // ─── Get payout (disbursement) status ─────────────────────────────────────
+      async getPayoutStatus(disburseToken) {
+        const raw = await this.request(
+          "POST",
+          "/disburse/check-status",
+          { disburse_invoice: disburseToken },
+          this.v2BaseUrl
+        );
+        const rawStatus = (raw.status ?? "").toLowerCase();
+        const status = this.mapStatus(rawStatus);
+        return {
+          paydunya_reference: disburseToken,
+          our_reference: raw.disburse_id ?? raw.transaction_id ?? "",
+          status,
+          amount: parseFloat(raw.amount ?? "0"),
+          currency: raw.currency ?? "XOF",
+          operator: raw.withdraw_mode ?? "",
+          phone: "",
+          failure_reason: rawStatus === "failed" ? raw.response_text ?? "D\xE9boursement \xE9chou\xE9" : void 0,
+          completed_at: raw.updated_at ?? void 0
+        };
       }
       // ─── Get transaction status ───────────────────────────────────────────────
       async getStatus(paydunyaReference) {
@@ -275511,19 +275710,6 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
     }
     aggregatorCode = preferred;
   }
-  if (operation === "payout" && aggregatorCode === "paydunya") {
-    if (isClapayConfigured()) {
-      console.warn(
-        `[AggregatorRouter] Op\xE9rateur ${operatorName} (${countryCode}) mapp\xE9 sur PayDunya pour les payouts, mais PayDunya ne supporte pas les retraits automatis\xE9s \u2014 bascule sur Clapay.`
-      );
-      aggregatorCode = "clapay";
-    } else {
-      throw new AggregatorUnavailableError(
-        "paydunya",
-        "Les retraits PayDunya ne sont pas disponibles sur cette int\xE9gration, et Clapay n'est pas configur\xE9 en secours."
-      );
-    }
-  }
   if (aggregatorCode === "clapay") {
     if (!isClapayConfigured()) throw new AggregatorNotConfiguredError("clapay");
     return { aggregator: "clapay", client: getClapayClient(), opAgg: opAgg ?? null };
@@ -275545,7 +275731,7 @@ function mapPayDunyaStatus(s) {
   if (u === "processing" || u === "initiated") return "processing";
   return "pending";
 }
-async function fetchStatus(aggregator, client, gatewayRef) {
+async function fetchStatus(aggregator, client, gatewayRef, operation = "payin") {
   if (aggregator === "clapay") {
     const r = await client.getStatus(gatewayRef);
     return {
@@ -275554,7 +275740,8 @@ async function fetchStatus(aggregator, client, gatewayRef) {
       failureReason: r.failure_reason
     };
   } else {
-    const r = await client.getStatus(gatewayRef);
+    const pd = client;
+    const r = operation === "payout" ? await pd.getPayoutStatus(gatewayRef) : await pd.getStatus(gatewayRef);
     return {
       status: mapPayDunyaStatus(r.status),
       gatewayReference: r.paydunya_reference || gatewayRef,
@@ -275566,6 +275753,7 @@ async function pollUntilSettled(aggregator, client, gatewayRef, options) {
   if (!gatewayRef) return null;
   const intervalMs = options?.intervalMs ?? 3e3;
   const maxDurationMs = options?.maxDurationMs ?? 25e3;
+  const operation = options?.operation ?? "payin";
   const deadline = Date.now() + maxDurationMs;
   let lastResult = null;
   let attempt = 0;
@@ -275573,7 +275761,7 @@ async function pollUntilSettled(aggregator, client, gatewayRef, options) {
   while (Date.now() < deadline) {
     attempt++;
     try {
-      const result = await fetchStatus(aggregator, client, gatewayRef);
+      const result = await fetchStatus(aggregator, client, gatewayRef, operation);
       lastResult = result;
       console.info(
         `[Poll#${attempt}] ${aggregator}/${gatewayRef} \u2192 ${result.status} (+${Date.now() - (deadline - maxDurationMs)}ms)`
@@ -276311,7 +276499,8 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       try {
         const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
           intervalMs: 3e3,
-          maxDurationMs: 3e4
+          maxDurationMs: 3e4,
+          operation: "payout"
         });
         if (!statusCheck) return;
         console.log(`[Payout][BG] ${reference} \u2192 statut fournisseur: ${statusCheck.status}`);
@@ -276855,7 +277044,8 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
         const { client } = await resolveAggregator(countryCode, operator, "payout");
         const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
           intervalMs: 3e3,
-          maxDurationMs: 3e4
+          maxDurationMs: 3e4,
+          operation: "payout"
         });
         if (!statusCheck) return;
         console.info(`[Reversement][BG] ${reference} \u2192 statut fournisseur: ${statusCheck.status}`);

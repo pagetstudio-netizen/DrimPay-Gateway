@@ -22,6 +22,82 @@
 import crypto from "crypto";
 import { getSoftPayConfig, type SoftPayParams } from "./paydunya-softpay-map.js";
 
+// ─── Withdraw mode map (disbursement) ─────────────────────────────────────────
+// Key: "{operator_normalized}|{COUNTRY_CODE}" — same convention as SOFTPAY_OPERATOR_MAP
+// Value: withdraw_mode slug for POST /api/v2/disburse/get-invoice
+const WITHDRAW_MODE_MAP: Record<string, string> = {
+  // Togo
+  "tmoney|TG":       "t-money-togo",
+  "t-money|TG":      "t-money-togo",
+  "moov money|TG":   "moov-togo",
+  "moov|TG":         "moov-togo",
+  "flooz|TG":        "moov-togo",
+  // Bénin
+  "mtn mobile money|BJ": "mtn-benin",
+  "mtn momo|BJ":     "mtn-benin",
+  "mtn|BJ":          "mtn-benin",
+  "moov money|BJ":   "moov-benin",
+  "moov|BJ":         "moov-benin",
+  // Côte d'Ivoire
+  "mtn|CI":               "mtn-ci",
+  "mtn mobile money|CI":  "mtn-ci",
+  "orange money|CI":      "orange-money-ci",
+  "orange|CI":            "orange-money-ci",
+  "wave|CI":              "wave-ci",
+  "moov money|CI":        "moov-ci",
+  "moov|CI":              "moov-ci",
+  "djamo|CI":             "djamo-ci",
+  // Sénégal
+  "orange money|SN":      "orange-money-senegal",
+  "orange|SN":            "orange-money-senegal",
+  "wave|SN":              "wave-senegal",
+  "free money|SN":        "free-money-senegal",
+  "freemoney|SN":         "free-money-senegal",
+  "expresso|SN":          "expresso-senegal",
+  "e-money|SN":           "expresso-senegal",
+  "emoney|SN":            "expresso-senegal",
+  "djamo|SN":             "djamo-sn",
+  // Mali
+  "orange money|ML":      "orange-money-mali",
+  "orange|ML":            "orange-money-mali",
+  "moov money|ML":        "moov-mali",
+  "moov|ML":              "moov-mali",
+  // Burkina Faso
+  "orange money|BF":      "orange-money-burkina",
+  "orange|BF":            "orange-money-burkina",
+  "moov money|BF":        "moov-burkina-faso",
+  "moov|BF":              "moov-burkina-faso",
+  // Cameroun
+  "mtn momo|CM":          "mtn-cameroun",
+  "mtn|CM":               "mtn-cameroun",
+  "orange money|CM":      "orange-money-cameroun",
+  "orange|CM":            "orange-money-cameroun",
+};
+
+function getWithdrawMode(operator: string, countryCode: string): string | null {
+  const key = `${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`;
+  return WITHDRAW_MODE_MAP[key] ?? null;
+}
+
+// ─── Country dial codes — to strip from phone for account_alias ───────────────
+const COUNTRY_DIAL_CODES: Record<string, string> = {
+  TG: "228", BJ: "229", CI: "225", SN: "221",
+  ML: "223", BF: "226", CM: "237", GH: "233",
+  GN: "224", SL: "232", LR: "231", NG: "234",
+};
+
+function stripCountryCode(phone: string, countryCode: string): string {
+  const code = COUNTRY_DIAL_CODES[countryCode.toUpperCase()];
+  let p = phone.replace(/\s+/g, "");
+  if (code) {
+    if (p.startsWith(`+${code}`)) return p.slice(1 + code.length);
+    if (p.startsWith(`00${code}`)) return p.slice(2 + code.length);
+    if (p.startsWith(code) && p.length > code.length + 5) return p.slice(code.length);
+  }
+  // Already local or unknown format — strip leading +/00 if present
+  return p.replace(/^\+\d{1,4}/, "").replace(/^00\d{1,4}/, "");
+}
+
 export interface PayDunyaConfig {
   baseUrl: string;
   masterKey: string;
@@ -121,13 +197,21 @@ export class PayDunyaClient {
     };
   }
 
+  // ─── v2 base URL (for disbursement endpoints) ─────────────────────────────
+  private get v2BaseUrl(): string {
+    return this.config.baseUrl.includes("sandbox")
+      ? "https://app.paydunya.com/sandbox-api/v2"
+      : "https://app.paydunya.com/api/v2";
+  }
+
   // ─── HTTP helper — logs complets, détecte HTML, jamais crash ─────────────
   private async request<T>(
     method: "GET" | "POST" | "PUT",
     path: string,
     body?: object,
+    baseUrlOverride?: string,
   ): Promise<T> {
-    const url = `${this.config.baseUrl}${path}`;
+    const url = `${baseUrlOverride ?? this.config.baseUrl}${path}`;
     const startMs = Date.now();
     const sentHeaders = this.headers();
 
@@ -369,14 +453,157 @@ export class PayDunyaClient {
     };
   }
 
-  // ─── Initiate Pay-Out ─────────────────────────────────────────────────────
-  async initiatePayout(_params: PayDunyaPayoutRequest): Promise<PayDunyaPayoutResponse> {
-    throw new PayDunyaError(
-      "Le payout via PayDunya n'est pas disponible sur cet endpoint. " +
-      "Configurez Clapay pour les payouts ou contactez PayDunya pour activer le Direct Pay API.",
-      503,
-      { code: "PAYOUT_NOT_SUPPORTED", retryable: false },
+  // ─── Initiate Pay-Out (Disbursement) — API v2 two-step flow ──────────────
+  // Step 1: POST /api/v2/disburse/get-invoice  → disburse_token
+  // Step 2: POST /api/v2/disburse/submit-invoice → final status
+  async initiatePayout(params: PayDunyaPayoutRequest): Promise<PayDunyaPayoutResponse> {
+    const withdrawMode = getWithdrawMode(params.operator, params.country_code);
+    if (!withdrawMode) {
+      console.error(
+        `[PayDunya] Payout — opérateur "${params.operator}" (${params.country_code}) ` +
+        `non mappé dans WITHDRAW_MODE_MAP.`,
+      );
+      return {
+        success:            false,
+        paydunya_reference: "",
+        status:             "failed",
+        message:            `Opérateur "${params.operator}" (${params.country_code}) non supporté pour les déboursements PayDunya.`,
+      };
+    }
+
+    const accountAlias = stripCountryCode(params.phone, params.country_code);
+    console.log(
+      `[PayDunya] Payout — mode: ${withdrawMode} | alias: ${accountAlias} | ` +
+      `montant: ${params.amount} | ref: ${params.reference}`,
     );
+
+    // ── Étape 1 — Créer la facture de déboursement ────────────────────────
+    const getInvoicePayload: Record<string, unknown> = {
+      account_alias:  accountAlias,
+      amount:         params.amount,
+      withdraw_mode:  withdrawMode,
+      callback_url:   params.callback_url,
+    };
+    if (params.reference) {
+      getInvoicePayload.disburse_id = params.reference;
+    }
+
+    let getInvoiceRaw: any;
+    try {
+      getInvoiceRaw = await this.request<any>(
+        "POST",
+        "/disburse/get-invoice",
+        getInvoicePayload,
+        this.v2BaseUrl,
+      );
+    } catch (err: any) {
+      console.error(`[PayDunya] Payout Étape 1 échouée: ${err?.message}`);
+      return {
+        success:            false,
+        paydunya_reference: "",
+        status:             "failed",
+        message:            err?.message ?? "Erreur lors de la création du déboursement PayDunya",
+      };
+    }
+
+    if (getInvoiceRaw.response_code !== "00" || !getInvoiceRaw.disburse_token) {
+      console.error(
+        `[PayDunya] Payout Étape 1 rejetée — ` +
+        `code: ${getInvoiceRaw.response_code} | msg: ${getInvoiceRaw.response_text ?? getInvoiceRaw.message}`,
+      );
+      return {
+        success:            false,
+        paydunya_reference: getInvoiceRaw.disburse_token ?? "",
+        status:             "failed",
+        message:            getInvoiceRaw.response_text ?? getInvoiceRaw.message ?? "Échec création facture déboursement PayDunya",
+      };
+    }
+
+    const disburseToken: string = getInvoiceRaw.disburse_token;
+    console.log(`[PayDunya] ✓ Payout Étape 1 OK — disburse_token: ${disburseToken}`);
+
+    // ── Étape 2 — Soumettre le déboursement ───────────────────────────────
+    const submitPayload: Record<string, unknown> = {
+      disburse_invoice: disburseToken,
+    };
+    if (params.reference) {
+      submitPayload.disburse_id = params.reference;
+    }
+
+    let submitRaw: any;
+    try {
+      submitRaw = await this.request<any>(
+        "POST",
+        "/disburse/submit-invoice",
+        submitPayload,
+        this.v2BaseUrl,
+      );
+    } catch (err: any) {
+      console.error(`[PayDunya] Payout Étape 2 échouée: ${err?.message}`);
+      // La facture a été créée — on retourne le disburse_token pour le polling
+      return {
+        success:            false,
+        paydunya_reference: disburseToken,
+        status:             "failed",
+        message:            err?.message ?? "Erreur lors de la soumission du déboursement PayDunya",
+      };
+    }
+
+    if (submitRaw.response_code !== "00") {
+      console.error(
+        `[PayDunya] Payout Étape 2 rejetée — ` +
+        `code: ${submitRaw.response_code} | msg: ${submitRaw.response_text ?? submitRaw.message}`,
+      );
+      return {
+        success:            false,
+        paydunya_reference: disburseToken,
+        status:             "failed",
+        message:            submitRaw.response_text ?? submitRaw.message ?? "Déboursement PayDunya refusé",
+      };
+    }
+
+    const rawStatus = (submitRaw.status ?? "").toLowerCase();
+    // "success" = terminé immédiatement, "pending" = asynchrone (webhook confirmera)
+    // "" ou absent = traité comme pending
+    const mappedStatus: PayDunyaPayoutResponse["status"] =
+      rawStatus === "success" ? "completed" : "processing";
+
+    console.log(
+      `[PayDunya] ✓ Payout Étape 2 OK — statut: ${rawStatus || "non précisé"} → ${mappedStatus} | ` +
+      `transaction_id: ${submitRaw.transaction_id ?? "n/a"}`,
+    );
+
+    return {
+      success:            true,
+      paydunya_reference: disburseToken,
+      status:             mappedStatus,
+      message:            submitRaw.response_text ?? submitRaw.description ?? "Déboursement PayDunya initié",
+    };
+  }
+
+  // ─── Get payout (disbursement) status ─────────────────────────────────────
+  async getPayoutStatus(disburseToken: string): Promise<PayDunyaStatusResponse> {
+    const raw = await this.request<any>(
+      "POST",
+      "/disburse/check-status",
+      { disburse_invoice: disburseToken },
+      this.v2BaseUrl,
+    );
+
+    const rawStatus = (raw.status ?? "").toLowerCase();
+    const status = this.mapStatus(rawStatus);
+
+    return {
+      paydunya_reference: disburseToken,
+      our_reference:      raw.disburse_id ?? raw.transaction_id ?? "",
+      status,
+      amount:             parseFloat(raw.amount ?? "0"),
+      currency:           raw.currency ?? "XOF",
+      operator:           raw.withdraw_mode ?? "",
+      phone:              "",
+      failure_reason:     rawStatus === "failed" ? (raw.response_text ?? "Déboursement échoué") : undefined,
+      completed_at:       raw.updated_at ?? undefined,
+    };
   }
 
   // ─── Get transaction status ───────────────────────────────────────────────

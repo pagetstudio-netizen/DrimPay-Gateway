@@ -774,6 +774,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
           intervalMs: 3_000,
           maxDurationMs: 30_000,
+          operation: "payout",
         });
         if (!statusCheck) return;
         console.log(`[Payout][BG] ${reference} → statut fournisseur: ${statusCheck.status}`);
@@ -1447,6 +1448,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
         const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
           intervalMs: 3_000,
           maxDurationMs: 30_000,
+          operation: "payout",
         });
         if (!statusCheck) return;
         console.info(`[Reversement][BG] ${reference} → statut fournisseur: ${statusCheck.status}`);
