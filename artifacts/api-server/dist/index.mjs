@@ -275723,6 +275723,21 @@ init_schema2();
 init_drizzle_orm();
 init_clapay();
 init_paydunya();
+function operatorSlug(name2) {
+  return name2.toLowerCase().replace(/mobile\s*money/g, "").replace(/momo/g, "").replace(/money/g, "").replace(/[^a-z0-9]/g, "").trim();
+}
+async function findOperatorBySlug(countryCode, operatorName) {
+  const rows = await db.select().from(operatorsTable).where(eq(operatorsTable.countryCode, countryCode));
+  const slug = operatorSlug(operatorName);
+  return rows.find((r) => operatorSlug(r.name) === slug) ?? null;
+}
+async function findOperatorAggregatorByCanonicalName(countryCode, canonicalName) {
+  const [row] = await db.select().from(operatorAggregatorsTable).where(and(
+    eq(operatorAggregatorsTable.countryCode, countryCode),
+    eq(operatorAggregatorsTable.operatorName, canonicalName)
+  ));
+  return row ?? null;
+}
 var AggregatorNotConfiguredError = class extends Error {
   constructor(aggregator) {
     super(`Agr\xE9gateur "${aggregator}" non configur\xE9. V\xE9rifiez les secrets dans Replit.`);
@@ -275740,12 +275755,8 @@ var AggregatorUnavailableError = class extends Error {
   aggregator;
 };
 async function resolveAggregator(countryCode, operatorName, operation = "payin") {
-  const [opAgg] = await db.select().from(operatorAggregatorsTable).where(
-    and(
-      eq(operatorAggregatorsTable.countryCode, countryCode),
-      eq(operatorAggregatorsTable.operatorName, operatorName)
-    )
-  );
+  const matchedOperator = await findOperatorBySlug(countryCode, operatorName);
+  const opAgg = matchedOperator ? await findOperatorAggregatorByCanonicalName(countryCode, matchedOperator.name) : null;
   let aggregatorCode;
   const explicitMapping = !!opAgg;
   if (opAgg) {
@@ -275871,14 +275882,11 @@ async function checkOperatorAvailable(countryCode, operatorName, blockKind) {
     } catch {
     }
   }
-  const [op] = await db.select().from(operatorsTable).where(and(eq(operatorsTable.countryCode, countryCode), eq(operatorsTable.name, operatorName)));
+  const op = await findOperatorBySlug(countryCode, operatorName);
   if (!op || !op.active) {
     return { ok: false, status: 503, error: "Op\xE9rateur indisponible pour le moment." };
   }
-  const [opAgg] = await db.select().from(operatorAggregatorsTable).where(and(
-    eq(operatorAggregatorsTable.countryCode, countryCode),
-    eq(operatorAggregatorsTable.operatorName, operatorName)
-  ));
+  const opAgg = await findOperatorAggregatorByCanonicalName(countryCode, op.name);
   if (opAgg) {
     if (opAgg.maintenanceMode) {
       return { ok: false, status: 503, error: "Cet op\xE9rateur est actuellement en maintenance. Veuillez r\xE9essayer plus tard." };

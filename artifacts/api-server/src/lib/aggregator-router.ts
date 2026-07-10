@@ -19,6 +19,54 @@ import { getPayDunyaClient, isPayDunyaConfigured, PayDunyaClient } from "./paydu
 
 export type AggregatorCode = "clapay" | "paydunya";
 
+/**
+ * Normalise un nom d'opérateur en "slug" comparable, pour faire correspondre
+ * les slugs utilisés par l'API publique (ex: "tmoney", "orange", "mtn") avec
+ * les noms canoniques stockés en base (ex: "TMoney", "Orange Money", "MTN
+ * Mobile Money"). Sans cette normalisation, un appel API respectant la
+ * documentation (slugs en minuscules) ne correspond à aucune ligne exacte en
+ * base et TOUS les opérateurs remontent comme indisponibles.
+ */
+function operatorSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/mobile\s*money/g, "")
+    .replace(/momo/g, "")
+    .replace(/money/g, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+}
+
+/**
+ * Trouve la ligne `operators` correspondant à un pays + un nom/slug
+ * d'opérateur, en comparant les slugs normalisés plutôt qu'une égalité
+ * stricte sur le nom canonique.
+ */
+async function findOperatorBySlug(countryCode: string, operatorName: string) {
+  const rows = await db
+    .select()
+    .from(operatorsTable)
+    .where(eq(operatorsTable.countryCode, countryCode));
+  const slug = operatorSlug(operatorName);
+  return rows.find(r => operatorSlug(r.name) === slug) ?? null;
+}
+
+/**
+ * Idem pour `operator_aggregators`, avec le nom canonique déjà résolu
+ * (évite une seconde normalisation ambiguë : on matche sur le nom exact
+ * renvoyé par `findOperatorBySlug`).
+ */
+async function findOperatorAggregatorByCanonicalName(countryCode: string, canonicalName: string) {
+  const [row] = await db
+    .select()
+    .from(operatorAggregatorsTable)
+    .where(and(
+      eq(operatorAggregatorsTable.countryCode, countryCode),
+      eq(operatorAggregatorsTable.operatorName, canonicalName),
+    ));
+  return row ?? null;
+}
+
 export interface RouteResult {
   aggregator: AggregatorCode;
   client: ClapayClient | PayDunyaClient;
@@ -48,15 +96,10 @@ export async function resolveAggregator(
   operatorName: string,
   operation: "payin" | "payout" = "payin",
 ): Promise<RouteResult> {
-  const [opAgg] = await db
-    .select()
-    .from(operatorAggregatorsTable)
-    .where(
-      and(
-        eq(operatorAggregatorsTable.countryCode, countryCode),
-        eq(operatorAggregatorsTable.operatorName, operatorName),
-      ),
-    );
+  const matchedOperator = await findOperatorBySlug(countryCode, operatorName);
+  const opAgg = matchedOperator
+    ? await findOperatorAggregatorByCanonicalName(countryCode, matchedOperator.name)
+    : null;
 
   let aggregatorCode: AggregatorCode;
   // true = operator is explicitly mapped in DB; false = using ACTIVE_AGGREGATOR fallback
@@ -327,23 +370,14 @@ export async function checkOperatorAvailable(
   }
 
   // 2. Opérateur global désactivé
-  const [op] = await db
-    .select()
-    .from(operatorsTable)
-    .where(and(eq(operatorsTable.countryCode, countryCode), eq(operatorsTable.name, operatorName)));
+  const op = await findOperatorBySlug(countryCode, operatorName);
 
   if (!op || !op.active) {
     return { ok: false, status: 503, error: "Opérateur indisponible pour le moment." };
   }
 
   // 3. Restrictions spécifiques à l'agrégateur (maintenance, blockX)
-  const [opAgg] = await db
-    .select()
-    .from(operatorAggregatorsTable)
-    .where(and(
-      eq(operatorAggregatorsTable.countryCode, countryCode),
-      eq(operatorAggregatorsTable.operatorName, operatorName),
-    ));
+  const opAgg = await findOperatorAggregatorByCanonicalName(countryCode, op.name);
 
   if (opAgg) {
     if (opAgg.maintenanceMode) {
