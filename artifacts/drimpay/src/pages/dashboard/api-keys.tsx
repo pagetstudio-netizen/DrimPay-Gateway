@@ -109,109 +109,93 @@ function PasswordModal({
   const keyName = pending.mode === "reveal" ? (pending as Extract<PendingAction, { mode: "reveal" }>).keyName : null;
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
 
-        {/* Header */}
-        <DialogHeader className={cn(
-          "flex-row items-center gap-3 px-6 pt-6 pb-5 border-b space-y-0",
-          isRegenerate ? "border-amber-100 bg-amber-50/60" : "border-gray-100 bg-gray-50/60"
+        {/* Icon */}
+        <div className={cn(
+          "w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4",
+          isRegenerate ? "bg-amber-100" : "bg-gray-100"
         )}>
-          <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-            isRegenerate ? "bg-amber-100" : "bg-gray-900"
-          )}>
-            {isRegenerate
-              ? <RefreshCw className="w-5 h-5 text-amber-600" />
-              : <Lock className="w-5 h-5 text-white" />
-            }
-          </div>
-          <div>
-            <DialogTitle className="text-base font-bold text-gray-900 text-left">
-              {isRegenerate ? "Régénérer la clé" : "Vérification requise"}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-gray-500 mt-0.5 text-left">
-              {isRegenerate
-                ? `Clé ${pending.env === "live" ? "Live" : "Sandbox"} — cette action est irréversible`
-                : `Application : ${keyName}`
-              }
-            </DialogDescription>
-          </div>
-        </DialogHeader>
-
-        <div className="px-6 py-5 space-y-4">
-
-          {/* Warning for regenerate */}
-          {isRegenerate && (
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-              <p className="text-xs text-amber-800 leading-relaxed">
-                L'ancienne clé sera <strong>immédiatement révoquée</strong>. Toutes les intégrations utilisant cette clé cesseront de fonctionner jusqu'à la mise à jour.
-              </p>
-            </div>
-          )}
-
-          {/* Password field */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-              Mot de passe du compte
-            </label>
-            <div className="relative">
-              <input
-                type={show ? "text" : "password"}
-                value={pw}
-                onChange={e => { setPw(e.target.value); setErr(""); }}
-                onKeyDown={e => e.key === "Enter" && submit()}
-                placeholder="••••••••••••"
-                autoFocus
-                className={cn(inputCls(!!err), "pr-11")}
-              />
-              <button
-                type="button"
-                onClick={() => setShow(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                tabIndex={-1}
-              >
-                {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {err && (
-              <p className="mt-2 text-xs text-red-500 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {err}
-              </p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-1">
-            <button
-              onClick={submit}
-              disabled={loading || !pw}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-bold transition-all disabled:opacity-50",
-                isRegenerate
-                  ? "bg-amber-500 hover:bg-amber-600 text-white"
-                  : "bg-gray-900 hover:bg-gray-800 text-white"
-              )}
-            >
-              {loading
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : isRegenerate
-                  ? <><RefreshCw className="w-4 h-4" /> Régénérer la clé</>
-                  : <><Eye className="w-4 h-4" /> Afficher la clé</>
-              }
-            </button>
-            <button
-              onClick={onClose}
-              className="px-5 h-11 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              Annuler
-            </button>
-          </div>
+          {isRegenerate
+            ? <RefreshCw className="w-7 h-7 text-amber-500" />
+            : <Lock className="w-7 h-7 text-gray-500" />
+          }
         </div>
 
-      </DialogContent>
-    </Dialog>
+        {/* Title */}
+        <h2 className="text-base font-bold text-gray-900 text-center mb-1">
+          {isRegenerate ? "Régénérer la clé ?" : "Vérification requise"}
+        </h2>
+
+        {/* Description */}
+        <p className="text-sm text-gray-500 text-center mb-5 leading-relaxed">
+          {isRegenerate
+            ? <>L'ancienne clé sera <strong className="text-amber-700">immédiatement révoquée</strong>. Clé {pending.env === "live" ? "Live" : "Sandbox"}.</>
+            : <>Entrez votre mot de passe pour afficher la clé&nbsp;<strong className="text-gray-700">{keyName}</strong>.</>
+          }
+        </p>
+
+        {/* Password field */}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+            Mot de passe du compte
+          </label>
+          <div className="relative">
+            <input
+              type={show ? "text" : "password"}
+              value={pw}
+              onChange={e => { setPw(e.target.value); setErr(""); }}
+              onKeyDown={e => e.key === "Enter" && submit()}
+              placeholder="••••••••••••"
+              autoFocus
+              className={cn(inputCls(!!err), "pr-11")}
+            />
+            <button
+              type="button"
+              onClick={() => setShow(s => !s)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              tabIndex={-1}
+            >
+              {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {err && (
+            <p className="mt-2 text-xs text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {err}
+            </p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={submit}
+            disabled={loading || !pw}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-bold transition-all disabled:opacity-50",
+              isRegenerate
+                ? "bg-amber-500 hover:bg-amber-600 text-white"
+                : "bg-gray-900 hover:bg-gray-800 text-white"
+            )}
+          >
+            {loading
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : isRegenerate
+                ? <><RefreshCw className="w-4 h-4" /> Régénérer la clé</>
+                : <><Eye className="w-4 h-4" /> Afficher la clé</>
+            }
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Annuler
+          </button>
+        </div>
+
+      </div>
+    </div>
   );
 }
 
