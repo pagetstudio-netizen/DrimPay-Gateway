@@ -57,6 +57,7 @@ LOG_LEVEL = "info"
 CLAPAY_BASE_URL = "https://nw-api.clapay.app/nowallet/api"
 RESEND_FROM_EMAIL = "DrimPay <support@drimpay.com>"
 ACTIVE_AGGREGATOR = "paydunya"
+SUPABASE_DATABASE_URL = "postgresql://postgres.zbootwjgztirlixmaclu:3eBukKGhKGFG1ycO@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
 
 [[ports]]
 localPort = 5000
