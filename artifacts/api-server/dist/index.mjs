@@ -281432,7 +281432,7 @@ var DEFAULT_OPERATORS = {
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"]
 };
 var FEE_RATE3 = 0.035;
-router17.get("/api/pay/status/:reference", async (req, res) => {
+router17.get("/pay/status/:reference", async (req, res) => {
   const { reference } = req.params;
   if (!reference) {
     res.status(400).json({ error: "Reference required" });
@@ -281468,7 +281468,7 @@ router17.get("/api/pay/status/:reference", async (req, res) => {
     failureReason: tx.failureReason ?? void 0
   });
 });
-router17.get("/api/pay/:token", async (req, res) => {
+router17.get("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const [link] = await db.select().from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
   if (!link) {
@@ -281522,7 +281522,7 @@ router17.get("/api/pay/:token", async (req, res) => {
     operatorMaintenance
   });
 });
-router17.post("/api/pay/:token/attempt", async (req, res) => {
+router17.post("/pay/:token/attempt", async (req, res) => {
   const { token } = req.params;
   const { phone, amount, name: name2, email: email3, countryCode, operator } = req.body;
   const [link] = await db.select({ id: paymentLinksTable.id, userId: paymentLinksTable.userId }).from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
@@ -281545,7 +281545,7 @@ router17.post("/api/pay/:token/attempt", async (req, res) => {
   }).returning();
   res.json({ attemptId: attempt.id });
 });
-router17.patch("/api/pay/:token/attempt/:id", async (req, res) => {
+router17.patch("/pay/:token/attempt/:id", async (req, res) => {
   const attemptId = parseInt(req.params.id);
   const { status, transactionReference } = req.body;
   if (isNaN(attemptId)) {
@@ -281568,7 +281568,7 @@ var paySchema = external_exports2.object({
   customerEmail: external_exports2.string().optional(),
   operatorOtp: external_exports2.string().optional()
 });
-router17.post("/api/pay/:token", async (req, res) => {
+router17.post("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const parsed = paySchema.safeParse(req.body);
   if (!parsed.success) {

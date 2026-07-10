@@ -55,9 +55,9 @@ function signPayload(payload: string, secret: string, timestamp: number): string
     .digest("hex");
 }
 
-// ─── GET /api/pay/status/:reference ───────────────────────────────────────────
+// ─── GET /pay/status/:reference ───────────────────────────────────────────────
 // Public endpoint: poll transaction status by reference (for payment link flow)
-router.get("/api/pay/status/:reference", async (req: any, res: any) => {
+router.get("/pay/status/:reference", async (req: any, res: any) => {
   const { reference } = req.params;
   if (!reference) {
     res.status(400).json({ error: "Reference required" });
@@ -108,8 +108,8 @@ router.get("/api/pay/status/:reference", async (req: any, res: any) => {
   });
 });
 
-// ─── GET /api/pay/:token ───────────────────────────────────────────────────────
-router.get("/api/pay/:token", async (req: any, res: any) => {
+// ─── GET /pay/:token ───────────────────────────────────────────────────────────
+router.get("/pay/:token", async (req: any, res: any) => {
   const { token } = req.params;
 
   const [link] = await db
@@ -194,8 +194,8 @@ router.get("/api/pay/:token", async (req: any, res: any) => {
   });
 });
 
-// ─── POST /api/pay/:token/attempt ─────────────────────────────────────────────
-router.post("/api/pay/:token/attempt", async (req: any, res: any) => {
+// ─── POST /pay/:token/attempt ─────────────────────────────────────────────────
+router.post("/pay/:token/attempt", async (req: any, res: any) => {
   const { token } = req.params;
   const { phone, amount, name, email, countryCode, operator } = req.body;
 
@@ -226,8 +226,8 @@ router.post("/api/pay/:token/attempt", async (req: any, res: any) => {
   res.json({ attemptId: attempt.id });
 });
 
-// ─── PATCH /api/pay/:token/attempt/:id ────────────────────────────────────────
-router.patch("/api/pay/:token/attempt/:id", async (req: any, res: any) => {
+// ─── PATCH /pay/:token/attempt/:id ────────────────────────────────────────────
+router.patch("/pay/:token/attempt/:id", async (req: any, res: any) => {
   const attemptId = parseInt(req.params.id);
   const { status, transactionReference } = req.body;
 
@@ -247,7 +247,7 @@ router.patch("/api/pay/:token/attempt/:id", async (req: any, res: any) => {
   res.json({ ok: true });
 });
 
-// ─── POST /api/pay/:token ─────────────────────────────────────────────────────
+// ─── POST /pay/:token ─────────────────────────────────────────────────────────
 const paySchema = z.object({
   phone: z.string().min(8),
   amount: z.number().min(200, "Le montant minimum est de 200"),
@@ -258,7 +258,7 @@ const paySchema = z.object({
   operatorOtp: z.string().optional(),
 });
 
-router.post("/api/pay/:token", async (req: any, res: any) => {
+router.post("/pay/:token", async (req: any, res: any) => {
   const { token } = req.params;
 
   const parsed = paySchema.safeParse(req.body);
