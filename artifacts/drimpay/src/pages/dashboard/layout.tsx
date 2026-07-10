@@ -3,9 +3,9 @@ import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, ArrowUpRight,
-  Menu, X, ChevronRight, ChevronDown, History, SendHorizonal,
-  FlaskConical, Zap, AlertTriangle, ShieldX, Lock, QrCode, KeyRound, Wallet,
+  LayoutDashboard,
+  Menu, X, ChevronRight, ChevronDown,
+  FlaskConical, Zap, AlertTriangle, ShieldX, Lock,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
@@ -23,6 +23,12 @@ import kybImg          from "@assets/bankCard-CnRlNHo8_(1)_1782036357534.png";
 import apiDocImg       from "@assets/1437214_1778601764910.png";
 import userImg         from "@assets/utilisateur_1778149009992.png";
 import logoutImg       from "@assets/3240728_1778601564288.png";
+
+// Public-folder icons (not bundled — served as static assets)
+const paymentLinkImg = "/icon-payment-link.png";
+const massPayoutImg  = "/icon-mass-payout.png";
+const reversementImg = "/stat-payout.png";
+const supportImg     = "/support-headset.png";
 
 // ─── Nav data types ───────────────────────────────────────────────────────────
 
@@ -62,17 +68,17 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Transactions",
         img: transactionsImg,
         children: [
-          { href: "/dashboard/payments",      label: "Historique",         img: historiqueImg },
-          { href: "/dashboard/payment-links", label: "Liens de Paiement" },
-          { href: "/dashboard/qr-codes",      label: "Pay with QR",        img: qrImg },
+          { href: "/dashboard/payments",      label: "Historique",          img: historiqueImg    },
+          { href: "/dashboard/payment-links", label: "Liens de Paiement",   img: paymentLinkImg   },
+          { href: "/dashboard/qr-codes",      label: "Pay with QR",         img: qrImg            },
         ],
       },
       {
         label: "Transferts",
         img: transfertsImg,
         children: [
-          { href: "/dashboard/mass-payout",  label: "Paiement de Masse" },
-          { href: "/dashboard/reversement",  label: "Reversement" },
+          { href: "/dashboard/mass-payout",  label: "Paiement de Masse",   img: massPayoutImg    },
+          { href: "/dashboard/reversement",  label: "Reversement",          img: reversementImg   },
         ],
       },
     ],
@@ -103,7 +109,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     entries: [
-      { label: "Support Client", href: "/support" },
+      { label: "Support Client", href: "/support", img: supportImg },
     ],
   },
 ];
@@ -125,11 +131,6 @@ function EntryIcon({
       src={img}
       alt=""
       className={cn(imgSize, "shrink-0 object-contain transition-all duration-200")}
-      style={{
-        filter: active
-          ? "brightness(0) opacity(0.85)"
-          : "brightness(0) opacity(0.38)",
-      }}
     />
   );
   if (Icon) return <Icon className={cn(iconSize, "shrink-0", active ? "text-primary" : "text-gray-400")} />;
