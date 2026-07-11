@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, integer, timestamp, pgEnum, numeric, uuid, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, integer, timestamp, pgEnum, numeric, uuid, jsonb, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -93,7 +93,11 @@ export const kybSubmissionsTable = pgTable("kyb_submissions", {
   submittedAt: timestamp("submitted_at"),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  // One KYB/KYC submission per user — also required so the route can use an
+  // atomic upsert (ON CONFLICT DO UPDATE) instead of a racy check-then-insert.
+  userIdUnique: unique("kyb_submissions_user_id_unique").on(table.userId),
+}));
 
 export const walletModeEnum = pgEnum("wallet_mode", ["sandbox", "live"]);
 

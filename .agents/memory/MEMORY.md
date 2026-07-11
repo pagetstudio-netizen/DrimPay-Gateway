@@ -1,3 +1,4 @@
 - [DrimPay import setup](drimpay-import-setup.md) — required Supabase secrets and start.cjs quirk for this fintech monorepo.
 - [DrimPay Orange Money OTP](drimpay-orange-money-otp.md) — per-country USSD/OTP field names required by PayDunya softpay (CI/SN/BF vs Mali).
 - [Supabase DB empty after reset](supabase-db-empty-reset.md) — zero tables in public schema means DB was wiped, not schema drift; fix with drizzle-kit push.
+- [DrimPay intermittent KYB 500](drimpay-kyb-intermittent-500.md) — "works sometimes" on Storage/DB routes = missing retry + unguarded `undefined` row, not schema drift.

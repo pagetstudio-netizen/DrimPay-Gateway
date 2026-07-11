@@ -35643,6 +35643,9 @@ var init_tracing_utils = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0/node_modules/drizzle-orm/pg-core/unique-constraint.js
+function unique(name2) {
+  return new UniqueOnConstraintBuilder(name2);
+}
 function uniqueKeyName(table, columns) {
   return `${table[TableName]}_${columns.join("_")}_unique`;
 }
@@ -38800,8 +38803,8 @@ var init_indexes = __esm({
     init_entity();
     init_columns();
     IndexBuilderOn = class {
-      constructor(unique, name2) {
-        this.unique = unique;
+      constructor(unique2, name2) {
+        this.unique = unique2;
         this.name = name2;
       }
       static [entityKind] = "PgIndexBuilderOn";
@@ -38870,11 +38873,11 @@ var init_indexes = __esm({
       static [entityKind] = "PgIndexBuilder";
       /** @internal */
       config;
-      constructor(columns, unique, only, name2, method = "btree") {
+      constructor(columns, unique2, only, name2, method = "btree") {
         this.config = {
           name: name2,
           columns,
-          unique,
+          unique: unique2,
           only,
           method
         };
@@ -55890,7 +55893,11 @@ var init_drimpay = __esm({
       submittedAt: timestamp("submitted_at"),
       reviewedAt: timestamp("reviewed_at"),
       createdAt: timestamp("created_at").notNull().defaultNow()
-    });
+    }, (table) => ({
+      // One KYB/KYC submission per user — also required so the route can use an
+      // atomic upsert (ON CONFLICT DO UPDATE) instead of a racy check-then-insert.
+      userIdUnique: unique("kyb_submissions_user_id_unique").on(table.userId)
+    }));
     walletModeEnum = pgEnum("wallet_mode", ["sandbox", "live"]);
     walletsTable = pgTable("wallets", {
       id: serial("id").primaryKey(),
@@ -276197,6 +276204,76 @@ var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
 var wrapper_default = import_websocket.default;
 
+// src/lib/retry.ts
+var TRANSIENT_PATTERNS = [
+  "econnreset",
+  "econnrefused",
+  "etimedout",
+  "epipe",
+  "enotfound",
+  "fetch failed",
+  "network",
+  "timeout",
+  "connection terminated",
+  "connection closed",
+  "too many clients",
+  "sorry, too many clients already",
+  "socket hang up",
+  "und_err_socket",
+  "und_err_connect_timeout"
+];
+var TRANSIENT_PG_CODES = /* @__PURE__ */ new Set([
+  "08000",
+  "08003",
+  "08006",
+  "08001",
+  "08004",
+  // connection exceptions
+  "53300",
+  // too_many_connections
+  "57P01",
+  "57P02",
+  "57P03"
+  // admin shutdown / crash shutdown / cannot connect now
+]);
+function isTransientError(err) {
+  if (!err) return false;
+  const code = err.code ? String(err.code) : "";
+  if (TRANSIENT_PG_CODES.has(code)) return true;
+  const message = String(err?.message ?? err ?? "").toLowerCase();
+  return TRANSIENT_PATTERNS.some((p) => message.includes(p));
+}
+async function withRetry(fn, opts = {}) {
+  const attempts = opts.attempts ?? 3;
+  const baseDelayMs = opts.baseDelayMs ?? 300;
+  const isRetryable = opts.isRetryable ?? isTransientError;
+  let lastErr;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const retryable = isRetryable(err);
+      if (!retryable || attempt === attempts) {
+        if (opts.label) {
+          console.error(
+            `[Retry] ${opts.label} \u2014 giving up after ${attempt} attempt(s): ${err?.message ?? err}`
+          );
+        }
+        throw err;
+      }
+      const delay = baseDelayMs * 2 ** (attempt - 1);
+      if (opts.label) {
+        console.warn(
+          `[Retry] ${opts.label} \u2014 attempt ${attempt}/${attempts} failed (${err?.message ?? err}), retrying in ${delay}ms`
+        );
+      }
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 // src/lib/storage.ts
 var supabaseUrl = process.env.SUPABASE_URL;
 var serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -276303,10 +276380,15 @@ async function uploadKybDocument(userId, fieldName, buffer, mimetype, originalNa
   const ext = originalName.split(".").pop()?.toLowerCase() ?? "bin";
   const filename = `${fieldName}_${Date.now()}.${ext}`;
   const storagePath = `${userId}/${filename}`;
-  const { error: error40 } = await supabaseAdmin.storage.from(KYB_BUCKET).upload(storagePath, buffer, { contentType: mimetype, upsert: true });
-  if (error40) {
-    throw new Error(`[Storage] Supabase upload failed: ${error40.message}`);
-  }
+  await withRetry(
+    async () => {
+      const { error: error40 } = await supabaseAdmin.storage.from(KYB_BUCKET).upload(storagePath, buffer, { contentType: mimetype, upsert: true });
+      if (error40) {
+        throw new Error(`[Storage] Supabase upload failed (${fieldName}): ${error40.message}`);
+      }
+    },
+    { attempts: 3, baseDelayMs: 400, label: `uploadKybDocument(${fieldName})` }
+  );
   console.log(`[Storage] KYB document uploaded to Supabase: ${storagePath}`);
   return storagePath;
 }
@@ -277581,6 +277663,25 @@ router11.get("/dashboard/kyb", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Erreur serveur", details: err?.message ?? String(err) });
   }
 });
+async function upsertKybSubmission(userId, existingCount, updateValues) {
+  try {
+    const [row] = await db.insert(kybSubmissionsTable).values({ userId, ...updateValues }).onConflictDoUpdate({ target: kybSubmissionsTable.userId, set: updateValues }).returning();
+    return row;
+  } catch (err) {
+    if (err?.code === "42P10") {
+      console.warn(
+        "[KYB] Unique constraint on kyb_submissions.user_id is missing \u2014 falling back to check-then-insert/update (not race-safe). Run `pnpm --filter @workspace/db run push` against the production database to apply it."
+      );
+      if (existingCount > 0) {
+        const [row2] = await db.update(kybSubmissionsTable).set(updateValues).where(eq(kybSubmissionsTable.userId, userId)).returning();
+        return row2;
+      }
+      const [row] = await db.insert(kybSubmissionsTable).values({ userId, ...updateValues }).returning();
+      return row;
+    }
+    throw err;
+  }
+}
 router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
   { name: "documentIdFront", maxCount: 1 },
   { name: "documentIdBack", maxCount: 1 },
@@ -277650,11 +277751,12 @@ router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         updateValues.status = "submitted";
         updateValues.submittedAt = /* @__PURE__ */ new Date();
       }
-      let kyb2;
-      if (existing.length > 0) {
-        [kyb2] = await db.update(kybSubmissionsTable).set(updateValues).where(eq(kybSubmissionsTable.userId, userId)).returning();
-      } else {
-        [kyb2] = await db.insert(kybSubmissionsTable).values({ userId, ...updateValues }).returning();
+      const kyb2 = await withRetry(
+        () => upsertKybSubmission(userId, existing.length, updateValues),
+        { attempts: 3, baseDelayMs: 300, label: `KYC step ${stepNum} DB write (user ${userId})` }
+      );
+      if (!kyb2) {
+        throw new Error(`KYB DB write returned no row for user ${userId} at step ${stepNum}`);
       }
       if (stepNum === 3 && kyb2.status === "submitted") {
         createNotification(
@@ -277785,11 +277887,12 @@ router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         submittedAt: /* @__PURE__ */ new Date()
       };
     }
-    let kyb;
-    if (existing.length > 0) {
-      [kyb] = await db.update(kybSubmissionsTable).set(updateValues).where(eq(kybSubmissionsTable.userId, userId)).returning();
-    } else {
-      [kyb] = await db.insert(kybSubmissionsTable).values({ userId, ...updateValues }).returning();
+    const kyb = await withRetry(
+      () => upsertKybSubmission(userId, existing.length, updateValues),
+      { attempts: 3, baseDelayMs: 300, label: `KYB step ${stepNum} DB write (user ${userId})` }
+    );
+    if (!kyb) {
+      throw new Error(`KYB DB write returned no row for user ${userId} at step ${stepNum}`);
     }
     if (stepNum === 4 && kyb.status === "submitted") {
       try {
@@ -277828,7 +277931,10 @@ router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
     }
     res.status(201).json(kyb);
   } catch (err) {
-    console.error("[KYB POST error]", err);
+    console.error(
+      `[KYB POST error] user=${req.session.userId} code=${err?.code ?? "n/a"} message=${err?.message ?? err}`,
+      err?.stack ?? err
+    );
     res.status(500).json({ error: "Erreur serveur lors de la soumission KYB", details: err?.message ?? String(err) });
   }
 });

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
 import ws from "ws";
+import { withRetry } from "./retry";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -141,13 +142,20 @@ export async function uploadKybDocument(
   const filename = `${fieldName}_${Date.now()}.${ext}`;
   const storagePath = `${userId}/${filename}`;
 
-  const { error } = await supabaseAdmin.storage
-    .from(KYB_BUCKET)
-    .upload(storagePath, buffer, { contentType: mimetype, upsert: true });
-
-  if (error) {
-    throw new Error(`[Storage] Supabase upload failed: ${error.message}`);
-  }
+  // Supabase Storage occasionally has transient network blips; retry a couple
+  // of times before failing the whole KYB submission, since a single flaky
+  // upload used to fail the entire multi-document request with no retry.
+  await withRetry(
+    async () => {
+      const { error } = await supabaseAdmin!.storage
+        .from(KYB_BUCKET)
+        .upload(storagePath, buffer, { contentType: mimetype, upsert: true });
+      if (error) {
+        throw new Error(`[Storage] Supabase upload failed (${fieldName}): ${error.message}`);
+      }
+    },
+    { attempts: 3, baseDelayMs: 400, label: `uploadKybDocument(${fieldName})` }
+  );
 
   console.log(`[Storage] KYB document uploaded to Supabase: ${storagePath}`);
   return storagePath;

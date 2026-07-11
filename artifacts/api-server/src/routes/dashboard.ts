@@ -33,6 +33,7 @@ import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate, uploadPaymentLinkImage } from "../lib/storage";
+import { withRetry } from "../lib/retry";
 import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable, listActiveOperators } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
@@ -1101,6 +1102,43 @@ router.get("/dashboard/kyb", requireAuth, async (req, res) => {
   }
 });
 
+// Upsert a KYB submission row for a user. Prefers an atomic ON CONFLICT
+// upsert (requires the `kyb_submissions_user_id_unique` constraint — see
+// lib/db/src/schema/drimpay.ts) so retries after a transient DB error can
+// never create a duplicate row. Falls back to the old check-then-insert/
+// update behavior if that constraint hasn't been pushed to the DB yet
+// (Postgres error 42P10), so deploying this code before running the
+// migration doesn't break KYB submissions outright.
+async function upsertKybSubmission(
+  userId: number,
+  existingCount: number,
+  updateValues: Record<string, any>,
+): Promise<typeof kybSubmissionsTable.$inferSelect | undefined> {
+  try {
+    const [row] = await db
+      .insert(kybSubmissionsTable)
+      .values({ userId, ...updateValues })
+      .onConflictDoUpdate({ target: kybSubmissionsTable.userId, set: updateValues })
+      .returning();
+    return row;
+  } catch (err: any) {
+    if (err?.code === "42P10") {
+      console.warn(
+        "[KYB] Unique constraint on kyb_submissions.user_id is missing — falling back to " +
+        "check-then-insert/update (not race-safe). Run `pnpm --filter @workspace/db run push` " +
+        "against the production database to apply it."
+      );
+      if (existingCount > 0) {
+        const [row] = await db.update(kybSubmissionsTable).set(updateValues).where(eq(kybSubmissionsTable.userId, userId)).returning();
+        return row;
+      }
+      const [row] = await db.insert(kybSubmissionsTable).values({ userId, ...updateValues }).returning();
+      return row;
+    }
+    throw err;
+  }
+}
+
 router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
   { name: "documentIdFront", maxCount: 1 },
   { name: "documentIdBack", maxCount: 1 },
@@ -1182,11 +1220,15 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         updateValues.submittedAt = new Date();
       }
 
-      let kyb;
-      if (existing.length > 0) {
-        [kyb] = await db.update(kybSubmissionsTable).set(updateValues).where(eq(kybSubmissionsTable.userId, userId)).returning();
-      } else {
-        [kyb] = await db.insert(kybSubmissionsTable).values({ userId, ...updateValues }).returning();
+      const kyb = await withRetry(
+        () => upsertKybSubmission(userId, existing.length, updateValues),
+        { attempts: 3, baseDelayMs: 300, label: `KYC step ${stepNum} DB write (user ${userId})` }
+      );
+      if (!kyb) {
+        // Defensive: an update/insert that returns no row (e.g. the row was
+        // deleted concurrently) used to crash here with a TypeError on
+        // `kyb.status`, surfacing as an intermittent "Erreur serveur".
+        throw new Error(`KYB DB write returned no row for user ${userId} at step ${stepNum}`);
       }
 
       if (stepNum === 3 && kyb.status === "submitted") {
@@ -1315,18 +1357,15 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
       };
     }
 
-    let kyb;
-    if (existing.length > 0) {
-      [kyb] = await db
-        .update(kybSubmissionsTable)
-        .set(updateValues)
-        .where(eq(kybSubmissionsTable.userId, userId))
-        .returning();
-    } else {
-      [kyb] = await db
-        .insert(kybSubmissionsTable)
-        .values({ userId, ...updateValues })
-        .returning();
+    const kyb = await withRetry(
+      () => upsertKybSubmission(userId, existing.length, updateValues),
+      { attempts: 3, baseDelayMs: 300, label: `KYB step ${stepNum} DB write (user ${userId})` }
+    );
+    if (!kyb) {
+      // Defensive: an update/insert that returns no row used to crash here
+      // with a TypeError further down, surfacing as an intermittent
+      // "Erreur serveur lors de la soumission KYB".
+      throw new Error(`KYB DB write returned no row for user ${userId} at step ${stepNum}`);
     }
 
     // Step 4 — PDF + Email + WhatsApp + Telegram
@@ -1379,7 +1418,10 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
 
     res.status(201).json(kyb);
   } catch (err: any) {
-    console.error("[KYB POST error]", err);
+    console.error(
+      `[KYB POST error] user=${req.session.userId} code=${err?.code ?? "n/a"} message=${err?.message ?? err}`,
+      err?.stack ?? err
+    );
     res.status(500).json({ error: "Erreur serveur lors de la soumission KYB", details: err?.message ?? String(err) });
   }
 });
