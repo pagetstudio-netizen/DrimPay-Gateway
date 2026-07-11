@@ -28,7 +28,7 @@ import { eq, and, desc, sum, count, sql, gte, asc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange } from "../lib/telegram";
+import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange, notifyCriticalError } from "../lib/telegram";
 import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { isMaintenanceModeOn } from "../lib/admin-settings";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
@@ -1425,11 +1425,15 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
 
     res.status(201).json(kyb);
   } catch (err: any) {
-    console.error(
-      `[KYB POST error] user=${req.session.userId} code=${err?.code ?? "n/a"} message=${err?.message ?? err}`,
-      err?.stack ?? err
-    );
-    res.status(500).json({ error: "Erreur serveur lors de la soumission KYB", details: err?.message ?? String(err) });
+    const realCause = `code=${err?.code ?? "n/a"} message=${err?.message ?? err}`;
+    console.error(`[KYB POST error] user=${req.session.userId} ${realCause}`, err?.stack ?? err);
+    notifyCriticalError(
+      `Soumission KYB — user ${req.session.userId}`,
+      realCause,
+    ).catch(() => {});
+    res.status(500).json({
+      error: "Une erreur est survenue. Veuillez réessayer dans quelques instants.",
+    });
   }
 });
 

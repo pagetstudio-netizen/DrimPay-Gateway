@@ -262865,6 +262865,15 @@ async function notifyBlacklist(action, phone, reason, adminEmail) {
 \u{1F4DD} Raison: ${reason}`;
   await send(text2);
 }
+async function notifyCriticalError(context, err) {
+  await send(
+    `\u{1F198} <b>Erreur Syst\xE8me Critique</b>
+
+\u{1F4CD} ${context}
+\u274C ${err.substring(0, 300)}
+\u{1F4C5} ${dt()}`
+  );
+}
 async function sendDailyReport() {
   try {
     const today = /* @__PURE__ */ new Date();
@@ -277967,11 +277976,16 @@ router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
     }
     res.status(201).json(kyb);
   } catch (err) {
-    console.error(
-      `[KYB POST error] user=${req.session.userId} code=${err?.code ?? "n/a"} message=${err?.message ?? err}`,
-      err?.stack ?? err
-    );
-    res.status(500).json({ error: "Erreur serveur lors de la soumission KYB", details: err?.message ?? String(err) });
+    const realCause = `code=${err?.code ?? "n/a"} message=${err?.message ?? err}`;
+    console.error(`[KYB POST error] user=${req.session.userId} ${realCause}`, err?.stack ?? err);
+    notifyCriticalError(
+      `Soumission KYB \u2014 user ${req.session.userId}`,
+      realCause
+    ).catch(() => {
+    });
+    res.status(500).json({
+      error: "Une erreur est survenue. Veuillez r\xE9essayer dans quelques instants."
+    });
   }
 });
 var reversementSchema = external_exports2.object({
