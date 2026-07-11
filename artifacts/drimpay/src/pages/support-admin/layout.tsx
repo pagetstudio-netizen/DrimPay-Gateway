@@ -116,23 +116,23 @@ export function SupportLayout({ children, unreadCount = 0 }: { children: React.R
       </aside>
 
       {/* Main */}
-      <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 md:ml-60 flex flex-col min-h-screen overflow-x-hidden">
         {/* Top bar */}
         <header className="sticky top-0 z-10 bg-gray-950/80 backdrop-blur border-b border-gray-800 flex items-center gap-3 px-4 py-3">
-          <button onClick={() => setSidebarOpen(v => !v)} className="md:hidden text-gray-400 hover:text-white">
+          <button onClick={() => setSidebarOpen(v => !v)} className="md:hidden text-gray-400 hover:text-white shrink-0">
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex-1" />
           {unreadCount > 0 && (
             <Link href="/support-admin/messages?status=unread">
-              <a className="relative p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+              <a className="relative p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors shrink-0">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               </a>
             </Link>
           )}
         </header>
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 min-w-0 p-4 md:p-6 overflow-x-hidden">
           {children}
         </main>
       </div>

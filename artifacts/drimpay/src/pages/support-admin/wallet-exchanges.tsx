@@ -383,12 +383,12 @@ export default function SupportAdminWalletExchanges() {
 
   return (
     <SupportLayout>
-      <div className="space-y-5">
+      <div className="space-y-5 min-w-0">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <ArrowLeftRight className="w-5 h-5 text-[#C5FF4A]" />
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-white flex items-center gap-2 flex-wrap">
+              <ArrowLeftRight className="w-5 h-5 text-[#C5FF4A] shrink-0" />
               Échanges de Wallets
               {pendingCount > 0 && (
                 <span className="ml-1 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
@@ -442,7 +442,7 @@ export default function SupportAdminWalletExchanges() {
         </div>
 
         {/* Table */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden min-w-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

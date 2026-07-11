@@ -78,16 +78,16 @@ function DetailContent({ id }: { id: number }) {
 
   return (
     <SupportLayout>
-      <div className="max-w-3xl mx-auto space-y-4">
-        <div className="flex items-center gap-3">
+      <div className="max-w-3xl mx-auto space-y-4 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-wrap sm:flex-nowrap">
           <Link href="/support-admin/messages">
-            <a className="p-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white transition-colors">
+            <a className="p-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white transition-colors shrink-0">
               <ArrowLeft className="w-4 h-4" />
             </a>
           </Link>
-          <h1 className="text-lg font-bold text-white flex-1 truncate">{msg?.subject ?? "…"}</h1>
+          <h1 className="text-lg font-bold text-white flex-1 min-w-0 truncate">{msg?.subject ?? "…"}</h1>
           {msg && (
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 disabled={statusLoading}
                 onClick={() => { const next = STATUS_OPTIONS.find(s => s.value !== msg.ticketStatus); if (next) updateStatus(next.value); }}
@@ -186,15 +186,15 @@ function DetailContent({ id }: { id: number }) {
               />
               {sendStatus === "ok" && <p className="text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Réponse envoyée</p>}
               {sendStatus === "err" && <p className="text-xs text-red-400">{sendError}</p>}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <button
                   onClick={sendReply} disabled={sending || !replyBody.trim()}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-[#C5FF4A] text-gray-950 font-bold text-sm rounded-xl hover:bg-[#C5FF4A]/90 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#C5FF4A] text-gray-950 font-bold text-sm rounded-xl hover:bg-[#C5FF4A]/90 transition-colors disabled:opacity-50 shrink-0"
                 >
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Envoyer la réponse
                 </button>
-                <p className="text-xs text-gray-500">Un email sera envoyé à {msg.email}</p>
+                <p className="text-xs text-gray-500 min-w-0 truncate">Un email sera envoyé à {msg.email}</p>
               </div>
             </div>
           </>

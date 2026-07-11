@@ -256,10 +256,10 @@ function NotificationsPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none shrink-0">
                 <div
-                  className="relative w-10 h-5 rounded-full transition-colors"
+                  className="relative w-10 h-5 rounded-full transition-colors shrink-0"
                   style={{ backgroundColor: form.active ? "#C5FF4A" : "#374151" }}
                 >
                   <div
@@ -279,7 +279,7 @@ function NotificationsPage() {
               <button
                 type="submit"
                 disabled={creating || !form.message.trim()}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#C5FF4A] text-gray-900 text-sm font-semibold hover:bg-[#d4ff6a] transition disabled:opacity-40"
+                className="flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-[#C5FF4A] text-gray-900 text-sm font-semibold hover:bg-[#d4ff6a] transition disabled:opacity-40 w-full sm:w-auto"
               >
                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Créer la notification
@@ -321,9 +321,9 @@ function NotificationsPage() {
                       )}
                     </div>
                     {/* Controls */}
-                    <div className="flex items-center gap-3 px-4 py-3 bg-gray-800/50">
+                    <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-gray-800/50">
                       <span className={cn(
-                        "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0",
                         banner.active ? "bg-[#C5FF4A]/10 text-[#C5FF4A] border border-[#C5FF4A]/20" : "bg-gray-700 text-gray-400"
                       )}>
                         {banner.active ? "Actif" : "Inactif"}
@@ -339,7 +339,7 @@ function NotificationsPage() {
                           {banner.buttonLink}
                         </a>
                       )}
-                      <span className="text-xs text-gray-500 ml-auto">
+                      <span className="text-xs text-gray-500 sm:ml-auto">
                         {new Date(banner.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </span>
                       {/* Toggle */}
