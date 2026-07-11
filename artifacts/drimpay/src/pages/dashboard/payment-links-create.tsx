@@ -139,11 +139,17 @@ export default function PaymentLinksCreate() {
         notifEmail: notifEmail.trim() || undefined,
         confirmMsg: confirmMsg.trim() || undefined,
       };
+      const fd = new FormData();
+      Object.entries(body).forEach(([k, v]) => {
+        if (v === undefined || v === null) return;
+        fd.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v));
+      });
+      if (imageFile) fd.append("image", imageFile);
+
       const r = await fetch(`${BASE}/api/dashboard/payment-links`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(body),
+        body: fd,
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error || "Erreur lors de la création"); return; }

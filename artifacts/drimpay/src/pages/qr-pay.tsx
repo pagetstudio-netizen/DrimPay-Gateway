@@ -33,6 +33,7 @@ type QrData = {
   reference: string;
   name: string;
   description?: string;
+  imageUrl?: string | null;
   merchantName: string;
   currency: string;
   type: "fixed" | "flexible";
@@ -327,6 +328,11 @@ export default function QrPayPage() {
               {step === "select" && (
                 <motion.div key="select" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}>
                   <div className="mb-4">
+                    {qr?.imageUrl && (
+                      <div className="w-full h-32 rounded-xl overflow-hidden mb-3">
+                        <img src={qr.imageUrl} alt={qr.name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
                     <p className="text-sm text-gray-600">Paiement à</p>
                     <p className="text-sm font-bold text-gray-900 mt-0.5">{qr?.merchantName}</p>
                     {qr?.name && <p className="text-sm text-gray-500 mt-0.5">Pour : <em>{qr.name}</em></p>}

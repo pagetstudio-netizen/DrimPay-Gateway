@@ -224,6 +224,7 @@ type Translations = typeof T.fr;
 type LinkData = {
   title: string;
   description?: string;
+  imageUrl?: string | null;
   amount?: string;
   currency: string;
   countryCode: string;
@@ -317,11 +318,16 @@ function Divider({ label }: { label: string }) {
 
 // ── Payment header ───────────────────────────────────────────────────────────
 
-function PayHeader({ merchantName, title, description, t }: {
-  merchantName: string; title: string; description?: string; t: Translations;
+function PayHeader({ merchantName, title, description, imageUrl, t }: {
+  merchantName: string; title: string; description?: string; imageUrl?: string | null; t: Translations;
 }) {
   return (
     <div className="mb-2">
+      {imageUrl && (
+        <div className="w-full h-32 rounded-xl overflow-hidden mb-3">
+          <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+        </div>
+      )}
       <p className="text-sm text-gray-600">{t.youWantToPay}</p>
       <p className="text-sm text-gray-800 mt-0.5">
         {t.to} <strong>{merchantName}</strong>
@@ -690,6 +696,7 @@ export default function PayPage() {
                     merchantName={link?.merchantName ?? ""}
                     title={link?.title ?? ""}
                     description={link?.description}
+                    imageUrl={link?.imageUrl}
                     t={t}
                   />
 
@@ -776,6 +783,7 @@ export default function PayPage() {
                     merchantName={link?.merchantName ?? ""}
                     title={link?.title ?? ""}
                     description={link?.description}
+                    imageUrl={link?.imageUrl}
                     t={t}
                   />
 
