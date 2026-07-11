@@ -3,14 +3,14 @@ import fs from "fs";
 import path from "path";
 import ws from "ws";
 
-const supabaseUrl = process.env.SUPABASE_URL || "https://zbootwjgztirlixmaclu.supabase.co";
+const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 
 // Admin client (service role) — bypasses RLS, used for bucket management and file operations
 // If neither key is set, supabaseAdmin will be null and storage operations will gracefully fail
 // ws transport required for Node.js < 22 which lacks native WebSocket
-export const supabaseAdmin = (serviceRoleKey || anonKey)
+export const supabaseAdmin = (supabaseUrl && (serviceRoleKey || anonKey))
   ? createClient(supabaseUrl, serviceRoleKey ?? anonKey!, {
       auth: { persistSession: false },
       realtime: { transport: ws as any },
