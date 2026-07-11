@@ -56122,6 +56122,7 @@ var init_drimpay = __esm({
       token: text("token").notNull().unique(),
       title: text("title").notNull(),
       description: text("description"),
+      imageUrl: text("image_url"),
       amount: numeric("amount", { precision: 18, scale: 2 }),
       currency: text("currency").notNull(),
       countryCode: text("country_code").notNull(),
@@ -56222,6 +56223,7 @@ var init_drimpay = __esm({
       reference: text("reference").notNull().unique(),
       name: text("name").notNull(),
       description: text("description"),
+      imageUrl: text("image_url"),
       defaultCountry: text("default_country"),
       countryCodes: jsonb("country_codes").$type(),
       currency: text("currency").notNull().default("XOF"),
@@ -276003,6 +276005,34 @@ async function uploadBannerImage(buffer, mimetype, originalName) {
   const { data } = supabaseAdmin.storage.from(BANNER_BUCKET).getPublicUrl(filename);
   return data.publicUrl;
 }
+var PAYLINK_BUCKET = "payment-link-images";
+async function ensurePaymentLinkImagesBucket() {
+  if (!serviceRoleKey || !supabaseAdmin) return;
+  try {
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const exists2 = buckets?.some((b) => b.id === PAYLINK_BUCKET);
+    if (!exists2) {
+      await supabaseAdmin.storage.createBucket(PAYLINK_BUCKET, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+        allowedMimeTypes: ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+      });
+      console.log(`[Storage] Bucket '${PAYLINK_BUCKET}' created`);
+    }
+  } catch (err) {
+    console.warn("[Storage] ensurePaymentLinkImagesBucket:", err?.message ?? err);
+  }
+}
+async function uploadPaymentLinkImage(buffer, mimetype, originalName) {
+  if (!serviceRoleKey || !supabaseAdmin) throw new Error("SUPABASE_SERVICE_ROLE_KEY required");
+  await ensurePaymentLinkImagesBucket();
+  const ext = originalName.split(".").pop()?.toLowerCase() ?? "png";
+  const filename = `paylink_${Date.now()}.${ext}`;
+  const { error: error40 } = await supabaseAdmin.storage.from(PAYLINK_BUCKET).upload(filename, buffer, { contentType: mimetype, upsert: false });
+  if (error40) throw new Error(`Payment link image upload failed: ${error40.message}`);
+  const { data } = supabaseAdmin.storage.from(PAYLINK_BUCKET).getPublicUrl(filename);
+  return data.publicUrl;
+}
 
 // src/lib/aggregator-router.ts
 init_src();
@@ -276315,6 +276345,7 @@ function getFrontendBaseUrl() {
 
 // src/routes/dashboard.ts
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+var payLinkImageUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 var FEE_RATE = 0.035;
 var router11 = (0, import_express11.Router)();
 function requireAuth(req, res, next) {
@@ -277865,8 +277896,16 @@ router11.get("/dashboard/payment-links", requireAuth, async (req, res) => {
   const links = await db.select().from(paymentLinksTable).where(and(eq(paymentLinksTable.userId, userId), eq(paymentLinksTable.mode, currentMode))).orderBy(desc(paymentLinksTable.createdAt));
   res.json(links);
 });
-router11.post("/dashboard/payment-links", requireAuth, async (req, res) => {
-  const parsed = createPaymentLinkSchema.safeParse(req.body);
+router11.post("/dashboard/payment-links", requireAuth, payLinkImageUpload.single("image"), async (req, res) => {
+  const body = req.is("multipart/form-data") ? {
+    ...req.body,
+    fixedAmount: req.body.fixedAmount === "true" || req.body.fixedAmount === true,
+    amount: req.body.amount ? parseFloat(req.body.amount) : void 0,
+    maxUses: req.body.maxUses ? parseInt(req.body.maxUses) : void 0,
+    expiresInDays: req.body.expiresInDays ? parseInt(req.body.expiresInDays) : void 0,
+    countryCodes: req.body.countryCodes ? JSON.parse(req.body.countryCodes) : void 0
+  } : req.body;
+  const parsed = createPaymentLinkSchema.safeParse(body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
     return;
@@ -277893,11 +277932,20 @@ router11.post("/dashboard/payment-links", requireAuth, async (req, res) => {
   const token = crypto5.randomBytes(16).toString("hex");
   const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 864e5) : void 0;
   const currentMode = req.session.mode ?? "sandbox";
+  let imageUrl = null;
+  if (req.file) {
+    try {
+      imageUrl = await uploadPaymentLinkImage(req.file.buffer, req.file.mimetype, req.file.originalname);
+    } catch (err) {
+      console.warn("[PayLink] Image upload failed (non-blocking):", err?.message);
+    }
+  }
   const [link] = await db.insert(paymentLinksTable).values({
     userId,
     token,
     title,
     description,
+    imageUrl,
     countryCode: countryCodeStored,
     operator: operatorStored,
     currency: currencyStored,
@@ -277951,6 +277999,7 @@ router11.get("/pay/:token", async (req, res) => {
     id: paymentLinksTable.id,
     title: paymentLinksTable.title,
     description: paymentLinksTable.description,
+    imageUrl: paymentLinksTable.imageUrl,
     amount: paymentLinksTable.amount,
     currency: paymentLinksTable.currency,
     countryCode: paymentLinksTable.countryCode,
@@ -278568,9 +278617,14 @@ router11.get("/dashboard/qr-codes", requireAuth, async (req, res) => {
   const rows = await db.select().from(qrCodesTable).where(eq(qrCodesTable.userId, userId)).orderBy(desc(qrCodesTable.createdAt));
   res.json(rows);
 });
-router11.post("/dashboard/qr-codes", requireAuth, async (req, res) => {
+router11.post("/dashboard/qr-codes", requireAuth, payLinkImageUpload.single("image"), async (req, res) => {
   const userId = req.session.userId;
-  const parsed = createQrCodeSchema.safeParse(req.body);
+  const body = req.is("multipart/form-data") ? {
+    ...req.body,
+    amount: req.body.amount ? parseFloat(req.body.amount) : void 0,
+    countryCodes: req.body.countryCodes ? JSON.parse(req.body.countryCodes) : void 0
+  } : req.body;
+  const parsed = createQrCodeSchema.safeParse(body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
     return;
@@ -278584,11 +278638,20 @@ router11.post("/dashboard/qr-codes", requireAuth, async (req, res) => {
     reference = generateQrReference();
     attempts++;
   }
+  let qrImageUrl = null;
+  if (req.file) {
+    try {
+      qrImageUrl = await uploadPaymentLinkImage(req.file.buffer, req.file.mimetype, req.file.originalname);
+    } catch (err) {
+      console.warn("[QrCode] Image upload failed (non-blocking):", err?.message);
+    }
+  }
   const [qr] = await db.insert(qrCodesTable).values({
     userId,
     reference,
     name: name2,
     description,
+    imageUrl: qrImageUrl,
     countryCodes: countryCodes && countryCodes.length > 0 ? countryCodes : null,
     currency,
     type,
@@ -278657,6 +278720,7 @@ router11.get("/qr/:reference", async (req, res) => {
     reference: qr.reference,
     name: qr.name,
     description: qr.description,
+    imageUrl: qr.imageUrl ?? null,
     merchantName: merchant?.companyName ?? "Marchand",
     currency: qr.currency,
     type: qr.type,
