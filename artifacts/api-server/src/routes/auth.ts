@@ -20,6 +20,7 @@ import {
   resolveGeoInfo,
   getClientIp,
 } from "../middlewares/security";
+import { isSignupEnabled } from "../lib/admin-settings";
 
 const router = Router();
 
@@ -77,6 +78,11 @@ router.post("/auth/signup", signupRateLimiter, async (req, res) => {
   }
 
   const { email, password, companyName, country, accountType } = parsed.data;
+
+  if (!(await isSignupEnabled())) {
+    res.status(503).json({ error: "Les nouvelles inscriptions sont temporairement fermées par l'administrateur." });
+    return;
+  }
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {

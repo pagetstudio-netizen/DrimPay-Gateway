@@ -30,6 +30,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange } from "../lib/telegram";
 import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
+import { isMaintenanceModeOn } from "../lib/admin-settings";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate, uploadPaymentLinkImage } from "../lib/storage";
@@ -642,6 +643,12 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
       lockedUntil: withdrawalLock.lockedUntil,
       retryAfterSeconds: withdrawalLock.retryAfterSeconds,
     });
+    return;
+  }
+
+  // Check if the platform is in maintenance mode (admin toggle blocks all transactions)
+  if (await isMaintenanceModeOn()) {
+    res.status(503).json({ error: "La plateforme est temporairement en maintenance. Veuillez réessayer ultérieurement." });
     return;
   }
 

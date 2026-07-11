@@ -17,6 +17,7 @@ import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, chec
 import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure } from "../lib/telegram";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
+import { isMaintenanceModeOn } from "../lib/admin-settings";
 
 const router = Router();
 
@@ -213,6 +214,15 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
     amount, currency, country_code, operator, phone,
     order_id, webhook_url, description, metadata, expires_in_minutes,
   } = parsed.data;
+
+  // Check if the platform is in maintenance mode (admin toggle blocks all transactions)
+  if (await isMaintenanceModeOn()) {
+    res.status(503).json({
+      error: "MAINTENANCE_MODE",
+      message: "La plateforme est temporairement en maintenance. Veuillez réessayer ultérieurement.",
+    });
+    return;
+  }
 
   // Validate country
   if (!COUNTRIES[country_code]) {

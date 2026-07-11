@@ -266999,6 +266999,26 @@ async function clearWithdrawalFailures(userId) {
   await db.update(usersTable).set({ withdrawalFailedAttempts: 0, withdrawalLockedUntil: null }).where(eq(usersTable.id, userId));
 }
 
+// src/lib/admin-settings.ts
+init_src();
+init_schema2();
+init_drizzle_orm();
+async function isAdminSettingEnabled(key, defaultValue) {
+  try {
+    const [row] = await db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, key)).limit(1);
+    if (!row) return defaultValue;
+    return row.value === "true";
+  } catch {
+    return defaultValue;
+  }
+}
+async function isMaintenanceModeOn() {
+  return isAdminSettingEnabled("maintenance_mode", false);
+}
+async function isSignupEnabled() {
+  return isAdminSettingEnabled("new_signup_enabled", true);
+}
+
 // src/routes/auth.ts
 var router10 = (0, import_express10.Router)();
 var ACCOUNT_LOCK_THRESHOLD = 5;
@@ -267039,6 +267059,10 @@ router10.post("/auth/signup", signupRateLimiter, async (req, res) => {
     return;
   }
   const { email: email3, password, companyName, country, accountType } = parsed.data;
+  if (!await isSignupEnabled()) {
+    res.status(503).json({ error: "Les nouvelles inscriptions sont temporairement ferm\xE9es par l'administrateur." });
+    return;
+  }
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email3)).limit(1);
   if (existing.length > 0) {
     res.status(409).json({ error: "An account with this email already exists." });
@@ -277260,6 +277284,10 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     });
     return;
   }
+  if (await isMaintenanceModeOn()) {
+    res.status(503).json({ error: "La plateforme est temporairement en maintenance. Veuillez r\xE9essayer ult\xE9rieurement." });
+    return;
+  }
   try {
     const [payoutSetting] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "payouts_enabled")).limit(1);
     if (payoutSetting?.value === "false") {
@@ -279744,6 +279772,13 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     metadata,
     expires_in_minutes
   } = parsed.data;
+  if (await isMaintenanceModeOn()) {
+    res.status(503).json({
+      error: "MAINTENANCE_MODE",
+      message: "La plateforme est temporairement en maintenance. Veuillez r\xE9essayer ult\xE9rieurement."
+    });
+    return;
+  }
   if (!COUNTRIES2[country_code]) {
     res.status(400).json({ error: "INVALID_COUNTRY", message: `Country ${country_code} is not supported` });
     return;
