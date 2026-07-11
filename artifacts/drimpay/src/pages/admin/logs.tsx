@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Lock, RefreshCw, Search, ChevronLeft, ChevronRight, Shield } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const ACTION_COLORS: Record<string, string> = {
   APPROVE_KYB: "bg-green-100 text-green-700",
@@ -62,7 +63,7 @@ export default function AdminLogs() {
   const load = async (p = page) => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(p), limit: String(LIMIT), action: filterAction });
-    const r = await fetch(`/api/admin/logs?${params}`, { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/logs?${params}`, { credentials: "include" });
     const d = await r.json();
     setLogs(d.logs ?? []);
     setTotal(d.total ?? 0);

@@ -40,6 +40,9 @@ const contractUpload = multer({
 
 const router = Router();
 
+// Secret admin route prefix — configurable via ADMIN_ROUTE_SECRET env var
+const AP = `/${process.env["ADMIN_ROUTE_SECRET"] ?? "admin"}`;
+
 // In-memory counter for unauthorized admin probe attempts (resets on restart)
 const _adminProbeCounter = new Map<string, { count: number; lastAlert: number }>();
 const PROBE_ALERT_THRESHOLD = 3;    // alert after N unauthorized attempts
@@ -90,7 +93,7 @@ async function logAdminAction(adminId: number, action: string, targetType?: stri
 }
 
 // ─── STATS ───────────────────────────────────────────────────────────────────
-router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/stats", requireAdmin, async (req: any, res: any) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -269,7 +272,7 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
 });
 
 // ─── RESET STATS ─────────────────────────────────────────────────────────────
-router.post("/admin/stats/reset", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/stats/reset", requireAdmin, async (req: any, res: any) => {
   const now = new Date().toISOString();
 
   // Snapshot current platform balance so we can show delta = 0 after reset
@@ -290,7 +293,7 @@ router.post("/admin/stats/reset", requireAdmin, async (req: any, res: any) => {
 });
 
 // ─── CHART DATA ───────────────────────────────────────────────────────────────
-router.get("/admin/chart-data", requireAdmin, async (_req: any, res: any) => {
+router.get(AP + "/chart-data", requireAdmin, async (_req: any, res: any) => {
   const days = 30;
   const result = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -322,7 +325,7 @@ router.get("/admin/chart-data", requireAdmin, async (_req: any, res: any) => {
 });
 
 // ─── MERCHANTS ────────────────────────────────────────────────────────────────
-router.get("/admin/merchants", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/merchants", requireAdmin, async (req: any, res: any) => {
   const { search, page = "1", limit = "20" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -357,7 +360,7 @@ router.get("/admin/merchants", requireAdmin, async (req: any, res: any) => {
   res.json({ merchants: enriched, total: Number(total), page: pageNum, limit: limitNum });
 });
 
-router.get("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/merchants/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
@@ -371,7 +374,7 @@ router.get("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
   res.json({ ...user, passwordHash: undefined, wallets, kyb, apiKeys, webhooks, allowedIps, recentTransactions: recentTx });
 });
 
-router.put("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/merchants/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { companyName, email, country, role, payinFeePercent, payoutFeePercent } = req.body;
   const updateData: any = {};
@@ -390,7 +393,7 @@ router.put("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
   res.json({ ok: true });
 });
 
-router.put("/admin/merchants/:id/role", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/merchants/:id/role", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) { res.status(400).json({ error: "Vous ne pouvez pas modifier votre propre rôle" }); return; }
   const { role } = req.body;
@@ -403,17 +406,17 @@ router.put("/admin/merchants/:id/role", requireAdmin, async (req: any, res: any)
   res.json({ ok: true, role });
 });
 
-router.post("/admin/merchants/:id/suspend", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/merchants/:id/suspend", requireAdmin, async (req: any, res: any) => {
   res.json({ ok: true, message: "Compte suspendu (flag non implémenté en DB, logué)" });
   await logAdminAction(req.session.userId, "SUSPEND_MERCHANT", "user", req.params.id, undefined, req.ip);
 });
 
-router.post("/admin/merchants/:id/activate", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/merchants/:id/activate", requireAdmin, async (req: any, res: any) => {
   res.json({ ok: true, message: "Compte réactivé" });
   await logAdminAction(req.session.userId, "ACTIVATE_MERCHANT", "user", req.params.id, undefined, req.ip);
 });
 
-router.post("/admin/merchants/:id/reset-password", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const newPassword = crypto.randomBytes(8).toString("hex");
   const hash = await bcrypt.hash(newPassword, 12);
@@ -422,7 +425,7 @@ router.post("/admin/merchants/:id/reset-password", requireAdmin, async (req: any
   res.json({ ok: true, newPassword });
 });
 
-router.delete("/admin/merchants/:id", requireAdmin, async (req: any, res: any) => {
+router.delete(AP + "/merchants/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) { res.status(400).json({ error: "Cannot delete yourself" }); return; }
   await logAdminAction(req.session.userId, "DELETE_MERCHANT", "user", String(id), undefined, req.ip);
@@ -430,7 +433,7 @@ router.delete("/admin/merchants/:id", requireAdmin, async (req: any, res: any) =
   res.json({ ok: true });
 });
 
-router.put("/admin/merchants/:userId/wallets/:walletId", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (req: any, res: any) => {
   const walletId = parseInt(req.params.walletId);
   const { balance } = req.body;
   if (balance === undefined || isNaN(parseFloat(balance))) { res.status(400).json({ error: "Invalid balance" }); return; }
@@ -440,7 +443,7 @@ router.put("/admin/merchants/:userId/wallets/:walletId", requireAdmin, async (re
 });
 
 // ─── KYB ─────────────────────────────────────────────────────────────────────
-router.get("/admin/kyb", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/kyb", requireAdmin, async (req: any, res: any) => {
   const {
     status, page = "1", limit = "20",
     search = "", country = "", dateFrom = "", dateTo = "",
@@ -558,7 +561,7 @@ router.get("/admin/kyb", requireAdmin, async (req: any, res: any) => {
   res.json({ kyb: enriched, total: Number(total), page: pageNum, limit: limitNum, availableCountries });
 });
 
-router.put("/admin/kyb/:id/approve", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/kyb/:id/approve", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   await db.update(kybSubmissionsTable).set({ status: "approved", reviewedAt: new Date() }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "APPROVE_KYB", "kyb", String(id), undefined, req.ip);
@@ -597,7 +600,7 @@ router.put("/admin/kyb/:id/approve", requireAdmin, async (req: any, res: any) =>
   res.json({ ok: true });
 });
 
-router.put("/admin/kyb/:id/reject", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/kyb/:id/reject", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { reason } = req.body;
   if (!reason?.trim()) {
@@ -641,7 +644,7 @@ router.put("/admin/kyb/:id/reject", requireAdmin, async (req: any, res: any) => 
   res.json({ ok: true });
 });
 
-router.put("/admin/kyb/:id/review", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/kyb/:id/review", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   await db.update(kybSubmissionsTable).set({ status: "under_review" }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "REVIEW_KYB", "kyb", String(id), undefined, req.ip);
@@ -654,7 +657,7 @@ const ALLOWED_DOC_FIELDS = [
   "documentBankStatement", "documentStatuts", "documentLicense", "documentId",
 ];
 
-router.get("/admin/kyb/:id/document/:field", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/kyb/:id/document/:field", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { field } = req.params;
 
@@ -692,7 +695,7 @@ router.get("/admin/kyb/:id/document/:field", requireAdmin, async (req: any, res:
 });
 
 // ─── CONTRACT PDF DOWNLOAD ────────────────────────────────────────────────────
-router.get("/admin/kyb/:id/contract", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/kyb/:id/contract", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
 
@@ -742,7 +745,7 @@ router.get("/admin/kyb/:id/contract", requireAdmin, async (req: any, res: any) =
 // ─── CONTRACT TEMPLATE MANAGEMENT ────────────────────────────────────────────
 
 // GET /api/admin/contract/info — metadata of the current DOCX template in Supabase
-router.get("/admin/contract/info", requireAdmin, async (_req: any, res: any) => {
+router.get(AP + "/contract/info", requireAdmin, async (_req: any, res: any) => {
   const info = await getContractTemplateInfo();
   if (!info) {
     res.json({ ok: false, error: "Fichier non trouvé dans Supabase" });
@@ -774,7 +777,7 @@ router.post(
 );
 
 // GET /api/admin/contract/download — download the current DOCX template from Supabase
-router.get("/admin/contract/download", requireAdmin, async (_req: any, res: any) => {
+router.get(AP + "/contract/download", requireAdmin, async (_req: any, res: any) => {
   try {
     const buf = await downloadContractTemplate();
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -788,7 +791,7 @@ router.get("/admin/contract/download", requireAdmin, async (_req: any, res: any)
 });
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
-router.get("/admin/transactions", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/transactions", requireAdmin, async (req: any, res: any) => {
   const { type, status, countryCode, operator, search, mode, page = "1", limit = "20" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -833,7 +836,7 @@ router.get("/admin/transactions", requireAdmin, async (req: any, res: any) => {
 });
 
 // ─── FORCE-RESOLVE TRANSACTION (résolution manuelle admin) ───────────────────
-router.post("/admin/transactions/:id/force-resolve", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/transactions/:id/force-resolve", requireAdmin, async (req: any, res: any) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
@@ -874,7 +877,7 @@ router.post("/admin/transactions/:id/force-resolve", requireAdmin, async (req: a
 });
 
 // ─── SYNC FROM GATEWAY (vérifie le statut réel chez PayDunya/Clapay) ──────────
-router.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req: any, res: any) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
@@ -945,7 +948,7 @@ router.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req: an
 });
 
 // ─── WALLETS ──────────────────────────────────────────────────────────────────
-router.get("/admin/wallets", requireAdmin, async (_req: any, res: any) => {
+router.get(AP + "/wallets", requireAdmin, async (_req: any, res: any) => {
   const wallets = await db.select().from(walletsTable).orderBy(walletsTable.countryCode);
   const userIds = [...new Set(wallets.map(w => w.userId))];
   const users = userIds.length > 0
@@ -979,7 +982,7 @@ router.get("/admin/wallets", requireAdmin, async (_req: any, res: any) => {
   res.json(byCountry);
 });
 
-router.post("/admin/wallets/:id/credit", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/wallets/:id/credit", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { amount, note } = req.body;
   if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) { res.status(400).json({ error: "Invalid amount" }); return; }
@@ -988,7 +991,7 @@ router.post("/admin/wallets/:id/credit", requireAdmin, async (req: any, res: any
   res.json({ ok: true });
 });
 
-router.post("/admin/wallets/:id/debit", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/wallets/:id/debit", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { amount, note } = req.body;
   if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) { res.status(400).json({ error: "Invalid amount" }); return; }
@@ -1000,13 +1003,13 @@ router.post("/admin/wallets/:id/debit", requireAdmin, async (req: any, res: any)
 });
 
 // ─── AGGREGATORS ──────────────────────────────────────────────────────────────
-router.get("/admin/aggregators", requireAdmin, async (_req: any, res: any) => {
+router.get(AP + "/aggregators", requireAdmin, async (_req: any, res: any) => {
   const aggs = await db.select().from(aggregatorsTable).orderBy(aggregatorsTable.name);
   const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.countryCode);
   res.json({ aggregators: aggs, operatorAggregators: opAggs });
 });
 
-router.post("/admin/aggregators", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/aggregators", requireAdmin, async (req: any, res: any) => {
   const { name, code, description } = req.body;
   if (!name || !code) { res.status(400).json({ error: "name and code required" }); return; }
   const [agg] = await db.insert(aggregatorsTable).values({ name, code, description }).returning();
@@ -1014,7 +1017,7 @@ router.post("/admin/aggregators", requireAdmin, async (req: any, res: any) => {
   res.status(201).json(agg);
 });
 
-router.put("/admin/aggregators/:id", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/aggregators/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { name, description, active } = req.body;
   const data: any = {};
@@ -1026,7 +1029,7 @@ router.put("/admin/aggregators/:id", requireAdmin, async (req: any, res: any) =>
   res.json({ ok: true });
 });
 
-router.post("/admin/operator-aggregators", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/operator-aggregators", requireAdmin, async (req: any, res: any) => {
   const { countryCode, operatorName, operatorType, aggregatorCode, dailyLimit, priority } = req.body;
   if (!countryCode || !operatorName || !aggregatorCode) { res.status(400).json({ error: "Missing required fields" }); return; }
   const [oa] = await db.insert(operatorAggregatorsTable).values({
@@ -1037,7 +1040,7 @@ router.post("/admin/operator-aggregators", requireAdmin, async (req: any, res: a
   res.status(201).json(oa);
 });
 
-router.put("/admin/operator-aggregators/:id", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/operator-aggregators/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { aggregatorCode, dailyLimit, active, priority, blockDeposits, blockWithdrawals, blockApi, blockPaymentLinks, maintenanceMode } = req.body;
   const data: any = { updatedAt: new Date() };
@@ -1055,7 +1058,7 @@ router.put("/admin/operator-aggregators/:id", requireAdmin, async (req: any, res
   res.json({ ok: true });
 });
 
-router.delete("/admin/operator-aggregators/:id", requireAdmin, async (req: any, res: any) => {
+router.delete(AP + "/operator-aggregators/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   await db.delete(operatorAggregatorsTable).where(eq(operatorAggregatorsTable.id, id));
   await logAdminAction(req.session.userId, "DELETE_OPERATOR_AGG", "operator_aggregator", String(id), undefined, req.ip);
@@ -1063,14 +1066,14 @@ router.delete("/admin/operator-aggregators/:id", requireAdmin, async (req: any, 
 });
 
 // ─── OPERATORS ────────────────────────────────────────────────────────────────
-router.get("/admin/operators", requireAdmin, async (_req: any, res: any) => {
+router.get(AP + "/operators", requireAdmin, async (_req: any, res: any) => {
   const ops = await db.select().from(operatorsTable).orderBy(operatorsTable.countryCode, operatorsTable.name);
   const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.priority);
   const aggs = await db.select().from(aggregatorsTable).where(eq(aggregatorsTable.active, true)).orderBy(aggregatorsTable.name);
   res.json({ operators: ops, operatorAggregators: opAggs, aggregators: aggs });
 });
 
-router.post("/admin/operators", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/operators", requireAdmin, async (req: any, res: any) => {
   const { countryCode, name, type, aggregatorCode, dailyLimit } = req.body;
   if (!countryCode || !name || !type) { res.status(400).json({ error: "Missing fields" }); return; }
   const [op] = await db.insert(operatorsTable).values({ countryCode, name, type }).returning();
@@ -1084,7 +1087,7 @@ router.post("/admin/operators", requireAdmin, async (req: any, res: any) => {
   res.status(201).json(op);
 });
 
-router.put("/admin/operators/:id", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/operators/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { name, type, active, aggregatorCode, dailyLimit, blockDeposits, blockWithdrawals, blockApi, blockPaymentLinks, maintenanceMode } = req.body;
   const [existing] = await db.select().from(operatorsTable).where(eq(operatorsTable.id, id));
@@ -1127,7 +1130,7 @@ router.put("/admin/operators/:id", requireAdmin, async (req: any, res: any) => {
   res.json({ ok: true });
 });
 
-router.post("/admin/operators/country-toggle", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/operators/country-toggle", requireAdmin, async (req: any, res: any) => {
   const { countryCode, active } = req.body;
   if (!countryCode || active === undefined) { res.status(400).json({ error: "Missing fields" }); return; }
   await db.update(operatorsTable).set({ active }).where(eq(operatorsTable.countryCode, countryCode));
@@ -1136,7 +1139,7 @@ router.post("/admin/operators/country-toggle", requireAdmin, async (req: any, re
   res.json({ ok: true });
 });
 
-router.delete("/admin/operators/:id", requireAdmin, async (req: any, res: any) => {
+router.delete(AP + "/operators/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(operatorsTable).where(eq(operatorsTable.id, id));
   if (existing) {
@@ -1151,7 +1154,7 @@ router.delete("/admin/operators/:id", requireAdmin, async (req: any, res: any) =
 });
 
 // ─── API KEYS ─────────────────────────────────────────────────────────────────
-router.get("/admin/api-keys", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/api-keys", requireAdmin, async (req: any, res: any) => {
   const { search, page = "1", limit = "20" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -1187,7 +1190,7 @@ router.get("/admin/api-keys", requireAdmin, async (req: any, res: any) => {
   res.json({ keys: result, total: Number(total), page: pageNum, limit: limitNum });
 });
 
-router.delete("/admin/api-keys/:id", requireAdmin, async (req: any, res: any) => {
+router.delete(AP + "/api-keys/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   await db.update(apiKeysTable).set({ status: "revoked" }).where(eq(apiKeysTable.id, id));
   await logAdminAction(req.session.userId, "REVOKE_API_KEY", "api_key", String(id), undefined, req.ip);
@@ -1195,7 +1198,7 @@ router.delete("/admin/api-keys/:id", requireAdmin, async (req: any, res: any) =>
 });
 
 // ─── API KEY DETAILS (webhooks, IPs, website) ─────────────────────────────────
-router.get("/admin/api-keys/:id/details", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/api-keys/:id/details", requireAdmin, async (req: any, res: any) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
@@ -1230,7 +1233,7 @@ router.get("/admin/api-keys/:id/details", requireAdmin, async (req: any, res: an
 });
 
 // ─── REGENERATE API KEY (admin) ────────────────────────────────────────────────
-router.post("/admin/api-keys/:id/regenerate", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/api-keys/:id/regenerate", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const [old] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id));
   if (!old) { res.status(404).json({ error: "Clé introuvable" }); return; }
@@ -1251,7 +1254,7 @@ router.post("/admin/api-keys/:id/regenerate", requireAdmin, async (req: any, res
 });
 
 // ─── BLOCK / UNBLOCK API KEY (admin) ──────────────────────────────────────────
-router.patch("/admin/api-keys/:id/status", requireAdmin, async (req: any, res: any) => {
+router.patch(AP + "/api-keys/:id/status", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { status } = req.body as { status: "active" | "revoked" };
   if (status !== "active" && status !== "revoked") {
@@ -1264,7 +1267,7 @@ router.patch("/admin/api-keys/:id/status", requireAdmin, async (req: any, res: a
 });
 
 // ─── PAYMENT LINKS ────────────────────────────────────────────────────────────
-router.get("/admin/payment-links", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/payment-links", requireAdmin, async (req: any, res: any) => {
   const { search, page = "1", limit = "20" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -1289,14 +1292,14 @@ router.get("/admin/payment-links", requireAdmin, async (req: any, res: any) => {
   res.json({ links: result, total: Number(total), page: pageNum, limit: limitNum });
 });
 
-router.delete("/admin/payment-links/:id", requireAdmin, async (req: any, res: any) => {
+router.delete(AP + "/payment-links/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   await db.delete(paymentLinksTable).where(eq(paymentLinksTable.id, id));
   await logAdminAction(req.session.userId, "DELETE_PAYMENT_LINK", "payment_link", String(id), undefined, req.ip);
   res.json({ ok: true });
 });
 
-router.put("/admin/payment-links/:id/suspend", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/payment-links/:id/suspend", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   await db.update(paymentLinksTable).set({ status: "inactive" }).where(eq(paymentLinksTable.id, id));
   await logAdminAction(req.session.userId, "SUSPEND_PAYMENT_LINK", "payment_link", String(id), undefined, req.ip);
@@ -1304,7 +1307,7 @@ router.put("/admin/payment-links/:id/suspend", requireAdmin, async (req: any, re
 });
 
 // ─── LOGS ─────────────────────────────────────────────────────────────────────
-router.get("/admin/logs", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/logs", requireAdmin, async (req: any, res: any) => {
   const { page = "1", limit = "50", action } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -1332,13 +1335,13 @@ router.get("/admin/logs", requireAdmin, async (req: any, res: any) => {
 });
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
-router.get("/admin/settings", requireAdmin, async (_req: any, res: any) => {
+router.get(AP + "/settings", requireAdmin, async (_req: any, res: any) => {
   const settings = await db.select().from(adminSettingsTable);
   const map = Object.fromEntries(settings.map(s => [s.key, s.value]));
   res.json(map);
 });
 
-router.put("/admin/settings", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/settings", requireAdmin, async (req: any, res: any) => {
   const updates = req.body as Record<string, string>;
   for (const [key, value] of Object.entries(updates)) {
     await db.insert(adminSettingsTable).values({ key, value }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value, updatedAt: new Date() } });
@@ -1348,7 +1351,7 @@ router.put("/admin/settings", requireAdmin, async (req: any, res: any) => {
 });
 
 // ─── LISTE NOIRE (Blacklist) ───────────────────────────────────────────────────
-router.get("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/blacklist", requireAdmin, async (req: any, res: any) => {
   const { search = "", page = "1", limit = "50" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -1381,7 +1384,7 @@ router.get("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
   res.json({ items: rows, total: Number(total), page: pageNum, limit: limitNum });
 });
 
-router.post("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/blacklist", requireAdmin, async (req: any, res: any) => {
   const schema = z.object({
     phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide"),
     reason: z.string().max(500).optional(),
@@ -1415,7 +1418,7 @@ router.post("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
   }
 });
 
-router.delete("/admin/blacklist/:id", requireAdmin, async (req: any, res: any) => {
+router.delete(AP + "/blacklist/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const [row] = await db.select().from(blacklistedPhonesTable).where(eq(blacklistedPhonesTable.id, id));
   if (!row) { res.status(404).json({ error: "Entrée introuvable" }); return; }
@@ -1430,7 +1433,7 @@ router.delete("/admin/blacklist/:id", requireAdmin, async (req: any, res: any) =
 });
 
 // ─── TELEGRAM CONFIG ───────────────────────────────────────────────────────────
-router.post("/admin/telegram/test", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/telegram/test", requireAdmin, async (req: any, res: any) => {
   const { token, chatId } = req.body as { token: string; chatId: string };
   if (!token || !chatId) {
     res.status(400).json({ error: "token et chatId requis" }); return;
@@ -1439,7 +1442,7 @@ router.post("/admin/telegram/test", requireAdmin, async (req: any, res: any) => 
   res.json(result);
 });
 
-router.get("/admin/telegram/detect", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/telegram/detect", requireAdmin, async (req: any, res: any) => {
   const token = (req.query.token as string) ?? "";
   if (!token) { res.status(400).json({ error: "token requis" }); return; }
   const result = await detectChatId(token.trim());
@@ -1447,7 +1450,7 @@ router.get("/admin/telegram/detect", requireAdmin, async (req: any, res: any) =>
 });
 
 // ─── PAYMENT LINK ATTEMPTS ────────────────────────────────────────────────────
-router.get("/admin/attempts", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/attempts", requireAdmin, async (req: any, res: any) => {
   const { page = "1", limit = "50", status, search } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -1501,7 +1504,7 @@ router.get("/admin/attempts", requireAdmin, async (req: any, res: any) => {
   res.json({ attempts, total: Number(total), page: pageNum, limit: limitNum });
 });
 
-router.patch("/admin/attempts/:id/note", requireAdmin, async (req: any, res: any) => {
+router.patch(AP + "/attempts/:id/note", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const { note } = req.body as { note: string };
   const [updated] = await db
@@ -1514,7 +1517,7 @@ router.patch("/admin/attempts/:id/note", requireAdmin, async (req: any, res: any
 });
 
 // ─── BROADCAST EMAIL ──────────────────────────────────────────────────────────
-router.get("/admin/broadcast/recipients", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/broadcast/recipients", requireAdmin, async (req: any, res: any) => {
   const { filter = "all" } = req.query as Record<string, string>;
   let users = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country, createdAt: usersTable.createdAt })
     .from(usersTable).where(eq(usersTable.role, "user")).orderBy(usersTable.companyName);
@@ -1534,7 +1537,7 @@ router.get("/admin/broadcast/recipients", requireAdmin, async (req: any, res: an
   res.json({ recipients: users, total: users.length });
 });
 
-router.post("/admin/message/individual", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/message/individual", requireAdmin, async (req: any, res: any) => {
   const { email, subject, body } = req.body as { email?: string; subject?: string; body?: string };
   if (!email?.trim() || !subject?.trim() || !body?.trim()) {
     res.status(400).json({ error: "Email, sujet et message sont requis." });
@@ -1562,7 +1565,7 @@ router.post("/admin/message/individual", requireAdmin, async (req: any, res: any
   }
 });
 
-router.get("/admin/merchants/search", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/merchants/search", requireAdmin, async (req: any, res: any) => {
   const { q = "" } = req.query as Record<string, string>;
   if (q.trim().length < 2) { res.json({ merchants: [] }); return; }
   const term = `%${q.toLowerCase()}%`;
@@ -1576,7 +1579,7 @@ router.get("/admin/merchants/search", requireAdmin, async (req: any, res: any) =
   res.json({ merchants });
 });
 
-router.post("/admin/broadcast", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/broadcast", requireAdmin, async (req: any, res: any) => {
   const { subject, body, filter = "all" } = req.body as { subject?: string; body?: string; filter?: string };
   if (!subject?.trim() || !body?.trim()) {
     res.status(400).json({ error: "Sujet et message requis." });
@@ -1643,7 +1646,7 @@ router.post("/admin/broadcast", requireAdmin, async (req: any, res: any) => {
 });
 
 // ── Resume broadcast via Resend after Brevo quota ─────────────────────────────
-router.post("/admin/broadcast/resume-resend", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/broadcast/resume-resend", requireAdmin, async (req: any, res: any) => {
   const { recipients, subject, body } = req.body as {
     recipients?: { email: string; companyName: string }[];
     subject?: string;
@@ -1680,12 +1683,12 @@ router.post("/admin/broadcast/resume-resend", requireAdmin, async (req: any, res
 
 // ── Social Links ─────────────────────────────────────────────────────────────
 
-router.get("/admin/social-links", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/social-links", requireAdmin, async (req: any, res: any) => {
   const rows = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
 });
 
-router.post("/admin/social-links", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/social-links", requireAdmin, async (req: any, res: any) => {
   const { name, platform, url, description, sortOrder } = req.body as {
     name?: string; platform?: string; url?: string; description?: string; sortOrder?: number;
   };
@@ -1704,7 +1707,7 @@ router.post("/admin/social-links", requireAdmin, async (req: any, res: any) => {
   res.json(row);
 });
 
-router.put("/admin/social-links/:id", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/social-links/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
   const { name, platform, url, description, sortOrder } = req.body as {
     name?: string; platform?: string; url?: string; description?: string; sortOrder?: number;
@@ -1722,7 +1725,7 @@ router.put("/admin/social-links/:id", requireAdmin, async (req: any, res: any) =
   res.json(row);
 });
 
-router.patch("/admin/social-links/:id/toggle", requireAdmin, async (req: any, res: any) => {
+router.patch(AP + "/social-links/:id/toggle", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
   const [current] = await db.select().from(socialLinksTable).where(eq(socialLinksTable.id, id));
   if (!current) { res.status(404).json({ error: "Non trouvé" }); return; }
@@ -1734,7 +1737,7 @@ router.patch("/admin/social-links/:id/toggle", requireAdmin, async (req: any, re
   res.json(row);
 });
 
-router.delete("/admin/social-links/:id", requireAdmin, async (req: any, res: any) => {
+router.delete(AP + "/social-links/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
   const [deleted] = await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id)).returning();
   if (!deleted) { res.status(404).json({ error: "Non trouvé" }); return; }
@@ -1744,12 +1747,12 @@ router.delete("/admin/social-links/:id", requireAdmin, async (req: any, res: any
 
 // ── Jobs (Careers) ──────────────────────────────────────────────────────────
 
-router.get("/admin/jobs", requireAdmin, async (req: any, res: any) => {
+router.get(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
   const rows = await db.select().from(jobsTable).orderBy(desc(jobsTable.postedAt));
   res.json(rows);
 });
 
-router.post("/admin/jobs", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
   const { title, department, location, type, remote, description, requirements, responsibilities, active } = req.body as {
     title?: string; department?: string; location?: string; type?: string; remote?: boolean;
     description?: string; requirements?: string[]; responsibilities?: string[]; active?: boolean;
@@ -1773,7 +1776,7 @@ router.post("/admin/jobs", requireAdmin, async (req: any, res: any) => {
   res.json(row);
 });
 
-router.put("/admin/jobs/:id", requireAdmin, async (req: any, res: any) => {
+router.put(AP + "/jobs/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
   const { title, department, location, type, remote, description, requirements, responsibilities, active } = req.body as {
     title?: string; department?: string; location?: string; type?: string; remote?: boolean;
@@ -1802,7 +1805,7 @@ router.put("/admin/jobs/:id", requireAdmin, async (req: any, res: any) => {
   res.json(row);
 });
 
-router.patch("/admin/jobs/:id/toggle", requireAdmin, async (req: any, res: any) => {
+router.patch(AP + "/jobs/:id/toggle", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
   const [current] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
   if (!current) { res.status(404).json({ error: "Non trouvé" }); return; }
@@ -1814,7 +1817,7 @@ router.patch("/admin/jobs/:id/toggle", requireAdmin, async (req: any, res: any) 
   res.json(row);
 });
 
-router.delete("/admin/jobs/:id", requireAdmin, async (req: any, res: any) => {
+router.delete(AP + "/jobs/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
   const [deleted] = await db.delete(jobsTable).where(eq(jobsTable.id, id)).returning();
   if (!deleted) { res.status(404).json({ error: "Non trouvé" }); return; }
@@ -1822,7 +1825,7 @@ router.delete("/admin/jobs/:id", requireAdmin, async (req: any, res: any) => {
   res.json({ ok: true });
 });
 
-router.post("/admin/telegram/save", requireAdmin, async (req: any, res: any) => {
+router.post(AP + "/telegram/save", requireAdmin, async (req: any, res: any) => {
   const { token, chatId } = req.body as { token?: string; chatId?: string };
   const updates: Record<string, string> = {};
   if (token !== undefined) updates["telegram_bot_token"] = token.trim();
@@ -1838,7 +1841,7 @@ router.post("/admin/telegram/save", requireAdmin, async (req: any, res: any) => 
 
 // ─── Support Agents Management ───────────────────────────────────────────────
 
-router.get("/admin/support-agents", requireAdmin, async (req, res) => {
+router.get(AP + "/support-agents", requireAdmin, async (req, res) => {
   const agents = await db
     .select({
       id: supportUsersTable.id,
@@ -1852,7 +1855,7 @@ router.get("/admin/support-agents", requireAdmin, async (req, res) => {
   res.json({ agents });
 });
 
-router.post("/admin/support-agents", requireAdmin, async (req, res) => {
+router.post(AP + "/support-agents", requireAdmin, async (req, res) => {
   const schema = z.object({
     email: z.string().email("Email invalide"),
     name: z.string().min(2, "Nom requis"),
@@ -1884,7 +1887,7 @@ router.post("/admin/support-agents", requireAdmin, async (req, res) => {
   res.status(201).json({ success: true, agent });
 });
 
-router.patch("/admin/support-agents/:id/reset-password", requireAdmin, async (req, res) => {
+router.patch(AP + "/support-agents/:id/reset-password", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const schema = z.object({ newPassword: z.string().min(8, "Mot de passe : 8 caractères minimum") });
   const parsed = schema.safeParse(req.body);
@@ -1905,7 +1908,7 @@ router.patch("/admin/support-agents/:id/reset-password", requireAdmin, async (re
   res.json({ success: true });
 });
 
-router.delete("/admin/support-agents/:id", requireAdmin, async (req, res) => {
+router.delete(AP + "/support-agents/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const [agent] = await db.select({ id: supportUsersTable.id, email: supportUsersTable.email }).from(supportUsersTable).where(eq(supportUsersTable.id, id));
   if (!agent) { res.status(404).json({ error: "Agent introuvable" }); return; }
@@ -1926,12 +1929,12 @@ const bannerImageUpload = multer({
   },
 });
 
-router.get("/admin/global-banners", requireAdmin, async (_req, res) => {
+router.get(AP + "/global-banners", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(globalBannersTable).orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
 
-router.post("/admin/global-banners/upload-image", requireAdmin, bannerImageUpload.single("image"), async (req, res) => {
+router.post(AP + "/global-banners/upload-image", requireAdmin, bannerImageUpload.single("image"), async (req, res) => {
   if (!req.file) { res.status(400).json({ error: "Aucun fichier reçu" }); return; }
   try {
     const publicUrl = await uploadBannerImage(req.file.buffer, req.file.mimetype, req.file.originalname);
@@ -1951,7 +1954,7 @@ const bannerCreateSchema = z.object({
   active: z.boolean().default(true),
 });
 
-router.post("/admin/global-banners", requireAdmin, async (req, res) => {
+router.post(AP + "/global-banners", requireAdmin, async (req, res) => {
   const parsed = bannerCreateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Données invalides", details: parsed.error.issues }); return; }
   const [banner] = await db.insert(globalBannersTable).values({
@@ -1962,7 +1965,7 @@ router.post("/admin/global-banners", requireAdmin, async (req, res) => {
   res.json(banner);
 });
 
-router.patch("/admin/global-banners/:id", requireAdmin, async (req, res) => {
+router.patch(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) { res.status(404).json({ error: "Bannière introuvable" }); return; }
@@ -1976,7 +1979,7 @@ router.patch("/admin/global-banners/:id", requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
-router.patch("/admin/global-banners/:id/toggle", requireAdmin, async (req, res) => {
+router.patch(AP + "/global-banners/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) { res.status(404).json({ error: "Bannière introuvable" }); return; }
@@ -1988,7 +1991,7 @@ router.patch("/admin/global-banners/:id/toggle", requireAdmin, async (req, res) 
   res.json(updated);
 });
 
-router.delete("/admin/global-banners/:id", requireAdmin, async (req, res) => {
+router.delete(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const [existing] = await db.select({ id: globalBannersTable.id }).from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) { res.status(404).json({ error: "Bannière introuvable" }); return; }

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Globe2, RefreshCw, Plus, Edit2, Trash2, X, Search, ChevronDown } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -77,7 +78,7 @@ function EditOperatorModal({
 
   const save = async () => {
     setSaving(true);
-    await fetch(`${BASE}/api/admin/operators/${op.id}`, {
+    await fetch(`${ADMIN_BASE}/operators/${op.id}`, {
       method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
@@ -184,7 +185,7 @@ function AddOperatorModal({ aggregators, onClose, onAdd }: { aggregators: Aggreg
   const save = async () => {
     if (!form.name.trim()) { alert("Nom requis"); return; }
     setSaving(true);
-    await fetch(`${BASE}/api/admin/operators`, {
+    await fetch(`${ADMIN_BASE}/operators`, {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
     });
     onAdd(); onClose();
@@ -260,7 +261,7 @@ export default function AdminOperators() {
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch(`${BASE}/api/admin/operators`, { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/operators`, { credentials: "include" });
     const d = await r.json();
     setOperators(d?.operators ?? []);
     setOpAggs(d?.operatorAggregators ?? []);
@@ -272,13 +273,13 @@ export default function AdminOperators() {
 
   const deleteOp = async (id: number) => {
     if (!confirm("Supprimer cet opérateur ?")) return;
-    await fetch(`${BASE}/api/admin/operators/${id}`, { method: "DELETE", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/operators/${id}`, { method: "DELETE", credentials: "include" });
     setOperators(ops => ops.filter(o => o.id !== id));
   };
 
   const countryToggle = async (countryCode: string, active: boolean) => {
     setToggling(countryCode);
-    await fetch(`${BASE}/api/admin/operators/country-toggle`, {
+    await fetch(`${ADMIN_BASE}/operators/country-toggle`, {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ countryCode, active }),
     });

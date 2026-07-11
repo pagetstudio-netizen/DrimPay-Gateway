@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link2, Search, RefreshCw, Trash2, Pause, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 export default function AdminPaymentLinks() {
   const [links, setLinks] = useState<any[]>([]);
@@ -13,7 +14,7 @@ export default function AdminPaymentLinks() {
 
   const load = async (p = page, q = search) => {
     setLoading(true);
-    const r = await fetch(`/api/admin/payment-links?page=${p}&limit=${LIMIT}&search=${encodeURIComponent(q)}`, { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/payment-links?page=${p}&limit=${LIMIT}&search=${encodeURIComponent(q)}`, { credentials: "include" });
     const d = await r.json();
     setLinks(d.links ?? []);
     setTotal(d.total ?? 0);
@@ -24,12 +25,12 @@ export default function AdminPaymentLinks() {
 
   const deleteLnk = async (id: number) => {
     if (!confirm("Supprimer ce lien de paiement ?")) return;
-    await fetch(`/api/admin/payment-links/${id}`, { method: "DELETE", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/payment-links/${id}`, { method: "DELETE", credentials: "include" });
     setLinks(ls => ls.filter(l => l.id !== id));
   };
 
   const suspendLnk = async (id: number) => {
-    await fetch(`/api/admin/payment-links/${id}/suspend`, { method: "PUT", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/payment-links/${id}/suspend`, { method: "PUT", credentials: "include" });
     setLinks(ls => ls.map(l => l.id === id ? { ...l, status: "inactive" } : l));
   };
 

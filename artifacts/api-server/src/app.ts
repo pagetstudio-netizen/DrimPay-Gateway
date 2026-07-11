@@ -137,7 +137,16 @@ app.use(globalRateLimiter);
 // ── Admin panel: rate limit + geo-restriction (Togo only by default) ──────────
 // ADMIN_ALLOWED_COUNTRIES: comma-separated country codes (default: "TG")
 // ADMIN_ALLOWED_IPS: comma-separated IP whitelist bypass
-app.use("/api/admin", adminRateLimiter, adminGeoMiddleware);
+// ADMIN_ROUTE_SECRET: secret path prefix (default "admin") — set in Plesk env vars
+//   e.g. ADMIN_ROUTE_SECRET=xk9m2p7q → all admin routes become /api/xk9m2p7q/*
+const ADMIN_ROUTE_PREFIX = process.env["ADMIN_ROUTE_SECRET"] ?? "admin";
+app.use(`/api/${ADMIN_ROUTE_PREFIX}`, adminRateLimiter, adminGeoMiddleware);
+
+// ── Decoy: make the default /api/admin path return 404 when prefix is changed ─
+// Attackers scanning /api/admin/* will get a generic 404 as if it never existed.
+if (ADMIN_ROUTE_PREFIX !== "admin") {
+  app.use("/api/admin", (_req, res) => res.status(404).json({ error: "Endpoint not found" }));
+}
 
 // ── Subdomain routing (dashboard.drimpay.com → /dashboard, etc.) ─────────────
 app.use(subdomainMiddleware);

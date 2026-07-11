@@ -9,6 +9,7 @@ import {
 import { AdminLayout } from "./layout";
 import { shortId } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 function fmt(n: number, currency = "XOF") {
   return `${Math.round(n).toLocaleString("fr-FR")} ${currency}`;
@@ -101,8 +102,8 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const [s, c] = await Promise.all([
-        fetch("/api/admin/stats", { credentials: "include" }).then(r => r.ok ? r.json() : null),
-        fetch("/api/admin/chart-data", { credentials: "include" }).then(r => r.ok ? r.json() : []),
+        fetch(`${ADMIN_BASE}/stats`, { credentials: "include" }).then(r => r.ok ? r.json() : null),
+        fetch(`${ADMIN_BASE}/chart-data`, { credentials: "include" }).then(r => r.ok ? r.json() : []),
       ]);
       if (s) setStats(s);
       if (Array.isArray(c)) setChartData(c);
@@ -114,7 +115,7 @@ export default function AdminDashboard() {
   const handleReset = async () => {
     setResetting(true);
     try {
-      const r = await fetch("/api/admin/stats/reset", {
+      const r = await fetch(`${ADMIN_BASE}/stats/reset`, {
         method: "POST",
         credentials: "include",
       });

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -69,7 +70,7 @@ function BlockIpModal({ onClose, onBlocked }: { onClose: () => void; onBlocked: 
     if (!ip.trim() || !reason.trim()) { setError("IP et raison requis."); return; }
     setLoading(true);
     try {
-      const r = await fetch(`${BASE}/api/admin/security/block-ip`, {
+      const r = await fetch(`${ADMIN_BASE}/security/block-ip`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -153,8 +154,8 @@ export default function AdminSecurity() {
     setLoading(true);
     try {
       const [evRes, ipRes] = await Promise.all([
-        fetch(`${BASE}/api/admin/security/events?limit=100`, { credentials: "include" }),
-        fetch(`${BASE}/api/admin/security/blocked-ips`, { credentials: "include" }),
+        fetch(`${ADMIN_BASE}/security/events?limit=100`, { credentials: "include" }),
+        fetch(`${ADMIN_BASE}/security/blocked-ips`, { credentials: "include" }),
       ]);
       const evData = await evRes.json();
       const ipData = await ipRes.json();
@@ -166,7 +167,7 @@ export default function AdminSecurity() {
   useEffect(() => { fetchAll(); }, []);
 
   const unblockIp = async (id: number) => {
-    await fetch(`${BASE}/api/admin/security/blocked-ips/${id}`, { method: "DELETE", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/security/blocked-ips/${id}`, { method: "DELETE", credentials: "include" });
     setBlockedIps(prev => prev.filter(b => b.id !== id));
   };
 

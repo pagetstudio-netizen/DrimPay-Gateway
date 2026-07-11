@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const KYB_COLORS: Record<string, string> = {
   approved: "bg-green-100 text-green-700",
@@ -64,7 +65,7 @@ function MerchantPanel({
 
   const saveInfo = async () => {
     setSavingInfo(true);
-    await fetch(`/api/admin/merchants/${merchant.id}`, {
+    await fetch(`${ADMIN_BASE}/merchants/${merchant.id}`, {
       method: "PUT", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -77,7 +78,7 @@ function MerchantPanel({
 
   const saveWalletBalance = async (walletId: number) => {
     setSavingWallet(true);
-    await fetch(`/api/admin/merchants/${merchant.id}/wallets/${walletId}`, {
+    await fetch(`${ADMIN_BASE}/merchants/${merchant.id}/wallets/${walletId}`, {
       method: "PUT", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ balance: newBal }),
@@ -89,7 +90,7 @@ function MerchantPanel({
 
   const resetPassword = async () => {
     setResettingPwd(true);
-    const r = await fetch(`/api/admin/merchants/${merchant.id}/reset-password`, { method: "POST", credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/merchants/${merchant.id}/reset-password`, { method: "POST", credentials: "include" });
     const d = await r.json();
     setNewPwd(d.newPassword);
     setResettingPwd(false);
@@ -102,7 +103,7 @@ function MerchantPanel({
   const toggleRole = async () => {
     setPromoting(true);
     const newRole = promotedRole === "admin" ? "user" : "admin";
-    await fetch(`/api/admin/merchants/${merchant.id}/role`, {
+    await fetch(`${ADMIN_BASE}/merchants/${merchant.id}/role`, {
       method: "PUT", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: newRole }),
@@ -114,14 +115,14 @@ function MerchantPanel({
 
   const suspendMerchant = async () => {
     setSuspending(true);
-    await fetch(`/api/admin/merchants/${merchant.id}/suspend`, { method: "POST", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/merchants/${merchant.id}/suspend`, { method: "POST", credentials: "include" });
     setSuspended(true);
     setSuspending(false);
   };
 
   const deleteMerchant = async () => {
     setDeleting(true);
-    await fetch(`/api/admin/merchants/${merchant.id}`, { method: "DELETE", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/merchants/${merchant.id}`, { method: "DELETE", credentials: "include" });
     onRefresh();
     onClose();
   };
@@ -531,7 +532,7 @@ export default function AdminMerchants() {
 
   const load = async (p = page, q = search) => {
     setLoading(true);
-    const r = await fetch(`/api/admin/merchants?page=${p}&limit=${LIMIT}&search=${encodeURIComponent(q)}`, { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/merchants?page=${p}&limit=${LIMIT}&search=${encodeURIComponent(q)}`, { credentials: "include" });
     const d = await r.json();
     setMerchants(d.merchants ?? []);
     setTotal(d.total ?? 0);

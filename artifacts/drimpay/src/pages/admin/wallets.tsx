@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Wallet2, RefreshCw, ChevronDown, ChevronRight, Plus, Minus, X } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 function fmt(n: number, cur = "XOF") {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${cur}`;
@@ -18,7 +19,7 @@ function CreditDebitModal({ wallet, type, onClose, onDone }: { wallet: any; type
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { setError("Montant invalide"); return; }
     setLoading(true); setError("");
-    const r = await fetch(`/api/admin/wallets/${wallet.id}/${type}`, {
+    const r = await fetch(`${ADMIN_BASE}/wallets/${wallet.id}/${type}`, {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount, note }),
     });
     const d = await r.json();
@@ -144,7 +145,7 @@ export default function AdminWallets() {
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch("/api/admin/wallets", { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/wallets`, { credentials: "include" });
     const d = await r.json();
     setCountries(Array.isArray(d) ? d : []);
     setLoading(false);

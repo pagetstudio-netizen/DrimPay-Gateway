@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -108,7 +109,7 @@ export default function AdminNotifications() {
   async function loadBanners() {
     setLoadingBanners(true);
     try {
-      const r = await fetch(`${BASE}/api/admin/global-banners`, { credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/global-banners`, { credentials: "include" });
       const d = await r.json();
       if (Array.isArray(d)) setBanners(d);
     } catch {}
@@ -130,7 +131,7 @@ export default function AdminNotifications() {
         imageUrl: form.imageUrl.trim() || undefined,
         active: form.active,
       };
-      const r = await fetch(`${BASE}/api/admin/global-banners`, {
+      const r = await fetch(`${ADMIN_BASE}/global-banners`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -169,7 +170,7 @@ export default function AdminNotifications() {
         buttonLink: editForm.buttonLink.trim() || undefined,
         imageUrl: editForm.imageUrl.trim() || undefined,
       };
-      const r = await fetch(`${BASE}/api/admin/global-banners/${id}`, {
+      const r = await fetch(`${ADMIN_BASE}/global-banners/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -189,7 +190,7 @@ export default function AdminNotifications() {
     try {
       const fd = new FormData();
       fd.append("image", file);
-      const r = await fetch(`${BASE}/api/admin/global-banners/upload-image`, {
+      const r = await fetch(`${ADMIN_BASE}/global-banners/upload-image`, {
         method: "POST", credentials: "include", body: fd,
       });
       const d = await r.json();
@@ -202,7 +203,7 @@ export default function AdminNotifications() {
   async function handleToggle(id: number) {
     setSavingId(id);
     try {
-      const r = await fetch(`${BASE}/api/admin/global-banners/${id}/toggle`, {
+      const r = await fetch(`${ADMIN_BASE}/global-banners/${id}/toggle`, {
         method: "PATCH",
         credentials: "include",
       });
@@ -217,7 +218,7 @@ export default function AdminNotifications() {
     if (!confirm("Supprimer cette bannière ?")) return;
     setDeletingId(id);
     try {
-      await fetch(`${BASE}/api/admin/global-banners/${id}`, {
+      await fetch(`${ADMIN_BASE}/global-banners/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -232,7 +233,7 @@ export default function AdminNotifications() {
     try {
       const fd = new FormData();
       fd.append("image", file);
-      const r = await fetch(`${BASE}/api/admin/global-banners/upload-image`, {
+      const r = await fetch(`${ADMIN_BASE}/global-banners/upload-image`, {
         method: "POST",
         credentials: "include",
         body: fd,

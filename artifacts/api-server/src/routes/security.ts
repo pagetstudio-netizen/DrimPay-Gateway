@@ -6,6 +6,8 @@ import { z } from "zod";
 
 const router = Router();
 
+const AP = `/${process.env["ADMIN_ROUTE_SECRET"] ?? "admin"}`;
+
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.session?.userId || req.session?.role !== "admin") {
     res.status(403).json({ error: "Accès refusé" });
@@ -15,7 +17,7 @@ function requireAdmin(req: any, res: any, next: any) {
 }
 
 // ── GET /admin/security/events ─────────────────────────────────────────────────
-router.get("/admin/security/events", requireAdmin, async (req, res) => {
+router.get(AP + "/security/events", requireAdmin, async (req, res) => {
   const limit = Math.min(parseInt(String(req.query.limit ?? "50")), 200);
   const offset = parseInt(String(req.query.offset ?? "0"));
   const riskLevel = req.query.riskLevel as string | undefined;
@@ -55,7 +57,7 @@ router.get("/admin/security/events", requireAdmin, async (req, res) => {
 });
 
 // ── GET /admin/security/blocked-ips ──────────────────────────────────────────
-router.get("/admin/security/blocked-ips", requireAdmin, async (req, res) => {
+router.get(AP + "/security/blocked-ips", requireAdmin, async (req, res) => {
   const rows = await db
     .select()
     .from(blockedIpsTable)
@@ -64,7 +66,7 @@ router.get("/admin/security/blocked-ips", requireAdmin, async (req, res) => {
 });
 
 // ── POST /admin/security/block-ip ─────────────────────────────────────────────
-router.post("/admin/security/block-ip", requireAdmin, async (req, res) => {
+router.post(AP + "/security/block-ip", requireAdmin, async (req, res) => {
   const schema = z.object({
     ip: z.string().min(3).max(64),
     reason: z.string().min(1).max(500),
@@ -101,8 +103,8 @@ router.post("/admin/security/block-ip", requireAdmin, async (req, res) => {
 });
 
 // ── DELETE /admin/security/blocked-ips/:id ────────────────────────────────────
-router.delete("/admin/security/blocked-ips/:id", requireAdmin, async (req, res) => {
-  const id = parseInt(req.params.id);
+router.delete(AP + "/security/blocked-ips/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "ID invalide" }); return; }
   await db.delete(blockedIpsTable).where(eq(blockedIpsTable.id, id));
   res.json({ ok: true });

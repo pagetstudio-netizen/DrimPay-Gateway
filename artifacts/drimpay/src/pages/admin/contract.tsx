@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -35,7 +36,7 @@ export default function AdminContract() {
   const loadInfo = async () => {
     setLoadingInfo(true);
     try {
-      const r = await fetch(`${BASE}/api/admin/contract/info`, { credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/contract/info`, { credentials: "include" });
       const d = await r.json();
       setInfo(d.ok ? d : null);
     } catch {
@@ -57,7 +58,7 @@ export default function AdminContract() {
     try {
       const fd = new FormData();
       fd.append("contract", file);
-      const r = await fetch(`${BASE}/api/admin/contract/upload`, {
+      const r = await fetch(`${ADMIN_BASE}/contract/upload`, {
         method: "POST",
         credentials: "include",
         body: fd,
@@ -92,7 +93,7 @@ export default function AdminContract() {
   const downloadCurrent = async () => {
     setDownloading(true);
     try {
-      const r = await fetch(`${BASE}/api/admin/contract/download`, { credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/contract/download`, { credentials: "include" });
       if (!r.ok) { setStatus({ type: "err", msg: "Fichier introuvable" }); return; }
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);

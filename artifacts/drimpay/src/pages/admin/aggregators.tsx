@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const DEFAULT_AGGREGATORS = [
   { name: "Clapay", code: "clapay", description: "Agrégateur mobile money Afrique de l'Ouest & Centre" },
@@ -40,7 +41,7 @@ function OperatorAggRow({ oa, aggregators, onUpdate, onDelete }: { oa: any; aggr
 
   const save = async () => {
     setSaving(true);
-    await fetch(`/api/admin/operator-aggregators/${oa.id}`, {
+    await fetch(`${ADMIN_BASE}/operator-aggregators/${oa.id}`, {
       method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
     });
     onUpdate(form);
@@ -51,7 +52,7 @@ function OperatorAggRow({ oa, aggregators, onUpdate, onDelete }: { oa: any; aggr
   const toggleField = async (field: string, val: boolean) => {
     const updated = { ...form, [field]: val };
     setForm(updated);
-    await fetch(`/api/admin/operator-aggregators/${oa.id}`, {
+    await fetch(`${ADMIN_BASE}/operator-aggregators/${oa.id}`, {
       method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: val }),
     });
     onUpdate(updated);
@@ -120,7 +121,7 @@ function AddOperatorAggModal({ aggregators, onClose, onAdd }: { aggregators: any
   const save = async () => {
     if (!form.operatorName) { alert("Nom opérateur requis"); return; }
     setSaving(true);
-    await fetch("/api/admin/operator-aggregators", {
+    await fetch(`${ADMIN_BASE}/operator-aggregators`, {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
     });
     onAdd(); onClose();
@@ -174,13 +175,13 @@ export default function AdminAggregators() {
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch("/api/admin/aggregators", { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/aggregators`, { credentials: "include" });
     let d = await r.json();
     if (!d.aggregators?.length) {
       for (const agg of DEFAULT_AGGREGATORS) {
-        await fetch("/api/admin/aggregators", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(agg) }).catch(() => {});
+        await fetch(`${ADMIN_BASE}/aggregators`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(agg) }).catch(() => {});
       }
-      const r2 = await fetch("/api/admin/aggregators", { credentials: "include" });
+      const r2 = await fetch(`${ADMIN_BASE}/aggregators`, { credentials: "include" });
       d = await r2.json();
     }
     setData(d);
@@ -190,7 +191,7 @@ export default function AdminAggregators() {
   useEffect(() => { load(); }, []);
 
   const toggleAgg = async (agg: any) => {
-    await fetch(`/api/admin/aggregators/${agg.id}`, {
+    await fetch(`${ADMIN_BASE}/aggregators/${agg.id}`, {
       method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: !agg.active }),
     });
     load();
@@ -198,7 +199,7 @@ export default function AdminAggregators() {
 
   const deleteOpAgg = async (id: number) => {
     if (!confirm("Supprimer cette association ?")) return;
-    await fetch(`/api/admin/operator-aggregators/${id}`, { method: "DELETE", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/operator-aggregators/${id}`, { method: "DELETE", credentials: "include" });
     load();
   };
 

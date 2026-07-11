@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -143,7 +144,7 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
     setSyncResult(null);
     setResolveError(null);
     try {
-      const r = await fetch(`/api/admin/transactions/${tx.id}/sync-gateway`, { method: "POST", credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/transactions/${tx.id}/sync-gateway`, { method: "POST", credentials: "include" });
       const d = await r.json();
       if (!r.ok) { setResolveError(d.error ?? "Erreur sync"); setSyncing(false); return; }
       setSyncResult({ gatewayStatus: d.gatewayStatus, credited: d.credited, aggregator: d.aggregator });
@@ -159,7 +160,7 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
     setResolving(true);
     setResolveError(null);
     try {
-      const r = await fetch(`/api/admin/transactions/${tx.id}/force-resolve`, { method: "POST", credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/transactions/${tx.id}/force-resolve`, { method: "POST", credentials: "include" });
       const d = await r.json();
       if (!r.ok) { setResolveError(d.error ?? "Erreur"); setResolving(false); return; }
       setResolved(true);
@@ -357,7 +358,7 @@ function AttemptModal({ attempt, onClose, onNoteUpdated }: { attempt: any; onClo
 
   const saveNote = async () => {
     setSaving(true);
-    await fetch(`/api/admin/attempts/${attempt.id}/note`, {
+    await fetch(`${ADMIN_BASE}/attempts/${attempt.id}/note`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -500,7 +501,7 @@ export default function AdminTransactions() {
   const loadTxs = async (p = page) => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(p), limit: String(LIMIT), type: filterType, status: filterStatus, countryCode: filterCountry, search, mode: filterMode });
-    const r = await fetch(`/api/admin/transactions?${params}`, { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/transactions?${params}`, { credentials: "include" });
     const d = await r.json();
     setTxs(d.transactions ?? []);
     setTotal(d.total ?? 0);
@@ -510,7 +511,7 @@ export default function AdminTransactions() {
   const loadAttempts = async (p = attemptsPage) => {
     setAttemptsLoading(true);
     const params = new URLSearchParams({ page: String(p), limit: String(ALIMIT), status: attemptsStatus, search: attemptsSearch });
-    const r = await fetch(`/api/admin/attempts?${params}`, { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/attempts?${params}`, { credentials: "include" });
     const d = await r.json();
     setAttempts(d.attempts ?? []);
     setAttemptsTotal(d.total ?? 0);

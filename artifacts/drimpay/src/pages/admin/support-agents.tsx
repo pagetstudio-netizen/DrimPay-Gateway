@@ -5,6 +5,7 @@ import {
   Eye, EyeOff, ShieldCheck, Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -46,7 +47,7 @@ export default function AdminSupportAgents() {
   const fetchAgents = async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${BASE}/api/admin/support-agents`, { credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/support-agents`, { credentials: "include" });
       const d = await r.json();
       setAgents(d.agents ?? []);
     } finally {
@@ -74,7 +75,7 @@ export default function AdminSupportAgents() {
     e.preventDefault();
     setCreating(true); setCreateError(""); setCreateOk(false);
     try {
-      const r = await fetch(`${BASE}/api/admin/support-agents`, {
+      const r = await fetch(`${ADMIN_BASE}/support-agents`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -94,7 +95,7 @@ export default function AdminSupportAgents() {
     if (!resetTarget) return;
     setResetting(true); setResetError(""); setResetOk(false);
     try {
-      const r = await fetch(`${BASE}/api/admin/support-agents/${resetTarget.id}/reset-password`, {
+      const r = await fetch(`${ADMIN_BASE}/support-agents/${resetTarget.id}/reset-password`, {
         method: "PATCH", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword }),
@@ -112,7 +113,7 @@ export default function AdminSupportAgents() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await fetch(`${BASE}/api/admin/support-agents/${deleteTarget.id}`, {
+      await fetch(`${ADMIN_BASE}/support-agents/${deleteTarget.id}`, {
         method: "DELETE", credentials: "include",
       });
       setDeleteTarget(null);

@@ -4,6 +4,7 @@ import { AdminLayout } from "./layout";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import RichEditor from "@/components/admin/rich-editor";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -95,7 +96,7 @@ function IndividualTab() {
     if (v.trim().length >= 2) {
       debounceRef.current = setTimeout(async () => {
         try {
-          const r = await fetch(`${BASE}/api/admin/merchants/search?q=${encodeURIComponent(v)}`, { credentials: "include" });
+          const r = await fetch(`${ADMIN_BASE}/merchants/search?q=${encodeURIComponent(v)}`, { credentials: "include" });
           const d = await r.json();
           setSuggestions(d.merchants ?? []);
           setShowSugg(true);
@@ -116,7 +117,7 @@ function IndividualTab() {
     if (!emailInput.trim() || !subject.trim() || isEmptyHtml(body)) return;
     setSending(true); setResult(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/message/individual`, {
+      const r = await fetch(`${ADMIN_BASE}/message/individual`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailInput.trim(), subject, body }),
@@ -253,7 +254,7 @@ function BroadcastTab() {
   const loadRecipients = async (f: string) => {
     setLoadingRecipients(true);
     try {
-      const r = await fetch(`${BASE}/api/admin/broadcast/recipients?filter=${f}`, { credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/broadcast/recipients?filter=${f}`, { credentials: "include" });
       const d = await r.json();
       setRecipients(d.recipients ?? []);
     } catch { setRecipients([]); }
@@ -268,7 +269,7 @@ function BroadcastTab() {
     const frozenBody    = body;
     setSending(true); setResult(null); setConfirm(false); setResumeError(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/broadcast`, {
+      const r = await fetch(`${ADMIN_BASE}/broadcast`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject: frozenSubject, body: frozenBody, filter }),
@@ -298,7 +299,7 @@ function BroadcastTab() {
     const snap = { subject: result.frozenSubject!, body: result.frozenBody!, recipients: result.remaining };
     setResuming(true); setResumeError(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/broadcast/resume-resend`, {
+      const r = await fetch(`${ADMIN_BASE}/broadcast/resume-resend`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(snap),
@@ -339,7 +340,7 @@ function BroadcastTab() {
     if (!pending) return;
     setResuming(true); setResumeError(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/broadcast/resume-resend`, {
+      const r = await fetch(`${ADMIN_BASE}/broadcast/resume-resend`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipients: pending.recipients, subject: pending.subject, body: pending.body }),

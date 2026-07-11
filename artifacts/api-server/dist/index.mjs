@@ -279638,6 +279638,7 @@ var contractUpload = (0, import_multer2.default)({
   }
 });
 var router13 = (0, import_express13.Router)();
+var AP = `/${process.env["ADMIN_ROUTE_SECRET"] ?? "admin"}`;
 var _adminProbeCounter = /* @__PURE__ */ new Map();
 var PROBE_ALERT_THRESHOLD = 3;
 var PROBE_ALERT_COOLDOWN_MS = 15 * 60 * 1e3;
@@ -279687,7 +279688,7 @@ async function logAdminAction(adminId, action, targetType, targetId, details, ip
   } catch {
   }
 }
-router13.get("/admin/stats", requireAdmin, async (req, res) => {
+router13.get(AP + "/stats", requireAdmin, async (req, res) => {
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -279836,7 +279837,7 @@ router13.get("/admin/stats", requireAdmin, async (req, res) => {
     statsResetAt: statsResetAt ? statsResetAt.toISOString() : null
   });
 });
-router13.post("/admin/stats/reset", requireAdmin, async (req, res) => {
+router13.post(AP + "/stats/reset", requireAdmin, async (req, res) => {
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const [balanceRow] = await db.select({ total: sum(walletsTable.balance) }).from(walletsTable);
   const currentBalance = String(balanceRow?.total ?? "0");
@@ -279847,7 +279848,7 @@ router13.post("/admin/stats/reset", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "RESET_STATS", "platform", "stats", `balance_snapshot=${currentBalance}`, req.ip);
   res.json({ ok: true, resetAt: now });
 });
-router13.get("/admin/chart-data", requireAdmin, async (_req, res) => {
+router13.get(AP + "/chart-data", requireAdmin, async (_req, res) => {
   const days = 30;
   const result = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -279873,7 +279874,7 @@ router13.get("/admin/chart-data", requireAdmin, async (_req, res) => {
   }
   res.json(result);
 });
-router13.get("/admin/merchants", requireAdmin, async (req, res) => {
+router13.get(AP + "/merchants", requireAdmin, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -279901,7 +279902,7 @@ router13.get("/admin/merchants", requireAdmin, async (req, res) => {
   }));
   res.json({ merchants: enriched, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.get("/admin/merchants/:id", requireAdmin, async (req, res) => {
+router13.get(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   if (!user) {
@@ -279916,7 +279917,7 @@ router13.get("/admin/merchants/:id", requireAdmin, async (req, res) => {
   const recentTx = await db.select().from(transactionsTable).where(eq(transactionsTable.userId, id)).orderBy(desc(transactionsTable.createdAt)).limit(20);
   res.json({ ...user, passwordHash: void 0, wallets, kyb, apiKeys, webhooks, allowedIps, recentTransactions: recentTx });
 });
-router13.put("/admin/merchants/:id", requireAdmin, async (req, res) => {
+router13.put(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { companyName, email: email3, country, role, payinFeePercent, payoutFeePercent } = req.body;
   const updateData = {};
@@ -279934,7 +279935,7 @@ router13.put("/admin/merchants/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_MERCHANT", "user", String(id), JSON.stringify(updateData), req.ip);
   res.json({ ok: true });
 });
-router13.put("/admin/merchants/:id/role", requireAdmin, async (req, res) => {
+router13.put(AP + "/merchants/:id/role", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) {
     res.status(400).json({ error: "Vous ne pouvez pas modifier votre propre r\xF4le" });
@@ -279955,15 +279956,15 @@ router13.put("/admin/merchants/:id/role", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, action, "user", String(id), `${user.email} \u2192 role: ${role}`, req.ip);
   res.json({ ok: true, role });
 });
-router13.post("/admin/merchants/:id/suspend", requireAdmin, async (req, res) => {
+router13.post(AP + "/merchants/:id/suspend", requireAdmin, async (req, res) => {
   res.json({ ok: true, message: "Compte suspendu (flag non impl\xE9ment\xE9 en DB, logu\xE9)" });
   await logAdminAction(req.session.userId, "SUSPEND_MERCHANT", "user", req.params.id, void 0, req.ip);
 });
-router13.post("/admin/merchants/:id/activate", requireAdmin, async (req, res) => {
+router13.post(AP + "/merchants/:id/activate", requireAdmin, async (req, res) => {
   res.json({ ok: true, message: "Compte r\xE9activ\xE9" });
   await logAdminAction(req.session.userId, "ACTIVATE_MERCHANT", "user", req.params.id, void 0, req.ip);
 });
-router13.post("/admin/merchants/:id/reset-password", requireAdmin, async (req, res) => {
+router13.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const newPassword = crypto7.randomBytes(8).toString("hex");
   const hash2 = await bcryptjs_default.hash(newPassword, 12);
@@ -279971,7 +279972,7 @@ router13.post("/admin/merchants/:id/reset-password", requireAdmin, async (req, r
   await logAdminAction(req.session.userId, "RESET_PASSWORD", "user", String(id), void 0, req.ip);
   res.json({ ok: true, newPassword });
 });
-router13.delete("/admin/merchants/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) {
     res.status(400).json({ error: "Cannot delete yourself" });
@@ -279981,7 +279982,7 @@ router13.delete("/admin/merchants/:id", requireAdmin, async (req, res) => {
   await db.delete(usersTable).where(eq(usersTable.id, id));
   res.json({ ok: true });
 });
-router13.put("/admin/merchants/:userId/wallets/:walletId", requireAdmin, async (req, res) => {
+router13.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (req, res) => {
   const walletId = parseInt(req.params.walletId);
   const { balance } = req.body;
   if (balance === void 0 || isNaN(parseFloat(balance))) {
@@ -279992,7 +279993,7 @@ router13.put("/admin/merchants/:userId/wallets/:walletId", requireAdmin, async (
   await logAdminAction(req.session.userId, "EDIT_WALLET_BALANCE", "wallet", String(walletId), `New balance: ${balance}`, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/kyb", requireAdmin, async (req, res) => {
+router13.get(AP + "/kyb", requireAdmin, async (req, res) => {
   const {
     status,
     page = "1",
@@ -280092,7 +280093,7 @@ router13.get("/admin/kyb", requireAdmin, async (req, res) => {
   const availableCountries = countries.map((c) => c.country).filter(Boolean).sort();
   res.json({ kyb: enriched, total: Number(total), page: pageNum, limit: limitNum, availableCountries });
 });
-router13.put("/admin/kyb/:id/approve", requireAdmin, async (req, res) => {
+router13.put(AP + "/kyb/:id/approve", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.update(kybSubmissionsTable).set({ status: "approved", reviewedAt: /* @__PURE__ */ new Date() }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "APPROVE_KYB", "kyb", String(id), void 0, req.ip);
@@ -280125,7 +280126,7 @@ router13.put("/admin/kyb/:id/approve", requireAdmin, async (req, res) => {
   }
   res.json({ ok: true });
 });
-router13.put("/admin/kyb/:id/reject", requireAdmin, async (req, res) => {
+router13.put(AP + "/kyb/:id/reject", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { reason } = req.body;
   if (!reason?.trim()) {
@@ -280163,7 +280164,7 @@ router13.put("/admin/kyb/:id/reject", requireAdmin, async (req, res) => {
   }
   res.json({ ok: true });
 });
-router13.put("/admin/kyb/:id/review", requireAdmin, async (req, res) => {
+router13.put(AP + "/kyb/:id/review", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.update(kybSubmissionsTable).set({ status: "under_review" }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "REVIEW_KYB", "kyb", String(id), void 0, req.ip);
@@ -280181,7 +280182,7 @@ var ALLOWED_DOC_FIELDS = [
   "documentLicense",
   "documentId"
 ];
-router13.get("/admin/kyb/:id/document/:field", requireAdmin, async (req, res) => {
+router13.get(AP + "/kyb/:id/document/:field", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { field } = req.params;
   if (!ALLOWED_DOC_FIELDS.includes(field)) {
@@ -280222,7 +280223,7 @@ router13.get("/admin/kyb/:id/document/:field", requireAdmin, async (req, res) =>
     res.status(404).json({ error: "Fichier introuvable dans le stockage" });
   }
 });
-router13.get("/admin/kyb/:id/contract", requireAdmin, async (req, res) => {
+router13.get(AP + "/kyb/:id/contract", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     res.status(400).json({ error: "ID invalide" });
@@ -280265,7 +280266,7 @@ router13.get("/admin/kyb/:id/contract", requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la g\xE9n\xE9ration du PDF", details: err?.message });
   }
 });
-router13.get("/admin/contract/info", requireAdmin, async (_req, res) => {
+router13.get(AP + "/contract/info", requireAdmin, async (_req, res) => {
   const info = await getContractTemplateInfo();
   if (!info) {
     res.json({ ok: false, error: "Fichier non trouv\xE9 dans Supabase" });
@@ -280293,7 +280294,7 @@ router13.post(
     }
   }
 );
-router13.get("/admin/contract/download", requireAdmin, async (_req, res) => {
+router13.get(AP + "/contract/download", requireAdmin, async (_req, res) => {
   try {
     const buf = await downloadContractTemplate();
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -280305,7 +280306,7 @@ router13.get("/admin/contract/download", requireAdmin, async (_req, res) => {
     res.status(404).json({ error: "Fichier introuvable" });
   }
 });
-router13.get("/admin/transactions", requireAdmin, async (req, res) => {
+router13.get(AP + "/transactions", requireAdmin, async (req, res) => {
   const { type, status, countryCode, operator, search, mode, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -280335,7 +280336,7 @@ router13.get("/admin/transactions", requireAdmin, async (req, res) => {
     limit: limitNum
   });
 });
-router13.post("/admin/transactions/:id/force-resolve", requireAdmin, async (req, res) => {
+router13.post(AP + "/transactions/:id/force-resolve", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -280374,7 +280375,7 @@ router13.post("/admin/transactions/:id/force-resolve", requireAdmin, async (req,
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
-router13.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req, res) => {
+router13.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -280434,7 +280435,7 @@ router13.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req, 
     res.status(500).json({ error: err?.message ?? "Erreur lors de la synchronisation" });
   }
 });
-router13.get("/admin/wallets", requireAdmin, async (_req, res) => {
+router13.get(AP + "/wallets", requireAdmin, async (_req, res) => {
   const wallets = await db.select().from(walletsTable).orderBy(walletsTable.countryCode);
   const userIds = [...new Set(wallets.map((w) => w.userId))];
   const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [];
@@ -280461,7 +280462,7 @@ router13.get("/admin/wallets", requireAdmin, async (_req, res) => {
   });
   res.json(byCountry);
 });
-router13.post("/admin/wallets/:id/credit", requireAdmin, async (req, res) => {
+router13.post(AP + "/wallets/:id/credit", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { amount, note } = req.body;
   if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
@@ -280472,7 +280473,7 @@ router13.post("/admin/wallets/:id/credit", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREDIT_WALLET", "wallet", String(id), `Amount: ${amount}, Note: ${note}`, req.ip);
   res.json({ ok: true });
 });
-router13.post("/admin/wallets/:id/debit", requireAdmin, async (req, res) => {
+router13.post(AP + "/wallets/:id/debit", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { amount, note } = req.body;
   if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
@@ -280488,12 +280489,12 @@ router13.post("/admin/wallets/:id/debit", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DEBIT_WALLET", "wallet", String(id), `Amount: ${amount}, Note: ${note}`, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/aggregators", requireAdmin, async (_req, res) => {
+router13.get(AP + "/aggregators", requireAdmin, async (_req, res) => {
   const aggs = await db.select().from(aggregatorsTable).orderBy(aggregatorsTable.name);
   const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.countryCode);
   res.json({ aggregators: aggs, operatorAggregators: opAggs });
 });
-router13.post("/admin/aggregators", requireAdmin, async (req, res) => {
+router13.post(AP + "/aggregators", requireAdmin, async (req, res) => {
   const { name: name2, code, description } = req.body;
   if (!name2 || !code) {
     res.status(400).json({ error: "name and code required" });
@@ -280503,7 +280504,7 @@ router13.post("/admin/aggregators", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_AGGREGATOR", "aggregator", agg.code, name2, req.ip);
   res.status(201).json(agg);
 });
-router13.put("/admin/aggregators/:id", requireAdmin, async (req, res) => {
+router13.put(AP + "/aggregators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { name: name2, description, active } = req.body;
   const data = {};
@@ -280514,7 +280515,7 @@ router13.put("/admin/aggregators/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_AGGREGATOR", "aggregator", String(id), JSON.stringify(data), req.ip);
   res.json({ ok: true });
 });
-router13.post("/admin/operator-aggregators", requireAdmin, async (req, res) => {
+router13.post(AP + "/operator-aggregators", requireAdmin, async (req, res) => {
   const { countryCode, operatorName, operatorType, aggregatorCode, dailyLimit, priority } = req.body;
   if (!countryCode || !operatorName || !aggregatorCode) {
     res.status(400).json({ error: "Missing required fields" });
@@ -280531,7 +280532,7 @@ router13.post("/admin/operator-aggregators", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_OPERATOR_AGG", "operator_aggregator", String(oa.id), `${countryCode}/${operatorName} \u2192 ${aggregatorCode}`, req.ip);
   res.status(201).json(oa);
 });
-router13.put("/admin/operator-aggregators/:id", requireAdmin, async (req, res) => {
+router13.put(AP + "/operator-aggregators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { aggregatorCode, dailyLimit, active, priority, blockDeposits, blockWithdrawals, blockApi, blockPaymentLinks, maintenanceMode } = req.body;
   const data = { updatedAt: /* @__PURE__ */ new Date() };
@@ -280548,19 +280549,19 @@ router13.put("/admin/operator-aggregators/:id", requireAdmin, async (req, res) =
   await logAdminAction(req.session.userId, "UPDATE_OPERATOR_AGG", "operator_aggregator", String(id), JSON.stringify(data), req.ip);
   res.json({ ok: true });
 });
-router13.delete("/admin/operator-aggregators/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/operator-aggregators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(operatorAggregatorsTable).where(eq(operatorAggregatorsTable.id, id));
   await logAdminAction(req.session.userId, "DELETE_OPERATOR_AGG", "operator_aggregator", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/operators", requireAdmin, async (_req, res) => {
+router13.get(AP + "/operators", requireAdmin, async (_req, res) => {
   const ops = await db.select().from(operatorsTable).orderBy(operatorsTable.countryCode, operatorsTable.name);
   const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.priority);
   const aggs = await db.select().from(aggregatorsTable).where(eq(aggregatorsTable.active, true)).orderBy(aggregatorsTable.name);
   res.json({ operators: ops, operatorAggregators: opAggs, aggregators: aggs });
 });
-router13.post("/admin/operators", requireAdmin, async (req, res) => {
+router13.post(AP + "/operators", requireAdmin, async (req, res) => {
   const { countryCode, name: name2, type, aggregatorCode, dailyLimit } = req.body;
   if (!countryCode || !name2 || !type) {
     res.status(400).json({ error: "Missing fields" });
@@ -280580,7 +280581,7 @@ router13.post("/admin/operators", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_OPERATOR", "operator", String(op.id), `${countryCode}/${name2}`, req.ip);
   res.status(201).json(op);
 });
-router13.put("/admin/operators/:id", requireAdmin, async (req, res) => {
+router13.put(AP + "/operators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { name: name2, type, active, aggregatorCode, dailyLimit, blockDeposits, blockWithdrawals, blockApi, blockPaymentLinks, maintenanceMode } = req.body;
   const [existing] = await db.select().from(operatorsTable).where(eq(operatorsTable.id, id));
@@ -280630,7 +280631,7 @@ router13.put("/admin/operators/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_OPERATOR", "operator", String(id), JSON.stringify(data), req.ip);
   res.json({ ok: true });
 });
-router13.post("/admin/operators/country-toggle", requireAdmin, async (req, res) => {
+router13.post(AP + "/operators/country-toggle", requireAdmin, async (req, res) => {
   const { countryCode, active } = req.body;
   if (!countryCode || active === void 0) {
     res.status(400).json({ error: "Missing fields" });
@@ -280641,7 +280642,7 @@ router13.post("/admin/operators/country-toggle", requireAdmin, async (req, res) 
   await logAdminAction(req.session.userId, active ? "BULK_ACTIVATE" : "BULK_DEACTIVATE", "operator", countryCode, `All operators in ${countryCode}`, req.ip);
   res.json({ ok: true });
 });
-router13.delete("/admin/operators/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/operators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(operatorsTable).where(eq(operatorsTable.id, id));
   if (existing) {
@@ -280654,7 +280655,7 @@ router13.delete("/admin/operators/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_OPERATOR", "operator", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/api-keys", requireAdmin, async (req, res) => {
+router13.get(AP + "/api-keys", requireAdmin, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -280681,13 +280682,13 @@ router13.get("/admin/api-keys", requireAdmin, async (req, res) => {
   }
   res.json({ keys: result, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.delete("/admin/api-keys/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/api-keys/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.update(apiKeysTable).set({ status: "revoked" }).where(eq(apiKeysTable.id, id));
   await logAdminAction(req.session.userId, "REVOKE_API_KEY", "api_key", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/api-keys/:id/details", requireAdmin, async (req, res) => {
+router13.get(AP + "/api-keys/:id/details", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -280712,7 +280713,7 @@ router13.get("/admin/api-keys/:id/details", requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Erreur serveur lors du chargement des d\xE9tails" });
   }
 });
-router13.post("/admin/api-keys/:id/regenerate", requireAdmin, async (req, res) => {
+router13.post(AP + "/api-keys/:id/regenerate", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [old] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id));
   if (!old) {
@@ -280728,7 +280729,7 @@ router13.post("/admin/api-keys/:id/regenerate", requireAdmin, async (req, res) =
   await logAdminAction(req.session.userId, "REGENERATE_API_KEY", "api_key", String(id), JSON.stringify({ oldPrefix: old.prefix, newPrefix: prefix }), req.ip);
   res.json({ ...newKey, rawKey });
 });
-router13.patch("/admin/api-keys/:id/status", requireAdmin, async (req, res) => {
+router13.patch(AP + "/api-keys/:id/status", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { status } = req.body;
   if (status !== "active" && status !== "revoked") {
@@ -280740,7 +280741,7 @@ router13.patch("/admin/api-keys/:id/status", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, action, "api_key", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/payment-links", requireAdmin, async (req, res) => {
+router13.get(AP + "/payment-links", requireAdmin, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -280757,19 +280758,19 @@ router13.get("/admin/payment-links", requireAdmin, async (req, res) => {
   }
   res.json({ links: result, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.delete("/admin/payment-links/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/payment-links/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(paymentLinksTable).where(eq(paymentLinksTable.id, id));
   await logAdminAction(req.session.userId, "DELETE_PAYMENT_LINK", "payment_link", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.put("/admin/payment-links/:id/suspend", requireAdmin, async (req, res) => {
+router13.put(AP + "/payment-links/:id/suspend", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.update(paymentLinksTable).set({ status: "inactive" }).where(eq(paymentLinksTable.id, id));
   await logAdminAction(req.session.userId, "SUSPEND_PAYMENT_LINK", "payment_link", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/logs", requireAdmin, async (req, res) => {
+router13.get(AP + "/logs", requireAdmin, async (req, res) => {
   const { page = "1", limit = "50", action } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -280784,12 +280785,12 @@ router13.get("/admin/logs", requireAdmin, async (req, res) => {
   const adminMap = Object.fromEntries(admins.map((a) => [a.id, a]));
   res.json({ logs: logs.map((l) => ({ ...l, admin: adminMap[l.adminId] ?? null })), total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.get("/admin/settings", requireAdmin, async (_req, res) => {
+router13.get(AP + "/settings", requireAdmin, async (_req, res) => {
   const settings = await db.select().from(adminSettingsTable);
   const map2 = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   res.json(map2);
 });
-router13.put("/admin/settings", requireAdmin, async (req, res) => {
+router13.put(AP + "/settings", requireAdmin, async (req, res) => {
   const updates = req.body;
   for (const [key, value] of Object.entries(updates)) {
     await db.insert(adminSettingsTable).values({ key, value }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value, updatedAt: /* @__PURE__ */ new Date() } });
@@ -280797,7 +280798,7 @@ router13.put("/admin/settings", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_SETTINGS", "settings", void 0, JSON.stringify(Object.keys(updates)), req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/blacklist", requireAdmin, async (req, res) => {
+router13.get(AP + "/blacklist", requireAdmin, async (req, res) => {
   const { search = "", page = "1", limit = "50" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -280819,7 +280820,7 @@ router13.get("/admin/blacklist", requireAdmin, async (req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(blacklistedPhonesTable);
   res.json({ items: rows, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.post("/admin/blacklist", requireAdmin, async (req, res) => {
+router13.post(AP + "/blacklist", requireAdmin, async (req, res) => {
   const schema = external_exports2.object({
     phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide"),
     reason: external_exports2.string().max(500).optional()
@@ -280845,7 +280846,7 @@ router13.post("/admin/blacklist", requireAdmin, async (req, res) => {
     }
   }
 });
-router13.delete("/admin/blacklist/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/blacklist/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [row] = await db.select().from(blacklistedPhonesTable).where(eq(blacklistedPhonesTable.id, id));
   if (!row) {
@@ -280859,7 +280860,7 @@ router13.delete("/admin/blacklist/:id", requireAdmin, async (req, res) => {
   });
   res.json({ ok: true });
 });
-router13.post("/admin/telegram/test", requireAdmin, async (req, res) => {
+router13.post(AP + "/telegram/test", requireAdmin, async (req, res) => {
   const { token, chatId } = req.body;
   if (!token || !chatId) {
     res.status(400).json({ error: "token et chatId requis" });
@@ -280868,7 +280869,7 @@ router13.post("/admin/telegram/test", requireAdmin, async (req, res) => {
   const result = await testConnection(token.trim(), chatId.trim());
   res.json(result);
 });
-router13.get("/admin/telegram/detect", requireAdmin, async (req, res) => {
+router13.get(AP + "/telegram/detect", requireAdmin, async (req, res) => {
   const token = req.query.token ?? "";
   if (!token) {
     res.status(400).json({ error: "token requis" });
@@ -280877,7 +280878,7 @@ router13.get("/admin/telegram/detect", requireAdmin, async (req, res) => {
   const result = await detectChatId(token.trim());
   res.json(result);
 });
-router13.get("/admin/attempts", requireAdmin, async (req, res) => {
+router13.get(AP + "/attempts", requireAdmin, async (req, res) => {
   const { page = "1", limit = "50", status, search } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -280913,7 +280914,7 @@ router13.get("/admin/attempts", requireAdmin, async (req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(paymentLinkAttemptsTable).where(where);
   res.json({ attempts, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.patch("/admin/attempts/:id/note", requireAdmin, async (req, res) => {
+router13.patch(AP + "/attempts/:id/note", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { note } = req.body;
   const [updated] = await db.update(paymentLinkAttemptsTable).set({ note: note ?? null, updatedAt: /* @__PURE__ */ new Date() }).where(eq(paymentLinkAttemptsTable.id, id)).returning();
@@ -280923,7 +280924,7 @@ router13.patch("/admin/attempts/:id/note", requireAdmin, async (req, res) => {
   }
   res.json({ ok: true });
 });
-router13.get("/admin/broadcast/recipients", requireAdmin, async (req, res) => {
+router13.get(AP + "/broadcast/recipients", requireAdmin, async (req, res) => {
   const { filter = "all" } = req.query;
   let users = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country, createdAt: usersTable.createdAt }).from(usersTable).where(eq(usersTable.role, "user")).orderBy(usersTable.companyName);
   if (filter === "kyb_approved") {
@@ -280941,7 +280942,7 @@ router13.get("/admin/broadcast/recipients", requireAdmin, async (req, res) => {
   }
   res.json({ recipients: users, total: users.length });
 });
-router13.post("/admin/message/individual", requireAdmin, async (req, res) => {
+router13.post(AP + "/message/individual", requireAdmin, async (req, res) => {
   const { email: email3, subject, body } = req.body;
   if (!email3?.trim() || !subject?.trim() || !body?.trim()) {
     res.status(400).json({ error: "Email, sujet et message sont requis." });
@@ -280963,7 +280964,7 @@ router13.post("/admin/message/individual", requireAdmin, async (req, res) => {
     res.status(500).json({ error: result.error ?? "\xC9chec de l'envoi." });
   }
 });
-router13.get("/admin/merchants/search", requireAdmin, async (req, res) => {
+router13.get(AP + "/merchants/search", requireAdmin, async (req, res) => {
   const { q = "" } = req.query;
   if (q.trim().length < 2) {
     res.json({ merchants: [] });
@@ -280976,7 +280977,7 @@ router13.get("/admin/merchants/search", requireAdmin, async (req, res) => {
   )).limit(8);
   res.json({ merchants });
 });
-router13.post("/admin/broadcast", requireAdmin, async (req, res) => {
+router13.post(AP + "/broadcast", requireAdmin, async (req, res) => {
   const { subject, body, filter = "all" } = req.body;
   if (!subject?.trim() || !body?.trim()) {
     res.status(400).json({ error: "Sujet et message requis." });
@@ -281037,7 +281038,7 @@ router13.post("/admin/broadcast", requireAdmin, async (req, res) => {
   );
   res.json({ ok: true, sent, failed, errors, quotaExceeded, remaining });
 });
-router13.post("/admin/broadcast/resume-resend", requireAdmin, async (req, res) => {
+router13.post(AP + "/broadcast/resume-resend", requireAdmin, async (req, res) => {
   const { recipients, subject, body } = req.body;
   if (!Array.isArray(recipients) || recipients.length === 0) {
     res.status(400).json({ error: "recipients requis." });
@@ -281075,11 +281076,11 @@ router13.post("/admin/broadcast/resume-resend", requireAdmin, async (req, res) =
   );
   res.json({ ok: true, sent, failed, errors });
 });
-router13.get("/admin/social-links", requireAdmin, async (req, res) => {
+router13.get(AP + "/social-links", requireAdmin, async (req, res) => {
   const rows = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
 });
-router13.post("/admin/social-links", requireAdmin, async (req, res) => {
+router13.post(AP + "/social-links", requireAdmin, async (req, res) => {
   const { name: name2, platform, url: url2, description, sortOrder } = req.body;
   if (!name2?.trim() || !platform?.trim() || !url2?.trim()) {
     res.status(400).json({ error: "name, platform et url sont requis" });
@@ -281095,7 +281096,7 @@ router13.post("/admin/social-links", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_SOCIAL_LINK", "social_link", String(row.id), name2, req.ip);
   res.json(row);
 });
-router13.put("/admin/social-links/:id", requireAdmin, async (req, res) => {
+router13.put(AP + "/social-links/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { name: name2, platform, url: url2, description, sortOrder } = req.body;
   if (!name2?.trim() || !platform?.trim() || !url2?.trim()) {
@@ -281110,7 +281111,7 @@ router13.put("/admin/social-links/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_SOCIAL_LINK", "social_link", String(id), name2, req.ip);
   res.json(row);
 });
-router13.patch("/admin/social-links/:id/toggle", requireAdmin, async (req, res) => {
+router13.patch(AP + "/social-links/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [current] = await db.select().from(socialLinksTable).where(eq(socialLinksTable.id, id));
   if (!current) {
@@ -281121,7 +281122,7 @@ router13.patch("/admin/social-links/:id/toggle", requireAdmin, async (req, res) 
   await logAdminAction(req.session.userId, row.active ? "ENABLE_SOCIAL_LINK" : "DISABLE_SOCIAL_LINK", "social_link", String(id), current.name, req.ip);
   res.json(row);
 });
-router13.delete("/admin/social-links/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/social-links/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [deleted] = await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id)).returning();
   if (!deleted) {
@@ -281131,11 +281132,11 @@ router13.delete("/admin/social-links/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_SOCIAL_LINK", "social_link", String(id), deleted.name, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/jobs", requireAdmin, async (req, res) => {
+router13.get(AP + "/jobs", requireAdmin, async (req, res) => {
   const rows = await db.select().from(jobsTable).orderBy(desc(jobsTable.postedAt));
   res.json(rows);
 });
-router13.post("/admin/jobs", requireAdmin, async (req, res) => {
+router13.post(AP + "/jobs", requireAdmin, async (req, res) => {
   const { title, department, location: location2, type, remote, description, requirements, responsibilities, active } = req.body;
   if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
@@ -281155,7 +281156,7 @@ router13.post("/admin/jobs", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_JOB", "job", String(row.id), title, req.ip);
   res.json(row);
 });
-router13.put("/admin/jobs/:id", requireAdmin, async (req, res) => {
+router13.put(AP + "/jobs/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { title, department, location: location2, type, remote, description, requirements, responsibilities, active } = req.body;
   if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
@@ -281180,7 +281181,7 @@ router13.put("/admin/jobs/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_JOB", "job", String(id), title, req.ip);
   res.json(row);
 });
-router13.patch("/admin/jobs/:id/toggle", requireAdmin, async (req, res) => {
+router13.patch(AP + "/jobs/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [current] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
   if (!current) {
@@ -281191,7 +281192,7 @@ router13.patch("/admin/jobs/:id/toggle", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, row.active ? "ENABLE_JOB" : "DISABLE_JOB", "job", String(id), current.title, req.ip);
   res.json(row);
 });
-router13.delete("/admin/jobs/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/jobs/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [deleted] = await db.delete(jobsTable).where(eq(jobsTable.id, id)).returning();
   if (!deleted) {
@@ -281201,7 +281202,7 @@ router13.delete("/admin/jobs/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_JOB", "job", String(id), deleted.title, req.ip);
   res.json({ ok: true });
 });
-router13.post("/admin/telegram/save", requireAdmin, async (req, res) => {
+router13.post(AP + "/telegram/save", requireAdmin, async (req, res) => {
   const { token, chatId } = req.body;
   const updates = {};
   if (token !== void 0) updates["telegram_bot_token"] = token.trim();
@@ -281213,7 +281214,7 @@ router13.post("/admin/telegram/save", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_TELEGRAM_CONFIG", "settings", void 0, void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get("/admin/support-agents", requireAdmin, async (req, res) => {
+router13.get(AP + "/support-agents", requireAdmin, async (req, res) => {
   const agents = await db.select({
     id: supportUsersTable.id,
     email: supportUsersTable.email,
@@ -281223,7 +281224,7 @@ router13.get("/admin/support-agents", requireAdmin, async (req, res) => {
   }).from(supportUsersTable).orderBy(asc(supportUsersTable.createdAt));
   res.json({ agents });
 });
-router13.post("/admin/support-agents", requireAdmin, async (req, res) => {
+router13.post(AP + "/support-agents", requireAdmin, async (req, res) => {
   const schema = external_exports2.object({
     email: external_exports2.string().email("Email invalide"),
     name: external_exports2.string().min(2, "Nom requis"),
@@ -281251,7 +281252,7 @@ router13.post("/admin/support-agents", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_SUPPORT_AGENT", "support_user", String(agent.id), `Created support agent: ${email3}`, req.ip);
   res.status(201).json({ success: true, agent });
 });
-router13.patch("/admin/support-agents/:id/reset-password", requireAdmin, async (req, res) => {
+router13.patch(AP + "/support-agents/:id/reset-password", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ newPassword: external_exports2.string().min(8, "Mot de passe : 8 caract\xE8res minimum") });
   const parsed = schema.safeParse(req.body);
@@ -281269,7 +281270,7 @@ router13.patch("/admin/support-agents/:id/reset-password", requireAdmin, async (
   await logAdminAction(req.session.userId, "RESET_SUPPORT_AGENT_PASSWORD", "support_user", String(id), void 0, req.ip);
   res.json({ success: true });
 });
-router13.delete("/admin/support-agents/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/support-agents/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [agent] = await db.select({ id: supportUsersTable.id, email: supportUsersTable.email }).from(supportUsersTable).where(eq(supportUsersTable.id, id));
   if (!agent) {
@@ -281288,11 +281289,11 @@ var bannerImageUpload = (0, import_multer2.default)({
     cb(null, ok);
   }
 });
-router13.get("/admin/global-banners", requireAdmin, async (_req, res) => {
+router13.get(AP + "/global-banners", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(globalBannersTable).orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
-router13.post("/admin/global-banners/upload-image", requireAdmin, bannerImageUpload.single("image"), async (req, res) => {
+router13.post(AP + "/global-banners/upload-image", requireAdmin, bannerImageUpload.single("image"), async (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: "Aucun fichier re\xE7u" });
     return;
@@ -281313,7 +281314,7 @@ var bannerCreateSchema = external_exports2.object({
   imageUrl: external_exports2.string().optional(),
   active: external_exports2.boolean().default(true)
 });
-router13.post("/admin/global-banners", requireAdmin, async (req, res) => {
+router13.post(AP + "/global-banners", requireAdmin, async (req, res) => {
   const parsed = bannerCreateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.issues });
@@ -281326,7 +281327,7 @@ router13.post("/admin/global-banners", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_BANNER", "global_banner", String(banner.id), parsed.data.message, req.ip);
   res.json(banner);
 });
-router13.patch("/admin/global-banners/:id", requireAdmin, async (req, res) => {
+router13.patch(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -281342,7 +281343,7 @@ router13.patch("/admin/global-banners/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_BANNER", "global_banner", String(id), parsed.data.message, req.ip);
   res.json(updated);
 });
-router13.patch("/admin/global-banners/:id/toggle", requireAdmin, async (req, res) => {
+router13.patch(AP + "/global-banners/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -281353,7 +281354,7 @@ router13.patch("/admin/global-banners/:id/toggle", requireAdmin, async (req, res
   await logAdminAction(req.session.userId, updated.active ? "ENABLE_BANNER" : "DISABLE_BANNER", "global_banner", String(id), void 0, req.ip);
   res.json(updated);
 });
-router13.delete("/admin/global-banners/:id", requireAdmin, async (req, res) => {
+router13.delete(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select({ id: globalBannersTable.id }).from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -282379,6 +282380,7 @@ init_src();
 init_schema2();
 init_drizzle_orm();
 var router18 = (0, import_express18.Router)();
+var AP2 = `/${process.env["ADMIN_ROUTE_SECRET"] ?? "admin"}`;
 function requireAdmin2(req, res, next) {
   if (!req.session?.userId || req.session?.role !== "admin") {
     res.status(403).json({ error: "Acc\xE8s refus\xE9" });
@@ -282386,7 +282388,7 @@ function requireAdmin2(req, res, next) {
   }
   next();
 }
-router18.get("/admin/security/events", requireAdmin2, async (req, res) => {
+router18.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
   const limit = Math.min(parseInt(String(req.query.limit ?? "50")), 200);
   const offset = parseInt(String(req.query.offset ?? "0"));
   const riskLevel = req.query.riskLevel;
@@ -282411,11 +282413,11 @@ router18.get("/admin/security/events", requireAdmin2, async (req, res) => {
   }).from(securityEventsTable);
   res.json({ events: rows, stats });
 });
-router18.get("/admin/security/blocked-ips", requireAdmin2, async (req, res) => {
+router18.get(AP2 + "/security/blocked-ips", requireAdmin2, async (req, res) => {
   const rows = await db.select().from(blockedIpsTable).orderBy(desc(blockedIpsTable.createdAt));
   res.json(rows);
 });
-router18.post("/admin/security/block-ip", requireAdmin2, async (req, res) => {
+router18.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
   const schema = external_exports2.object({
     ip: external_exports2.string().min(3).max(64),
     reason: external_exports2.string().min(1).max(500),
@@ -282444,7 +282446,7 @@ router18.post("/admin/security/block-ip", requireAdmin2, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router18.delete("/admin/security/blocked-ips/:id", requireAdmin2, async (req, res) => {
+router18.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     res.status(400).json({ error: "ID invalide" });
@@ -282612,7 +282614,11 @@ app.get("/health", (_req, res) => {
 app.use(honeypotMiddleware);
 app.use(ipBlockMiddleware);
 app.use(globalRateLimiter);
-app.use("/api/admin", adminRateLimiter, adminGeoMiddleware);
+var ADMIN_ROUTE_PREFIX = process.env["ADMIN_ROUTE_SECRET"] ?? "admin";
+app.use(`/api/${ADMIN_ROUTE_PREFIX}`, adminRateLimiter, adminGeoMiddleware);
+if (ADMIN_ROUTE_PREFIX !== "admin") {
+  app.use("/api/admin", (_req, res) => res.status(404).json({ error: "Endpoint not found" }));
+}
 app.use(subdomainMiddleware);
 app.use("/api", routes_default);
 app.use("/api", (_req, res) => {

@@ -5,6 +5,7 @@ import {
   Save, X, ExternalLink, GripVertical, Loader2, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -67,7 +68,7 @@ export default function AdminSocialLinks() {
 
   const load = () => {
     setLoading(true);
-    fetch(`${BASE}/api/admin/social-links`, { credentials: "include" })
+    fetch(`${ADMIN_BASE}/social-links`, { credentials: "include" })
       .then(r => r.json())
       .then(d => setLinks(Array.isArray(d) ? d : []))
       .catch(() => setLinks([]))
@@ -105,8 +106,8 @@ export default function AdminSocialLinks() {
     setSaving(true);
     try {
       const url = editId
-        ? `${BASE}/api/admin/social-links/${editId}`
-        : `${BASE}/api/admin/social-links`;
+        ? `${ADMIN_BASE}/social-links/${editId}`
+        : `${ADMIN_BASE}/social-links`;
       const method = editId ? "PUT" : "POST";
       const r = await fetch(url, {
         method,
@@ -128,7 +129,7 @@ export default function AdminSocialLinks() {
   const handleToggle = async (link: SocialLink) => {
     setToggling(link.id);
     try {
-      const r = await fetch(`${BASE}/api/admin/social-links/${link.id}/toggle`, {
+      const r = await fetch(`${ADMIN_BASE}/social-links/${link.id}/toggle`, {
         method: "PATCH",
         credentials: "include",
       });
@@ -146,7 +147,7 @@ export default function AdminSocialLinks() {
     if (!confirm("Supprimer ce lien ?")) return;
     setDeleting(id);
     try {
-      const r = await fetch(`${BASE}/api/admin/social-links/${id}`, {
+      const r = await fetch(`${ADMIN_BASE}/social-links/${id}`, {
         method: "DELETE",
         credentials: "include",
       });

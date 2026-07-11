@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 function fmt(d: string | null) {
   if (!d) return "—";
@@ -84,7 +85,7 @@ function DetailsPanel({ keyId, onClose, onStatusChange }: {
     setNewKey(null);
     setFetchError(null);
     setDetails(null);
-    fetch(`/api/admin/api-keys/${keyId}/details`, { credentials: "include" })
+    fetch(`${ADMIN_BASE}/api-keys/${keyId}/details`, { credentials: "include" })
       .then(async r => {
         const d = await r.json();
         if (!r.ok || !d.key) {
@@ -101,7 +102,7 @@ function DetailsPanel({ keyId, onClose, onStatusChange }: {
     if (!details) return;
     const newStatus = details.key.status === "active" ? "revoked" : "active";
     setBlocking(true);
-    await fetch(`/api/admin/api-keys/${keyId}/status`, {
+    await fetch(`${ADMIN_BASE}/api-keys/${keyId}/status`, {
       method: "PATCH", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
@@ -114,14 +115,14 @@ function DetailsPanel({ keyId, onClose, onStatusChange }: {
   async function regenerate() {
     if (!confirm("Régénérer cette clé ? L'ancienne sera immédiatement révoquée.")) return;
     setRegenerating(true);
-    const r = await fetch(`/api/admin/api-keys/${keyId}/regenerate`, {
+    const r = await fetch(`${ADMIN_BASE}/api-keys/${keyId}/regenerate`, {
       method: "POST", credentials: "include",
     });
     const data = await r.json();
     setNewKey(data.rawKey ?? null);
     setRegenerating(false);
     onStatusChange();
-    fetch(`/api/admin/api-keys/${data.id}/details`, { credentials: "include" })
+    fetch(`${ADMIN_BASE}/api-keys/${data.id}/details`, { credentials: "include" })
       .then(r2 => r2.json()).then(d => setDetails(d));
   }
 
@@ -303,7 +304,7 @@ export default function AdminApiKeys() {
   function load(p = page, q = search) {
     setLoading(true);
     const params = new URLSearchParams({ page: String(p), limit: String(limit), ...(q ? { search: q } : {}) });
-    fetch(`/api/admin/api-keys?${params}`, { credentials: "include" })
+    fetch(`${ADMIN_BASE}/api-keys?${params}`, { credentials: "include" })
       .then(r => r.json())
       .then(d => { setKeys(d.keys ?? []); setTotal(d.total ?? 0); setLoading(false); });
   }
@@ -317,7 +318,7 @@ export default function AdminApiKeys() {
   async function toggleStatus(key: ApiKey) {
     const newStatus = key.status === "active" ? "revoked" : "active";
     setActionLoading(key.id);
-    await fetch(`/api/admin/api-keys/${key.id}/status`, {
+    await fetch(`${ADMIN_BASE}/api-keys/${key.id}/status`, {
       method: "PATCH", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),

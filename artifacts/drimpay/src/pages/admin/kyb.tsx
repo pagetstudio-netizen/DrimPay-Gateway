@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -47,7 +48,7 @@ function DocCard({ kybId, field, filePath }: { kybId: number; field: string; fil
   const Icon = meta?.icon ?? FileText;
   const label = meta?.label ?? field;
   const basename = filePath.split(/[\\/]/).pop() ?? filePath;
-  const viewUrl = `${BASE}/api/admin/kyb/${kybId}/document/${field}`;
+  const viewUrl = `${ADMIN_BASE}/kyb/${kybId}/document/${field}`;
   const dlUrl = `${viewUrl}?download=1`;
 
   return (
@@ -114,14 +115,14 @@ function KybDetailModal({ kyb, onClose, onRefresh }: { kyb: any; onClose: () => 
 
   const approve = async () => {
     setLoading(true); setActionError(null);
-    const r = await fetch(`${BASE}/api/admin/kyb/${kyb.id}/approve`, { method: "PUT", credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/kyb/${kyb.id}/approve`, { method: "PUT", credentials: "include" });
     if (r.ok) { setActionSuccess("Dossier approuvé — un email a été envoyé au marchand."); setTimeout(() => { onRefresh(); onClose(); }, 1800); }
     else { setActionError("Erreur lors de l'approbation."); setLoading(false); }
   };
   const reject = async () => {
     if (!rejReason.trim()) { setActionError("La raison du rejet est obligatoire avant de confirmer."); return; }
     setLoading(true); setActionError(null);
-    const r = await fetch(`${BASE}/api/admin/kyb/${kyb.id}/reject`, {
+    const r = await fetch(`${ADMIN_BASE}/kyb/${kyb.id}/reject`, {
       method: "PUT", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason: rejReason }),
@@ -130,7 +131,7 @@ function KybDetailModal({ kyb, onClose, onRefresh }: { kyb: any; onClose: () => 
     else { const d = await r.json(); setActionError(d.error ?? "Erreur lors du rejet."); setLoading(false); }
   };
   const markReview = async () => {
-    await fetch(`${BASE}/api/admin/kyb/${kyb.id}/review`, { method: "PUT", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/kyb/${kyb.id}/review`, { method: "PUT", credentials: "include" });
     onRefresh(); onClose();
   };
 
@@ -259,7 +260,7 @@ function KybDetailModal({ kyb, onClose, onRefresh }: { kyb: any; onClose: () => 
             {(kyb.contractAccepted || kyb.contractSignedAt) ? (
               <div className="mt-4 pt-3 border-t border-gray-100">
                 <a
-                  href={`${BASE}/api/admin/kyb/${kyb.id}/contract`}
+                  href={`${ADMIN_BASE}/kyb/${kyb.id}/contract`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
@@ -394,7 +395,7 @@ export default function AdminKyb() {
       sortDir: opts?.sd ?? sortDir,
     });
     try {
-      const r = await fetch(`${BASE}/api/admin/kyb?${params}`, { credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/kyb?${params}`, { credentials: "include" });
       const d = await r.json();
       setKybs(d.kyb ?? []);
       setTotal(d.total ?? 0);

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -28,7 +29,7 @@ function AddModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => vo
     const normalized = phone.replace(/\s+/g, "").trim();
     if (normalized.length < 6) { setError("Numéro trop court (minimum 6 chiffres)."); return; }
     setLoading(true); setError("");
-    const r = await fetch(`${BASE}/api/admin/blacklist`, {
+    const r = await fetch(`${ADMIN_BASE}/blacklist`, {
       method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: normalized, reason: reason.trim() || undefined }),
@@ -120,7 +121,7 @@ function ConfirmDeleteModal({ entry, onClose, onDeleted }: { entry: BlacklistEnt
 
   const confirm = async () => {
     setLoading(true);
-    await fetch(`${BASE}/api/admin/blacklist/${entry.id}`, { method: "DELETE", credentials: "include" });
+    await fetch(`${ADMIN_BASE}/blacklist/${entry.id}`, { method: "DELETE", credentials: "include" });
     onDeleted(); onClose();
   };
 
@@ -173,7 +174,7 @@ export default function AdminBlacklist() {
     const s = opts?.s ?? search;
     const params = new URLSearchParams({ page: String(p), limit: String(LIMIT), search: s });
     try {
-      const r = await fetch(`${BASE}/api/admin/blacklist?${params}`, { credentials: "include" });
+      const r = await fetch(`${ADMIN_BASE}/blacklist?${params}`, { credentials: "include" });
       const d = await r.json();
       setItems(d.items ?? []);
       setTotal(d.total ?? 0);

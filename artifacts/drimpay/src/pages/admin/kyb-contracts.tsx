@@ -3,11 +3,12 @@ import { FileText, Search, RefreshCw, Eye, Download, ChevronLeft, ChevronRight, 
 import { AdminLayout } from "./layout";
 import { cn, shortId } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function downloadContract(kybId: number) {
-  window.open(`${BASE}/api/admin/kyb/${kybId}/contract`, "_blank");
+  window.open(`${ADMIN_BASE}/kyb/${kybId}/contract`, "_blank");
 }
 
 function ContractModal({ kyb, onClose }: { kyb: any; onClose: () => void }) {
@@ -69,7 +70,7 @@ export default function AdminKybContracts() {
 
   const load = async (p = page) => {
     setLoading(true);
-    const r = await fetch(`/api/admin/kyb?page=${p}&limit=${LIMIT}&status=approved`, { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/kyb?page=${p}&limit=${LIMIT}&status=approved`, { credentials: "include" });
     const d = await r.json();
     const withContract = (d.kyb ?? []).filter((k: any) => k.contractAccepted || k.contractSignedAt);
     setContracts(withContract);

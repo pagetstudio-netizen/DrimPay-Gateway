@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
+import { ADMIN_BASE } from "@/lib/admin-api";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -78,7 +79,7 @@ function SmtpSection({ allValues }: { allValues: Record<string, string> }) {
   const save = async () => {
     setSaving(true); setStatus(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/settings`, {
+      const r = await fetch(`${ADMIN_BASE}/settings`, {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ smtp_host: host, smtp_port: port, smtp_user: user, smtp_pass: pass, smtp_from: from }),
@@ -172,7 +173,7 @@ function WhatsAppSection({ allValues }: { allValues: Record<string, string> }) {
   const save = async () => {
     setSaving(true); setStatus(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/settings`, {
+      const r = await fetch(`${ADMIN_BASE}/settings`, {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ whatsapp_instance_id: instanceId, whatsapp_token: token, whatsapp_admin_number: adminNumber }),
@@ -258,7 +259,7 @@ function TelegramSection({ allValues }: { allValues: Record<string, string> }) {
     setSaving(true);
     setStatus(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/telegram/save`, {
+      const r = await fetch(`${ADMIN_BASE}/telegram/save`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -278,7 +279,7 @@ function TelegramSection({ allValues }: { allValues: Record<string, string> }) {
     setTesting(true);
     setStatus(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/telegram/test`, {
+      const r = await fetch(`${ADMIN_BASE}/telegram/test`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -298,7 +299,7 @@ function TelegramSection({ allValues }: { allValues: Record<string, string> }) {
     setDetecting(true);
     setStatus(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/telegram/detect?token=${encodeURIComponent(token)}`, {
+      const r = await fetch(`${ADMIN_BASE}/telegram/detect?token=${encodeURIComponent(token)}`, {
         credentials: "include",
       });
       const d = await r.json();
@@ -441,7 +442,7 @@ function ContactInfoSection() {
   const save = async (nextEmails: string[], nextPhones: string[]) => {
     setSaving(true); setStatus(null);
     try {
-      const r = await fetch(`${BASE}/api/admin/settings`, {
+      const r = await fetch(`${ADMIN_BASE}/settings`, {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contact_emails: JSON.stringify(nextEmails), contact_phones: JSON.stringify(nextPhones) }),
@@ -572,7 +573,7 @@ export default function AdminSettings() {
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch(`${BASE}/api/admin/settings`, { credentials: "include" });
+    const r = await fetch(`${ADMIN_BASE}/settings`, { credentials: "include" });
     const d = await r.json();
     setValues(d ?? {});
     setLoading(false);
@@ -582,7 +583,7 @@ export default function AdminSettings() {
 
   const save = async () => {
     setSaving(true);
-    await fetch(`${BASE}/api/admin/settings`, {
+    await fetch(`${ADMIN_BASE}/settings`, {
       method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
     });
     setSaved(true);
