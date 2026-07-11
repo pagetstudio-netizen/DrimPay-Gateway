@@ -18,6 +18,8 @@ export interface SoftPayParams {
   fullName: string;
   email: string;
   address?: string;
+  /** Code OTP/USSD généré par le client sur son téléphone (requis pour certains opérateurs Orange Money). */
+  otp?: string;
 }
 
 export interface SoftPayOperatorConfig {
@@ -25,6 +27,16 @@ export interface SoftPayOperatorConfig {
   country: string;
   label: string;
   buildPayload: (p: SoftPayParams) => Record<string, string>;
+  /**
+   * true si cet opérateur exige que le client compose un code USSD sur son téléphone
+   * pour obtenir un code de paiement à saisir avant l'appel SoftPay (ex: Orange Money CI/SN/BF).
+   */
+  requiresOtp?: boolean;
+  /**
+   * true si cet opérateur ne fait pas de push USSD mais renvoie une URL de paiement
+   * (ex: Wave) que le client doit ouvrir dans son application ou scanner en QR code.
+   */
+  isRedirectFlow?: boolean;
 }
 
 // ─── Operator registry ────────────────────────────────────────────────────────
@@ -166,10 +178,12 @@ export const SOFTPAY_OPERATOR_MAP: Record<string, SoftPayOperatorConfig> = {
     slug:    "orange-money-ci",
     country: "CI",
     label:   "Orange Money (CI)",
+    requiresOtp: true,
     buildPayload: (p) => ({
       orange_money_ci_customer_fullname: p.fullName,
       orange_money_ci_email:             p.email,
       orange_money_ci_phone_number:      p.phone,
+      orange_money_ci_otp:               p.otp ?? "",
       payment_token:                     p.paymentToken,
     }),
   },
@@ -177,10 +191,12 @@ export const SOFTPAY_OPERATOR_MAP: Record<string, SoftPayOperatorConfig> = {
     slug:    "orange-money-ci",
     country: "CI",
     label:   "Orange Money (CI)",
+    requiresOtp: true,
     buildPayload: (p) => ({
       orange_money_ci_customer_fullname: p.fullName,
       orange_money_ci_email:             p.email,
       orange_money_ci_phone_number:      p.phone,
+      orange_money_ci_otp:               p.otp ?? "",
       payment_token:                     p.paymentToken,
     }),
   },
@@ -188,11 +204,12 @@ export const SOFTPAY_OPERATOR_MAP: Record<string, SoftPayOperatorConfig> = {
     slug:    "wave-ci",
     country: "CI",
     label:   "Wave (CI)",
+    isRedirectFlow: true,
     buildPayload: (p) => ({
-      wave_ci_customer_fullname: p.fullName,
-      wave_ci_email:             p.email,
-      wave_ci_phone_number:      p.phone,
-      payment_token:             p.paymentToken,
+      wave_ci_fullName:      p.fullName,
+      wave_ci_email:         p.email,
+      wave_ci_phone:         p.phone,
+      wave_ci_payment_token: p.paymentToken,
     }),
   },
   "moov money|CI": {
@@ -223,10 +240,12 @@ export const SOFTPAY_OPERATOR_MAP: Record<string, SoftPayOperatorConfig> = {
     slug:    "orange-money-senegal",
     country: "SN",
     label:   "Orange Money (Sénégal)",
+    requiresOtp: true,
     buildPayload: (p) => ({
       orange_money_sn_customer_fullname: p.fullName,
       orange_money_sn_email:             p.email,
       orange_money_sn_phone_number:      p.phone,
+      orange_money_sn_otp:               p.otp ?? "",
       payment_token:                     p.paymentToken,
     }),
   },
@@ -234,10 +253,12 @@ export const SOFTPAY_OPERATOR_MAP: Record<string, SoftPayOperatorConfig> = {
     slug:    "orange-money-senegal",
     country: "SN",
     label:   "Orange Money (Sénégal)",
+    requiresOtp: true,
     buildPayload: (p) => ({
       orange_money_sn_customer_fullname: p.fullName,
       orange_money_sn_email:             p.email,
       orange_money_sn_phone_number:      p.phone,
+      orange_money_sn_otp:               p.otp ?? "",
       payment_token:                     p.paymentToken,
     }),
   },
@@ -245,11 +266,12 @@ export const SOFTPAY_OPERATOR_MAP: Record<string, SoftPayOperatorConfig> = {
     slug:    "wave-senegal",
     country: "SN",
     label:   "Wave (Sénégal)",
+    isRedirectFlow: true,
     buildPayload: (p) => ({
-      wave_sn_customer_fullname: p.fullName,
-      wave_sn_email:             p.email,
-      wave_sn_phone_number:      p.phone,
-      payment_token:             p.paymentToken,
+      wave_senegal_fullName:      p.fullName,
+      wave_senegal_email:         p.email,
+      wave_senegal_phone:         p.phone,
+      wave_senegal_payment_token: p.paymentToken,
     }),
   },
 
@@ -304,22 +326,26 @@ export const SOFTPAY_OPERATOR_MAP: Record<string, SoftPayOperatorConfig> = {
     slug:    "orange-money-burkina",
     country: "BF",
     label:   "Orange Money (Burkina Faso)",
+    requiresOtp: true,
     buildPayload: (p) => ({
-      orange_money_bf_customer_fullname: p.fullName,
-      orange_money_bf_email:             p.email,
-      orange_money_bf_phone_number:      p.phone,
-      payment_token:                     p.paymentToken,
+      name_bf:        p.fullName,
+      email_bf:       p.email,
+      phone_bf:       p.phone,
+      otp_code:       p.otp ?? "",
+      payment_token:  p.paymentToken,
     }),
   },
   "orange|BF": {
     slug:    "orange-money-burkina",
     country: "BF",
     label:   "Orange Money (Burkina Faso)",
+    requiresOtp: true,
     buildPayload: (p) => ({
-      orange_money_bf_customer_fullname: p.fullName,
-      orange_money_bf_email:             p.email,
-      orange_money_bf_phone_number:      p.phone,
-      payment_token:                     p.paymentToken,
+      name_bf:        p.fullName,
+      email_bf:       p.email,
+      phone_bf:       p.phone,
+      otp_code:       p.otp ?? "",
+      payment_token:  p.paymentToken,
     }),
   },
   "moov money|BF": {

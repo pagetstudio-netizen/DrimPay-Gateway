@@ -21,6 +21,8 @@ const SECTIONS = [
   { id: "statuses", label: "Transaction Statuses", group: "API REFERENCE" },
   { id: "errors", label: "Error Codes", group: "API REFERENCE" },
   { id: "limits", label: "Rate Limiting", group: "API REFERENCE" },
+  { id: "orange-otp", label: "Orange Money OTP", group: "API REFERENCE" },
+  { id: "wave-flow", label: "Wave Payment Flow", group: "API REFERENCE" },
   { id: "initiate", label: "POST — Initiate Pay-in", group: "ENDPOINTS" },
   { id: "status-check", label: "GET — Check Status", group: "ENDPOINTS" },
   { id: "list", label: "GET — List Transactions", group: "ENDPOINTS" },
@@ -842,6 +844,36 @@ def drimpay_webhook():
               </Alert>
             </section>
 
+            {/* Wave Payment Flow */}
+            <section id="wave-flow" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-4">Wave Payment Flow</h2>
+              <p className="text-muted-foreground mb-4">
+                Wave (<strong className="text-foreground">Côte d'Ivoire</strong> and <strong className="text-foreground">Sénégal</strong>) does not use a USSD push prompt like other operators. Instead, the API responds with a <code className="font-mono text-xs text-primary">payment_url</code> pointing to a Wave checkout page that the customer must open in the Wave app (or scan as a QR code) to confirm the payment.
+              </p>
+              <Alert type="info" title="No OTP, no push — just a link">
+                There is nothing to enter on your side: display the <code className="font-mono text-xs">payment_url</code> as a button (deep-links straight into the Wave app on mobile) and/or render it as a QR code for desktop checkouts. Keep polling <code className="font-mono text-xs">GET /v2/payin/{"{reference}"}</code> — the status flips to <Badge color="green">success</Badge> once the customer confirms inside Wave.
+              </Alert>
+              <h3 className="text-base font-semibold mb-3 mt-6">Response <Badge color="green">201 Created</Badge></h3>
+              <CodeBlock lang="json" code={`{
+  "reference": "CI-A1B2C3D4E5F67890ABCD",
+  "order_id": "ORDER-20260711-002",
+  "status": "pending",
+  "amount": 5000,
+  "fee": 150,
+  "net_amount": 4850,
+  "currency": "XOF",
+  "country_code": "CI",
+  "operator": "wave",
+  "phone": "+2250700000000",
+  "mode": "live",
+  "payment_url": "https://pay.wave.com/c/cos-1cj669hbr1350?a=5000&c=XOF&m=DRIMPAY",
+  "expires_at": "2026-07-11T08:35:00.000Z",
+  "message": "Ouvrez ce lien dans l'application Wave (CI) pour finaliser le paiement",
+  "created_at": "2026-07-11T08:30:00.000Z"
+}`} />
+              <p className="text-muted-foreground mt-4 mb-2 text-sm">Same behaviour for Wave Sénégal — only <code className="font-mono text-xs">country_code</code> and the domestic phone format change.</p>
+            </section>
+
             {/* POST /v2/payin/initiate */}
             <section id="initiate" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-2">Initiate a Pay-in</h2>
@@ -869,6 +901,7 @@ def drimpay_webhook():
                     <ParamRow name="webhook_url" type="string" desc="HTTPS URL to receive payment status notifications (recommended)" />
                     <ParamRow name="description" type="string" desc="Payment description visible on customer receipt — max 255 chars" />
                     <ParamRow name="expires_in_minutes" type="number" desc="Expiration window: 2, 5, or 10 minutes (default: 5)" />
+                    <ParamRow name="operator_otp" type="string" desc="Orange Money confirmation code — required for CI, SN and BF (see Orange Money OTP)" />
                     <ParamRow name="metadata" type="object" desc="Custom key-value data attached to the transaction" />
                   </tbody>
                 </table>

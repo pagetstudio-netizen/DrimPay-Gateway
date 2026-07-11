@@ -7,7 +7,7 @@ import {
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
   blacklistedPhonesTable, paymentLinkAttemptsTable, socialLinksTable,
   notificationsTable, supportUsersTable, globalBannersTable,
-  userWebhooksTable, userAllowedIpsTable,
+  userWebhooksTable, userAllowedIpsTable, jobsTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
 import crypto from "crypto";
@@ -1739,6 +1739,86 @@ router.delete("/admin/social-links/:id", requireAdmin, async (req: any, res: any
   const [deleted] = await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id)).returning();
   if (!deleted) { res.status(404).json({ error: "Non trouvé" }); return; }
   await logAdminAction(req.session.userId, "DELETE_SOCIAL_LINK", "social_link", String(id), deleted.name, req.ip);
+  res.json({ ok: true });
+});
+
+// ── Jobs (Careers) ──────────────────────────────────────────────────────────
+
+router.get("/admin/jobs", requireAdmin, async (req: any, res: any) => {
+  const rows = await db.select().from(jobsTable).orderBy(desc(jobsTable.postedAt));
+  res.json(rows);
+});
+
+router.post("/admin/jobs", requireAdmin, async (req: any, res: any) => {
+  const { title, department, location, type, remote, description, requirements, responsibilities, active } = req.body as {
+    title?: string; department?: string; location?: string; type?: string; remote?: boolean;
+    description?: string; requirements?: string[]; responsibilities?: string[]; active?: boolean;
+  };
+  if (!title?.trim() || !department?.trim() || !location?.trim() || !description?.trim()) {
+    res.status(400).json({ error: "title, department, location et description sont requis" });
+    return;
+  }
+  const [row] = await db.insert(jobsTable).values({
+    title: title.trim(),
+    department: department.trim(),
+    location: location.trim(),
+    type: (type as any) || "full-time",
+    remote: remote ?? true,
+    description: description.trim(),
+    requirements: (requirements ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    responsibilities: (responsibilities ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    active: active ?? true,
+  }).returning();
+  await logAdminAction(req.session.userId, "CREATE_JOB", "job", String(row.id), title, req.ip);
+  res.json(row);
+});
+
+router.put("/admin/jobs/:id", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id, 10);
+  const { title, department, location, type, remote, description, requirements, responsibilities, active } = req.body as {
+    title?: string; department?: string; location?: string; type?: string; remote?: boolean;
+    description?: string; requirements?: string[]; responsibilities?: string[]; active?: boolean;
+  };
+  if (!title?.trim() || !department?.trim() || !location?.trim() || !description?.trim()) {
+    res.status(400).json({ error: "title, department, location et description sont requis" });
+    return;
+  }
+  const [row] = await db.update(jobsTable)
+    .set({
+      title: title.trim(),
+      department: department.trim(),
+      location: location.trim(),
+      type: (type as any) || "full-time",
+      remote: remote ?? true,
+      description: description.trim(),
+      requirements: (requirements ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+      responsibilities: (responsibilities ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+      active: active ?? true,
+    })
+    .where(eq(jobsTable.id, id))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Non trouvé" }); return; }
+  await logAdminAction(req.session.userId, "UPDATE_JOB", "job", String(id), title, req.ip);
+  res.json(row);
+});
+
+router.patch("/admin/jobs/:id/toggle", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id, 10);
+  const [current] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
+  if (!current) { res.status(404).json({ error: "Non trouvé" }); return; }
+  const [row] = await db.update(jobsTable)
+    .set({ active: !current.active })
+    .where(eq(jobsTable.id, id))
+    .returning();
+  await logAdminAction(req.session.userId, row.active ? "ENABLE_JOB" : "DISABLE_JOB", "job", String(id), current.title, req.ip);
+  res.json(row);
+});
+
+router.delete("/admin/jobs/:id", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id, 10);
+  const [deleted] = await db.delete(jobsTable).where(eq(jobsTable.id, id)).returning();
+  if (!deleted) { res.status(404).json({ error: "Non trouvé" }); return; }
+  await logAdminAction(req.session.userId, "DELETE_JOB", "job", String(id), deleted.title, req.ip);
   res.json({ ok: true });
 });
 

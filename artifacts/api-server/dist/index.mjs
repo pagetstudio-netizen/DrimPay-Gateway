@@ -106038,10 +106038,12 @@ var init_paydunya_softpay_map = __esm({
         slug: "orange-money-ci",
         country: "CI",
         label: "Orange Money (CI)",
+        requiresOtp: true,
         buildPayload: (p) => ({
           orange_money_ci_customer_fullname: p.fullName,
           orange_money_ci_email: p.email,
           orange_money_ci_phone_number: p.phone,
+          orange_money_ci_otp: p.otp ?? "",
           payment_token: p.paymentToken
         })
       },
@@ -106049,10 +106051,12 @@ var init_paydunya_softpay_map = __esm({
         slug: "orange-money-ci",
         country: "CI",
         label: "Orange Money (CI)",
+        requiresOtp: true,
         buildPayload: (p) => ({
           orange_money_ci_customer_fullname: p.fullName,
           orange_money_ci_email: p.email,
           orange_money_ci_phone_number: p.phone,
+          orange_money_ci_otp: p.otp ?? "",
           payment_token: p.paymentToken
         })
       },
@@ -106060,11 +106064,12 @@ var init_paydunya_softpay_map = __esm({
         slug: "wave-ci",
         country: "CI",
         label: "Wave (CI)",
+        isRedirectFlow: true,
         buildPayload: (p) => ({
-          wave_ci_customer_fullname: p.fullName,
+          wave_ci_fullName: p.fullName,
           wave_ci_email: p.email,
-          wave_ci_phone_number: p.phone,
-          payment_token: p.paymentToken
+          wave_ci_phone: p.phone,
+          wave_ci_payment_token: p.paymentToken
         })
       },
       "moov money|CI": {
@@ -106094,10 +106099,12 @@ var init_paydunya_softpay_map = __esm({
         slug: "orange-money-senegal",
         country: "SN",
         label: "Orange Money (S\xE9n\xE9gal)",
+        requiresOtp: true,
         buildPayload: (p) => ({
           orange_money_sn_customer_fullname: p.fullName,
           orange_money_sn_email: p.email,
           orange_money_sn_phone_number: p.phone,
+          orange_money_sn_otp: p.otp ?? "",
           payment_token: p.paymentToken
         })
       },
@@ -106105,10 +106112,12 @@ var init_paydunya_softpay_map = __esm({
         slug: "orange-money-senegal",
         country: "SN",
         label: "Orange Money (S\xE9n\xE9gal)",
+        requiresOtp: true,
         buildPayload: (p) => ({
           orange_money_sn_customer_fullname: p.fullName,
           orange_money_sn_email: p.email,
           orange_money_sn_phone_number: p.phone,
+          orange_money_sn_otp: p.otp ?? "",
           payment_token: p.paymentToken
         })
       },
@@ -106116,11 +106125,12 @@ var init_paydunya_softpay_map = __esm({
         slug: "wave-senegal",
         country: "SN",
         label: "Wave (S\xE9n\xE9gal)",
+        isRedirectFlow: true,
         buildPayload: (p) => ({
-          wave_sn_customer_fullname: p.fullName,
-          wave_sn_email: p.email,
-          wave_sn_phone_number: p.phone,
-          payment_token: p.paymentToken
+          wave_senegal_fullName: p.fullName,
+          wave_senegal_email: p.email,
+          wave_senegal_phone: p.phone,
+          wave_senegal_payment_token: p.paymentToken
         })
       },
       // ── Mali ──────────────────────────────────────────────────────────────────
@@ -106173,10 +106183,12 @@ var init_paydunya_softpay_map = __esm({
         slug: "orange-money-burkina",
         country: "BF",
         label: "Orange Money (Burkina Faso)",
+        requiresOtp: true,
         buildPayload: (p) => ({
-          orange_money_bf_customer_fullname: p.fullName,
-          orange_money_bf_email: p.email,
-          orange_money_bf_phone_number: p.phone,
+          name_bf: p.fullName,
+          email_bf: p.email,
+          phone_bf: p.phone,
+          otp_code: p.otp ?? "",
           payment_token: p.paymentToken
         })
       },
@@ -106184,10 +106196,12 @@ var init_paydunya_softpay_map = __esm({
         slug: "orange-money-burkina",
         country: "BF",
         label: "Orange Money (Burkina Faso)",
+        requiresOtp: true,
         buildPayload: (p) => ({
-          orange_money_bf_customer_fullname: p.fullName,
-          orange_money_bf_email: p.email,
-          orange_money_bf_phone_number: p.phone,
+          name_bf: p.fullName,
+          email_bf: p.email,
+          phone_bf: p.phone,
+          otp_code: p.otp ?? "",
           payment_token: p.paymentToken
         })
       },
@@ -106534,11 +106548,25 @@ var init_paydunya = __esm({
             message: "Facture cr\xE9\xE9e \u2014 l'op\xE9rateur n'est pas encore support\xE9 en SoftPay. Le client doit valider via la page de paiement."
           };
         }
+        if (softPayConfig.requiresOtp && !params.operator_otp) {
+          console.warn(
+            `[PayDunya] \u26A0 Code OTP manquant pour "${softPayConfig.label}" (${params.country_code}) \u2014 le client doit le g\xE9n\xE9rer via USSD.`
+          );
+          return {
+            success: false,
+            paydunya_reference: paymentToken,
+            token: paymentToken,
+            payment_url: paymentUrl ?? void 0,
+            status: "failed",
+            message: "Un code de confirmation Orange Money est requis pour ce pays. Composez le code USSD indiqu\xE9 sur la page de paiement puis renseignez le code re\xE7u."
+          };
+        }
         const softPayParams = {
           paymentToken,
           phone: params.phone,
           fullName: params.customer_name ?? "Client DrimPay",
           email: params.customer_email ?? "client@drimpay.com",
+          otp: params.operator_otp,
           address: params.country_code === "TG" ? "Lom\xE9" : params.country_code === "BJ" ? "Cotonou" : params.country_code === "CI" ? "Abidjan" : params.country_code === "SN" ? "Dakar" : params.country_code === "ML" ? "Bamako" : params.country_code === "BF" ? "Ouagadougou" : params.country_code === "CM" ? "Yaound\xE9" : void 0
         };
         const softPayPayload = softPayConfig.buildPayload(softPayParams);
@@ -106583,6 +106611,31 @@ var init_paydunya = __esm({
             payment_url: paymentUrl ?? void 0,
             status: "failed",
             message: softRaw.response_text ?? softRaw.message ?? "Paiement SoftPay refus\xE9"
+          };
+        }
+        if (softPayConfig.isRedirectFlow) {
+          const waveUrl = softRaw.url ?? void 0;
+          if (!waveUrl) {
+            console.error(
+              `[PayDunya] \u2717 SoftPay "${softPayConfig.label}" \u2014 succ\xE8s mais aucune URL de paiement retourn\xE9e.`
+            );
+            return {
+              success: false,
+              paydunya_reference: paymentToken,
+              token: paymentToken,
+              payment_url: paymentUrl ?? void 0,
+              status: "failed",
+              message: "R\xE9ponse Wave invalide \u2014 aucun lien de paiement re\xE7u."
+            };
+          }
+          console.log(`[PayDunya] \u2713 \xC9tape 2 OK \u2014 lien Wave: ${waveUrl}`);
+          return {
+            success: true,
+            paydunya_reference: paymentToken,
+            token: paymentToken,
+            payment_url: waveUrl,
+            status: "pending",
+            message: `Ouvrez ce lien dans l'application ${softPayConfig.label} pour finaliser le paiement`
           };
         }
         console.log(`[PayDunya] \u2713 \xC9tape 2 OK \u2014 prompt USSD envoy\xE9 sur ${params.phone}`);
@@ -280949,6 +281002,76 @@ router13.delete("/admin/social-links/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_SOCIAL_LINK", "social_link", String(id), deleted.name, req.ip);
   res.json({ ok: true });
 });
+router13.get("/admin/jobs", requireAdmin, async (req, res) => {
+  const rows = await db.select().from(jobsTable).orderBy(desc(jobsTable.postedAt));
+  res.json(rows);
+});
+router13.post("/admin/jobs", requireAdmin, async (req, res) => {
+  const { title, department, location: location2, type, remote, description, requirements, responsibilities, active } = req.body;
+  if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
+    res.status(400).json({ error: "title, department, location et description sont requis" });
+    return;
+  }
+  const [row] = await db.insert(jobsTable).values({
+    title: title.trim(),
+    department: department.trim(),
+    location: location2.trim(),
+    type: type || "full-time",
+    remote: remote ?? true,
+    description: description.trim(),
+    requirements: (requirements ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    responsibilities: (responsibilities ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    active: active ?? true
+  }).returning();
+  await logAdminAction(req.session.userId, "CREATE_JOB", "job", String(row.id), title, req.ip);
+  res.json(row);
+});
+router13.put("/admin/jobs/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { title, department, location: location2, type, remote, description, requirements, responsibilities, active } = req.body;
+  if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
+    res.status(400).json({ error: "title, department, location et description sont requis" });
+    return;
+  }
+  const [row] = await db.update(jobsTable).set({
+    title: title.trim(),
+    department: department.trim(),
+    location: location2.trim(),
+    type: type || "full-time",
+    remote: remote ?? true,
+    description: description.trim(),
+    requirements: (requirements ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    responsibilities: (responsibilities ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    active: active ?? true
+  }).where(eq(jobsTable.id, id)).returning();
+  if (!row) {
+    res.status(404).json({ error: "Non trouv\xE9" });
+    return;
+  }
+  await logAdminAction(req.session.userId, "UPDATE_JOB", "job", String(id), title, req.ip);
+  res.json(row);
+});
+router13.patch("/admin/jobs/:id/toggle", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const [current] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
+  if (!current) {
+    res.status(404).json({ error: "Non trouv\xE9" });
+    return;
+  }
+  const [row] = await db.update(jobsTable).set({ active: !current.active }).where(eq(jobsTable.id, id)).returning();
+  await logAdminAction(req.session.userId, row.active ? "ENABLE_JOB" : "DISABLE_JOB", "job", String(id), current.title, req.ip);
+  res.json(row);
+});
+router13.delete("/admin/jobs/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const [deleted] = await db.delete(jobsTable).where(eq(jobsTable.id, id)).returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Non trouv\xE9" });
+    return;
+  }
+  await logAdminAction(req.session.userId, "DELETE_JOB", "job", String(id), deleted.title, req.ip);
+  res.json({ ok: true });
+});
 router13.post("/admin/telegram/save", requireAdmin, async (req, res) => {
   const { token, chatId } = req.body;
   const updates = {};
@@ -281999,6 +282122,15 @@ router17.post("/pay/:token", async (req, res) => {
     res.status(opCheck.status).json({ error: opCheck.error });
     return;
   }
+  const isOrangeMoneyOp = /^orange( money)?$/i.test(operator.trim());
+  const OTP_REQUIRED_COUNTRIES = /* @__PURE__ */ new Set(["CI", "SN", "BF"]);
+  if (isOrangeMoneyOp && OTP_REQUIRED_COUNTRIES.has(countryCode) && !operatorOtp) {
+    res.status(400).json({
+      error: "OTP_REQUIRED",
+      message: "Un code de confirmation Orange Money est requis pour ce pays. Composez le code USSD indiqu\xE9 puis renseignez le code re\xE7u."
+    });
+    return;
+  }
   try {
     const { aggregator, client } = await resolveAggregator(countryCode, operator);
     const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
@@ -282040,7 +282172,8 @@ router17.post("/pay/:token", async (req, res) => {
         callback_url: callbackUrl,
         description: link.title,
         customer_name: customerName,
-        customer_email: customerEmail
+        customer_email: customerEmail,
+        operator_otp: operatorOtp
       });
       if (!pdRes.success) {
         throw new PayDunyaError(pdRes.message ?? "\xC9chec PayDunya", 502, pdRes);

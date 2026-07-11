@@ -3,11 +3,55 @@ import { useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2, XCircle, Clock, ArrowLeft,
-  AlertTriangle, WrenchIcon, BanIcon, Globe, ChevronDown, Loader2
+  AlertTriangle, WrenchIcon, BanIcon, Globe, ChevronDown, Loader2, KeyRound, Phone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Brand data ───────────────────────────────────────────────────────────────
+
+// ── Orange Money — code OTP / USSD requis avant confirmation (par pays) ──────
+// Certains pays exigent que le client compose un code USSD sur son téléphone
+// pour obtenir un code de paiement, à saisir sur cette page avant de confirmer.
+type OrangeOtpInfo = {
+  requiresCode: boolean;
+  ussd: (amount?: string) => string;
+  steps: { fr: string; en: string };
+};
+
+const ORANGE_MONEY_OTP: Record<string, OrangeOtpInfo> = {
+  BF: {
+    requiresCode: true,
+    ussd: (amount) => `*144*4*6*${amount && parseFloat(amount) > 0 ? amount : "[montant]"}#`,
+    steps: {
+      fr: "Composez le code affiché ci-dessus sur votre téléphone, saisissez votre code secret Orange Money, puis récupérez le code de confirmation reçu.",
+      en: "Dial the code shown above on your phone, enter your Orange Money PIN, then retrieve the confirmation code you receive.",
+    },
+  },
+  CI: {
+    requiresCode: true,
+    ussd: () => "#144*82#",
+    steps: {
+      fr: "Composez #144*82# sur votre téléphone pour générer un code de paiement Orange Money, puis saisissez-le ci-dessous.",
+      en: "Dial #144*82# on your phone to generate an Orange Money payment code, then enter it below.",
+    },
+  },
+  SN: {
+    requiresCode: true,
+    ussd: () => "#144*82#",
+    steps: {
+      fr: "Composez #144*82# sur votre téléphone pour obtenir un code OTP Orange Money, puis saisissez-le ci-dessous.",
+      en: "Dial #144*82# on your phone to get an Orange Money OTP code, then enter it below.",
+    },
+  },
+  ML: {
+    requiresCode: false,
+    ussd: () => "#144#",
+    steps: {
+      fr: "Composez #144# sur votre téléphone, choisissez « Paiement marchand » (option 2), puis validez directement depuis votre téléphone.",
+      en: "Dial #144# on your phone, choose “Merchant payment” (option 2), then confirm directly on your phone.",
+    },
+  },
+};
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -95,6 +139,16 @@ const T = {
     maintenanceDesc: (op: string) => `L'opérateur ${op} est temporairement indisponible.`,
     operatorUnavailable: "Opérateur indisponible",
     operatorUnavailableDesc: (op: string) => `L'opérateur ${op} n'est pas disponible pour le moment.`,
+    otpTitle: "Code de confirmation Orange Money requis",
+    otpUssdLabel: "Composez ce code sur votre téléphone :",
+    otpCodeLabel: "Code reçu",
+    otpCodePlaceholder: "Ex : 8562",
+    otpRequired: "Veuillez saisir le code de confirmation Orange Money reçu par téléphone.",
+    otpNoCodeNeeded: "Aucun code à saisir : validez le paiement directement sur votre téléphone.",
+    waveTitle: "Finalisez votre paiement Wave",
+    waveDesc: "Ouvrez ce lien dans l'application Wave, ou scannez le QR code, pour valider le paiement.",
+    waveOpenButton: "Ouvrir dans Wave",
+    waveQrLabel: "Ou scannez ce QR code avec l'application Wave",
   },
   en: {
     poweredBy: "Powered by",
@@ -150,6 +204,16 @@ const T = {
     maintenanceDesc: (op: string) => `Operator ${op} is temporarily unavailable.`,
     operatorUnavailable: "Operator unavailable",
     operatorUnavailableDesc: (op: string) => `Operator ${op} is not available at the moment.`,
+    otpTitle: "Orange Money confirmation code required",
+    otpUssdLabel: "Dial this code on your phone:",
+    otpCodeLabel: "Code received",
+    otpCodePlaceholder: "e.g. 8562",
+    otpRequired: "Please enter the Orange Money confirmation code you received on your phone.",
+    otpNoCodeNeeded: "No code to enter: confirm the payment directly on your phone.",
+    waveTitle: "Complete your Wave payment",
+    waveDesc: "Open this link in the Wave app, or scan the QR code, to confirm the payment.",
+    waveOpenButton: "Open in Wave",
+    waveQrLabel: "Or scan this QR code with the Wave app",
   },
 } satisfies Record<Lang, object>;
 
@@ -351,9 +415,11 @@ export default function PayPage() {
   const [amount, setAmount]               = useState("");
   const [name, setName]                   = useState("");
   const [email, setEmail]                 = useState("");
+  const [otpCode, setOtpCode]             = useState("");
   const [error, setError]                 = useState("");
   const [txRef, setTxRef]                 = useState("");
   const [attemptId, setAttemptId]         = useState<number | null>(null);
+  const [paymentUrl, setPaymentUrl]       = useState("");
 
   useEffect(() => {
     if (!token) return;
@@ -381,8 +447,13 @@ export default function PayPage() {
   const countryMeta        = COUNTRY_META[selectedCountry];
   const stepNum            = STEP_NUMS[step];
 
+  const isOrangeMoney = selectedOperator === "Orange Money";
+  const orangeOtpInfo = isOrangeMoney ? ORANGE_MONEY_OTP[selectedCountry] : undefined;
+  const otpRequired   = !!orangeOtpInfo?.requiresCode;
+  const isWave        = selectedOperator === "Wave";
+
   const canGoToForm = selectedCountry && selectedOperator;
-  const canSubmit   = phone.length >= 8 && displayAmount > 0;
+  const canSubmit   = phone.length >= 8 && displayAmount > 0 && (!otpRequired || otpCode.trim().length >= 4);
 
   const handleGoToForm = () => {
     if (!canGoToForm) return;
@@ -444,6 +515,7 @@ export default function PayPage() {
           operator: selectedOperator,
           customerName: name || undefined,
           customerEmail: email || undefined,
+          operatorOtp: otpRequired ? otpCode.trim() : undefined,
         }),
       });
       const data = await r.json();
@@ -454,6 +526,7 @@ export default function PayPage() {
         return;
       }
       setTxRef(data.reference);
+      if (data.payment_url) setPaymentUrl(data.payment_url);
       if (data.status === "success" || data.status === "completed") {
         if (attemptId) await updateAttempt(attemptId, "success", data.reference);
         setStep("success");
@@ -738,6 +811,38 @@ export default function PayPage() {
                     />
                   )}
 
+                  {/* Orange Money — OTP / USSD requis selon le pays */}
+                  {orangeOtpInfo && (
+                    <div className="rounded-xl border border-orange-100 bg-orange-50 px-4 py-3 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-orange-700">
+                        <KeyRound className="w-3.5 h-3.5 shrink-0" />
+                        {t.otpTitle}
+                      </div>
+                      <div className="flex items-center gap-2 bg-white border border-orange-200 rounded-lg px-3 py-2">
+                        <Phone className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                        <div>
+                          <p className="text-[11px] text-orange-600">{t.otpUssdLabel}</p>
+                          <code className="font-mono text-sm font-extrabold text-orange-800">
+                            {orangeOtpInfo.ussd(amount)}
+                          </code>
+                        </div>
+                      </div>
+                      <p className="text-xs text-orange-700">
+                        {orangeOtpInfo.steps[lang]}
+                      </p>
+                      {otpRequired ? (
+                        <Field
+                          label={t.otpCodeLabel}
+                          placeholder={t.otpCodePlaceholder}
+                          value={otpCode}
+                          onChange={setOtpCode}
+                        />
+                      ) : (
+                        <p className="text-xs text-orange-500 italic">{t.otpNoCodeNeeded}</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Name */}
                   <Field
                     label={t.yourName}
@@ -801,6 +906,7 @@ export default function PayPage() {
                       { label: t.operator,  value: operatorLabel },
                       { label: t.country,   value: `${countryMeta?.flag ?? ""} ${countryMeta?.name ?? selectedCountry}` },
                       { label: t.number,    value: phone },
+                      ...(otpRequired && otpCode ? [{ label: t.otpCodeLabel, value: otpCode }] : []),
                       ...(name  ? [{ label: t.name,  value: name }]  : []),
                       ...(email ? [{ label: t.email, value: email }] : []),
                     ].map(({ label, value }) => (
@@ -854,16 +960,47 @@ export default function PayPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   className="text-center py-8"
                 >
-                  <div className="w-16 h-16 rounded-full border-4 border-blue-100 border-t-blue-500 animate-spin mx-auto mb-5" />
-                  <h2 className="text-base font-bold text-gray-900 mb-2">{t.pendingTitle}</h2>
+                  {isWave && paymentUrl ? (
+                    <div className="w-16 h-16 rounded-full bg-[#1AC9FF]/10 flex items-center justify-center mx-auto mb-5">
+                      <img src={`${BASE}/op-wave.png`} alt="Wave" className="w-9 h-9 object-contain" />
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 rounded-full border-4 border-blue-100 border-t-blue-500 animate-spin mx-auto mb-5" />
+                  )}
+                  <h2 className="text-base font-bold text-gray-900 mb-2">
+                    {isWave && paymentUrl ? t.waveTitle : t.pendingTitle}
+                  </h2>
                   <p className="text-sm text-gray-500 mb-4">
-                    {t.pendingDesc(operatorLabel)}
+                    {isWave && paymentUrl ? t.waveDesc : t.pendingDesc(operatorLabel)}
                   </p>
-                  <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-700 text-left space-y-1">
-                    <p>{t.checkPhone}</p>
-                    <p>{t.enterPin}</p>
-                    <p className="text-blue-400">{t.autoUpdate}</p>
-                  </div>
+
+                  {isWave && paymentUrl ? (
+                    <div className="space-y-4">
+                      <a
+                        href={paymentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 w-full h-12 rounded-lg font-bold text-sm uppercase tracking-wide bg-[#1AC9FF] text-white hover:opacity-90 transition-all"
+                      >
+                        {t.waveOpenButton}
+                      </a>
+                      <div className="flex flex-col items-center gap-2">
+                        <p className="text-xs text-gray-400">{t.waveQrLabel}</p>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(paymentUrl)}`}
+                          alt="QR Wave"
+                          className="w-[140px] h-[140px] rounded-lg border border-gray-100"
+                        />
+                      </div>
+                      <p className="text-xs text-blue-400">{t.autoUpdate}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-700 text-left space-y-1">
+                      <p>{t.checkPhone}</p>
+                      <p>{t.enterPin}</p>
+                      <p className="text-blue-400">{t.autoUpdate}</p>
+                    </div>
+                  )}
                 </motion.div>
               )}
 

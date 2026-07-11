@@ -382,6 +382,19 @@ router.post("/pay/:token", async (req: any, res: any) => {
     return;
   }
 
+  // Orange Money CI/SN/BF exige un code de confirmation (OTP) généré par USSD
+  // par le client avant l'appel à l'agrégateur — le vérifier tôt évite un aller-retour inutile.
+  const isOrangeMoneyOp = /^orange( money)?$/i.test(operator.trim());
+  const OTP_REQUIRED_COUNTRIES = new Set(["CI", "SN", "BF"]);
+  if (isOrangeMoneyOp && OTP_REQUIRED_COUNTRIES.has(countryCode) && !operatorOtp) {
+    res.status(400).json({
+      error: "OTP_REQUIRED",
+      message: "Un code de confirmation Orange Money est requis pour ce pays. " +
+        "Composez le code USSD indiqué puis renseignez le code reçu.",
+    });
+    return;
+  }
+
   try {
     const { aggregator, client } = await resolveAggregator(countryCode, operator);
     const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
@@ -416,6 +429,7 @@ router.post("/pay/:token", async (req: any, res: any) => {
         description: link.title,
         customer_name:  customerName,
         customer_email: customerEmail,
+        operator_otp: operatorOtp,
       });
       if (!pdRes.success) {
         throw new PayDunyaError(pdRes.message ?? "Échec PayDunya", 502, pdRes);

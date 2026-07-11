@@ -1,1 +1,2 @@
 - [DrimPay import setup](drimpay-import-setup.md) — required Supabase secrets and start.cjs quirk for this fintech monorepo.
+- [DrimPay Orange Money OTP](drimpay-orange-money-otp.md) — per-country USSD/OTP field names required by PayDunya softpay (CI/SN/BF vs Mali).

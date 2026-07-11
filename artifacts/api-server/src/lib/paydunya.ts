@@ -121,6 +121,8 @@ export interface PayDunyaPayinRequest {
   description?: string;
   customer_name?: string;
   customer_email?: string;
+  /** Code OTP/USSD saisi par le client (requis pour Orange Money CI/SN/BF en SoftPay). */
+  operator_otp?: string;
 }
 
 export interface PayDunyaPayinResponse {
@@ -374,11 +376,27 @@ export class PayDunyaClient {
       };
     }
 
+    if (softPayConfig.requiresOtp && !params.operator_otp) {
+      console.warn(
+        `[PayDunya] ⚠ Code OTP manquant pour "${softPayConfig.label}" (${params.country_code}) — le client doit le générer via USSD.`,
+      );
+      return {
+        success:            false,
+        paydunya_reference: paymentToken,
+        token:              paymentToken,
+        payment_url:        paymentUrl ?? undefined,
+        status:             "failed",
+        message:            "Un code de confirmation Orange Money est requis pour ce pays. " +
+                            "Composez le code USSD indiqué sur la page de paiement puis renseignez le code reçu.",
+      };
+    }
+
     const softPayParams: SoftPayParams = {
       paymentToken: paymentToken,
       phone:        params.phone,
       fullName:     params.customer_name ?? "Client DrimPay",
       email:        params.customer_email ?? "client@drimpay.com",
+      otp:          params.operator_otp,
       address:      params.country_code === "TG" ? "Lomé" :
                     params.country_code === "BJ" ? "Cotonou" :
                     params.country_code === "CI" ? "Abidjan" :
@@ -438,6 +456,35 @@ export class PayDunyaClient {
         payment_url:        paymentUrl ?? undefined,
         status:             "failed",
         message:            softRaw.response_text ?? softRaw.message ?? "Paiement SoftPay refusé",
+      };
+    }
+
+    // ── Wave (et tout opérateur "redirect flow") : PayDunya renvoie une URL
+    //    (page Wave / deep-link) que le client doit ouvrir ou scanner en QR code,
+    //    au lieu d'un push USSD confirmé directement sur le téléphone.
+    if (softPayConfig.isRedirectFlow) {
+      const waveUrl: string | undefined = softRaw.url ?? undefined;
+      if (!waveUrl) {
+        console.error(
+          `[PayDunya] ✗ SoftPay "${softPayConfig.label}" — succès mais aucune URL de paiement retournée.`,
+        );
+        return {
+          success:            false,
+          paydunya_reference: paymentToken,
+          token:              paymentToken,
+          payment_url:        paymentUrl ?? undefined,
+          status:             "failed",
+          message:            "Réponse Wave invalide — aucun lien de paiement reçu.",
+        };
+      }
+      console.log(`[PayDunya] ✓ Étape 2 OK — lien Wave: ${waveUrl}`);
+      return {
+        success:            true,
+        paydunya_reference: paymentToken,
+        token:              paymentToken,
+        payment_url:        waveUrl,
+        status:             "pending",
+        message:            `Ouvrez ce lien dans l'application ${softPayConfig.label} pour finaliser le paiement`,
       };
     }
 
