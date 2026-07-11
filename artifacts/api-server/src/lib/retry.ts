@@ -19,6 +19,14 @@ const TRANSIENT_PATTERNS = [
   "socket hang up",
   "und_err_socket",
   "und_err_connect_timeout",
+  "rate limit",
+  "too many requests",
+  "bad gateway",
+  "service unavailable",
+  "gateway timeout",
+  "502",
+  "503",
+  "504",
 ];
 
 // Postgres error codes worth retrying (connection/resource exhaustion related).

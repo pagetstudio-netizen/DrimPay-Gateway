@@ -349,7 +349,10 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
     const r = await fetch("/api/dashboard/kyb", { method: "POST", credentials: "include", body: formData });
     let d: any = {};
     try { d = await r.json(); } catch {}
-    if (!r.ok) throw new Error(d.error ?? "Erreur serveur");
+    if (!r.ok) {
+      const detail = typeof d.details === "string" ? d.details : d.details ? JSON.stringify(d.details) : "";
+      throw new Error(detail && detail !== d.error ? `${d.error ?? "Erreur serveur"} (${detail})` : d.error ?? "Erreur serveur");
+    }
     return d;
   };
 
@@ -757,7 +760,10 @@ export default function Kyb() {
     const res = await fetch(`${BASE}/api/dashboard/kyb`, { method: "POST", credentials: "include", body: formData });
     let d: any = {};
     try { d = await res.json(); } catch {}
-    if (!res.ok) throw new Error(d.error ?? (d.details ? JSON.stringify(d.details) : "Erreur serveur"));
+    if (!res.ok) {
+      const detail = typeof d.details === "string" ? d.details : d.details ? JSON.stringify(d.details) : "";
+      throw new Error(detail && detail !== d.error ? `${d.error ?? "Erreur serveur"} (${detail})` : d.error ?? "Erreur serveur");
+    }
     setKyb({ ...d, accountType });
     return d;
   };

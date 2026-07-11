@@ -276244,7 +276244,15 @@ var TRANSIENT_PATTERNS = [
   "sorry, too many clients already",
   "socket hang up",
   "und_err_socket",
-  "und_err_connect_timeout"
+  "und_err_connect_timeout",
+  "rate limit",
+  "too many requests",
+  "bad gateway",
+  "service unavailable",
+  "gateway timeout",
+  "502",
+  "503",
+  "504"
 ];
 var TRANSIENT_PG_CODES = /* @__PURE__ */ new Set([
   "08000",
