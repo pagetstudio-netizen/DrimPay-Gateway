@@ -15,11 +15,11 @@ const KYB_COLORS: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-700",
   under_review: "bg-yellow-100 text-yellow-700",
   rejected: "bg-red-100 text-red-700",
-  pending: "bg-gray-100 text-gray-600",
+  pending: "bg-orange-100 text-orange-700",
 };
 const KYB_LABELS: Record<string, string> = {
   approved: "Vérifié", submitted: "Soumis", under_review: "En révision",
-  rejected: "Rejeté", pending: "En attente",
+  rejected: "Rejeté", pending: "Non soumis (en cours)",
 };
 
 function fmt(n: number) { return Math.round(n).toLocaleString("fr-FR"); }

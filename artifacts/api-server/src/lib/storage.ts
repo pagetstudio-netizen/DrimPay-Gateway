@@ -132,9 +132,11 @@ export async function uploadKybDocument(
 ): Promise<string> {
   if (!serviceRoleKey || !supabaseAdmin) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is not configured. " +
+      "SUPABASE_SERVICE_ROLE_KEY is not configured on this server process. " +
       "KYB documents must be stored in Supabase Storage. " +
-      "Please set this environment variable in your Replit secrets."
+      "Set this environment variable where the app actually runs (Replit Secrets, " +
+      "or your Plesk Node.js app's environment variables — then fully restart the app, " +
+      "since env var changes only take effect after a process restart)."
     );
   }
 

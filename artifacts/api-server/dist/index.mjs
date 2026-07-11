@@ -276415,7 +276415,7 @@ async function downloadContractTemplate() {
 async function uploadKybDocument(userId, fieldName, buffer, mimetype, originalName) {
   if (!serviceRoleKey || !supabaseAdmin) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is not configured. KYB documents must be stored in Supabase Storage. Please set this environment variable in your Replit secrets."
+      "SUPABASE_SERVICE_ROLE_KEY is not configured on this server process. KYB documents must be stored in Supabase Storage. Set this environment variable where the app actually runs (Replit Secrets, or your Plesk Node.js app's environment variables \u2014 then fully restart the app, since env var changes only take effect after a process restart)."
     );
   }
   const ext = originalName.split(".").pop()?.toLowerCase() ?? "bin";

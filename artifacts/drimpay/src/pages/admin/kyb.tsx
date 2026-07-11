@@ -19,11 +19,14 @@ const STATUS_COLORS: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-700",
   under_review: "bg-yellow-100 text-yellow-700",
   rejected: "bg-red-100 text-red-700",
-  pending: "bg-gray-100 text-gray-600",
+  pending: "bg-orange-100 text-orange-700",
 };
 const STATUS_LABELS: Record<string, string> = {
   approved: "Approuvé", submitted: "Soumis",
-  under_review: "En révision", rejected: "Rejeté", pending: "En attente",
+  under_review: "En révision", rejected: "Rejeté",
+  // "pending" = l'utilisateur n'a pas encore terminé les étapes du formulaire —
+  // ce n'est PAS un dossier soumis en attente de votre revue.
+  pending: "Non soumis (en cours)",
 };
 
 const DOC_LABELS: Record<string, { label: string; icon: any; category: "rep" | "company" }> = {
@@ -479,7 +482,7 @@ export default function AdminKyb() {
                 <option value="under_review">En révision</option>
                 <option value="approved">Approuvés</option>
                 <option value="rejected">Rejetés</option>
-                <option value="pending">En attente</option>
+                <option value="pending">Non soumis (en cours)</option>
               </select>
 
               <button onClick={() => load({ p: page })} title="Actualiser"
