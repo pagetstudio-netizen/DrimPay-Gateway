@@ -23,7 +23,7 @@ import {
   userWebhooksTable,
   userAllowedIpsTable,
 } from "@workspace/db/schema";
-import { eq, and, desc, sum, count, sql, gte, asc } from "drizzle-orm";
+import { eq, and, desc, sum, count, sql, gte, asc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
@@ -32,7 +32,7 @@ import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate, uploadPaymentLinkImage } from "../lib/storage";
-import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
+import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable, listActiveOperators } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { settlePayinStatus } from "../lib/payin-settlement";
@@ -2042,8 +2042,8 @@ router.get("/pay/:token", async (req, res) => {
 
 router.post("/pay/:token", async (req, res) => {
   const { token } = req.params;
-  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator } = req.body as {
-    phone: string; amount: number; countryCode?: string; operator?: string;
+  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator, operatorOtp } = req.body as {
+    phone: string; amount: number; countryCode?: string; operator?: string; operatorOtp?: string;
   };
 
   if (!phone || !reqAmount || reqAmount <= 0) {
@@ -2182,6 +2182,7 @@ router.post("/pay/:token", async (req, res) => {
     const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
 
     let gatewayRef: string;
+    let gatewayPaymentUrl: string | undefined;
     if (aggregator === "clapay") {
       const r = await (client as ClapayClient).initiatePayin({
         amount, currency: effectiveCurrency, country_code: effectiveCountry,
@@ -2195,9 +2196,11 @@ router.post("/pay/:token", async (req, res) => {
         amount, currency: effectiveCurrency, country_code: effectiveCountry,
         operator: effectiveOperator, phone, reference, order_id: reference,
         callback_url: callbackUrl, description: `Payment link: ${link.title}`,
+        operator_otp: operatorOtp,
       });
       if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
       gatewayRef = r.paydunya_reference;
+      gatewayPaymentUrl = r.payment_url;
     }
 
     await db.update(transactionsTable)
@@ -2211,6 +2214,7 @@ router.post("/pay/:token", async (req, res) => {
     res.status(201).json({
       reference, amount, fee, netAmount, currency: effectiveCurrency,
       status: "processing", gateway: aggregator,
+      payment_url: gatewayPaymentUrl,
       message: "Prompt de paiement envoyé. Confirmez sur votre téléphone.",
     });
   } catch (err: any) {
@@ -2828,11 +2832,14 @@ router.get("/qr/:reference", async (req, res) => {
   const stored = Array.isArray(qr.countryCodes) && qr.countryCodes.length > 0 ? qr.countryCodes : null;
   const filteredCodes = stored ? stored : allCountryCodes;
 
-  const countries = filteredCodes.map(code => ({
+  // N'afficher que les opérateurs réellement actifs (respecte les désactivations
+  // et mises en maintenance faites par l'admin) — sinon le client choisit un
+  // opérateur qui sera rejeté au moment de payer.
+  const countries = await Promise.all(filteredCodes.map(async (code) => ({
     code,
     currency: COUNTRY_CURRENCY[code] ?? qr.currency,
-    operators: (COUNTRY_OPERATORS[code] ?? []).map(op => op.name),
-  }));
+    operators: await listActiveOperators(code),
+  })));
 
   res.json({
     reference: qr.reference,
@@ -2851,8 +2858,8 @@ router.get("/qr/:reference", async (req, res) => {
 
 router.post("/qr/:reference", async (req, res) => {
   const { reference } = req.params;
-  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator } = req.body as {
-    phone: string; amount: number; countryCode?: string; operator?: string;
+  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator, operatorOtp } = req.body as {
+    phone: string; amount: number; countryCode?: string; operator?: string; operatorOtp?: string;
   };
 
   if (!phone || !reqAmount || reqAmount <= 0) {
@@ -2892,7 +2899,7 @@ router.post("/qr/:reference", async (req, res) => {
 
   // Determine merchant mode from KYB status
   const [merchantInfo] = await db
-    .select({ companyName: usersTable.companyName })
+    .select({ companyName: usersTable.companyName, webhookUrl: usersTable.webhookUrl })
     .from(usersTable)
     .where(eq(usersTable.id, qr.userId));
   const [kybInfo] = await db
@@ -2901,11 +2908,25 @@ router.post("/qr/:reference", async (req, res) => {
     .where(eq(kybSubmissionsTable.userId, qr.userId));
   const merchantMode: "sandbox" | "live" = kybInfo?.status === "approved" ? "live" : "sandbox";
 
+  // Orange Money CI/SN/BF exige un code de confirmation (OTP) généré par USSD
+  // par le client avant l'appel à l'agrégateur — le vérifier tôt évite un aller-retour inutile.
+  const isOrangeMoneyOp = /^orange( money)?$/i.test(effectiveOperator.trim());
+  const OTP_REQUIRED_COUNTRIES = new Set(["CI", "SN", "BF"]);
+  if (merchantMode === "live" && isOrangeMoneyOp && OTP_REQUIRED_COUNTRIES.has(effectiveCountry) && !operatorOtp) {
+    res.status(400).json({
+      error: "OTP_REQUIRED",
+      message: "Un code de confirmation Orange Money est requis pour ce pays. " +
+        "Composez le code USSD indiqué puis renseignez le code reçu.",
+    });
+    return;
+  }
+
   const amount = qr.type === "fixed" && qr.amount ? parseFloat(String(qr.amount)) : reqAmount;
   const qrFeeRate = await getUserFeeRate(qr.userId, "payin");
   const fee = Math.round(amount * qrFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const txReference = `QR-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+  const signatureKey = crypto.randomBytes(32).toString("hex");
 
   // Use wallet scoped to the merchant's current mode
   let [wallet] = await db
@@ -2924,13 +2945,14 @@ router.post("/qr/:reference", async (req, res) => {
       .returning();
   }
 
-  // Sandbox: simulate success immediately. Live: record as pending (aggregator webhook will confirm).
+  // Sandbox: simulate success immediately. Live: record as pending, confirmed via aggregator.
   const txStatus = merchantMode === "sandbox" ? "success" : "pending";
 
-  await db.insert(transactionsTable).values({
+  const [tx] = await db.insert(transactionsTable).values({
     userId: qr.userId,
     walletId: wallet.id,
     reference: txReference,
+    orderId: `qr-${qr.reference}-${Date.now()}`,
     type: "payin",
     status: txStatus,
     amount: String(amount),
@@ -2941,27 +2963,26 @@ router.post("/qr/:reference", async (req, res) => {
     operator: effectiveOperator,
     phone,
     description: `QR payment: ${qr.name}`,
+    webhookUrl: merchantInfo?.webhookUrl ?? undefined,
+    webhookSignatureKey: signatureKey,
     mode: merchantMode,
-  });
+    requestPayload: JSON.stringify(req.body),
+  }).returning();
 
-  // Credit wallet immediately only in sandbox (live mode waits for aggregator webhook)
+  // ── Sandbox : succès simulé immédiat (comportement inchangé) ──────────────
   if (merchantMode === "sandbox") {
     await db.update(walletsTable)
       .set({ balance: sql`${walletsTable.balance} + ${netAmount}` })
       .where(eq(walletsTable.id, wallet.id));
-  }
 
-  await db.update(qrCodesTable)
-    .set({
-      transactionCount: sql`${qrCodesTable.transactionCount} + 1`,
-      totalCollected: sql`${qrCodesTable.totalCollected} + ${netAmount}`,
-      updatedAt: new Date(),
-    })
-    .where(eq(qrCodesTable.id, qr.id));
+    await db.update(qrCodesTable)
+      .set({
+        transactionCount: sql`${qrCodesTable.transactionCount} + 1`,
+        totalCollected: sql`${qrCodesTable.totalCollected} + ${netAmount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(qrCodesTable.id, qr.id));
 
-  // Telegram : notifier uniquement en sandbox (succès immédiat simulé).
-  // En mode LIVE, le webhook Clapay/PayDunya enverra la notification à la confirmation réelle.
-  if (merchantMode === "sandbox") {
     try {
       notifyPayin({
         company: merchantInfo?.companyName ?? "?",
@@ -2973,9 +2994,111 @@ router.post("/qr/:reference", async (req, res) => {
         mode: merchantMode, source: "qr",
       }).catch(() => {});
     } catch {}
+
+    res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency, _sandbox: true });
+    return;
   }
 
-  res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency, _sandbox: merchantMode === "sandbox" });
+  // ── Live : appel réel à l'agrégateur (Clapay / PayDunya) ──────────────────
+  const baseCallbackUrl = getWebhookBaseUrl();
+
+  try {
+    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
+    const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
+
+    let externalRef: string;
+    let paymentUrl: string | null = null;
+    let ussdCode: string | null = null;
+
+    if (aggregator === "clapay") {
+      const clapayRes = await (client as ClapayClient).initiatePayin({
+        amount, currency: effectiveCurrency, country_code: effectiveCountry, operator: effectiveOperator, phone,
+        reference: txReference, order_id: tx.orderId!,
+        callback_url: callbackUrl,
+        description: `QR payment: ${qr.name}`,
+        operator_otp: operatorOtp,
+      });
+      if (!clapayRes.success) {
+        throw new ClapayError(clapayRes.message ?? "Échec Clapay", 502, clapayRes);
+      }
+      externalRef = clapayRes.clapay_reference;
+      paymentUrl = clapayRes.payment_url ?? null;
+      ussdCode = clapayRes.ussd_code ?? null;
+    } else {
+      const pdRes = await (client as PayDunyaClient).initiatePayin({
+        amount, currency: effectiveCurrency, country_code: effectiveCountry, operator: effectiveOperator, phone,
+        reference: txReference, order_id: tx.orderId!,
+        callback_url: callbackUrl,
+        description: `QR payment: ${qr.name}`,
+        operator_otp: operatorOtp,
+      });
+      if (!pdRes.success) {
+        throw new PayDunyaError(pdRes.message ?? "Échec PayDunya", 502, pdRes);
+      }
+      externalRef = pdRes.paydunya_reference;
+      paymentUrl = pdRes.payment_url ?? null;
+    }
+
+    // Polling du statut chez le fournisseur (le client doit approuver sur son téléphone).
+    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+      intervalMs: 4_000,
+      maxDurationMs: 20_000,
+    });
+    const verifiedStatus = statusCheck?.status ?? "processing";
+    const verifiedFailureReason = statusCheck?.failureReason;
+
+    await db.update(transactionsTable)
+      .set({ externalRef })
+      .where(eq(transactionsTable.id, tx.id));
+
+    // Point de règlement unique — crédite le wallet et notifie si succès, idempotent
+    // avec le webhook Clapay/PayDunya qui pourrait confirmer un peu plus tard.
+    const settlement = await settlePayinStatus({
+      txId: tx.id,
+      status: verifiedStatus as any,
+      gatewayReference: externalRef,
+      failureReason: verifiedFailureReason,
+      gateway: aggregator,
+    });
+
+    if (settlement.credited) {
+      await db.update(qrCodesTable)
+        .set({
+          transactionCount: sql`${qrCodesTable.transactionCount} + 1`,
+          totalCollected: sql`${qrCodesTable.totalCollected} + ${netAmount}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(qrCodesTable.id, qr.id));
+    }
+
+    if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
+      res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference: txReference, status: verifiedStatus });
+      return;
+    }
+
+    res.status(201).json({
+      reference: txReference,
+      status: verifiedStatus,
+      amount, fee, netAmount, currency: effectiveCurrency,
+      payment_url: paymentUrl,
+      ussd_code: ussdCode,
+      message: "Prompt de paiement envoyé au téléphone du client",
+      gateway: aggregator,
+      _sandbox: false,
+    });
+
+  } catch (err: any) {
+    const realReason = err?.message ?? String(err);
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "clapay";
+    res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference: txReference });
+    await settlePayinStatus({
+      txId: tx.id,
+      status: "failed",
+      failureReason: realReason,
+      gateway: gatewayName as "clapay" | "paydunya",
+    }).catch(() => {});
+  }
 });
 
 // ─── Payment Links CRUD ───────────────────────────────────────────────────────

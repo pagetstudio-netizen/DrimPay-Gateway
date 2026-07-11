@@ -276226,6 +276226,17 @@ async function checkOperatorAvailable(countryCode, operatorName, blockKind) {
   }
   return { ok: true };
 }
+async function listActiveOperators(countryCode) {
+  const ops = await db.select({ name: operatorsTable.name }).from(operatorsTable).where(and(eq(operatorsTable.countryCode, countryCode), eq(operatorsTable.active, true)));
+  if (ops.length === 0) return [];
+  const aggs = await db.select().from(operatorAggregatorsTable).where(eq(operatorAggregatorsTable.countryCode, countryCode));
+  const aggByName = new Map(aggs.map((a) => [a.operatorName, a]));
+  return ops.filter((op) => {
+    const agg = aggByName.get(op.name);
+    if (!agg) return true;
+    return agg.active && !agg.maintenanceMode && !agg.blockPaymentLinks;
+  }).map((op) => op.name);
+}
 async function routePayout(params) {
   const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
   if (aggregator === "clapay") {
@@ -278064,7 +278075,7 @@ router11.get("/pay/:token", async (req, res) => {
 });
 router11.post("/pay/:token", async (req, res) => {
   const { token } = req.params;
-  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator } = req.body;
+  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator, operatorOtp } = req.body;
   if (!phone || !reqAmount || reqAmount <= 0) {
     res.status(400).json({ error: "T\xE9l\xE9phone et montant requis." });
     return;
@@ -278177,6 +278188,7 @@ router11.post("/pay/:token", async (req, res) => {
     const baseUrl2 = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
     let gatewayRef;
+    let gatewayPaymentUrl;
     if (aggregator === "clapay") {
       const r = await client.initiatePayin({
         amount,
@@ -278201,10 +278213,12 @@ router11.post("/pay/:token", async (req, res) => {
         reference,
         order_id: reference,
         callback_url: callbackUrl,
-        description: `Payment link: ${link.title}`
+        description: `Payment link: ${link.title}`,
+        operator_otp: operatorOtp
       });
       if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
       gatewayRef = r.paydunya_reference;
+      gatewayPaymentUrl = r.payment_url;
     }
     await db.update(transactionsTable).set({ status: "processing", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     await db.update(paymentLinksTable).set({ uses: sql`${paymentLinksTable.uses} + 1` }).where(eq(paymentLinksTable.id, link.id));
@@ -278216,6 +278230,7 @@ router11.post("/pay/:token", async (req, res) => {
       currency: effectiveCurrency,
       status: "processing",
       gateway: aggregator,
+      payment_url: gatewayPaymentUrl,
       message: "Prompt de paiement envoy\xE9. Confirmez sur votre t\xE9l\xE9phone."
     });
   } catch (err) {
@@ -278711,11 +278726,11 @@ router11.get("/qr/:reference", async (req, res) => {
   const allCountryCodes = Object.keys(COUNTRY_OPERATORS);
   const stored = Array.isArray(qr.countryCodes) && qr.countryCodes.length > 0 ? qr.countryCodes : null;
   const filteredCodes = stored ? stored : allCountryCodes;
-  const countries = filteredCodes.map((code) => ({
+  const countries = await Promise.all(filteredCodes.map(async (code) => ({
     code,
     currency: COUNTRY_CURRENCY[code] ?? qr.currency,
-    operators: (COUNTRY_OPERATORS[code] ?? []).map((op) => op.name)
-  }));
+    operators: await listActiveOperators(code)
+  })));
   res.json({
     reference: qr.reference,
     name: qr.name,
@@ -278732,7 +278747,7 @@ router11.get("/qr/:reference", async (req, res) => {
 });
 router11.post("/qr/:reference", async (req, res) => {
   const { reference } = req.params;
-  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator } = req.body;
+  const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator, operatorOtp } = req.body;
   if (!phone || !reqAmount || reqAmount <= 0) {
     res.status(400).json({ error: "T\xE9l\xE9phone et montant requis." });
     return;
@@ -278764,14 +278779,24 @@ router11.post("/qr/:reference", async (req, res) => {
     res.status(opCheck.status).json({ error: opCheck.error });
     return;
   }
-  const [merchantInfo] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, qr.userId));
+  const [merchantInfo] = await db.select({ companyName: usersTable.companyName, webhookUrl: usersTable.webhookUrl }).from(usersTable).where(eq(usersTable.id, qr.userId));
   const [kybInfo] = await db.select({ status: kybSubmissionsTable.status }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, qr.userId));
   const merchantMode = kybInfo?.status === "approved" ? "live" : "sandbox";
+  const isOrangeMoneyOp = /^orange( money)?$/i.test(effectiveOperator.trim());
+  const OTP_REQUIRED_COUNTRIES = /* @__PURE__ */ new Set(["CI", "SN", "BF"]);
+  if (merchantMode === "live" && isOrangeMoneyOp && OTP_REQUIRED_COUNTRIES.has(effectiveCountry) && !operatorOtp) {
+    res.status(400).json({
+      error: "OTP_REQUIRED",
+      message: "Un code de confirmation Orange Money est requis pour ce pays. Composez le code USSD indiqu\xE9 puis renseignez le code re\xE7u."
+    });
+    return;
+  }
   const amount = qr.type === "fixed" && qr.amount ? parseFloat(String(qr.amount)) : reqAmount;
   const qrFeeRate = await getUserFeeRate(qr.userId, "payin");
   const fee = Math.round(amount * qrFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const txReference = `QR-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
+  const signatureKey = crypto5.randomBytes(32).toString("hex");
   let [wallet] = await db.select().from(walletsTable).where(and(
     eq(walletsTable.userId, qr.userId),
     eq(walletsTable.countryCode, effectiveCountry),
@@ -278781,10 +278806,11 @@ router11.post("/qr/:reference", async (req, res) => {
     [wallet] = await db.insert(walletsTable).values({ userId: qr.userId, countryCode: effectiveCountry, currency: effectiveCurrency, mode: merchantMode }).returning();
   }
   const txStatus = merchantMode === "sandbox" ? "success" : "pending";
-  await db.insert(transactionsTable).values({
+  const [tx] = await db.insert(transactionsTable).values({
     userId: qr.userId,
     walletId: wallet.id,
     reference: txReference,
+    orderId: `qr-${qr.reference}-${Date.now()}`,
     type: "payin",
     status: txStatus,
     amount: String(amount),
@@ -278795,17 +278821,18 @@ router11.post("/qr/:reference", async (req, res) => {
     operator: effectiveOperator,
     phone,
     description: `QR payment: ${qr.name}`,
-    mode: merchantMode
-  });
+    webhookUrl: merchantInfo?.webhookUrl ?? void 0,
+    webhookSignatureKey: signatureKey,
+    mode: merchantMode,
+    requestPayload: JSON.stringify(req.body)
+  }).returning();
   if (merchantMode === "sandbox") {
     await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${netAmount}` }).where(eq(walletsTable.id, wallet.id));
-  }
-  await db.update(qrCodesTable).set({
-    transactionCount: sql`${qrCodesTable.transactionCount} + 1`,
-    totalCollected: sql`${qrCodesTable.totalCollected} + ${netAmount}`,
-    updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq(qrCodesTable.id, qr.id));
-  if (merchantMode === "sandbox") {
+    await db.update(qrCodesTable).set({
+      transactionCount: sql`${qrCodesTable.transactionCount} + 1`,
+      totalCollected: sql`${qrCodesTable.totalCollected} + ${netAmount}`,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(qrCodesTable.id, qr.id));
     try {
       notifyPayin({
         company: merchantInfo?.companyName ?? "?",
@@ -278823,8 +278850,105 @@ router11.post("/qr/:reference", async (req, res) => {
       });
     } catch {
     }
+    res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency, _sandbox: true });
+    return;
   }
-  res.status(201).json({ reference: txReference, amount, fee, netAmount, currency: effectiveCurrency, _sandbox: merchantMode === "sandbox" });
+  const baseCallbackUrl = getWebhookBaseUrl();
+  try {
+    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
+    const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
+    let externalRef;
+    let paymentUrl = null;
+    let ussdCode = null;
+    if (aggregator === "clapay") {
+      const clapayRes = await client.initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference: txReference,
+        order_id: tx.orderId,
+        callback_url: callbackUrl,
+        description: `QR payment: ${qr.name}`,
+        operator_otp: operatorOtp
+      });
+      if (!clapayRes.success) {
+        throw new ClapayError(clapayRes.message ?? "\xC9chec Clapay", 502, clapayRes);
+      }
+      externalRef = clapayRes.clapay_reference;
+      paymentUrl = clapayRes.payment_url ?? null;
+      ussdCode = clapayRes.ussd_code ?? null;
+    } else {
+      const pdRes = await client.initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference: txReference,
+        order_id: tx.orderId,
+        callback_url: callbackUrl,
+        description: `QR payment: ${qr.name}`,
+        operator_otp: operatorOtp
+      });
+      if (!pdRes.success) {
+        throw new PayDunyaError(pdRes.message ?? "\xC9chec PayDunya", 502, pdRes);
+      }
+      externalRef = pdRes.paydunya_reference;
+      paymentUrl = pdRes.payment_url ?? null;
+    }
+    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+      intervalMs: 4e3,
+      maxDurationMs: 2e4
+    });
+    const verifiedStatus = statusCheck?.status ?? "processing";
+    const verifiedFailureReason = statusCheck?.failureReason;
+    await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
+    const settlement = await settlePayinStatus({
+      txId: tx.id,
+      status: verifiedStatus,
+      gatewayReference: externalRef,
+      failureReason: verifiedFailureReason,
+      gateway: aggregator
+    });
+    if (settlement.credited) {
+      await db.update(qrCodesTable).set({
+        transactionCount: sql`${qrCodesTable.transactionCount} + 1`,
+        totalCollected: sql`${qrCodesTable.totalCollected} + ${netAmount}`,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(qrCodesTable.id, qr.id));
+    }
+    if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
+      res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference: txReference, status: verifiedStatus });
+      return;
+    }
+    res.status(201).json({
+      reference: txReference,
+      status: verifiedStatus,
+      amount,
+      fee,
+      netAmount,
+      currency: effectiveCurrency,
+      payment_url: paymentUrl,
+      ussd_code: ussdCode,
+      message: "Prompt de paiement envoy\xE9 au t\xE9l\xE9phone du client",
+      gateway: aggregator,
+      _sandbox: false
+    });
+  } catch (err) {
+    const realReason = err?.message ?? String(err);
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "clapay";
+    res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference: txReference });
+    await settlePayinStatus({
+      txId: tx.id,
+      status: "failed",
+      failureReason: realReason,
+      gateway: gatewayName
+    }).catch(() => {
+    });
+  }
 });
 router11.get("/dashboard/payment-links", requireAuth, async (req, res) => {
   const userId = req.session.userId;

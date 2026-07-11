@@ -403,6 +403,36 @@ export async function checkOperatorAvailable(
   return { ok: true };
 }
 
+/**
+ * Liste les opérateurs réellement disponibles pour un pays donné : actifs
+ * dans `operators` ET non bloqués/en maintenance pour les liens de paiement
+ * dans `operator_aggregators`. Utilisé pour ne jamais afficher au client un
+ * opérateur que l'admin a désactivé (QR codes, liens de paiement).
+ */
+export async function listActiveOperators(countryCode: string): Promise<string[]> {
+  const ops = await db
+    .select({ name: operatorsTable.name })
+    .from(operatorsTable)
+    .where(and(eq(operatorsTable.countryCode, countryCode), eq(operatorsTable.active, true)));
+
+  if (ops.length === 0) return [];
+
+  const aggs = await db
+    .select()
+    .from(operatorAggregatorsTable)
+    .where(eq(operatorAggregatorsTable.countryCode, countryCode));
+
+  const aggByName = new Map(aggs.map(a => [a.operatorName, a]));
+
+  return ops
+    .filter(op => {
+      const agg = aggByName.get(op.name);
+      if (!agg) return true; // pas de restriction spécifique configurée
+      return agg.active && !agg.maintenanceMode && !agg.blockPaymentLinks;
+    })
+    .map(op => op.name);
+}
+
 export async function routePayin(params: PayinParams): Promise<NormalizedPayinResult> {
   const { aggregator, client } = await resolveAggregator(params.country_code, params.operator);
 
