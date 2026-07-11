@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useGetJob, getGetJobQueryKey } from "@workspace/api-client-react";
 import { ArrowLeft, MapPin, Briefcase, Globe, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
   const { data: job, isLoading } = useGetJob(id, {
     query: { enabled: !isNaN(id), queryKey: getGetJobQueryKey(id) },
   });
+  const [, navigate] = useLocation();
   const t = useT();
   const lang = useLang();
   useSEO({
@@ -125,14 +126,20 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
           <div className="rounded-2xl bg-primary/10 border border-primary/20 p-8">
             <h2 className="text-xl font-bold mb-3">{t.careerDetail.applyTitle}</h2>
             <p className="text-muted-foreground mb-6 text-sm">{t.careerDetail.applyDesc}</p>
-            <a
-              href={job.applyUrl || `mailto:careers@drimpay.com?subject=Application: ${job.title}`}
-              target={job.applyUrl ? "_blank" : undefined}
-              rel={job.applyUrl ? "noopener noreferrer" : undefined}
-              data-testid="apply-button"
-            >
-              <Button size="lg" className="text-primary-foreground font-semibold">{t.careerDetail.applyBtn}</Button>
-            </a>
+            {job.applyUrl ? (
+              <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" data-testid="apply-button">
+                <Button size="lg" className="text-primary-foreground font-semibold">{t.careerDetail.applyBtn}</Button>
+              </a>
+            ) : (
+              <Button
+                size="lg"
+                className="text-primary-foreground font-semibold"
+                data-testid="apply-button"
+                onClick={() => navigate("/contact")}
+              >
+                {t.careerDetail.applyBtn}
+              </Button>
+            )}
           </div>
         </motion.div>
       </div>
