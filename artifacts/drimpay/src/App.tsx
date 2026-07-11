@@ -87,6 +87,7 @@ import DashboardApiKeys from "@/pages/dashboard/api-keys";
 import AdminSettings from "@/pages/admin/settings";
 import AdminContract from "@/pages/admin/contract";
 import AdminSocialLinks from "@/pages/admin/social-links";
+import AdminJobs from "@/pages/admin/jobs";
 import AdminSupportAgents from "@/pages/admin/support-agents";
 import AdminApiKeys from "@/pages/admin/api-keys";
 import SupportPage from "@/pages/support";
@@ -269,6 +270,7 @@ function AdminSwitch() {
       <Route path="/admin/contract" component={AdminContract} />
       <Route path="/admin/settings" component={AdminSettings} />
       <Route path="/admin/social-links" component={AdminSocialLinks} />
+      <Route path="/admin/jobs" component={AdminJobs} />
       <Route path="/admin/support-agents" component={AdminSupportAgents} />
       <Route path="/admin/api-keys" component={AdminApiKeys} />
       <Route path="/admin/wallet-exchanges" component={AdminWalletExchanges} />

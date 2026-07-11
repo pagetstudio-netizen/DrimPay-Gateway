@@ -56059,6 +56059,7 @@ var init_drimpay = __esm({
       description: text("description").notNull(),
       requirements: text("requirements").array().notNull().default([]),
       responsibilities: text("responsibilities").array().notNull().default([]),
+      applyUrl: text("apply_url"),
       postedAt: timestamp("posted_at").notNull().defaultNow(),
       active: boolean("active").notNull().default(true)
     });
@@ -258379,6 +258380,7 @@ function jobToResponse(j) {
     description: j.description,
     requirements: j.requirements,
     responsibilities: j.responsibilities,
+    applyUrl: j.applyUrl,
     postedAt: j.postedAt.toISOString()
   };
 }
@@ -281857,7 +281859,7 @@ router13.get(AP + "/jobs", requireAdmin, async (req, res) => {
   res.json(rows);
 });
 router13.post(AP + "/jobs", requireAdmin, async (req, res) => {
-  const { title, department, location: location2, type, remote, description, requirements, responsibilities, active } = req.body;
+  const { title, department, location: location2, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body;
   if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
     return;
@@ -281871,6 +281873,7 @@ router13.post(AP + "/jobs", requireAdmin, async (req, res) => {
     description: description.trim(),
     requirements: (requirements ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
     responsibilities: (responsibilities ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    applyUrl: applyUrl?.trim() || null,
     active: active ?? true
   }).returning();
   await logAdminAction(req.session.userId, "CREATE_JOB", "job", String(row.id), title, req.ip);
@@ -281878,7 +281881,7 @@ router13.post(AP + "/jobs", requireAdmin, async (req, res) => {
 });
 router13.put(AP + "/jobs/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { title, department, location: location2, type, remote, description, requirements, responsibilities, active } = req.body;
+  const { title, department, location: location2, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body;
   if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
     return;
@@ -281892,6 +281895,7 @@ router13.put(AP + "/jobs/:id", requireAdmin, async (req, res) => {
     description: description.trim(),
     requirements: (requirements ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
     responsibilities: (responsibilities ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    applyUrl: applyUrl?.trim() || null,
     active: active ?? true
   }).where(eq(jobsTable.id, id)).returning();
   if (!row) {

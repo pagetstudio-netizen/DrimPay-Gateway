@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, ShieldCheck, ArrowLeftRight, Wallet2,
   Layers, Globe2, KeyRound, Link2, FileText, Lock, Bell, Settings,
   Menu, X, ChevronRight, Search, LogOut, UserCircle, ChevronDown,
-  ShieldOff, Megaphone, FilePen, Share2, Headset, ShieldAlert,
+  ShieldOff, Megaphone, FilePen, Share2, Headset, ShieldAlert, Briefcase,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
   { href: "/admin/broadcast",    label: "Messages marchands",  icon: Megaphone },
   { href: "/admin/notifications",label: "Notifications",       icon: Bell },
   { href: "/admin/social-links",     label: "Réseaux Sociaux",     icon: Share2 },
+  { href: "/admin/jobs",             label: "Offres d'emploi",     icon: Briefcase },
   { href: "/admin/support-agents",   label: "Agents Support",      icon: Headset },
   { href: "/admin/settings",         label: "Paramètres",          icon: Settings },
 ];

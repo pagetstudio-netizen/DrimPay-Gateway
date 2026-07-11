@@ -46,6 +46,7 @@ function jobToResponse(j: typeof jobsTable.$inferSelect) {
     description: j.description,
     requirements: j.requirements,
     responsibilities: j.responsibilities,
+    applyUrl: j.applyUrl,
     postedAt: j.postedAt.toISOString(),
   };
 }

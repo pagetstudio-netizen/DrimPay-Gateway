@@ -65,6 +65,7 @@ export interface Job {
   description: string;
   requirements: string[];
   responsibilities: string[];
+  applyUrl?: string | null;
   postedAt: string;
 }
 

@@ -125,7 +125,12 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
           <div className="rounded-2xl bg-primary/10 border border-primary/20 p-8">
             <h2 className="text-xl font-bold mb-3">{t.careerDetail.applyTitle}</h2>
             <p className="text-muted-foreground mb-6 text-sm">{t.careerDetail.applyDesc}</p>
-            <a href={`mailto:careers@drimpay.com?subject=Application: ${job.title}`} data-testid="apply-button">
+            <a
+              href={job.applyUrl || `mailto:careers@drimpay.com?subject=Application: ${job.title}`}
+              target={job.applyUrl ? "_blank" : undefined}
+              rel={job.applyUrl ? "noopener noreferrer" : undefined}
+              data-testid="apply-button"
+            >
               <Button size="lg" className="text-primary-foreground font-semibold">{t.careerDetail.applyBtn}</Button>
             </a>
           </div>

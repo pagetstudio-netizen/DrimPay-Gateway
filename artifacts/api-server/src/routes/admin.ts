@@ -1860,9 +1860,9 @@ router.get(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
 });
 
 router.post(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
-  const { title, department, location, type, remote, description, requirements, responsibilities, active } = req.body as {
+  const { title, department, location, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body as {
     title?: string; department?: string; location?: string; type?: string; remote?: boolean;
-    description?: string; requirements?: string[]; responsibilities?: string[]; active?: boolean;
+    description?: string; requirements?: string[]; responsibilities?: string[]; applyUrl?: string; active?: boolean;
   };
   if (!title?.trim() || !department?.trim() || !location?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
@@ -1877,6 +1877,7 @@ router.post(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
     description: description.trim(),
     requirements: (requirements ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
     responsibilities: (responsibilities ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+    applyUrl: applyUrl?.trim() || null,
     active: active ?? true,
   }).returning();
   await logAdminAction(req.session.userId, "CREATE_JOB", "job", String(row.id), title, req.ip);
@@ -1885,9 +1886,9 @@ router.post(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
 
 router.put(AP + "/jobs/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
-  const { title, department, location, type, remote, description, requirements, responsibilities, active } = req.body as {
+  const { title, department, location, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body as {
     title?: string; department?: string; location?: string; type?: string; remote?: boolean;
-    description?: string; requirements?: string[]; responsibilities?: string[]; active?: boolean;
+    description?: string; requirements?: string[]; responsibilities?: string[]; applyUrl?: string; active?: boolean;
   };
   if (!title?.trim() || !department?.trim() || !location?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
@@ -1903,6 +1904,7 @@ router.put(AP + "/jobs/:id", requireAdmin, async (req: any, res: any) => {
       description: description.trim(),
       requirements: (requirements ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
       responsibilities: (responsibilities ?? []).filter((r) => r?.trim()).map((r) => r.trim()),
+      applyUrl: applyUrl?.trim() || null,
       active: active ?? true,
     })
     .where(eq(jobsTable.id, id))

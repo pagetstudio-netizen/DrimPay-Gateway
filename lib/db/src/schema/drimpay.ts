@@ -277,6 +277,7 @@ export const jobsTable = pgTable("jobs", {
   description: text("description").notNull(),
   requirements: text("requirements").array().notNull().default([]),
   responsibilities: text("responsibilities").array().notNull().default([]),
+  applyUrl: text("apply_url"),
   postedAt: timestamp("posted_at").notNull().defaultNow(),
   active: boolean("active").notNull().default(true),
 });

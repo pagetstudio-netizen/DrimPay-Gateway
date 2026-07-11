@@ -114,6 +114,7 @@ export const ListJobsResponseItem = zod.object({
   description: zod.string(),
   requirements: zod.array(zod.string()),
   responsibilities: zod.array(zod.string()),
+  applyUrl: zod.string().nullish(),
   postedAt: zod.string(),
 });
 export const ListJobsResponse = zod.array(ListJobsResponseItem);
@@ -135,6 +136,7 @@ export const GetJobResponse = zod.object({
   description: zod.string(),
   requirements: zod.array(zod.string()),
   responsibilities: zod.array(zod.string()),
+  applyUrl: zod.string().nullish(),
   postedAt: zod.string(),
 });
 

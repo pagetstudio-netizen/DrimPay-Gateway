@@ -370,6 +370,9 @@ components:
           type: array
           items:
             type: string
+        applyUrl:
+          type: string
+          nullable: true
         postedAt:
           type: string
       required:
