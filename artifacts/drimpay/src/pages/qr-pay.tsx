@@ -42,10 +42,10 @@ type QrData = {
   countries: { code: string; currency: string; operators: string[] }[];
 };
 
-type Step = "select" | "form" | "confirm" | "processing" | "success" | "error";
+type Step = "select" | "form" | "confirm" | "processing" | "pending" | "success" | "error";
 
 const STEP_NUMS: Record<Step, number> = {
-  select: 1, form: 2, confirm: 3, processing: 4, success: 4, error: 4,
+  select: 1, form: 2, confirm: 3, processing: 4, pending: 4, success: 4, error: 4,
 };
 
 function OperatorBtn({ name, selected, onClick }: { name: string; selected: boolean; onClick: () => void }) {
@@ -163,6 +163,7 @@ export default function QrPayPage() {
   const [amount, setAmount]                 = useState("");
   const [error, setError]                   = useState("");
   const [txRef, setTxRef]                   = useState("");
+  const [paymentUrl, setPaymentUrl]         = useState("");
   const [isSandbox, setIsSandbox]           = useState(false);
 
   useEffect(() => {
@@ -197,6 +198,8 @@ export default function QrPayPage() {
   const canGoToForm = selectedCountry && selectedOperator;
   const canSubmit   = phone.length >= 8 && displayAmount > 0;
 
+  const isWave = selectedOperator === "Wave";
+
   const handleConfirm = async () => {
     setStep("processing");
     try {
@@ -218,12 +221,58 @@ export default function QrPayPage() {
       }
       setTxRef(data.reference);
       setIsSandbox(!!data._sandbox);
-      setStep("success");
+      if (data.payment_url) setPaymentUrl(data.payment_url);
+      if (data.status === "success" || data.status === "completed") {
+        setStep("success");
+      } else {
+        setStep("pending");
+      }
     } catch {
       setError("Erreur réseau. Veuillez réessayer.");
       setStep("error");
     }
   };
+
+  // ── Poll transaction status while in "pending" state ─────────────────────
+  useEffect(() => {
+    if (step !== "pending" || !txRef) return;
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 36; // 36 × 5s = 3 minutes
+    let stopped = false;
+
+    const poll = async () => {
+      if (stopped) return;
+      try {
+        const r = await fetch(`${BASE}/api/qr/status/${txRef}`);
+        if (r.ok) {
+          const d = await r.json();
+          const s: string = d.status ?? "";
+          if (s === "success" || s === "completed") {
+            stopped = true;
+            setStep("success");
+            return;
+          } else if (s === "failed" || s === "cancelled" || s === "expired") {
+            stopped = true;
+            setError(d.failureReason ?? "Paiement annulé ou échoué. Veuillez réessayer.");
+            setStep("error");
+            return;
+          }
+        }
+      } catch { /* erreur réseau — continuer */ }
+
+      attempts++;
+      if (!stopped && attempts < MAX_ATTEMPTS) {
+        setTimeout(poll, 5000);
+      } else if (!stopped) {
+        setError("Délai dépassé. Si vous avez confirmé dans Wave, vérifiez votre historique.");
+        setStep("error");
+      }
+    };
+
+    const timeout = setTimeout(poll, 5000);
+    return () => { stopped = true; clearTimeout(timeout); };
+  }, [step, txRef]);
 
   if (loading) {
     return (
@@ -416,6 +465,43 @@ export default function QrPayPage() {
                 <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-10 flex flex-col items-center gap-4">
                   <Loader2 className="w-10 h-10 text-gray-400 animate-spin" />
                   <p className="text-sm text-gray-500 font-medium">Traitement du paiement…</p>
+                </motion.div>
+              )}
+
+              {step === "pending" && (
+                <motion.div key="pending" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-6">
+                  <div className="w-16 h-16 rounded-full bg-[#1AC9FF]/10 flex items-center justify-center mx-auto mb-4">
+                    <img src={`${BASE}/op-wave.png`} alt="Wave" className="w-9 h-9 object-contain" />
+                  </div>
+                  <h2 className="text-base font-bold text-gray-900 mb-2">Finalisez votre paiement Wave</h2>
+                  <p className="text-sm text-gray-500 mb-4">Ouvrez ce lien dans l'application Wave, ou scannez le QR code, pour valider le paiement.</p>
+
+                  {paymentUrl ? (
+                    <div className="space-y-4">
+                      <a
+                        href={paymentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 w-full h-12 rounded-lg font-bold text-sm uppercase tracking-wide bg-[#1AC9FF] text-white hover:opacity-90 transition-all"
+                      >
+                        Ouvrir dans Wave
+                      </a>
+                      <div className="flex flex-col items-center gap-2">
+                        <p className="text-xs text-gray-400">Ou scannez ce QR code avec l'application Wave</p>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(paymentUrl)}`}
+                          alt="QR Wave"
+                          className="w-[140px] h-[140px] rounded-lg border border-gray-100"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 py-2">
+                      <div className="w-8 h-8 rounded-full border-4 border-[#1AC9FF]/30 border-t-[#1AC9FF] animate-spin" />
+                      <p className="text-xs text-gray-400">Génération du lien Wave…</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-blue-400 mt-4">Cette page se met à jour automatiquement</p>
                 </motion.div>
               )}
 
