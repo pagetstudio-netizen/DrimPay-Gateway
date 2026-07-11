@@ -204,3 +204,42 @@ export async function uploadBannerImage(
   const { data } = supabaseAdmin.storage.from(BANNER_BUCKET).getPublicUrl(filename);
   return data.publicUrl;
 }
+
+// ── Payment-link / QR-code images — public Supabase Storage ──────────────────
+
+const PAYLINK_BUCKET = "payment-link-images";
+
+export async function ensurePaymentLinkImagesBucket(): Promise<void> {
+  if (!serviceRoleKey || !supabaseAdmin) return;
+  try {
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const exists = buckets?.some((b) => b.id === PAYLINK_BUCKET);
+    if (!exists) {
+      await supabaseAdmin.storage.createBucket(PAYLINK_BUCKET, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+        allowedMimeTypes: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+      });
+      console.log(`[Storage] Bucket '${PAYLINK_BUCKET}' created`);
+    }
+  } catch (err: any) {
+    console.warn("[Storage] ensurePaymentLinkImagesBucket:", err?.message ?? err);
+  }
+}
+
+export async function uploadPaymentLinkImage(
+  buffer: Buffer,
+  mimetype: string,
+  originalName: string,
+): Promise<string> {
+  if (!serviceRoleKey || !supabaseAdmin) throw new Error("SUPABASE_SERVICE_ROLE_KEY required");
+  await ensurePaymentLinkImagesBucket();
+  const ext = originalName.split(".").pop()?.toLowerCase() ?? "png";
+  const filename = `paylink_${Date.now()}.${ext}`;
+  const { error } = await supabaseAdmin.storage
+    .from(PAYLINK_BUCKET)
+    .upload(filename, buffer, { contentType: mimetype, upsert: false });
+  if (error) throw new Error(`Payment link image upload failed: ${error.message}`);
+  const { data } = supabaseAdmin.storage.from(PAYLINK_BUCKET).getPublicUrl(filename);
+  return data.publicUrl;
+}

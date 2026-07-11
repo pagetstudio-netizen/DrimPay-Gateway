@@ -31,7 +31,7 @@ import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, 
 import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
-import { uploadKybDocument, downloadContractTemplate } from "../lib/storage";
+import { uploadKybDocument, downloadContractTemplate, uploadPaymentLinkImage } from "../lib/storage";
 import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
@@ -40,6 +40,7 @@ import { getWebhookBaseUrl } from "../lib/base-urls";
 
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const payLinkImageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const FEE_RATE = 0.035;
 
@@ -1847,8 +1848,16 @@ router.get("/dashboard/payment-links", requireAuth, async (req, res) => {
   res.json(links);
 });
 
-router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
-  const parsed = createPaymentLinkSchema.safeParse(req.body);
+router.post("/dashboard/payment-links", requireAuth, payLinkImageUpload.single("image"), async (req, res) => {
+  const body = req.is("multipart/form-data") ? {
+    ...req.body,
+    fixedAmount: req.body.fixedAmount === "true" || req.body.fixedAmount === true,
+    amount: req.body.amount ? parseFloat(req.body.amount) : undefined,
+    maxUses: req.body.maxUses ? parseInt(req.body.maxUses) : undefined,
+    expiresInDays: req.body.expiresInDays ? parseInt(req.body.expiresInDays) : undefined,
+    countryCodes: req.body.countryCodes ? JSON.parse(req.body.countryCodes) : undefined,
+  } : req.body;
+  const parsed = createPaymentLinkSchema.safeParse(body);
   if (!parsed.success) {
     res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
     return;
@@ -1875,6 +1884,16 @@ router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
 
   const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
 
+  // Upload image to Supabase Storage if provided
+  let imageUrl: string | null = null;
+  if (req.file) {
+    try {
+      imageUrl = await uploadPaymentLinkImage(req.file.buffer, req.file.mimetype, req.file.originalname);
+    } catch (err: any) {
+      console.warn("[PayLink] Image upload failed (non-blocking):", err?.message);
+    }
+  }
+
   const [link] = await db
     .insert(paymentLinksTable)
     .values({
@@ -1882,6 +1901,7 @@ router.post("/dashboard/payment-links", requireAuth, async (req, res) => {
       token,
       title,
       description,
+      imageUrl,
       countryCode: countryCodeStored,
       operator: operatorStored,
       currency: currencyStored,
@@ -1941,6 +1961,7 @@ router.get("/pay/:token", async (req, res) => {
       id: paymentLinksTable.id,
       title: paymentLinksTable.title,
       description: paymentLinksTable.description,
+      imageUrl: paymentLinksTable.imageUrl,
       amount: paymentLinksTable.amount,
       currency: paymentLinksTable.currency,
       countryCode: paymentLinksTable.countryCode,
@@ -2698,9 +2719,14 @@ router.get("/dashboard/qr-codes", requireAuth, async (req, res) => {
   res.json(rows);
 });
 
-router.post("/dashboard/qr-codes", requireAuth, async (req, res) => {
+router.post("/dashboard/qr-codes", requireAuth, payLinkImageUpload.single("image"), async (req, res) => {
   const userId = req.session.userId!;
-  const parsed = createQrCodeSchema.safeParse(req.body);
+  const body = req.is("multipart/form-data") ? {
+    ...req.body,
+    amount: req.body.amount ? parseFloat(req.body.amount) : undefined,
+    countryCodes: req.body.countryCodes ? JSON.parse(req.body.countryCodes) : undefined,
+  } : req.body;
+  const parsed = createQrCodeSchema.safeParse(body);
   if (!parsed.success) {
     res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
     return;
@@ -2717,6 +2743,16 @@ router.post("/dashboard/qr-codes", requireAuth, async (req, res) => {
     attempts++;
   }
 
+  // Upload image if provided
+  let qrImageUrl: string | null = null;
+  if (req.file) {
+    try {
+      qrImageUrl = await uploadPaymentLinkImage(req.file.buffer, req.file.mimetype, req.file.originalname);
+    } catch (err: any) {
+      console.warn("[QrCode] Image upload failed (non-blocking):", err?.message);
+    }
+  }
+
   const [qr] = await db
     .insert(qrCodesTable)
     .values({
@@ -2724,6 +2760,7 @@ router.post("/dashboard/qr-codes", requireAuth, async (req, res) => {
       reference,
       name,
       description,
+      imageUrl: qrImageUrl,
       countryCodes: countryCodes && countryCodes.length > 0 ? countryCodes : null,
       currency,
       type,
@@ -2801,6 +2838,7 @@ router.get("/qr/:reference", async (req, res) => {
     reference: qr.reference,
     name: qr.name,
     description: qr.description,
+    imageUrl: qr.imageUrl ?? null,
     merchantName: merchant?.companyName ?? "Marchand",
     currency: qr.currency,
     type: qr.type,
