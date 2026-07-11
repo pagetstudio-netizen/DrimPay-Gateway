@@ -26,7 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
   under_review: "En révision", rejected: "Rejeté",
   // "pending" = l'utilisateur n'a pas encore terminé les étapes du formulaire —
   // ce n'est PAS un dossier soumis en attente de votre revue.
-  pending: "Non soumis (en cours)",
+  pending: "En cours — soumission non terminée",
 };
 
 const DOC_LABELS: Record<string, { label: string; icon: any; category: "rep" | "company" }> = {
@@ -482,7 +482,7 @@ export default function AdminKyb() {
                 <option value="under_review">En révision</option>
                 <option value="approved">Approuvés</option>
                 <option value="rejected">Rejetés</option>
-                <option value="pending">Non soumis (en cours)</option>
+                <option value="pending">En cours — soumission non terminée</option>
               </select>
 
               <button onClick={() => load({ p: page })} title="Actualiser"

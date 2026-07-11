@@ -19,7 +19,7 @@ const KYB_COLORS: Record<string, string> = {
 };
 const KYB_LABELS: Record<string, string> = {
   approved: "Vérifié", submitted: "Soumis", under_review: "En révision",
-  rejected: "Rejeté", pending: "Non soumis (en cours)",
+  rejected: "Rejeté", pending: "En cours — soumission non terminée",
 };
 
 function fmt(n: number) { return Math.round(n).toLocaleString("fr-FR"); }
