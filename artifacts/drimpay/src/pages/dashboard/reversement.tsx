@@ -412,10 +412,6 @@ export default function DashboardReversement() {
                   <span className="text-primary mt-0.5">•</span>
                   Délai de traitement : <span className="font-semibold text-foreground">quelques minutes</span> selon l'opérateur.
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">•</span>
-                  Aucun transfert entre wallets de pays différents.
-                </li>
               </ul>
             </div>
           </div>

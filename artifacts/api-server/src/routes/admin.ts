@@ -7,7 +7,7 @@ import {
   aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable,
   blacklistedPhonesTable, paymentLinkAttemptsTable, socialLinksTable,
   notificationsTable, supportUsersTable, globalBannersTable,
-  userWebhooksTable, userAllowedIpsTable, jobsTable,
+  userWebhooksTable, userAllowedIpsTable, jobsTable, walletExchangesTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt, inArray } from "drizzle-orm";
 import crypto from "crypto";
@@ -27,6 +27,7 @@ import { generateContractPdf } from "../lib/contract-pdf";
 import { sendBroadcastEmail, sendKybApprovedEmail, sendKybRejectedEmail } from "../lib/mailer";
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { resolveAggregator } from "../lib/aggregator-router";
+import { approveWalletExchange, rejectWalletExchange } from "../lib/wallet-exchange-service";
 
 const contractUpload = multer({
   storage: multer.memoryStorage(),
@@ -132,6 +133,8 @@ router.get(AP + "/stats", requireAdmin, async (req: any, res: any) => {
     bigTxAlerts,
     recentTx,
     domainesRaw,
+    [exchangeApproved],
+    [exchangePending],
   ] = await Promise.all([
     db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "user")),
     db.select({ count: count() }).from(usersTable),
@@ -181,6 +184,12 @@ router.get(AP + "/stats", requireAdmin, async (req: any, res: any) => {
     db.selectDistinct({ domain: transactionsTable.webhookUrl })
       .from(transactionsTable)
       .where(sql`${transactionsTable.webhookUrl} IS NOT NULL AND ${transactionsTable.webhookUrl} != ''`),
+    db.select({
+      totalFees: sum(walletExchangesTable.fee),
+      totalAmount: sum(walletExchangesTable.amount),
+      cnt: count(),
+    }).from(walletExchangesTable).where(eq(walletExchangesTable.status, "approved")),
+    db.select({ cnt: count() }).from(walletExchangesTable).where(eq(walletExchangesTable.status, "pending")),
   ]);
 
   const merchantIds = [...new Set(recentTx.map(t => t.userId))];
@@ -266,6 +275,11 @@ router.get(AP + "/stats", requireAdmin, async (req: any, res: any) => {
     // Alerts
     recentTransactions: recentTx.map(t => ({ ...t, merchant: merchantMap[t.userId] ?? null })),
     bigTxAlerts,
+    // Wallet exchanges
+    exchangeFeesTotal: parseFloat(String(exchangeApproved.totalFees ?? 0)),
+    exchangeVolumeTotal: parseFloat(String(exchangeApproved.totalAmount ?? 0)),
+    exchangeApprovedCount: Number(exchangeApproved.cnt),
+    exchangePendingCount: Number(exchangePending.cnt),
     // Reset info
     statsResetAt: statsResetAt ? statsResetAt.toISOString() : null,
   });
@@ -391,6 +405,25 @@ router.put(AP + "/merchants/:id", requireAdmin, async (req: any, res: any) => {
   await db.update(usersTable).set(updateData).where(eq(usersTable.id, id));
   await logAdminAction(req.session.userId, "UPDATE_MERCHANT", "user", String(id), JSON.stringify(updateData), req.ip);
   res.json({ ok: true });
+});
+
+router.patch(AP + "/merchants/:id/toggle-support-agent", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  const [user] = await db.select({ id: usersTable.id, email: usersTable.email, isSupportAgent: usersTable.isSupportAgent })
+    .from(usersTable).where(eq(usersTable.id, id));
+  if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
+  const next = !user.isSupportAgent;
+  await db.update(usersTable).set({ isSupportAgent: next }).where(eq(usersTable.id, id));
+  await logAdminAction(req.session.userId, next ? "GRANT_SUPPORT_AGENT" : "REVOKE_SUPPORT_AGENT", "user", String(id), user.email, req.ip);
+  res.json({ ok: true, isSupportAgent: next });
+});
+
+router.get(AP + "/merchants/support-agents", requireAdmin, async (_req: any, res: any) => {
+  const agents = await db.select({
+    id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName,
+    country: usersTable.country, createdAt: usersTable.createdAt,
+  }).from(usersTable).where(eq(usersTable.isSupportAgent, true)).orderBy(asc(usersTable.companyName));
+  res.json({ agents });
 });
 
 router.put(AP + "/merchants/:id/role", requireAdmin, async (req: any, res: any) => {
@@ -1007,6 +1040,80 @@ router.get(AP + "/aggregators", requireAdmin, async (_req: any, res: any) => {
   const aggs = await db.select().from(aggregatorsTable).orderBy(aggregatorsTable.name);
   const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.countryCode);
   res.json({ aggregators: aggs, operatorAggregators: opAggs });
+});
+
+// ─── WALLET EXCHANGES ─────────────────────────────────────────────────────────
+router.get(AP + "/wallet-exchanges", requireAdmin, async (req: any, res: any) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const status = req.query.status as string | undefined;
+  const mode = req.query.mode as string | undefined;
+
+  const conditions = [];
+  if (status && ["pending", "approved", "rejected"].includes(status)) {
+    conditions.push(eq(walletExchangesTable.status, status as any));
+  }
+  if (mode && ["sandbox", "live"].includes(mode)) {
+    conditions.push(eq(walletExchangesTable.mode, mode as any));
+  }
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [{ c: total }] = await db.select({ c: count() }).from(walletExchangesTable).where(where as any);
+  const rows = await db
+    .select()
+    .from(walletExchangesTable)
+    .where(where as any)
+    .orderBy(desc(walletExchangesTable.createdAt))
+    .limit(limit)
+    .offset((page - 1) * limit);
+
+  const userIds = [...new Set(rows.map(r => r.userId))];
+  const users = userIds.length > 0
+    ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email })
+        .from(usersTable).where(inArray(usersTable.id, userIds))
+    : [];
+  const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+
+  res.json({
+    exchanges: rows.map(r => ({ ...r, merchant: userMap[r.userId] ?? null })),
+    total: Number(total),
+  });
+});
+
+router.get(AP + "/wallet-exchanges/:id", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
+  if (!exchange) { res.status(404).json({ error: "Demande introuvable" }); return; }
+
+  const [merchant] = await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email, country: usersTable.country })
+    .from(usersTable).where(eq(usersTable.id, exchange.userId));
+  const [fromWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, exchange.fromWalletId));
+  const [toWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, exchange.toWalletId));
+
+  res.json({ exchange, merchant: merchant ?? null, fromWallet: fromWallet ?? null, toWallet: toWallet ?? null });
+});
+
+router.post(AP + "/wallet-exchanges/:id/approve", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  const result = await approveWalletExchange(id, admin?.email ?? "Admin");
+  if (!result.ok) { res.status(400).json({ error: result.error }); return; }
+  await logAdminAction(req.session.userId, "APPROVE_WALLET_EXCHANGE", "wallet_exchange", String(id), undefined, req.ip);
+  res.json({ ok: true });
+});
+
+router.post(AP + "/wallet-exchanges/:id/reject", requireAdmin, async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  const { reason } = req.body;
+  if (!reason?.trim()) {
+    res.status(400).json({ error: "La raison du rejet est obligatoire." });
+    return;
+  }
+  const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  const result = await rejectWalletExchange(id, reason.trim(), admin?.email ?? "Admin");
+  if (!result.ok) { res.status(400).json({ error: result.error }); return; }
+  await logAdminAction(req.session.userId, "REJECT_WALLET_EXCHANGE", "wallet_exchange", String(id), reason, req.ip);
+  res.json({ ok: true });
 });
 
 router.post(AP + "/aggregators", requireAdmin, async (req: any, res: any) => {

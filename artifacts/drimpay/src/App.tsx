@@ -52,6 +52,8 @@ import DashboardPaymentLinks from "@/pages/dashboard/payment-links";
 import DashboardPaymentLinksCreate from "@/pages/dashboard/payment-links-create";
 import DashboardQrCodes from "@/pages/dashboard/qr-codes";
 import DashboardMassPayout from "@/pages/dashboard/mass-payout";
+import DashboardWalletExchange from "@/pages/dashboard/wallet-exchange";
+import AdminWalletExchanges from "@/pages/admin/wallet-exchanges";
 import PayPage from "@/pages/pay";
 import QrPayPage from "@/pages/qr-pay";
 
@@ -62,6 +64,7 @@ import SupportAdminMessages from "@/pages/support-admin/messages";
 import SupportAdminMessageDetail from "@/pages/support-admin/message-detail";
 import SupportAdminSettings from "@/pages/support-admin/settings";
 import SupportAdminNotifications from "@/pages/support-admin/notifications";
+import SupportAdminWalletExchanges from "@/pages/support-admin/wallet-exchanges";
 
 import AdminDashboard from "@/pages/admin/index";
 import AdminMerchants from "@/pages/admin/merchants";
@@ -268,6 +271,7 @@ function AdminSwitch() {
       <Route path="/admin/social-links" component={AdminSocialLinks} />
       <Route path="/admin/support-agents" component={AdminSupportAgents} />
       <Route path="/admin/api-keys" component={AdminApiKeys} />
+      <Route path="/admin/wallet-exchanges" component={AdminWalletExchanges} />
       <Route component={AdminDashboard} />
     </Switch>
   );
@@ -313,6 +317,7 @@ function DashboardSwitch() {
       <Route path="/dashboard/notifications" component={DashboardNotifications} />
       <Route path="/dashboard/verify-code" component={DashboardVerifyCode} />
       <Route path="/dashboard/support" component={DashboardSupport} />
+      <Route path="/dashboard/wallet-exchange" component={DashboardWalletExchange} />
       <Route component={NotFound} />
     </Switch>
     </ModeProvider>
@@ -342,6 +347,7 @@ function Router() {
         <Route path="/support-admin/messages" component={SupportAdminMessages} />
         <Route path="/support-admin/settings" component={SupportAdminSettings} />
         <Route path="/support-admin/notifications" component={SupportAdminNotifications} />
+        <Route path="/support-admin/wallet-exchanges" component={SupportAdminWalletExchanges} />
         <Route component={SupportAdminDashboard} />
       </Switch>
     );

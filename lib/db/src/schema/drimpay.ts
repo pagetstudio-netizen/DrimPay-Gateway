@@ -33,6 +33,7 @@ export const usersTable = pgTable("users", {
   accountLockedUntil: timestamp("account_locked_until"),
   withdrawalFailedAttempts: integer("withdrawal_failed_attempts").notNull().default(0),
   withdrawalLockedUntil: timestamp("withdrawal_locked_until"),
+  isSupportAgent: boolean("is_support_agent").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -225,6 +226,29 @@ export const reversementsTable = pgTable("reversements", {
   failureReason: text("failure_reason"),
   status: reversementStatusEnum("status").notNull().default("pending"),
   mode: transactionModeEnum("mode").notNull().default("sandbox"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const walletExchangeStatusEnum = pgEnum("wallet_exchange_status", ["pending", "approved", "rejected"]);
+
+export const walletExchangesTable = pgTable("wallet_exchanges", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  fromWalletId: integer("from_wallet_id").notNull().references(() => walletsTable.id),
+  toWalletId: integer("to_wallet_id").notNull().references(() => walletsTable.id),
+  fromCountryCode: text("from_country_code").notNull(),
+  toCountryCode: text("to_country_code").notNull(),
+  currency: text("currency").notNull(),
+  amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+  fee: numeric("fee", { precision: 18, scale: 2 }).notNull(),
+  netAmount: numeric("net_amount", { precision: 18, scale: 2 }).notNull(),
+  note: text("note"),
+  reference: text("reference"),
+  status: walletExchangeStatusEnum("status").notNull().default("pending"),
+  rejectionReason: text("rejection_reason"),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  mode: walletModeEnum("mode").notNull().default("sandbox"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

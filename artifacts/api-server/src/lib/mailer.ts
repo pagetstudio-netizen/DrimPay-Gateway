@@ -908,3 +908,165 @@ export async function sendPasswordResetEmail(opts: {
     return { ok: false, error: e?.message ?? String(e) };
   }
 }
+
+export async function sendWalletExchangeApprovedEmail(opts: {
+  to: string;
+  companyName: string;
+  fromCountry: string;
+  toCountry: string;
+  amount: number;
+  fee: number;
+  net: number;
+  currency: string;
+  reference: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const resend = getResend();
+  if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
+
+  const footer = await buildEmailFooter();
+  const fmt = (n: number) => `${n.toLocaleString("fr-FR")} ${opts.currency}`;
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: opts.to,
+      subject: `Échange de wallet approuvé — ${opts.fromCountry} → ${opts.toCountry}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#1a7a3c;padding:28px 40px;">
+            <span style="font-size:24px;font-weight:bold;color:#ffffff;">DrimPay</span>
+            <span style="font-size:13px;color:#c5ff4a;margin-left:10px;">Services de paiement</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            <div style="text-align:center;margin-bottom:28px;">
+              <div style="display:inline-block;background:#dcfce7;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">✅</div>
+            </div>
+            <h2 style="color:#111;margin:0 0 16px;text-align:center;">Échange de wallet approuvé !</h2>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+              Bonjour <strong>${opts.companyName}</strong>, votre demande d'échange entre vos wallets <strong>${opts.fromCountry}</strong> et <strong>${opts.toCountry}</strong> a été validée par notre équipe.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:10px;padding:4px;margin:0 0 24px;">
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+                  <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;">Montant débité (${opts.fromCountry})</span><br>
+                  <span style="font-size:16px;font-weight:bold;color:#0f172a;">${fmt(opts.amount)}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+                  <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;">Frais d'échange (3%)</span><br>
+                  <span style="font-size:16px;font-weight:bold;color:#dc2626;">- ${fmt(opts.fee)}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;">
+                  <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;">Montant crédité (${opts.toCountry})</span><br>
+                  <span style="font-size:18px;font-weight:bold;color:#16a34a;">${fmt(opts.net)}</span>
+                </td>
+              </tr>
+            </table>
+            <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;">Référence : ${opts.reference}</p>
+            <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
+              Des questions ? Contactez notre support : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
+            </p>
+          </td>
+        </tr>
+        ${footer}
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+    });
+
+    console.log(`[Mailer] Email échange wallet approuvé envoyé à ${opts.to}`);
+    return { ok: true };
+  } catch (e: any) {
+    console.error("[Mailer] Erreur email échange approuvé:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
+export async function sendWalletExchangeRejectedEmail(opts: {
+  to: string;
+  companyName: string;
+  fromCountry: string;
+  toCountry: string;
+  amount: number;
+  currency: string;
+  reason: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const resend = getResend();
+  if (!resend) return { ok: false, error: "RESEND_API_KEY non configuré" };
+
+  const footer = await buildEmailFooter();
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: opts.to,
+      subject: `Échange de wallet refusé — ${opts.fromCountry} → ${opts.toCountry}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#1a7a3c;padding:28px 40px;">
+            <span style="font-size:24px;font-weight:bold;color:#ffffff;">DrimPay</span>
+            <span style="font-size:13px;color:#c5ff4a;margin-left:10px;">Services de paiement</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            <div style="text-align:center;margin-bottom:28px;">
+              <div style="display:inline-block;background:#fee2e2;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">&#10006;</div>
+            </div>
+            <h2 style="color:#111;margin:0 0 16px;text-align:center;">Votre échange de wallet a été refusé</h2>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
+              Bonjour <strong>${opts.companyName}</strong>,
+            </p>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+              Votre demande d'échange de <strong>${opts.amount.toLocaleString("fr-FR")} ${opts.currency}</strong> entre vos wallets <strong>${opts.fromCountry}</strong> et <strong>${opts.toCountry}</strong> n'a pas pu être validée.
+            </p>
+            <div style="background:#fff1f2;border-left:4px solid #ef4444;border-radius:4px;padding:18px 22px;margin:0 0 24px;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:bold;color:#b91c1c;">Motif du refus :</p>
+              <p style="margin:0;font-size:14px;color:#7f1d1d;line-height:1.7;white-space:pre-wrap;">${opts.reason}</p>
+            </div>
+            <div style="background:#f0faf4;border:1px solid #86efac;border-radius:10px;padding:16px 20px;margin:0 0 24px;">
+              <p style="margin:0;font-size:13px;color:#166534;line-height:1.7;">
+                Les fonds ont été intégralement recrédités sur votre wallet ${opts.fromCountry}. Vous pouvez soumettre une nouvelle demande à tout moment.
+              </p>
+            </div>
+            <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
+              Des questions ? Contactez notre support : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
+            </p>
+          </td>
+        </tr>
+        ${footer}
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim(),
+    });
+
+    console.log(`[Mailer] Email échange wallet refusé envoyé à ${opts.to}`);
+    return { ok: true };
+  } catch (e: any) {
+    console.error("[Mailer] Erreur email échange refusé:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}

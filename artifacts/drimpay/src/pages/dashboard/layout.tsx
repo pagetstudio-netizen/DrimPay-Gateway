@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMode } from "@/lib/mode-context";
+import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { GlobalBanner } from "@/components/global-banner";
@@ -110,6 +111,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Support Client", href: "/support", img: supportImg },
     ],
   },
+  // "Panel Support" entry is injected dynamically when isSupportAgent === true
 ];
 
 // ─── Icon renderer ────────────────────────────────────────────────────────────
@@ -216,9 +218,26 @@ function CollapsibleGroup({
 // ─── Nav links (shared by desktop sidebar and mobile drawer) ──────────────────
 
 function NavLinks({ location, onNavigate }: { location: string; onNavigate: () => void }) {
+  const { user } = useAuth();
+
+  // Build sections, injecting "Panel Support" button for support agents
+  const sections = [
+    ...NAV_SECTIONS,
+    ...(user?.isSupportAgent
+      ? [{
+          title: "ESPACE SUPPORT",
+          entries: [{
+            label: "Panel Support",
+            href: "/support-admin",
+            icon: ShieldCheck,
+          }],
+        }]
+      : []),
+  ];
+
   return (
     <>
-      {NAV_SECTIONS.map((section, si) => (
+      {sections.map((section, si) => (
         <div key={si} className={si > 0 ? "mt-4" : ""}>
           {section.title && (
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-1.5">

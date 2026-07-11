@@ -9,6 +9,7 @@ import {
   kybSubmissionsTable,
   usersTable,
   reversementsTable,
+  walletExchangesTable,
   paymentLinksTable,
   massPayoutJobsTable,
   operatorsTable,
@@ -27,7 +28,7 @@ import { eq, and, desc, sum, count, sql, gte, asc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure } from "../lib/telegram";
+import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange } from "../lib/telegram";
 import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
@@ -1644,6 +1645,125 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
   } catch {}
 
   res.status(201).json({ ...reversement, _sandbox: currentMode === "sandbox" });
+});
+
+// ─── Échange de wallets (entre pays de la même zone monétaire) ──────────────
+
+const WALLET_EXCHANGE_FEE_RATE = 0.03;
+
+const walletExchangeSchema = z.object({
+  fromCountryCode: z.string().min(2),
+  toCountryCode: z.string().min(2),
+  amount: z.number().positive(),
+  note: z.string().optional(),
+});
+
+router.get("/dashboard/wallet-exchanges", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
+  const rows = await db
+    .select()
+    .from(walletExchangesTable)
+    .where(and(eq(walletExchangesTable.userId, userId), eq(walletExchangesTable.mode, currentMode)))
+    .orderBy(desc(walletExchangesTable.createdAt))
+    .limit(50);
+  res.json(rows);
+});
+
+router.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async (req, res) => {
+  const parsed = walletExchangeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+    return;
+  }
+  const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
+  const { fromCountryCode, toCountryCode, amount, note } = parsed.data;
+
+  if (fromCountryCode === toCountryCode) {
+    res.status(400).json({ error: "Le pays source et le pays destination doivent être différents." });
+    return;
+  }
+
+  const fromMeta = COUNTRIES.find((c) => c.code === fromCountryCode);
+  const toMeta = COUNTRIES.find((c) => c.code === toCountryCode);
+  if (!fromMeta || !toMeta) {
+    res.status(400).json({ error: "Pays non supporté." });
+    return;
+  }
+  if (fromMeta.currency !== toMeta.currency) {
+    res.status(400).json({ error: `Échange impossible : ${fromMeta.name} (${fromMeta.currency}) et ${toMeta.name} (${toMeta.currency}) n'utilisent pas la même devise.` });
+    return;
+  }
+
+  const [fromWallet] = await db
+    .select()
+    .from(walletsTable)
+    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, fromCountryCode), eq(walletsTable.mode, currentMode)));
+
+  if (!fromWallet) {
+    res.status(400).json({ error: `Aucun wallet ${currentMode} actif pour ${fromMeta.name}.` });
+    return;
+  }
+
+  const available = parseFloat(fromWallet.balance as string) - parseFloat(fromWallet.lockedBalance as string);
+  if (amount > available) {
+    res.status(400).json({ error: "Solde disponible insuffisant dans ce wallet." });
+    return;
+  }
+
+  // Le wallet destination est créé automatiquement s'il n'existe pas encore.
+  let [toWallet] = await db
+    .select()
+    .from(walletsTable)
+    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, toCountryCode), eq(walletsTable.mode, currentMode)));
+
+  if (!toWallet) {
+    [toWallet] = await db
+      .insert(walletsTable)
+      .values({ userId, countryCode: toCountryCode, currency: toMeta.currency, balance: "0", mode: currentMode })
+      .returning();
+  }
+
+  const fee = +(amount * WALLET_EXCHANGE_FEE_RATE).toFixed(2);
+  const net = +(amount - fee).toFixed(2);
+  const reference = `WEX-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+  // Réserve les fonds (lockedBalance) en attendant la validation admin.
+  await db
+    .update(walletsTable)
+    .set({ lockedBalance: sql`${walletsTable.lockedBalance} + ${amount}` })
+    .where(eq(walletsTable.id, fromWallet.id));
+
+  const [exchange] = await db
+    .insert(walletExchangesTable)
+    .values({
+      userId, fromWalletId: fromWallet.id, toWalletId: toWallet.id,
+      fromCountryCode, toCountryCode, currency: fromMeta.currency,
+      amount: String(amount), fee: String(fee), netAmount: String(net),
+      note: note ?? null, reference, status: "pending", mode: currentMode,
+    })
+    .returning();
+
+  createNotification(
+    userId, "info", "wallet",
+    `Demande d'échange soumise — ${fromMeta.name} → ${toMeta.name}`,
+    `Votre demande d'échange de ${amount.toLocaleString("fr-FR")} ${fromMeta.currency} vers votre wallet ${toMeta.name} est en attente de validation. Frais : ${fee.toLocaleString("fr-FR")} ${fromMeta.currency}. Net : ${net.toLocaleString("fr-FR")} ${fromMeta.currency}. Réf : ${reference}.`,
+    "/dashboard/wallet-exchange",
+  ).catch(() => {});
+
+  try {
+    const [user] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+    notifyWalletExchange({
+      id: exchange.id,
+      company: user?.companyName ?? "?",
+      fromCountry: fromMeta.name, toCountry: toMeta.name,
+      amount, fee, net, currency: fromMeta.currency, mode: currentMode,
+      reference,
+    }).catch(() => {});
+  } catch {}
+
+  res.status(201).json({ ...exchange, _sandbox: currentMode === "sandbox" });
 });
 
 // ─── Settings ───────────────────────────────────────────────────────────────

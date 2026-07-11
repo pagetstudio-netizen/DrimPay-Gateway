@@ -9,23 +9,32 @@ import {
   contactSubmissionsTable,
   socialLinksTable,
   globalBannersTable,
+  usersTable,
+  walletExchangesTable,
 } from "@workspace/db/schema";
-import { eq, desc, count, and, gte, sql } from "drizzle-orm";
+import { eq, desc, count, and, gte, sql, asc } from "drizzle-orm";
+import { approveWalletExchange, rejectWalletExchange } from "../lib/wallet-exchange-service";
 import { sendSupportReplyEmail } from "../lib/mailer";
 
 const router = Router();
 
 // ── Auth middleware ─────────────────────────────────────────────────────────
 
-const requireSupportAuth: RequestHandler = (req, res, next) => {
-  if (!req.session.supportAdminId) {
-    res.status(401).json({ error: "Non authentifié" });
-    return;
+const requireSupportAuth: RequestHandler = async (req, res, next) => {
+  // Classic support agent session
+  if (req.session.supportAdminId) { next(); return; }
+  // Merchant nominated as support agent
+  if (req.session.userId) {
+    const [u] = await db.select({ isSupportAgent: usersTable.isSupportAgent })
+      .from(usersTable).where(eq(usersTable.id, req.session.userId));
+    if (u?.isSupportAgent) { next(); return; }
   }
-  next();
+  res.status(401).json({ error: "Non authentifié" });
 };
 
 const requirePasswordChanged: RequestHandler = async (req, res, next) => {
+  // Merchant agents don't need to change password
+  if (!req.session.supportAdminId && req.session.userId) { next(); return; }
   if (!req.session.supportAdminId) { res.status(401).json({ error: "Non authentifié" }); return; }
   const [u] = await db.select({ mustChangePassword: supportUsersTable.mustChangePassword })
     .from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId));
@@ -54,6 +63,14 @@ router.post("/support-admin/logout", (req, res) => {
 });
 
 router.get("/support-admin/me", requireSupportAuth, async (req, res) => {
+  // Merchant support agent — use merchant session
+  if (!req.session.supportAdminId && req.session.userId) {
+    const [u] = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName })
+      .from(usersTable).where(eq(usersTable.id, req.session.userId));
+    if (!u) { res.status(404).json({ error: "Not found" }); return; }
+    res.json({ id: u.id, email: u.email, name: u.companyName, mustChangePassword: false, isMerchantAgent: true });
+    return;
+  }
   const [u] = await db.select({ id: supportUsersTable.id, email: supportUsersTable.email, name: supportUsersTable.name, mustChangePassword: supportUsersTable.mustChangePassword })
     .from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId!));
   if (!u) { res.status(404).json({ error: "Not found" }); return; }
@@ -195,6 +212,78 @@ router.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePass
 // ── Settings ────────────────────────────────────────────────────────────────
 
 const SUPPORT_SETTING_KEYS = ["support_whatsapp", "support_email_1", "support_email_2", "support_hours", "support_telegram"];
+
+// ── Wallet Exchanges ─────────────────────────────────────────────────────────
+
+router.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const { status, mode, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+  const offset = (pageNum - 1) * limitNum;
+
+  const conditions: any[] = [];
+  if (status) conditions.push(eq(walletExchangesTable.status, status as any));
+  if (mode)   conditions.push(eq(walletExchangesTable.mode, mode as any));
+  const where = conditions.length ? and(...conditions) : undefined;
+
+  const [{ total }] = await db.select({ total: count() }).from(walletExchangesTable).where(where as any);
+  const exchanges = await db.select().from(walletExchangesTable)
+    .where(where as any).orderBy(desc(walletExchangesTable.createdAt)).limit(limitNum).offset(offset);
+
+  const userIds = [...new Set(exchanges.map(e => e.userId))];
+  const merchants = userIds.length > 0
+    ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email })
+        .from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.join(userIds.map(id => sql`${id}`), sql`, `)}]::int[])`)
+    : [];
+  const mMap = Object.fromEntries(merchants.map(m => [m.id, m]));
+
+  res.json({
+    exchanges: exchanges.map(e => ({ ...e, merchant: mMap[e.userId] ?? null })),
+    total: Number(total),
+    page: pageNum,
+  });
+});
+
+router.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
+  if (!exchange) { res.status(404).json({ error: "Échange introuvable" }); return; }
+
+  const [merchant] = await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email, country: usersTable.country })
+    .from(usersTable).where(eq(usersTable.id, exchange.userId));
+
+  const { walletsTable } = await import("@workspace/db/schema");
+  const [fromWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, exchange.fromWalletId));
+  const toWallet = exchange.toWalletId
+    ? (await db.select().from(walletsTable).where(eq(walletsTable.id, exchange.toWalletId)))[0]
+    : null;
+
+  res.json({ exchange, merchant: merchant ?? null, fromWallet: fromWallet ?? null, toWallet: toWallet ?? null });
+});
+
+router.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const actorUser = req.session.supportAdminId
+    ? (await db.select({ name: supportUsersTable.name }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId)))[0]
+    : null;
+  const actor = actorUser?.name ?? "Support";
+  const result = await approveWalletExchange(id, actor);
+  if (!result.ok) { res.status(400).json({ error: result.error }); return; }
+  res.json({ ok: true });
+});
+
+router.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { reason } = req.body;
+  if (!reason?.trim()) { res.status(400).json({ error: "Motif requis" }); return; }
+  const actorUser = req.session.supportAdminId
+    ? (await db.select({ name: supportUsersTable.name }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId)))[0]
+    : null;
+  const actor = actorUser?.name ?? "Support";
+  const result = await rejectWalletExchange(id, reason.trim(), actor);
+  if (!result.ok) { res.status(400).json({ error: result.error }); return; }
+  res.json({ ok: true });
+});
 
 router.get("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const rows = await db.select().from(supportSettingsTable);

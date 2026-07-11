@@ -8,6 +8,7 @@ export type User = {
   role: "admin" | "user";
   accountType: "enterprise" | "personal";
   mode?: "sandbox" | "live";
+  isSupportAgent?: boolean;
 };
 
 type AuthResult = { error?: string; requiresVerification?: boolean; email?: string };

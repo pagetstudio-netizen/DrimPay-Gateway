@@ -1,8 +1,9 @@
 import { db } from "@workspace/db";
-import { adminSettingsTable, usersTable, transactionsTable, blockedIpsTable } from "@workspace/db/schema";
-import { eq, and, gte, lt, sum, count } from "drizzle-orm";
+import { adminSettingsTable, usersTable, transactionsTable, blockedIpsTable, walletExchangesTable } from "@workspace/db/schema";
+import { eq, and, gte, lt, sum, count, desc } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
+import { approveWalletExchange, rejectWalletExchange } from "./wallet-exchange-service";
 
 const STARTUP_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 heures
 const STARTUP_FLAG = path.join("/tmp", "drimpay-startup-notif.txt");
@@ -285,6 +286,30 @@ ${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
   );
 }
 
+export async function notifyWalletExchange(opts: {
+  id: number;
+  company: string; amount: number; fee: number; net: number;
+  currency: string; fromCountry: string; toCountry: string; mode: string; reference: string;
+}) {
+  const text =
+`🔄 <b>Nouvelle Demande d'Échange Wallet</b>
+
+🏢 ${opts.company}
+🌍 ${opts.fromCountry} → ${opts.toCountry}
+💵 Montant: <b>${money(opts.amount, opts.currency)}</b>
+   Frais (3%): ${money(opts.fee, opts.currency)} | Net crédité: ${money(opts.net, opts.currency)}
+🔖 <code>${opts.reference}</code>
+${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
+📅 ${dt()}`;
+
+  await sendWithButtons(text, [
+    [
+      { text: "✅ Approuver", callback_data: `approve_exchange:${opts.id}` },
+      { text: "❌ Rejeter", callback_data: `reject_exchange:${opts.id}` },
+    ],
+  ]);
+}
+
 export async function notifyTransactionFailure(opts: {
   type: "payin" | "payout";
   company: string;
@@ -459,6 +484,45 @@ ${lines}
       await sendTo(token, chatId, `❌ Erreur: ${String(e).substring(0, 200)}`);
     }
 
+  } else if (cmd === "/echanges") {
+    try {
+      const rows = await db
+        .select()
+        .from(walletExchangesTable)
+        .where(eq(walletExchangesTable.status, "pending"))
+        .orderBy(desc(walletExchangesTable.createdAt))
+        .limit(10);
+
+      if (rows.length === 0) {
+        await sendTo(token, chatId, "✅ Aucun échange de wallet en attente.");
+        return;
+      }
+
+      const userIds = [...new Set(rows.map(r => r.userId))];
+      const users = await db.select({ id: usersTable.id, companyName: usersTable.companyName }).from(usersTable);
+      const userMap = Object.fromEntries(users.filter(u => userIds.includes(u.id)).map(u => [u.id, u.companyName]));
+
+      await sendTo(token, chatId, `🔄 <b>Échanges en attente (${rows.length})</b>\n📅 ${dt()}`);
+
+      for (const r of rows) {
+        const text =
+`🏢 ${userMap[r.userId] ?? "?"}
+🌍 ${r.fromCountryCode} → ${r.toCountryCode}
+💵 Montant: <b>${money(parseFloat(r.amount as string), r.currency)}</b>
+   Frais: ${money(parseFloat(r.fee as string), r.currency)} | Net: ${money(parseFloat(r.netAmount as string), r.currency)}
+🔖 <code>${r.reference}</code>
+${r.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}`;
+        await sendWithButtons(text, [
+          [
+            { text: "✅ Approuver", callback_data: `approve_exchange:${r.id}` },
+            { text: "❌ Rejeter", callback_data: `reject_exchange:${r.id}` },
+          ],
+        ]);
+      }
+    } catch (e) {
+      await sendTo(token, chatId, `❌ Erreur: ${String(e).substring(0, 200)}`);
+    }
+
   } else if (cmd === "/help") {
     await sendTo(token, chatId,
 `🤖 <b>DrimPay Bot — Aide</b>
@@ -467,6 +531,7 @@ ${lines}
 /stats — Statistiques + état des retraits
 /ip — Adresse IP du serveur
 /blocked — 🚫 Lister les IPs bloquées (20 dernières)
+/echanges — 🔄 Lister les échanges de wallet en attente
 /stopretraits — 🔴 Bloquer TOUS les retraits instantanément
 /activetraits — 🟢 Réactiver les retraits
 /help — Afficher cette aide
@@ -481,6 +546,7 @@ ${lines}
 💰 Paiements reçus (API &amp; liens)
 🚨 Gros montants (≥500 000 FCFA)
 💸 Demandes de retrait
+🔄 Demandes d'échange de wallet (+ boutons Approuver/Rejeter)
 📋 KYB soumis / traités
 🆘 Erreurs critiques
 📊 Rapport quotidien (minuit Lomé)`
@@ -517,6 +583,26 @@ async function handleCallback(token: string, callbackId: string, chatId: string,
       );
     } catch (e) {
       await sendTo(token, chatId, `❌ Erreur blocage <code>${ip}</code>: ${String(e).substring(0, 200)}`);
+    }
+
+  } else if (data.startsWith("approve_exchange:")) {
+    const id = parseInt(data.slice(17), 10);
+    if (isNaN(id)) { await sendTo(token, chatId, "❌ Référence invalide."); return; }
+    const result = await approveWalletExchange(id, `Telegram: ${fromName}`);
+    if (result.ok) {
+      await sendTo(token, chatId, `✅ <b>Échange #${id} approuvé</b>\n👤 Par: ${fromName}\n📅 ${dt()}`);
+    } else {
+      await sendTo(token, chatId, `❌ Échec approbation #${id}: ${result.error}`);
+    }
+
+  } else if (data.startsWith("reject_exchange:")) {
+    const id = parseInt(data.slice(16), 10);
+    if (isNaN(id)) { await sendTo(token, chatId, "❌ Référence invalide."); return; }
+    const result = await rejectWalletExchange(id, `Rejeté via Telegram par ${fromName}`, `Telegram: ${fromName}`);
+    if (result.ok) {
+      await sendTo(token, chatId, `❌ <b>Échange #${id} rejeté</b>\n👤 Par: ${fromName}\n📅 ${dt()}`);
+    } else {
+      await sendTo(token, chatId, `❌ Échec rejet #${id}: ${result.error}`);
     }
 
   } else if (data.startsWith("unblock_ip:")) {

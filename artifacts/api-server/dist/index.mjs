@@ -55801,7 +55801,7 @@ var init_drizzle_zod = __esm({
 });
 
 // ../../lib/db/src/schema/drimpay.ts
-var userRoleEnum, accountTypeEnum, jobTypeEnum, partnerTypeEnum, serviceStatusEnum, incidentStatusEnum, incidentSeverityEnum, kybStatusEnum, transactionTypeEnum, transactionStatusEnum, apiKeyStatusEnum, apiKeyEnvEnum, usersTable, kybSubmissionsTable, walletModeEnum, walletsTable, transactionModeEnum, transactionsTable, apiKeysTable, userWebhooksTable, userAllowedIpsTable, virtualCardOrdersTable, massPayoutJobsTable, reversementStatusEnum, reversementsTable, blogArticlesTable, jobsTable, contactSubmissionsTable, supportUsersTable, supportRepliesTable, supportSettingsTable, serviceStatusesTable, incidentsTable, partnersTable, countriesTable, operatorsTable, paymentLinkStatusEnum, paymentLinksTable, aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable, paymentLinkAttemptsTable, socialLinksTable, insertBlogArticleSchema, insertJobSchema, insertContactSchema, blacklistedPhonesTable, qrCodeStatusEnum, qrCodeTypeEnum, qrCodesTable, securityEventTypeEnum, securityEventsTable, blockedIpsTable, notificationsTable, passwordResetTokensTable, emailVerificationTokensTable, knownDevicesTable, globalBannersTable;
+var userRoleEnum, accountTypeEnum, jobTypeEnum, partnerTypeEnum, serviceStatusEnum, incidentStatusEnum, incidentSeverityEnum, kybStatusEnum, transactionTypeEnum, transactionStatusEnum, apiKeyStatusEnum, apiKeyEnvEnum, usersTable, kybSubmissionsTable, walletModeEnum, walletsTable, transactionModeEnum, transactionsTable, apiKeysTable, userWebhooksTable, userAllowedIpsTable, virtualCardOrdersTable, massPayoutJobsTable, reversementStatusEnum, reversementsTable, walletExchangeStatusEnum, walletExchangesTable, blogArticlesTable, jobsTable, contactSubmissionsTable, supportUsersTable, supportRepliesTable, supportSettingsTable, serviceStatusesTable, incidentsTable, partnersTable, countriesTable, operatorsTable, paymentLinkStatusEnum, paymentLinksTable, aggregatorsTable, operatorAggregatorsTable, adminLogsTable, adminSettingsTable, paymentLinkAttemptsTable, socialLinksTable, insertBlogArticleSchema, insertJobSchema, insertContactSchema, blacklistedPhonesTable, qrCodeStatusEnum, qrCodeTypeEnum, qrCodesTable, securityEventTypeEnum, securityEventsTable, blockedIpsTable, notificationsTable, passwordResetTokensTable, emailVerificationTokensTable, knownDevicesTable, globalBannersTable;
 var init_drimpay = __esm({
   "../../lib/db/src/schema/drimpay.ts"() {
     "use strict";
@@ -55837,6 +55837,7 @@ var init_drimpay = __esm({
       accountLockedUntil: timestamp("account_locked_until"),
       withdrawalFailedAttempts: integer("withdrawal_failed_attempts").notNull().default(0),
       withdrawalLockedUntil: timestamp("withdrawal_locked_until"),
+      isSupportAgent: boolean("is_support_agent").notNull().default(false),
       createdAt: timestamp("created_at").notNull().defaultNow()
     });
     kybSubmissionsTable = pgTable("kyb_submissions", {
@@ -56011,6 +56012,27 @@ var init_drimpay = __esm({
       failureReason: text("failure_reason"),
       status: reversementStatusEnum("status").notNull().default("pending"),
       mode: transactionModeEnum("mode").notNull().default("sandbox"),
+      createdAt: timestamp("created_at").notNull().defaultNow()
+    });
+    walletExchangeStatusEnum = pgEnum("wallet_exchange_status", ["pending", "approved", "rejected"]);
+    walletExchangesTable = pgTable("wallet_exchanges", {
+      id: serial("id").primaryKey(),
+      userId: integer("user_id").notNull().references(() => usersTable.id),
+      fromWalletId: integer("from_wallet_id").notNull().references(() => walletsTable.id),
+      toWalletId: integer("to_wallet_id").notNull().references(() => walletsTable.id),
+      fromCountryCode: text("from_country_code").notNull(),
+      toCountryCode: text("to_country_code").notNull(),
+      currency: text("currency").notNull(),
+      amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+      fee: numeric("fee", { precision: 18, scale: 2 }).notNull(),
+      netAmount: numeric("net_amount", { precision: 18, scale: 2 }).notNull(),
+      note: text("note"),
+      reference: text("reference"),
+      status: walletExchangeStatusEnum("status").notNull().default("pending"),
+      rejectionReason: text("rejection_reason"),
+      reviewedBy: text("reviewed_by"),
+      reviewedAt: timestamp("reviewed_at"),
+      mode: walletModeEnum("mode").notNull().default("sandbox"),
       createdAt: timestamp("created_at").notNull().defaultNow()
     });
     blogArticlesTable = pgTable("blog_articles", {
@@ -56387,6 +56409,8 @@ __export(schema_exports, {
   userWebhooksTable: () => userWebhooksTable,
   usersTable: () => usersTable,
   virtualCardOrdersTable: () => virtualCardOrdersTable,
+  walletExchangeStatusEnum: () => walletExchangeStatusEnum,
+  walletExchangesTable: () => walletExchangesTable,
   walletModeEnum: () => walletModeEnum,
   walletsTable: () => walletsTable
 });
@@ -56428,7 +56452,7 @@ var init_src = __esm({
 });
 
 // ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/decode-strings.js
-function decodeBase642(base643) {
+function decodeBase64(base643) {
   let bufferLength = Math.ceil(base643.length / 4) * 3;
   const len = base643.length;
   let p = 0;
@@ -56517,7 +56541,7 @@ function decodeWord(charset, encoding, str) {
       dataView.setUint8(i, encodedBytes[i]);
     }
   } else if (encoding === "B") {
-    byteStr = decodeBase642(str.replace(/[^a-zA-Z0-9\+\/=]+/g, ""));
+    byteStr = decodeBase64(str.replace(/[^a-zA-Z0-9\+\/=]+/g, ""));
   } else {
     byteStr = textEncoder.encode(str);
   }
@@ -56679,13 +56703,13 @@ var init_base64_decoder = __esm({
             this.remainder = this.remainder.substr(allowedBytes);
           }
           if (base64Str.length) {
-            this.chunks.push(decodeBase642(base64Str));
+            this.chunks.push(decodeBase64(base64Str));
           }
         }
       }
       finalize() {
         if (this.remainder && !/^=+$/.test(this.remainder)) {
-          this.chunks.push(decodeBase642(this.remainder));
+          this.chunks.push(decodeBase64(this.remainder));
         }
         return blobToArrayBuffer(new Blob(this.chunks, { type: "application/octet-stream" }));
       }
@@ -69632,6 +69656,8 @@ __export(mailer_exports, {
   sendPasswordResetEmail: () => sendPasswordResetEmail,
   sendPasswordResetSupportEmail: () => sendPasswordResetSupportEmail,
   sendSupportReplyEmail: () => sendSupportReplyEmail,
+  sendWalletExchangeApprovedEmail: () => sendWalletExchangeApprovedEmail,
+  sendWalletExchangeRejectedEmail: () => sendWalletExchangeRejectedEmail,
   sendWelcomeEmail: () => sendWelcomeEmail
 });
 function extractEmail(raw, fallback) {
@@ -70409,6 +70435,142 @@ async function sendPasswordResetEmail(opts) {
     return { ok: true };
   } catch (e) {
     console.error("[Mailer] Erreur envoi r\xE9initialisation:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+async function sendWalletExchangeApprovedEmail(opts) {
+  const resend = getResend();
+  if (!resend) return { ok: false, error: "RESEND_API_KEY non configur\xE9" };
+  const footer = await buildEmailFooter();
+  const fmt = (n) => `${n.toLocaleString("fr-FR")} ${opts.currency}`;
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: opts.to,
+      subject: `\xC9change de wallet approuv\xE9 \u2014 ${opts.fromCountry} \u2192 ${opts.toCountry}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#1a7a3c;padding:28px 40px;">
+            <span style="font-size:24px;font-weight:bold;color:#ffffff;">DrimPay</span>
+            <span style="font-size:13px;color:#c5ff4a;margin-left:10px;">Services de paiement</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            <div style="text-align:center;margin-bottom:28px;">
+              <div style="display:inline-block;background:#dcfce7;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">\u2705</div>
+            </div>
+            <h2 style="color:#111;margin:0 0 16px;text-align:center;">\xC9change de wallet approuv\xE9 !</h2>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+              Bonjour <strong>${opts.companyName}</strong>, votre demande d'\xE9change entre vos wallets <strong>${opts.fromCountry}</strong> et <strong>${opts.toCountry}</strong> a \xE9t\xE9 valid\xE9e par notre \xE9quipe.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:10px;padding:4px;margin:0 0 24px;">
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+                  <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;">Montant d\xE9bit\xE9 (${opts.fromCountry})</span><br>
+                  <span style="font-size:16px;font-weight:bold;color:#0f172a;">${fmt(opts.amount)}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+                  <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;">Frais d'\xE9change (3%)</span><br>
+                  <span style="font-size:16px;font-weight:bold;color:#dc2626;">- ${fmt(opts.fee)}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;">
+                  <span style="font-size:12px;color:#94a3b8;text-transform:uppercase;">Montant cr\xE9dit\xE9 (${opts.toCountry})</span><br>
+                  <span style="font-size:18px;font-weight:bold;color:#16a34a;">${fmt(opts.net)}</span>
+                </td>
+              </tr>
+            </table>
+            <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;">R\xE9f\xE9rence : ${opts.reference}</p>
+            <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
+              Des questions ? Contactez notre support : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
+            </p>
+          </td>
+        </tr>
+        ${footer}
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim()
+    });
+    console.log(`[Mailer] Email \xE9change wallet approuv\xE9 envoy\xE9 \xE0 ${opts.to}`);
+    return { ok: true };
+  } catch (e) {
+    console.error("[Mailer] Erreur email \xE9change approuv\xE9:", e?.message ?? e);
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+async function sendWalletExchangeRejectedEmail(opts) {
+  const resend = getResend();
+  if (!resend) return { ok: false, error: "RESEND_API_KEY non configur\xE9" };
+  const footer = await buildEmailFooter();
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: opts.to,
+      subject: `\xC9change de wallet refus\xE9 \u2014 ${opts.fromCountry} \u2192 ${opts.toCountry}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:#1a7a3c;padding:28px 40px;">
+            <span style="font-size:24px;font-weight:bold;color:#ffffff;">DrimPay</span>
+            <span style="font-size:13px;color:#c5ff4a;margin-left:10px;">Services de paiement</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;">
+            <div style="text-align:center;margin-bottom:28px;">
+              <div style="display:inline-block;background:#fee2e2;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">&#10006;</div>
+            </div>
+            <h2 style="color:#111;margin:0 0 16px;text-align:center;">Votre \xE9change de wallet a \xE9t\xE9 refus\xE9</h2>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 12px;">
+              Bonjour <strong>${opts.companyName}</strong>,
+            </p>
+            <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+              Votre demande d'\xE9change de <strong>${opts.amount.toLocaleString("fr-FR")} ${opts.currency}</strong> entre vos wallets <strong>${opts.fromCountry}</strong> et <strong>${opts.toCountry}</strong> n'a pas pu \xEAtre valid\xE9e.
+            </p>
+            <div style="background:#fff1f2;border-left:4px solid #ef4444;border-radius:4px;padding:18px 22px;margin:0 0 24px;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:bold;color:#b91c1c;">Motif du refus :</p>
+              <p style="margin:0;font-size:14px;color:#7f1d1d;line-height:1.7;white-space:pre-wrap;">${opts.reason}</p>
+            </div>
+            <div style="background:#f0faf4;border:1px solid #86efac;border-radius:10px;padding:16px 20px;margin:0 0 24px;">
+              <p style="margin:0;font-size:13px;color:#166534;line-height:1.7;">
+                Les fonds ont \xE9t\xE9 int\xE9gralement recr\xE9dit\xE9s sur votre wallet ${opts.fromCountry}. Vous pouvez soumettre une nouvelle demande \xE0 tout moment.
+              </p>
+            </div>
+            <p style="color:#777;font-size:13px;line-height:1.6;margin:0 0 8px;">
+              Des questions ? Contactez notre support : <a href="mailto:support@drimpay.com" style="color:#1a7a3c;">support@drimpay.com</a>
+            </p>
+          </td>
+        </tr>
+        ${footer}
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim()
+    });
+    console.log(`[Mailer] Email \xE9change wallet refus\xE9 envoy\xE9 \xE0 ${opts.to}`);
+    return { ok: true };
+  } catch (e) {
+    console.error("[Mailer] Erreur email \xE9change refus\xE9:", e?.message ?? e);
     return { ok: false, error: e?.message ?? String(e) };
   }
 }
@@ -262274,6 +262436,106 @@ init_schema2();
 init_drizzle_orm();
 import fs from "fs";
 import path from "path";
+
+// src/lib/wallet-exchange-service.ts
+init_src();
+init_schema2();
+init_drizzle_orm();
+init_mailer();
+async function createExchangeNotification(userId, type, title, body) {
+  try {
+    const { notificationsTable: notificationsTable2 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
+    await db.insert(notificationsTable2).values({
+      userId,
+      type,
+      category: "wallet",
+      title,
+      body,
+      href: "/dashboard/wallet-exchange"
+    });
+  } catch {
+  }
+}
+async function approveWalletExchange(id, actor) {
+  const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
+  if (!exchange) return { ok: false, error: "Demande introuvable." };
+  if (exchange.status !== "pending") return { ok: false, error: "Cette demande a d\xE9j\xE0 \xE9t\xE9 trait\xE9e." };
+  const amount = parseFloat(exchange.amount);
+  const net = parseFloat(exchange.netAmount);
+  const applied = await db.transaction(async (trx) => {
+    const [fromRow] = await trx.update(walletsTable).set({ lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}` }).where(and(eq(walletsTable.id, exchange.fromWalletId), sql`${walletsTable.lockedBalance} >= ${amount}`)).returning();
+    if (!fromRow) return false;
+    await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${net}` }).where(eq(walletsTable.id, exchange.toWalletId));
+    const [updated] = await trx.update(walletExchangesTable).set({ status: "approved", reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
+    return !!updated;
+  });
+  if (!applied) return { ok: false, error: "\xC9chec de l'approbation (fonds insuffisants ou d\xE9j\xE0 trait\xE9)." };
+  try {
+    const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, exchange.userId));
+    if (user) {
+      await createExchangeNotification(
+        exchange.userId,
+        "success",
+        `\xC9change approuv\xE9 \u2014 ${exchange.fromCountryCode} \u2192 ${exchange.toCountryCode}`,
+        `Votre \xE9change de ${amount.toLocaleString("fr-FR")} ${exchange.currency} a \xE9t\xE9 approuv\xE9. Montant net cr\xE9dit\xE9 : ${net.toLocaleString("fr-FR")} ${exchange.currency}.`
+      );
+      sendWalletExchangeApprovedEmail({
+        to: user.email,
+        companyName: user.companyName,
+        fromCountry: exchange.fromCountryCode,
+        toCountry: exchange.toCountryCode,
+        amount,
+        fee: parseFloat(exchange.fee),
+        net,
+        currency: exchange.currency,
+        reference: exchange.reference ?? String(exchange.id)
+      }).catch(() => {
+      });
+    }
+  } catch {
+  }
+  return { ok: true };
+}
+async function rejectWalletExchange(id, reason, actor) {
+  const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
+  if (!exchange) return { ok: false, error: "Demande introuvable." };
+  if (exchange.status !== "pending") return { ok: false, error: "Cette demande a d\xE9j\xE0 \xE9t\xE9 trait\xE9e." };
+  const amount = parseFloat(exchange.amount);
+  const applied = await db.transaction(async (trx) => {
+    await trx.update(walletsTable).set({
+      lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`,
+      balance: sql`${walletsTable.balance} + ${amount}`
+    }).where(eq(walletsTable.id, exchange.fromWalletId));
+    const [updated] = await trx.update(walletExchangesTable).set({ status: "rejected", rejectionReason: reason, reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
+    return !!updated;
+  });
+  if (!applied) return { ok: false, error: "\xC9chec du rejet (d\xE9j\xE0 trait\xE9)." };
+  try {
+    const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, exchange.userId));
+    if (user) {
+      await createExchangeNotification(
+        exchange.userId,
+        "error",
+        `\xC9change refus\xE9 \u2014 ${exchange.fromCountryCode} \u2192 ${exchange.toCountryCode}`,
+        `Votre demande d'\xE9change de ${amount.toLocaleString("fr-FR")} ${exchange.currency} a \xE9t\xE9 refus\xE9e. Motif : ${reason}. Les fonds ont \xE9t\xE9 recr\xE9dit\xE9s sur votre wallet ${exchange.fromCountryCode}.`
+      );
+      sendWalletExchangeRejectedEmail({
+        to: user.email,
+        companyName: user.companyName,
+        fromCountry: exchange.fromCountryCode,
+        toCountry: exchange.toCountryCode,
+        amount,
+        currency: exchange.currency,
+        reason
+      }).catch(() => {
+      });
+    }
+  } catch {
+  }
+  return { ok: true };
+}
+
+// src/lib/telegram.ts
 var STARTUP_COOLDOWN_MS = 4 * 60 * 60 * 1e3;
 var STARTUP_FLAG = path.join("/tmp", "drimpay-startup-notif.txt");
 var _cache = null;
@@ -262549,6 +262811,23 @@ ${opts.mode === "live" ? "\u{1F7E2} LIVE" : "\u{1F535} SANDBOX"}
 \u{1F4C5} ${dt()}`
   );
 }
+async function notifyWalletExchange(opts) {
+  const text2 = `\u{1F504} <b>Nouvelle Demande d'\xC9change Wallet</b>
+
+\u{1F3E2} ${opts.company}
+\u{1F30D} ${opts.fromCountry} \u2192 ${opts.toCountry}
+\u{1F4B5} Montant: <b>${money(opts.amount, opts.currency)}</b>
+   Frais (3%): ${money(opts.fee, opts.currency)} | Net cr\xE9dit\xE9: ${money(opts.net, opts.currency)}
+\u{1F516} <code>${opts.reference}</code>
+${opts.mode === "live" ? "\u{1F7E2} LIVE" : "\u{1F535} SANDBOX"}
+\u{1F4C5} ${dt()}`;
+  await sendWithButtons(text2, [
+    [
+      { text: "\u2705 Approuver", callback_data: `approve_exchange:${opts.id}` },
+      { text: "\u274C Rejeter", callback_data: `reject_exchange:${opts.id}` }
+    ]
+  ]);
+}
 async function notifyTransactionFailure(opts) {
   const label = opts.type === "payin" ? "Paiement" : "Retrait";
   await send(
@@ -262702,6 +262981,35 @@ ${lines}
     } catch (e) {
       await sendTo(token, chatId, `\u274C Erreur: ${String(e).substring(0, 200)}`);
     }
+  } else if (cmd === "/echanges") {
+    try {
+      const rows = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.status, "pending")).orderBy(desc(walletExchangesTable.createdAt)).limit(10);
+      if (rows.length === 0) {
+        await sendTo(token, chatId, "\u2705 Aucun \xE9change de wallet en attente.");
+        return;
+      }
+      const userIds = [...new Set(rows.map((r) => r.userId))];
+      const users = await db.select({ id: usersTable.id, companyName: usersTable.companyName }).from(usersTable);
+      const userMap = Object.fromEntries(users.filter((u) => userIds.includes(u.id)).map((u) => [u.id, u.companyName]));
+      await sendTo(token, chatId, `\u{1F504} <b>\xC9changes en attente (${rows.length})</b>
+\u{1F4C5} ${dt()}`);
+      for (const r of rows) {
+        const text3 = `\u{1F3E2} ${userMap[r.userId] ?? "?"}
+\u{1F30D} ${r.fromCountryCode} \u2192 ${r.toCountryCode}
+\u{1F4B5} Montant: <b>${money(parseFloat(r.amount), r.currency)}</b>
+   Frais: ${money(parseFloat(r.fee), r.currency)} | Net: ${money(parseFloat(r.netAmount), r.currency)}
+\u{1F516} <code>${r.reference}</code>
+${r.mode === "live" ? "\u{1F7E2} LIVE" : "\u{1F535} SANDBOX"}`;
+        await sendWithButtons(text3, [
+          [
+            { text: "\u2705 Approuver", callback_data: `approve_exchange:${r.id}` },
+            { text: "\u274C Rejeter", callback_data: `reject_exchange:${r.id}` }
+          ]
+        ]);
+      }
+    } catch (e) {
+      await sendTo(token, chatId, `\u274C Erreur: ${String(e).substring(0, 200)}`);
+    }
   } else if (cmd === "/help") {
     await sendTo(
       token,
@@ -262712,6 +263020,7 @@ ${lines}
 /stats \u2014 Statistiques + \xE9tat des retraits
 /ip \u2014 Adresse IP du serveur
 /blocked \u2014 \u{1F6AB} Lister les IPs bloqu\xE9es (20 derni\xE8res)
+/echanges \u2014 \u{1F504} Lister les \xE9changes de wallet en attente
 /stopretraits \u2014 \u{1F534} Bloquer TOUS les retraits instantan\xE9ment
 /activetraits \u2014 \u{1F7E2} R\xE9activer les retraits
 /help \u2014 Afficher cette aide
@@ -262726,6 +263035,7 @@ ${lines}
 \u{1F4B0} Paiements re\xE7us (API &amp; liens)
 \u{1F6A8} Gros montants (\u2265500 000 FCFA)
 \u{1F4B8} Demandes de retrait
+\u{1F504} Demandes d'\xE9change de wallet (+ boutons Approuver/Rejeter)
 \u{1F4CB} KYB soumis / trait\xE9s
 \u{1F198} Erreurs critiques
 \u{1F4CA} Rapport quotidien (minuit Lom\xE9)`
@@ -262764,6 +263074,34 @@ async function handleCallback(token, callbackId, chatId, data, fromName) {
       );
     } catch (e) {
       await sendTo(token, chatId, `\u274C Erreur blocage <code>${ip}</code>: ${String(e).substring(0, 200)}`);
+    }
+  } else if (data.startsWith("approve_exchange:")) {
+    const id = parseInt(data.slice(17), 10);
+    if (isNaN(id)) {
+      await sendTo(token, chatId, "\u274C R\xE9f\xE9rence invalide.");
+      return;
+    }
+    const result = await approveWalletExchange(id, `Telegram: ${fromName}`);
+    if (result.ok) {
+      await sendTo(token, chatId, `\u2705 <b>\xC9change #${id} approuv\xE9</b>
+\u{1F464} Par: ${fromName}
+\u{1F4C5} ${dt()}`);
+    } else {
+      await sendTo(token, chatId, `\u274C \xC9chec approbation #${id}: ${result.error}`);
+    }
+  } else if (data.startsWith("reject_exchange:")) {
+    const id = parseInt(data.slice(16), 10);
+    if (isNaN(id)) {
+      await sendTo(token, chatId, "\u274C R\xE9f\xE9rence invalide.");
+      return;
+    }
+    const result = await rejectWalletExchange(id, `Rejet\xE9 via Telegram par ${fromName}`, `Telegram: ${fromName}`);
+    if (result.ok) {
+      await sendTo(token, chatId, `\u274C <b>\xC9change #${id} rejet\xE9</b>
+\u{1F464} Par: ${fromName}
+\u{1F4C5} ${dt()}`);
+    } else {
+      await sendTo(token, chatId, `\u274C \xC9chec rejet #${id}: ${result.error}`);
     }
   } else if (data.startsWith("unblock_ip:")) {
     const ip = data.slice(11).trim();
@@ -264776,7 +265114,7 @@ function _hash(password, salt, callback, progressCallback) {
 function encodeBase64(bytes, length) {
   return base64_encode(bytes, length);
 }
-function decodeBase64(string4, length) {
+function decodeBase642(string4, length) {
   return base64_decode(string4, length);
 }
 var bcryptjs_default = {
@@ -264791,7 +265129,7 @@ var bcryptjs_default = {
   getSalt,
   truncates,
   encodeBase64,
-  decodeBase64
+  decodeBase64: decodeBase642
 };
 
 // src/routes/auth.ts
@@ -267072,7 +267410,7 @@ router10.get("/auth/me", async (req, res) => {
     return;
   }
   if (!req.session.mode) req.session.mode = "sandbox";
-  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode, isSupportAgent: user.isSupportAgent ?? false });
 });
 var auth_default = router10;
 
@@ -277720,6 +278058,103 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
   }
   res.status(201).json({ ...reversement, _sandbox: currentMode === "sandbox" });
 });
+var WALLET_EXCHANGE_FEE_RATE = 0.03;
+var walletExchangeSchema = external_exports2.object({
+  fromCountryCode: external_exports2.string().min(2),
+  toCountryCode: external_exports2.string().min(2),
+  amount: external_exports2.number().positive(),
+  note: external_exports2.string().optional()
+});
+router11.get("/dashboard/wallet-exchanges", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const currentMode = req.session.mode ?? "sandbox";
+  const rows = await db.select().from(walletExchangesTable).where(and(eq(walletExchangesTable.userId, userId), eq(walletExchangesTable.mode, currentMode))).orderBy(desc(walletExchangesTable.createdAt)).limit(50);
+  res.json(rows);
+});
+router11.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async (req, res) => {
+  const parsed = walletExchangeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
+    return;
+  }
+  const userId = req.session.userId;
+  const currentMode = req.session.mode ?? "sandbox";
+  const { fromCountryCode, toCountryCode, amount, note } = parsed.data;
+  if (fromCountryCode === toCountryCode) {
+    res.status(400).json({ error: "Le pays source et le pays destination doivent \xEAtre diff\xE9rents." });
+    return;
+  }
+  const fromMeta = COUNTRIES.find((c) => c.code === fromCountryCode);
+  const toMeta = COUNTRIES.find((c) => c.code === toCountryCode);
+  if (!fromMeta || !toMeta) {
+    res.status(400).json({ error: "Pays non support\xE9." });
+    return;
+  }
+  if (fromMeta.currency !== toMeta.currency) {
+    res.status(400).json({ error: `\xC9change impossible : ${fromMeta.name} (${fromMeta.currency}) et ${toMeta.name} (${toMeta.currency}) n'utilisent pas la m\xEAme devise.` });
+    return;
+  }
+  const [fromWallet] = await db.select().from(walletsTable).where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, fromCountryCode), eq(walletsTable.mode, currentMode)));
+  if (!fromWallet) {
+    res.status(400).json({ error: `Aucun wallet ${currentMode} actif pour ${fromMeta.name}.` });
+    return;
+  }
+  const available = parseFloat(fromWallet.balance) - parseFloat(fromWallet.lockedBalance);
+  if (amount > available) {
+    res.status(400).json({ error: "Solde disponible insuffisant dans ce wallet." });
+    return;
+  }
+  let [toWallet] = await db.select().from(walletsTable).where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, toCountryCode), eq(walletsTable.mode, currentMode)));
+  if (!toWallet) {
+    [toWallet] = await db.insert(walletsTable).values({ userId, countryCode: toCountryCode, currency: toMeta.currency, balance: "0", mode: currentMode }).returning();
+  }
+  const fee = +(amount * WALLET_EXCHANGE_FEE_RATE).toFixed(2);
+  const net = +(amount - fee).toFixed(2);
+  const reference = `WEX-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
+  await db.update(walletsTable).set({ lockedBalance: sql`${walletsTable.lockedBalance} + ${amount}` }).where(eq(walletsTable.id, fromWallet.id));
+  const [exchange] = await db.insert(walletExchangesTable).values({
+    userId,
+    fromWalletId: fromWallet.id,
+    toWalletId: toWallet.id,
+    fromCountryCode,
+    toCountryCode,
+    currency: fromMeta.currency,
+    amount: String(amount),
+    fee: String(fee),
+    netAmount: String(net),
+    note: note ?? null,
+    reference,
+    status: "pending",
+    mode: currentMode
+  }).returning();
+  createNotification(
+    userId,
+    "info",
+    "wallet",
+    `Demande d'\xE9change soumise \u2014 ${fromMeta.name} \u2192 ${toMeta.name}`,
+    `Votre demande d'\xE9change de ${amount.toLocaleString("fr-FR")} ${fromMeta.currency} vers votre wallet ${toMeta.name} est en attente de validation. Frais : ${fee.toLocaleString("fr-FR")} ${fromMeta.currency}. Net : ${net.toLocaleString("fr-FR")} ${fromMeta.currency}. R\xE9f : ${reference}.`,
+    "/dashboard/wallet-exchange"
+  ).catch(() => {
+  });
+  try {
+    const [user] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+    notifyWalletExchange({
+      id: exchange.id,
+      company: user?.companyName ?? "?",
+      fromCountry: fromMeta.name,
+      toCountry: toMeta.name,
+      amount,
+      fee,
+      net,
+      currency: fromMeta.currency,
+      mode: currentMode,
+      reference
+    }).catch(() => {
+    });
+  } catch {
+  }
+  res.status(201).json({ ...exchange, _sandbox: currentMode === "sandbox" });
+});
 router11.get("/dashboard/settings", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const [user] = await db.select({
@@ -279903,7 +280338,9 @@ router13.get(AP + "/stats", requireAdmin, async (req, res) => {
     txAll,
     bigTxAlerts,
     recentTx,
-    domainesRaw
+    domainesRaw,
+    [exchangeApproved],
+    [exchangePending]
   ] = await Promise.all([
     db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "user")),
     db.select({ count: count() }).from(usersTable),
@@ -279946,7 +280383,13 @@ router13.get(AP + "/stats", requireAdmin, async (req, res) => {
       createdAt: transactionsTable.createdAt,
       userId: transactionsTable.userId
     }).from(transactionsTable).where(txLiveBase).orderBy(desc(transactionsTable.createdAt)).limit(10),
-    db.selectDistinct({ domain: transactionsTable.webhookUrl }).from(transactionsTable).where(sql`${transactionsTable.webhookUrl} IS NOT NULL AND ${transactionsTable.webhookUrl} != ''`)
+    db.selectDistinct({ domain: transactionsTable.webhookUrl }).from(transactionsTable).where(sql`${transactionsTable.webhookUrl} IS NOT NULL AND ${transactionsTable.webhookUrl} != ''`),
+    db.select({
+      totalFees: sum(walletExchangesTable.fee),
+      totalAmount: sum(walletExchangesTable.amount),
+      cnt: count()
+    }).from(walletExchangesTable).where(eq(walletExchangesTable.status, "approved")),
+    db.select({ cnt: count() }).from(walletExchangesTable).where(eq(walletExchangesTable.status, "pending"))
   ]);
   const merchantIds = [...new Set(recentTx.map((t) => t.userId))];
   const merchants = merchantIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, merchantIds)) : [];
@@ -280021,6 +280464,11 @@ router13.get(AP + "/stats", requireAdmin, async (req, res) => {
     // Alerts
     recentTransactions: recentTx.map((t) => ({ ...t, merchant: merchantMap[t.userId] ?? null })),
     bigTxAlerts,
+    // Wallet exchanges
+    exchangeFeesTotal: parseFloat(String(exchangeApproved.totalFees ?? 0)),
+    exchangeVolumeTotal: parseFloat(String(exchangeApproved.totalAmount ?? 0)),
+    exchangeApprovedCount: Number(exchangeApproved.cnt),
+    exchangePendingCount: Number(exchangePending.cnt),
     // Reset info
     statsResetAt: statsResetAt ? statsResetAt.toISOString() : null
   });
@@ -280122,6 +280570,28 @@ router13.put(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   await db.update(usersTable).set(updateData).where(eq(usersTable.id, id));
   await logAdminAction(req.session.userId, "UPDATE_MERCHANT", "user", String(id), JSON.stringify(updateData), req.ip);
   res.json({ ok: true });
+});
+router13.patch(AP + "/merchants/:id/toggle-support-agent", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [user] = await db.select({ id: usersTable.id, email: usersTable.email, isSupportAgent: usersTable.isSupportAgent }).from(usersTable).where(eq(usersTable.id, id));
+  if (!user) {
+    res.status(404).json({ error: "Utilisateur introuvable" });
+    return;
+  }
+  const next = !user.isSupportAgent;
+  await db.update(usersTable).set({ isSupportAgent: next }).where(eq(usersTable.id, id));
+  await logAdminAction(req.session.userId, next ? "GRANT_SUPPORT_AGENT" : "REVOKE_SUPPORT_AGENT", "user", String(id), user.email, req.ip);
+  res.json({ ok: true, isSupportAgent: next });
+});
+router13.get(AP + "/merchants/support-agents", requireAdmin, async (_req, res) => {
+  const agents = await db.select({
+    id: usersTable.id,
+    email: usersTable.email,
+    companyName: usersTable.companyName,
+    country: usersTable.country,
+    createdAt: usersTable.createdAt
+  }).from(usersTable).where(eq(usersTable.isSupportAgent, true)).orderBy(asc(usersTable.companyName));
+  res.json({ agents });
 });
 router13.put(AP + "/merchants/:id/role", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
@@ -280681,6 +281151,68 @@ router13.get(AP + "/aggregators", requireAdmin, async (_req, res) => {
   const aggs = await db.select().from(aggregatorsTable).orderBy(aggregatorsTable.name);
   const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.countryCode);
   res.json({ aggregators: aggs, operatorAggregators: opAggs });
+});
+router13.get(AP + "/wallet-exchanges", requireAdmin, async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const status = req.query.status;
+  const mode = req.query.mode;
+  const conditions = [];
+  if (status && ["pending", "approved", "rejected"].includes(status)) {
+    conditions.push(eq(walletExchangesTable.status, status));
+  }
+  if (mode && ["sandbox", "live"].includes(mode)) {
+    conditions.push(eq(walletExchangesTable.mode, mode));
+  }
+  const where = conditions.length > 0 ? and(...conditions) : void 0;
+  const [{ c: total }] = await db.select({ c: count() }).from(walletExchangesTable).where(where);
+  const rows = await db.select().from(walletExchangesTable).where(where).orderBy(desc(walletExchangesTable.createdAt)).limit(limit).offset((page - 1) * limit);
+  const userIds = [...new Set(rows.map((r) => r.userId))];
+  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [];
+  const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+  res.json({
+    exchanges: rows.map((r) => ({ ...r, merchant: userMap[r.userId] ?? null })),
+    total: Number(total)
+  });
+});
+router13.get(AP + "/wallet-exchanges/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
+  if (!exchange) {
+    res.status(404).json({ error: "Demande introuvable" });
+    return;
+  }
+  const [merchant] = await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email, country: usersTable.country }).from(usersTable).where(eq(usersTable.id, exchange.userId));
+  const [fromWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, exchange.fromWalletId));
+  const [toWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, exchange.toWalletId));
+  res.json({ exchange, merchant: merchant ?? null, fromWallet: fromWallet ?? null, toWallet: toWallet ?? null });
+});
+router13.post(AP + "/wallet-exchanges/:id/approve", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  const result = await approveWalletExchange(id, admin?.email ?? "Admin");
+  if (!result.ok) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  await logAdminAction(req.session.userId, "APPROVE_WALLET_EXCHANGE", "wallet_exchange", String(id), void 0, req.ip);
+  res.json({ ok: true });
+});
+router13.post(AP + "/wallet-exchanges/:id/reject", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { reason } = req.body;
+  if (!reason?.trim()) {
+    res.status(400).json({ error: "La raison du rejet est obligatoire." });
+    return;
+  }
+  const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  const result = await rejectWalletExchange(id, reason.trim(), admin?.email ?? "Admin");
+  if (!result.ok) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  await logAdminAction(req.session.userId, "REJECT_WALLET_EXCHANGE", "wallet_exchange", String(id), reason, req.ip);
+  res.json({ ok: true });
 });
 router13.post(AP + "/aggregators", requireAdmin, async (req, res) => {
   const { name: name2, code, description } = req.body;
@@ -281928,14 +282460,25 @@ init_schema2();
 init_drizzle_orm();
 init_mailer();
 var router16 = (0, import_express16.Router)();
-var requireSupportAuth = (req, res, next) => {
-  if (!req.session.supportAdminId) {
-    res.status(401).json({ error: "Non authentifi\xE9" });
+var requireSupportAuth = async (req, res, next) => {
+  if (req.session.supportAdminId) {
+    next();
     return;
   }
-  next();
+  if (req.session.userId) {
+    const [u] = await db.select({ isSupportAgent: usersTable.isSupportAgent }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+    if (u?.isSupportAgent) {
+      next();
+      return;
+    }
+  }
+  res.status(401).json({ error: "Non authentifi\xE9" });
 };
 var requirePasswordChanged = async (req, res, next) => {
+  if (!req.session.supportAdminId && req.session.userId) {
+    next();
+    return;
+  }
   if (!req.session.supportAdminId) {
     res.status(401).json({ error: "Non authentifi\xE9" });
     return;
@@ -281973,6 +282516,15 @@ router16.post("/support-admin/logout", (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 router16.get("/support-admin/me", requireSupportAuth, async (req, res) => {
+  if (!req.session.supportAdminId && req.session.userId) {
+    const [u2] = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, req.session.userId));
+    if (!u2) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json({ id: u2.id, email: u2.email, name: u2.companyName, mustChangePassword: false, isMerchantAgent: true });
+    return;
+  }
   const [u] = await db.select({ id: supportUsersTable.id, email: supportUsersTable.email, name: supportUsersTable.name, mustChangePassword: supportUsersTable.mustChangePassword }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId));
   if (!u) {
     res.status(404).json({ error: "Not found" });
@@ -282114,6 +282666,66 @@ router16.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePa
   res.json({ success: true, reply });
 });
 var SUPPORT_SETTING_KEYS = ["support_whatsapp", "support_email_1", "support_email_2", "support_hours", "support_telegram"];
+router16.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const { status, mode, page = "1", limit = "20" } = req.query;
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+  const offset = (pageNum - 1) * limitNum;
+  const conditions = [];
+  if (status) conditions.push(eq(walletExchangesTable.status, status));
+  if (mode) conditions.push(eq(walletExchangesTable.mode, mode));
+  const where = conditions.length ? and(...conditions) : void 0;
+  const [{ total }] = await db.select({ total: count() }).from(walletExchangesTable).where(where);
+  const exchanges = await db.select().from(walletExchangesTable).where(where).orderBy(desc(walletExchangesTable.createdAt)).limit(limitNum).offset(offset);
+  const userIds = [...new Set(exchanges.map((e) => e.userId))];
+  const merchants = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.join(userIds.map((id) => sql`${id}`), sql`, `)}]::int[])`) : [];
+  const mMap = Object.fromEntries(merchants.map((m) => [m.id, m]));
+  res.json({
+    exchanges: exchanges.map((e) => ({ ...e, merchant: mMap[e.userId] ?? null })),
+    total: Number(total),
+    page: pageNum
+  });
+});
+router16.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
+  if (!exchange) {
+    res.status(404).json({ error: "\xC9change introuvable" });
+    return;
+  }
+  const [merchant] = await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email, country: usersTable.country }).from(usersTable).where(eq(usersTable.id, exchange.userId));
+  const { walletsTable: walletsTable2 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
+  const [fromWallet] = await db.select().from(walletsTable2).where(eq(walletsTable2.id, exchange.fromWalletId));
+  const toWallet = exchange.toWalletId ? (await db.select().from(walletsTable2).where(eq(walletsTable2.id, exchange.toWalletId)))[0] : null;
+  res.json({ exchange, merchant: merchant ?? null, fromWallet: fromWallet ?? null, toWallet: toWallet ?? null });
+});
+router16.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const actorUser = req.session.supportAdminId ? (await db.select({ name: supportUsersTable.name }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId)))[0] : null;
+  const actor = actorUser?.name ?? "Support";
+  const result = await approveWalletExchange(id, actor);
+  if (!result.ok) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ ok: true });
+});
+router16.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { reason } = req.body;
+  if (!reason?.trim()) {
+    res.status(400).json({ error: "Motif requis" });
+    return;
+  }
+  const actorUser = req.session.supportAdminId ? (await db.select({ name: supportUsersTable.name }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId)))[0] : null;
+  const actor = actorUser?.name ?? "Support";
+  const result = await rejectWalletExchange(id, reason.trim(), actor);
+  if (!result.ok) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ ok: true });
+});
 router16.get("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const rows = await db.select().from(supportSettingsTable);
   const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));

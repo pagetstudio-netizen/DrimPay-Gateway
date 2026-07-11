@@ -4,7 +4,7 @@ import {
   Users, ArrowDownLeft, ArrowUpRight, Wallet2, KeyRound, Link2,
   TrendingUp, Percent, RefreshCw, AlertTriangle, CheckCircle2,
   Clock, XCircle, ShieldCheck, Globe2, BadgePercent, Banknote,
-  Activity, Calendar, RotateCcw, TriangleAlert,
+  Activity, Calendar, RotateCcw, TriangleAlert, ArrowLeftRight,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { shortId } from "@/lib/utils";
@@ -216,6 +216,13 @@ export default function AdminDashboard() {
       color: (stats.successRate ?? 0) >= 80 ? "bg-green-500" : (stats.successRate ?? 0) >= 60 ? "bg-yellow-500" : "bg-red-500",
       delay: 0.39,
     },
+    {
+      icon: ArrowLeftRight, label: "Frais Échanges Wallets",
+      value: fmt(stats.exchangeFeesTotal ?? 0),
+      sub: `${fmtNum(stats.exchangeApprovedCount ?? 0)} approuvé${(stats.exchangeApprovedCount ?? 0) !== 1 ? "s" : ""} · ${fmtNum(stats.exchangePendingCount ?? 0)} en attente`,
+      color: (stats.exchangePendingCount ?? 0) > 0 ? "bg-amber-500" : "bg-emerald-600",
+      delay: 0.42,
+    },
   ] : [];
 
   return (
@@ -286,11 +293,11 @@ export default function AdminDashboard() {
 
         {/* Stats grid */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {[...Array(14)].map((_, i) => <div key={i} className="h-20 bg-white rounded-2xl animate-pulse border border-gray-100" />)}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {statCards.map((card) => <StatCard key={card.label} {...card} />)}
           </div>
         )}

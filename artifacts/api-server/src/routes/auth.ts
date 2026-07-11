@@ -573,7 +573,7 @@ router.get("/auth/me", async (req, res) => {
 
   if (!req.session.mode) req.session.mode = "sandbox";
 
-  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode, isSupportAgent: user.isSupportAgent ?? false });
 });
 
 export default router;

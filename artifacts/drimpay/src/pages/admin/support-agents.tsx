@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "./layout";
 import {
   UserPlus, Trash2, KeyRound, Loader2, CheckCircle2, XCircle,
-  Eye, EyeOff, ShieldCheck, Copy,
+  Eye, EyeOff, ShieldCheck, Copy, Search, UserCheck, UserX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_BASE } from "@/lib/admin-api";
@@ -43,6 +43,60 @@ export default function AdminSupportAgents() {
   const [deleting, setDeleting] = useState(false);
 
   const [copied, setCopied] = useState("");
+
+  // ── Merchant agents section ──────────────────────────────────────────────
+  type MerchantAgent = { id: number; email: string; companyName: string; country: string; createdAt: string };
+  const [merchantAgents, setMerchantAgents] = useState<MerchantAgent[]>([]);
+  const [merchantSearch, setMerchantSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<MerchantAgent[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [toggling, setToggling] = useState<number | null>(null);
+
+  const fetchMerchantAgents = async () => {
+    try {
+      const r = await fetch(`${ADMIN_BASE}/merchants/support-agents`, { credentials: "include" });
+      const d = await r.json();
+      setMerchantAgents(d.agents ?? []);
+    } catch {}
+  };
+
+  useEffect(() => { fetchMerchantAgents(); }, []);
+
+  const handleMerchantSearch = async (q: string) => {
+    setMerchantSearch(q);
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/merchants?search=${encodeURIComponent(q)}&limit=10`, { credentials: "include" });
+      const d = await r.json();
+      setSearchResults((d.merchants ?? []).map((m: any) => ({
+        id: m.id, email: m.email, companyName: m.companyName, country: m.country, createdAt: m.createdAt,
+      })));
+    } finally { setSearching(false); }
+  };
+
+  const handleToggleAgent = async (merchantId: number) => {
+    setToggling(merchantId);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/merchants/${merchantId}/toggle-support-agent`, {
+        method: "PATCH", credentials: "include",
+      });
+      if (r.ok) {
+        await fetchMerchantAgents();
+        setSearchResults(prev => prev.filter(m => m.id !== merchantId));
+      }
+    } finally { setToggling(null); }
+  };
+
+  const handleRevokeAgent = async (merchantId: number) => {
+    setToggling(merchantId);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/merchants/${merchantId}/toggle-support-agent`, {
+        method: "PATCH", credentials: "include",
+      });
+      if (r.ok) await fetchMerchantAgents();
+    } finally { setToggling(null); }
+  };
 
   const fetchAgents = async () => {
     setLoading(true);
@@ -217,6 +271,106 @@ export default function AdminSupportAgents() {
             </form>
           </div>
         )}
+
+        {/* ── Marchands nommés agents support ───────────────────────────────── */}
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-blue-600" />
+            <h2 className="text-sm font-bold text-gray-900">Marchands nommés agents support</h2>
+            <span className="ml-auto text-xs text-gray-400">{merchantAgents.length} marchand{merchantAgents.length !== 1 ? "s" : ""}</span>
+          </div>
+
+          {/* Search to nominate */}
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Nommer un marchand comme agent support
+            </label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                className="w-full pl-9 pr-4 h-10 rounded-xl bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                placeholder="Rechercher par email ou nom de société..."
+                value={merchantSearch}
+                onChange={e => handleMerchantSearch(e.target.value)}
+              />
+              {searching && (
+                <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
+              )}
+            </div>
+            {searchResults.length > 0 && (
+              <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm divide-y divide-gray-100">
+                {searchResults.map(m => {
+                  const isAlready = merchantAgents.some(a => a.id === m.id);
+                  return (
+                    <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 text-xs shrink-0">
+                        {m.companyName?.[0]?.toUpperCase() ?? "M"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{m.companyName}</p>
+                        <p className="text-xs text-gray-400 truncate">{m.email}</p>
+                      </div>
+                      {isAlready ? (
+                        <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Déjà agent
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleAgent(m.id)}
+                          disabled={toggling === m.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+                        >
+                          {toggling === m.id
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <UserCheck className="w-3 h-3" />}
+                          Nommer agent
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Current merchant agents */}
+          {merchantAgents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-gray-400 gap-2">
+              <UserCheck className="w-7 h-7 opacity-30" />
+              <p className="text-sm">Aucun marchand nommé agent pour l'instant</p>
+              <p className="text-xs">Utilisez la recherche ci-dessus pour en nommer un.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {merchantAgents.map(m => (
+                <div key={m.id} className="flex items-center gap-4 px-5 py-3.5">
+                  <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 text-sm shrink-0">
+                    {m.companyName?.[0]?.toUpperCase() ?? "M"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{m.companyName}</p>
+                    <p className="text-xs text-gray-500 truncate">{m.email}</p>
+                    <p className="text-[10px] text-gray-400">Pays : {m.country} · Nommé le {relDate(m.createdAt)}</p>
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200 shrink-0">
+                    Agent support
+                  </span>
+                  <button
+                    onClick={() => handleRevokeAgent(m.id)}
+                    disabled={toggling === m.id}
+                    className="p-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100 text-red-500 hover:text-red-700 transition-colors disabled:opacity-60 shrink-0"
+                    title="Révoquer le statut d'agent support"
+                  >
+                    {toggling === m.id
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <UserX className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Agents list */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">

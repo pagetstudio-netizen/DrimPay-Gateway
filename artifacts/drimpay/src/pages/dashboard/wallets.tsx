@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet2, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
+import { Link } from "wouter";
+import { Wallet2, RefreshCw, ChevronDown, ChevronRight, ArrowLeftRight } from "lucide-react";
 import { DashboardLayout } from "./layout";
 import { cn } from "@/lib/utils";
 import { ProductionGate } from "@/components/ui/production-gate";
@@ -193,14 +194,23 @@ export default function Wallets() {
                 {totalWallets} wallet{totalWallets !== 1 ? "s" : ""} actif{totalWallets !== 1 ? "s" : ""} · {totalCountries} pays
               </p>
             </div>
-            <button
-              onClick={() => load(true)}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm disabled:opacity-50 transition-colors"
-            >
-              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-              Actualiser
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard/wallet-exchange"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 shadow-sm transition-colors"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                Échanger
+              </Link>
+              <button
+                onClick={() => load(true)}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm disabled:opacity-50 transition-colors"
+              >
+                <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+                Actualiser
+              </button>
+            </div>
           </div>
 
           {loading ? (

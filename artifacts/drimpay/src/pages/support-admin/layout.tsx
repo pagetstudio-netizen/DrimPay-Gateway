@@ -2,13 +2,13 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { useLocation, Link } from "wouter";
 import {
   LayoutDashboard, MessageSquare, Settings, LogOut,
-  ShieldCheck, Menu, X, Bell, Megaphone,
+  ShieldCheck, Menu, X, Bell, Megaphone, ArrowLeftRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-type SupportUser = { id: number; email: string; name: string; mustChangePassword: boolean };
+type SupportUser = { id: number; email: string; name: string; mustChangePassword: boolean; isMerchantAgent?: boolean };
 type SupportAuthCtx = { user: SupportUser | null; loading: boolean; refetch: () => void };
 
 const SupportAuthContext = createContext<SupportAuthCtx>({ user: null, loading: true, refetch: () => {} });
@@ -33,10 +33,11 @@ export function SupportAuthProvider({ children }: { children: React.ReactNode })
 }
 
 const NAV = [
-  { href: "/support-admin", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/support-admin/messages", icon: MessageSquare, label: "Messages" },
-  { href: "/support-admin/notifications", icon: Megaphone, label: "Notifications" },
-  { href: "/support-admin/settings", icon: Settings, label: "Paramètres" },
+  { href: "/support-admin",                 icon: LayoutDashboard, label: "Dashboard"       },
+  { href: "/support-admin/messages",        icon: MessageSquare,   label: "Messages"        },
+  { href: "/support-admin/notifications",   icon: Megaphone,       label: "Notifications"   },
+  { href: "/support-admin/wallet-exchanges",icon: ArrowLeftRight,  label: "Échanges Wallets"},
+  { href: "/support-admin/settings",        icon: Settings,        label: "Paramètres"      },
 ];
 
 export function SupportLayout({ children, unreadCount = 0 }: { children: React.ReactNode; unreadCount?: number }) {
