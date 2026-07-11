@@ -275674,10 +275674,10 @@ var import_websocket_server = __toESM(require_websocket_server(), 1);
 var wrapper_default = import_websocket.default;
 
 // src/lib/storage.ts
-var supabaseUrl = process.env.SUPABASE_URL || "https://zbootwjgztirlixmaclu.supabase.co";
+var supabaseUrl = process.env.SUPABASE_URL;
 var serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 var anonKey = process.env.SUPABASE_ANON_KEY;
-var supabaseAdmin = serviceRoleKey || anonKey ? createClient(supabaseUrl, serviceRoleKey ?? anonKey, {
+var supabaseAdmin = supabaseUrl && (serviceRoleKey || anonKey) ? createClient(supabaseUrl, serviceRoleKey ?? anonKey, {
   auth: { persistSession: false },
   realtime: { transport: wrapper_default }
 }) : null;
