@@ -53,10 +53,10 @@ function ProductPage({ config }: { config: ProductConfig }) {
             {t ? config.subFr : config.subEn}
           </p>
           <div className="flex flex-wrap gap-4 mb-16">
-            <Link href={`/${lang}/signup`} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0f0f0f] text-white font-semibold hover:bg-black/80 transition-colors">
+            <Link href="/signup" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0f0f0f] text-white font-semibold hover:bg-black/80 transition-colors">
               {t ? "Créer un compte" : "Create an account"} <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link href={`/${lang}/docs`} className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-black/10 font-semibold hover:bg-black/5 transition-colors">
+            <Link href="/docs" className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-black/10 font-semibold hover:bg-black/5 transition-colors">
               {t ? "Voir la documentation API" : "View API documentation"}
             </Link>
           </div>

@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
 import { securityEventsTable, blockedIpsTable, usersTable } from "@workspace/db/schema";
 import { eq, and, gt, or } from "drizzle-orm";
+import { notifyAdminIntrusion } from "../lib/telegram";
 
 // ── Geo-IP cache (in-memory, 24h TTL) ────────────────────────────────────────
 export interface GeoInfo {
@@ -95,7 +96,7 @@ const BOT_UA_PATTERNS = [
   "openssl s_client",
 ];
 
-// ── Admin geo-restriction + bot blocker ───────────────────────────────────────
+// ── Admin geo-restriction + VPN/hosting blocker (fail-closed) ────────────────
 export async function adminGeoMiddleware(
   req: Request,
   res: Response,
@@ -104,18 +105,16 @@ export async function adminGeoMiddleware(
   const ip = getClientIp(req);
   const ua = (req.headers["user-agent"] ?? "").toLowerCase();
 
-  // 1. Block bot user-agents immediately
+  // 1. Block scanner/bot user-agents immediately
   if (BOT_UA_PATTERNS.some((p) => ua.includes(p))) {
-    try {
-      await db.insert(securityEventsTable).values({
-        eventType: "SUSPICIOUS_ACTIVITY",
-        userId: null,
-        ipAddress: ip,
-        userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
-        details: `Admin bot blocked — UA: ${ua.substring(0, 120)}`,
-        riskLevel: "high",
-      });
-    } catch {}
+    db.insert(securityEventsTable).values({
+      eventType: "SUSPICIOUS_ACTIVITY",
+      userId: null,
+      ipAddress: ip,
+      userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+      details: `Admin bot bloqué — UA: ${ua.substring(0, 120)}`,
+      riskLevel: "critical",
+    }).catch(() => {});
     res.status(403).json({ error: "Accès refusé." });
     return;
   }
@@ -123,31 +122,59 @@ export async function adminGeoMiddleware(
   // 2. Local IPs always trusted (dev, Plesk loopback)
   if (isLocalIp(ip)) return next();
 
-  // 3. Explicit IP whitelist
+  // 3. Explicit IP whitelist (ADMIN_ALLOWED_IPS env var)
   if (getAdminAllowedIps().includes(ip)) return next();
 
-  // 4. Geo lookup
-  const { country } = await resolveGeoInfo(ip);
+  // 4. Geo + VPN/hosting lookup
+  const { country, isVpn, isHosting, org } = await resolveGeoInfo(ip);
 
-  if (country !== null && !ADMIN_ALLOWED_COUNTRIES.includes(country)) {
-    try {
-      await db.insert(securityEventsTable).values({
-        eventType: "IP_BLOCKED",
-        userId: null,
-        ipAddress: ip,
-        userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
-        details: `Admin geo-blocked — country: ${country}`,
-        riskLevel: "high",
-      });
-    } catch {}
-    res.status(403).json({
-      error: "Accès refusé. Le panel admin n'est pas accessible depuis votre région.",
-    });
-    return;
-  }
+  const isWrongCountry = country !== null && !ADMIN_ALLOWED_COUNTRIES.includes(country);
+  const isGeoFailed   = country === null; // fail-closed: block if geo unavailable
+  const isSuspicious  = isVpn || isHosting;
 
-  // If geo lookup failed (null) → fail-open to avoid false positives
-  next();
+  // Allow only if country confirmed in whitelist AND no VPN/hosting
+  if (!isWrongCountry && !isGeoFailed && !isSuspicious) return next();
+
+  // ── Build reason ──────────────────────────────────────────────────────────
+  let reason: string;
+  if (isVpn)               reason = `VPN/Proxy détecté — org: ${org}`;
+  else if (isHosting)      reason = `Hébergement suspect — org: ${org}`;
+  else if (isWrongCountry) reason = `Accès hors zone autorisée — pays: ${country}`;
+  else                     reason = "Géolocalisation impossible — accès refusé par précaution";
+
+  // ── Log security event (critical) ─────────────────────────────────────────
+  db.insert(securityEventsTable).values({
+    eventType: "IP_BLOCKED",
+    userId: null,
+    ipAddress: ip,
+    userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+    details: `Admin intrusion auto-bloquée — ${reason}`,
+    riskLevel: "critical",
+  }).catch(() => {});
+
+  // ── Auto-block in DB (permanent) — onConflictDoNothing avoids duplicates ──
+  db.insert(blockedIpsTable).values({
+    ip,
+    reason: `Auto-bloqué (accès panel admin) — ${reason}`,
+    permanent: true,
+  }).onConflictDoNothing().catch(() => {});
+
+  // ── Telegram alert with "Débloquer" button (fire-and-forget) ─────────────
+  notifyAdminIntrusion({
+    ip,
+    country: country ?? "inconnu",
+    isVpn,
+    isHosting,
+    org,
+    method: req.method,
+    path: req.path,
+    ua: req.headers["user-agent"] ?? "",
+    reason,
+  }).catch(() => {});
+
+  res.status(403).json({
+    error: "Accès refusé. Le panel admin n'est pas accessible depuis votre réseau.",
+  });
 }
 
 // ── Helmet security headers ───────────────────────────────────────────────────

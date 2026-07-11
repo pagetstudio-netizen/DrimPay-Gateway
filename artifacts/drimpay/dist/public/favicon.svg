@@ -1,3 +1,9 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <!-- Hexagon ring background -->
+  <polygon points="90,8 162,46 162,134 90,172 18,134 18,46" fill="#3DDC97" />
+  <polygon points="90,28 146,60 146,120 90,152 34,120 34,60" fill="#ffffff" />
+  <!-- D letter in black -->
+  <path d="M62 56 H88 C110 56 124 70 124 90 C124 110 110 124 88 124 H62 Z
+           M76 70 V110 H88 C101 110 109 102 109 90 C109 78 101 70 88 70 Z"
+        fill="#0f0f0f" />
 </svg>

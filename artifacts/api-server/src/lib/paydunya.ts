@@ -22,6 +22,23 @@
 import crypto from "crypto";
 import { getSoftPayConfig, type SoftPayParams } from "./paydunya-softpay-map.js";
 
+// ─── Redact sensitive fields before logging ───────────────────────────────────
+const SENSITIVE_KEYS = new Set([
+  "phone", "account_alias", "email", "customer_email",
+  "customer_phone", "customer_firstname", "customer_lastname", "customer_name",
+  "name",
+]);
+
+function redactPayload(obj: object): object {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => {
+      if (SENSITIVE_KEYS.has(k) && typeof v === "string") return [k, "***"];
+      if (v && typeof v === "object" && !Array.isArray(v)) return [k, redactPayload(v as object)];
+      return [k, v];
+    })
+  );
+}
+
 // ─── Withdraw mode map (disbursement) ─────────────────────────────────────────
 // Key: "{operator_normalized}|{COUNTRY_CODE}" — same convention as SOFTPAY_OPERATOR_MAP
 // Value: withdraw_mode slug for POST /api/v2/disburse/get-invoice
@@ -219,7 +236,7 @@ export class PayDunyaClient {
 
     console.log(`[PayDunya] → ${method} ${url}`);
     if (body) {
-      console.log(`[PayDunya]   payload: ${JSON.stringify(body)}`);
+      console.log(`[PayDunya]   payload: ${JSON.stringify(redactPayload(body))}`);
     }
 
     let response: Response;

@@ -515,7 +515,7 @@ export const fr = {
   },
   terms: {
     title: "Conditions Générales d'Utilisation",
-    effectiveDate: "Date d'entrée en vigueur : 1er mai 2025 · Dernière mise à jour : 1er mai 2025",
+    effectiveDate: "Date d'entrée en vigueur : 11 juillet 2026 · Dernière mise à jour : 11 juillet 2026",
     sections: [
       { title: "1. Acceptation des Conditions", content: "En accédant ou en utilisant la plateforme DrimPay, l'API ou tout service associé (collectivement, les « Services »), vous acceptez d'être lié par ces Conditions Générales (« Conditions »). Si vous accédez aux Services au nom d'une entité juridique, vous déclarez avoir le pouvoir d'engager cette entité. Si vous n'acceptez pas ces Conditions, vous ne pouvez pas utiliser les Services.\n\nDrimPay se réserve le droit de modifier ces Conditions à tout moment. L'utilisation continue des Services après notification des changements constitue l'acceptation des Conditions révisées." },
       { title: "2. Éligibilité et Inscription au Compte", content: "Pour utiliser les Services DrimPay, vous devez avoir au moins 18 ans et être un résident légal ou une entité commerciale enregistrée dans une juridiction prise en charge. Vous devez fournir des informations exactes, actuelles et complètes lors de l'inscription et maintenir leur exactitude.\n\nLes comptes professionnels nécessitent la réussite de notre processus de vérification Know Your Business (KYB) avant d'accéder aux fonctionnalités de paiement live. Vous êtes responsable du maintien de la confidentialité de vos identifiants de compte et clés API." },
@@ -532,7 +532,7 @@ export const fr = {
   },
   privacy: {
     title: "Politique de Confidentialité",
-    effectiveDate: "Date d'entrée en vigueur : 1er mai 2025 · Dernière mise à jour : 1er mai 2025",
+    effectiveDate: "Date d'entrée en vigueur : 11 juillet 2026 · Dernière mise à jour : 11 juillet 2026",
     sections: [
       { title: "1. Informations que Nous Collectons", content: "DrimPay collecte les informations que vous fournissez directement lors de la création d'un compte, de la vérification KYB ou de l'utilisation de nos Services. Cela comprend :\n\n- Informations professionnelles : nom de l'entreprise, numéro d'enregistrement, NIF, adresse professionnelle\n- Informations personnelles : nom, email, téléphone, pièce d'identité des représentants autorisés\n- Informations financières : coordonnées bancaires aux fins de règlement\n- Données de transaction : montants, détails du destinataire, horodatages et métadonnées\n- Données techniques : journaux de requêtes API, adresses IP, informations d'appareil et analyses d'utilisation\n- Données de communication : tickets de support, emails et journaux de chat" },
       { title: "2. Comment Nous Utilisons Vos Informations", content: "Nous utilisons les informations collectées aux fins suivantes :\n\n- Fournir et améliorer nos services d'infrastructure de paiement\n- Vérifier votre identité et votre entreprise via notre processus KYB\n- Traiter les transactions et gérer les soldes de wallet\n- Respecter les obligations légales et réglementaires incluant les exigences AML/CTF\n- Détecter et prévenir la fraude et les accès non autorisés\n- Envoyer des notifications de service, confirmations de transaction et alertes de sécurité\n- Analyser l'utilisation de la plateforme pour améliorer les performances et l'expérience\n- Communiquer sur les mises à jour produit et nouvelles fonctionnalités" },

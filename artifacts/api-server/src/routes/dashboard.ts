@@ -460,7 +460,7 @@ const payinSchema = z.object({
   currency: z.string().length(3),
   countryCode: z.string().length(2),
   operator: z.string().min(1),
-  phone: z.string().min(8),
+  phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
   description: z.string().optional(),
   externalRef: z.string().optional(),
 });
@@ -626,7 +626,7 @@ const payoutSchema = z.object({
   currency: z.string().length(3),
   countryCode: z.string().length(2),
   operator: z.string().min(1),
-  phone: z.string().min(8),
+  phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
   description: z.string().optional(),
   externalRef: z.string().optional(),
 });
@@ -1140,7 +1140,7 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
           legalRepDob: z.string().min(1),
           incorporationCountry: z.string().min(2),
           businessAddress: z.string().min(5),
-          legalRepPhone: z.string().min(8),
+          legalRepPhone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro représentant légal invalide"),
           legalRepEmail: z.string().email(),
         });
         const parsed = schema.safeParse(body);
@@ -1244,7 +1244,7 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         legalRepName: z.string().min(2),
         legalRepDob: z.string().optional(),
         legalRepNationality: z.string().min(2),
-        legalRepPhone: z.string().min(8),
+        legalRepPhone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro représentant légal invalide"),
         legalRepEmail: z.string().email(),
         legalRepPosition: z.string().min(1),
         legalRepIdType: z.string().min(1),
@@ -1385,7 +1385,7 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
 const reversementSchema = z.object({
   countryCode: z.string().min(2),
   operator: z.string().min(1),
-  phone: z.string().min(8),
+  phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
   amount: z.number().min(200, "Le montant minimum est de 200"),
   note: z.string().optional(),
 });
@@ -2367,7 +2367,7 @@ router.get("/dashboard/attempts", requireAuth, async (req, res) => {
 const massPayoutSchema = z.object({
   description: z.string().optional(),
   recipients: z.array(z.object({
-    phone: z.string().min(8),
+    phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
     amount: z.number().positive(),
     countryCode: z.string().length(2),
     operator: z.string().min(1),

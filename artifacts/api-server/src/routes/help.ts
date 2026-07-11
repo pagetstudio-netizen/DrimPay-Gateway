@@ -7,7 +7,13 @@ import { fileURLToPath } from "node:url";
 const router: IRouter = Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-router.get("/help", async (_req, res) => {
+router.get("/help", async (req: any, res) => {
+  // Endpoint de diagnostic — réservé aux admins uniquement
+  if (!req.session?.userId || req.session?.role !== "admin") {
+    res.status(403).json({ error: "Accès refusé" });
+    return;
+  }
+
   const checks: Record<string, any> = {};
 
   // ── Node / process ───────────────────────────────────────────────────────
@@ -104,7 +110,7 @@ router.get("/help", async (_req, res) => {
 
   // ── Supabase Storage ─────────────────────────────────────────────────────
   checks.storage = {
-    supabaseUrl: process.env["SUPABASE_URL"] ?? "✗ non défini",
+    supabaseUrl: process.env["SUPABASE_URL"] ? "✓ défini" : "✗ non défini",
     serviceRoleKey: process.env["SUPABASE_SERVICE_ROLE_KEY"] ? "✓ défini" : "✗ MANQUANT — KYB uploads désactivés",
   };
 

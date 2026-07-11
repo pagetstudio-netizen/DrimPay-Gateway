@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import session from "express-session";
+import crypto from "node:crypto";
 import connectPgSimple from "connect-pg-simple";
 import pinoHttp from "pino-http";
 import path from "node:path";
@@ -75,9 +76,9 @@ app.use(
       // Auto-create the table if it doesn't exist yet (e.g. fresh Supabase instance)
       createTableIfMissing: true,
     }),
-    // Fallback secret prevents a synchronous throw if env var is missing.
-    // Sessions will be invalid but the process won't crash on Passenger.
-    secret: sessionSecret || "drimpay-fallback-secret-please-set-SESSION_SECRET",
+    // Fallback: aléatoire à chaque démarrage si SESSION_SECRET absent.
+    // Les sessions existantes seront invalidées mais le process ne crashe pas.
+    secret: sessionSecret || crypto.randomBytes(32).toString("hex"),
     resave: false,
     saveUninitialized: false,
     name: "dp_sid",

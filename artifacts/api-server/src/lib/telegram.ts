@@ -434,6 +434,31 @@ Les pay-outs sont à nouveau disponibles pour tous les marchands.
     } catch (e) {
       await sendTo(token, chatId, `❌ Erreur lors de la réactivation des retraits: ${String(e).substring(0, 200)}`);
     }
+  } else if (cmd === "/blocked") {
+    try {
+      const rows = await db
+        .select({ ip: blockedIpsTable.ip, reason: blockedIpsTable.reason, createdAt: blockedIpsTable.createdAt })
+        .from(blockedIpsTable)
+        .orderBy(blockedIpsTable.createdAt)
+        .limit(20);
+      if (rows.length === 0) {
+        await sendTo(token, chatId, "✅ Aucune IP bloquée actuellement.");
+        return;
+      }
+      const lines = rows.map(r =>
+        `• <code>${r.ip}</code> — ${r.reason?.substring(0, 60) ?? "—"}`
+      ).join("\n");
+      await sendTo(token, chatId,
+`🚫 <b>IPs Bloquées (${rows.length})</b>
+
+${lines}
+
+📅 ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `❌ Erreur: ${String(e).substring(0, 200)}`);
+    }
+
   } else if (cmd === "/help") {
     await sendTo(token, chatId,
 `🤖 <b>DrimPay Bot — Aide</b>
@@ -441,15 +466,17 @@ Les pay-outs sont à nouveau disponibles pour tous les marchands.
 <b>Commandes :</b>
 /stats — Statistiques + état des retraits
 /ip — Adresse IP du serveur
+/blocked — 🚫 Lister les IPs bloquées (20 dernières)
 /stopretraits — 🔴 Bloquer TOUS les retraits instantanément
 /activetraits — 🟢 Réactiver les retraits
 /help — Afficher cette aide
 
 <b>Alertes automatiques :</b>
+🚨 Intrusion panel admin (hors Togo/VPN/hosting) → auto-bloqué
 ✅❌📱 Toutes les tentatives de connexion (marchands + admin)
 ⚠️ VPN / Proxy / Hébergement suspect
 🌍 Connexion hors Afrique
-🚫 Bouton bloquer IP (inline)
+🚫 Bouton bloquer IP (inline) + 🔓 Débloquer
 👤 Nouveaux marchands
 💰 Paiements reçus (API &amp; liens)
 🚨 Gros montants (≥500 000 FCFA)
@@ -474,10 +501,7 @@ async function handleCallback(token: string, callbackId: string, chatId: string,
 
   if (data.startsWith("block_ip:")) {
     const ip = data.slice(9).trim();
-    if (!ip) {
-      await sendTo(token, chatId, "❌ IP invalide.");
-      return;
-    }
+    if (!ip) { await sendTo(token, chatId, "❌ IP invalide."); return; }
     try {
       await db.insert(blockedIpsTable).values({
         ip,
@@ -487,12 +511,31 @@ async function handleCallback(token: string, callbackId: string, chatId: string,
       await sendTo(token, chatId,
 `🚫 <b>IP Bloquée</b>
 
-<code>${ip}</code> est désormais bloquée définitivement sur la plateforme.
+<code>${ip}</code> est désormais bloquée définitivement.
 👤 Par: ${fromName}
 📅 ${dt()}`
       );
     } catch (e) {
-      await sendTo(token, chatId, `❌ Erreur lors du blocage de <code>${ip}</code>: ${String(e).substring(0, 200)}`);
+      await sendTo(token, chatId, `❌ Erreur blocage <code>${ip}</code>: ${String(e).substring(0, 200)}`);
+    }
+
+  } else if (data.startsWith("unblock_ip:")) {
+    // Débloquer une IP auto-bloquée (ex: faux positif admin légitime)
+    const ip = data.slice(11).trim();
+    if (!ip) { await sendTo(token, chatId, "❌ IP invalide."); return; }
+    try {
+      await db.delete(blockedIpsTable).where(eq(blockedIpsTable.ip, ip));
+      await sendTo(token, chatId,
+`🔓 <b>IP Débloquée</b>
+
+<code>${ip}</code> a été retirée de la liste noire.
+👤 Par: ${fromName}
+📅 ${dt()}
+
+⚠️ Si cette IP était malveillante, utilisez /blocked pour vérifier.`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `❌ Erreur déblocage <code>${ip}</code>: ${String(e).substring(0, 200)}`);
     }
   }
 }
@@ -565,6 +608,40 @@ const SPAM_COOLDOWN_MS = 30 * 60 * 1000; // 30 min between repeated alerts
  * Notify admins when a merchant triggers too many payment attempts.
  * Deduplicates: only one alert per merchant per source every 30 minutes.
  */
+// ─── Admin intrusion alert (non-TG / VPN / hosting → auto-blocked) ────────────
+export async function notifyAdminIntrusion(opts: {
+  ip: string;
+  country: string;
+  isVpn: boolean;
+  isHosting: boolean;
+  org: string;
+  method: string;
+  path: string;
+  ua: string;
+  reason: string;
+}) {
+  const flags: string[] = [];
+  if (opts.isVpn)     flags.push(`⚠️ <b>VPN / Proxy</b> — ${opts.org}`);
+  if (opts.isHosting) flags.push(`🖥️ <b>Hébergement</b> — ${opts.org}`);
+  if (!opts.isVpn && !opts.isHosting) flags.push(`🌍 <b>Pays bloqué :</b> ${opts.country}`);
+
+  const text =
+`🚨 <b>INTRUSION PANEL ADMIN — AUTO-BLOQUÉE</b>
+
+🌐 IP: <code>${opts.ip}</code>
+🏳️ Pays: ${opts.country}
+${flags.join("\n")}
+📍 Route: <code>${opts.method} ${opts.path}</code>
+📝 Raison: ${opts.reason}
+
+✅ <b>IP bloquée définitivement en base.</b>
+📅 ${dt()}`;
+
+  await sendWithButtons(text, [
+    [{ text: "🔓 Débloquer (si légitime)", callback_data: `unblock_ip:${opts.ip}` }],
+  ]);
+}
+
 export async function notifyAttemptSpam(opts: {
   merchantId: number;
   company: string;

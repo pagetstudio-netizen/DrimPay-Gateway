@@ -31,6 +31,23 @@
 
 import crypto from "crypto";
 
+// ─── Redact sensitive fields before logging ───────────────────────────────────
+const SENSITIVE_KEYS = new Set([
+  "phone", "customer_phone", "email", "customer_email",
+  "customer_firstname", "customer_lastname", "customer_name",
+  "account_alias", "name",
+]);
+
+function redactPayload(obj: object): object {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => {
+      if (SENSITIVE_KEYS.has(k) && typeof v === "string") return [k, "***"];
+      if (k === "additional_infos" && v && typeof v === "object") return [k, redactPayload(v as object)];
+      return [k, v];
+    })
+  );
+}
+
 // ─── Opérateurs qui nécessitent un OTP ────────────────────────────────────────
 const OTP_REQUIRED_OPERATORS = new Set(["OM", "TELECEL"]);
 
@@ -202,7 +219,7 @@ export class ClapayClient {
 
     console.log(`[Clapay] → ${method} ${url}`);
     if (body) {
-      console.log(`[Clapay]   payload: ${JSON.stringify(body)}`);
+      console.log(`[Clapay]   payload: ${JSON.stringify(redactPayload(body))}`);
     }
 
     let response: Response;

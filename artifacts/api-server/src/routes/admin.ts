@@ -9,7 +9,7 @@ import {
   notificationsTable, supportUsersTable, globalBannersTable,
   userWebhooksTable, userAllowedIpsTable, jobsTable,
 } from "@workspace/db/schema";
-import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt } from "drizzle-orm";
+import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import path from "path";
@@ -183,7 +183,7 @@ router.get("/admin/stats", requireAdmin, async (req: any, res: any) => {
   const merchantIds = [...new Set(recentTx.map(t => t.userId))];
   const merchants = merchantIds.length > 0
     ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email })
-        .from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(merchantIds.join(","))}]::int[])`)
+        .from(usersTable).where(inArray(usersTable.id, merchantIds))
     : [];
   const merchantMap = Object.fromEntries(merchants.map(m => [m.id, m]));
 
@@ -822,7 +822,7 @@ router.get("/admin/transactions", requireAdmin, async (req: any, res: any) => {
   const userIds = [...new Set(txs.map(t => t.userId))];
   const users = userIds.length > 0
     ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email })
-        .from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(userIds.join(","))}]::int[])`)
+        .from(usersTable).where(inArray(usersTable.id, userIds))
     : [];
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
@@ -950,7 +950,7 @@ router.get("/admin/wallets", requireAdmin, async (_req: any, res: any) => {
   const userIds = [...new Set(wallets.map(w => w.userId))];
   const users = userIds.length > 0
     ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email })
-        .from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(userIds.join(","))}]::int[])`)
+        .from(usersTable).where(inArray(usersTable.id, userIds))
     : [];
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
@@ -1174,7 +1174,7 @@ router.get("/admin/api-keys", requireAdmin, async (req: any, res: any) => {
   const userIds = [...new Set(keys.map(k => k.userId))];
   const users = userIds.length > 0
     ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email })
-        .from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(userIds.join(","))}]::int[])`)
+        .from(usersTable).where(inArray(usersTable.id, userIds))
     : [];
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
@@ -1276,7 +1276,7 @@ router.get("/admin/payment-links", requireAdmin, async (req: any, res: any) => {
   const userIds = [...new Set(links.map(l => l.userId))];
   const users = userIds.length > 0
     ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email })
-        .from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(userIds.join(","))}]::int[])`)
+        .from(usersTable).where(inArray(usersTable.id, userIds))
     : [];
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
@@ -1324,7 +1324,7 @@ router.get("/admin/logs", requireAdmin, async (req: any, res: any) => {
   const adminIds = [...new Set(logs.map(l => l.adminId))];
   const admins = adminIds.length > 0
     ? await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName })
-        .from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(adminIds.join(","))}]::int[])`)
+        .from(usersTable).where(inArray(usersTable.id, adminIds))
     : [];
   const adminMap = Object.fromEntries(admins.map(a => [a.id, a]));
 
@@ -1383,7 +1383,7 @@ router.get("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
 
 router.post("/admin/blacklist", requireAdmin, async (req: any, res: any) => {
   const schema = z.object({
-    phone: z.string().min(6).max(20),
+    phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide"),
     reason: z.string().max(500).optional(),
   });
   const parsed = schema.safeParse(req.body);

@@ -250,7 +250,7 @@ router.patch("/pay/:token/attempt/:id", async (req: any, res: any) => {
 
 // ─── POST /pay/:token ─────────────────────────────────────────────────────────
 const paySchema = z.object({
-  phone: z.string().min(8),
+  phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
   amount: z.number().min(200, "Le montant minimum est de 200"),
   countryCode: z.string().length(2),
   operator: z.string().min(1),

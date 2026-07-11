@@ -18807,14 +18807,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto11 = __require("crypto");
+    var crypto12 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash2 = crypto11.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto12.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash2 + '"';
     }
@@ -22243,17 +22243,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
-    var crypto11 = __require("crypto");
+    var crypto12 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto11.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto12.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto11.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto12.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -24463,11 +24463,11 @@ var require_on_headers = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.0.7/node_modules/cookie-signature/index.js
 var require_cookie_signature2 = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.0.7/node_modules/cookie-signature/index.js"(exports) {
-    var crypto11 = __require("crypto");
+    var crypto12 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto11.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto12.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -24476,7 +24476,7 @@ var require_cookie_signature2 = __commonJS({
       return sha1(mac) == sha1(val) ? str : false;
     };
     function sha1(str) {
-      return crypto11.createHash("sha1").update(str).digest("hex");
+      return crypto12.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -24485,8 +24485,8 @@ var require_cookie_signature2 = __commonJS({
 var require_random_bytes = __commonJS({
   "../../node_modules/.pnpm/random-bytes@1.0.0/node_modules/random-bytes/index.js"(exports, module) {
     "use strict";
-    var crypto11 = __require("crypto");
-    var generateAttempts = crypto11.randomBytes === crypto11.pseudoRandomBytes ? 1 : 3;
+    var crypto12 = __require("crypto");
+    var generateAttempts = crypto12.randomBytes === crypto12.pseudoRandomBytes ? 1 : 3;
     module.exports = randomBytes2;
     module.exports.sync = randomBytesSync;
     function randomBytes2(size, callback) {
@@ -24510,7 +24510,7 @@ var require_random_bytes = __commonJS({
       var err = null;
       for (var i = 0; i < generateAttempts; i++) {
         try {
-          return crypto11.randomBytes(size);
+          return crypto12.randomBytes(size);
         } catch (e) {
           err = e;
         }
@@ -24518,7 +24518,7 @@ var require_random_bytes = __commonJS({
       throw err;
     }
     function generateRandomBytes(size, attempts, callback) {
-      crypto11.randomBytes(size, function onRandomBytes(err, buf) {
+      crypto12.randomBytes(size, function onRandomBytes(err, buf) {
         if (!err) return callback(null, buf);
         if (!--attempts) return callback(err);
         setTimeout(generateRandomBytes.bind(null, size, attempts, callback), 10);
@@ -24860,7 +24860,7 @@ var require_express_session = __commonJS({
     "use strict";
     var Buffer3 = require_safe_buffer().Buffer;
     var cookie = require_cookie();
-    var crypto11 = __require("crypto");
+    var crypto12 = __require("crypto");
     var debug = require_src2()("express-session");
     var deprecate = require_depd()("express-session");
     var onHeaders = require_on_headers();
@@ -25233,7 +25233,7 @@ var require_express_session = __commonJS({
         }
         return val;
       });
-      return crypto11.createHash("sha1").update(str, "utf8").digest("hex");
+      return crypto12.createHash("sha1").update(str, "utf8").digest("hex");
     }
     function issecure(req, trustProxy) {
       if (req.connection && req.connection.encrypted) {
@@ -26646,7 +26646,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto11 = require_utils5();
+    var crypto12 = require_utils5();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function startSession(mechanisms, stream) {
       const candidates = ["SCRAM-SHA-256"];
@@ -26658,7 +26658,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto11.randomBytes(18).toString("base64");
+      const clientNonce = crypto12.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -26693,20 +26693,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto11.hashByName(hashName, peerCert);
+        const certHash = await crypto12.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto11.deriveKey(password, saltBytes, sv.iteration);
-      const clientKey = await crypto11.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto11.sha256(clientKey);
-      const clientSignature = await crypto11.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto12.deriveKey(password, saltBytes, sv.iteration);
+      const clientKey = await crypto12.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto12.sha256(clientKey);
+      const clientSignature = await crypto12.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto11.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto11.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto12.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto12.hmacSha256(serverKey, authMessage);
       session2.message = "SASLResponse";
       session2.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session2.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -28874,7 +28874,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto11 = require_utils5();
+    var crypto12 = require_utils5();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -29109,7 +29109,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto11.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto12.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -85437,9 +85437,9 @@ var require_disk = __commonJS({
     var fs3 = __require("fs");
     var os = __require("os");
     var path5 = __require("path");
-    var crypto11 = __require("crypto");
+    var crypto12 = __require("crypto");
     function getFilename(req, file2, cb) {
-      crypto11.randomBytes(16, function(err, raw) {
+      crypto12.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -105597,6 +105597,15 @@ __export(clapay_exports, {
   toNowWalletOperatorCode: () => toNowWalletOperatorCode
 });
 import crypto3 from "crypto";
+function redactPayload(obj) {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => {
+      if (SENSITIVE_KEYS.has(k) && typeof v === "string") return [k, "***"];
+      if (k === "additional_infos" && v && typeof v === "object") return [k, redactPayload(v)];
+      return [k, v];
+    })
+  );
+}
 function toNowWalletOperatorCode(operator) {
   const key = operator.toLowerCase().trim();
   return OPERATOR_CODE_MAP[key] ?? operator.toUpperCase();
@@ -105627,10 +105636,21 @@ function logClapayConfig() {
   const hasToken = !!process.env.CLAPAY_API_TOKEN;
   console.log(`[Clapay] Base URL: ${baseUrl2} | Token: ${hasToken ? "\u2713" : "\u2717"}`);
 }
-var OTP_REQUIRED_OPERATORS, OPERATOR_CODE_MAP, ClapayClient, ClapayError, _client;
+var SENSITIVE_KEYS, OTP_REQUIRED_OPERATORS, OPERATOR_CODE_MAP, ClapayClient, ClapayError, _client;
 var init_clapay = __esm({
   "src/lib/clapay.ts"() {
     "use strict";
+    SENSITIVE_KEYS = /* @__PURE__ */ new Set([
+      "phone",
+      "customer_phone",
+      "email",
+      "customer_email",
+      "customer_firstname",
+      "customer_lastname",
+      "customer_name",
+      "account_alias",
+      "name"
+    ]);
     OTP_REQUIRED_OPERATORS = /* @__PURE__ */ new Set(["OM", "TELECEL"]);
     OPERATOR_CODE_MAP = {
       // Orange Money
@@ -105707,7 +105727,7 @@ var init_clapay = __esm({
         const startMs = Date.now();
         console.log(`[Clapay] \u2192 ${method} ${url2}`);
         if (body) {
-          console.log(`[Clapay]   payload: ${JSON.stringify(body)}`);
+          console.log(`[Clapay]   payload: ${JSON.stringify(redactPayload(body))}`);
         }
         let response;
         try {
@@ -106285,6 +106305,15 @@ __export(paydunya_exports, {
   isPayDunyaConfigured: () => isPayDunyaConfigured
 });
 import crypto4 from "crypto";
+function redactPayload2(obj) {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => {
+      if (SENSITIVE_KEYS2.has(k) && typeof v === "string") return [k, "***"];
+      if (v && typeof v === "object" && !Array.isArray(v)) return [k, redactPayload2(v)];
+      return [k, v];
+    })
+  );
+}
 function getWithdrawMode(operator, countryCode) {
   const key = `${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`;
   return WITHDRAW_MODE_MAP[key] ?? null;
@@ -106323,11 +106352,22 @@ function getPayDunyaClient() {
 function isPayDunyaConfigured() {
   return !!(process.env.PAYDUNYA_MASTER_KEY && process.env.PAYDUNYA_PRIVATE_KEY && process.env.PAYDUNYA_TOKEN);
 }
-var WITHDRAW_MODE_MAP, COUNTRY_DIAL_CODES, PayDunyaClient, PayDunyaError, _client2, PAYDUNYA_LIVE_URL;
+var SENSITIVE_KEYS2, WITHDRAW_MODE_MAP, COUNTRY_DIAL_CODES, PayDunyaClient, PayDunyaError, _client2, PAYDUNYA_LIVE_URL;
 var init_paydunya = __esm({
   "src/lib/paydunya.ts"() {
     "use strict";
     init_paydunya_softpay_map();
+    SENSITIVE_KEYS2 = /* @__PURE__ */ new Set([
+      "phone",
+      "account_alias",
+      "email",
+      "customer_email",
+      "customer_phone",
+      "customer_firstname",
+      "customer_lastname",
+      "customer_name",
+      "name"
+    ]);
     WITHDRAW_MODE_MAP = {
       // Togo
       "tmoney|TG": "t-money-togo",
@@ -106417,7 +106457,7 @@ var init_paydunya = __esm({
         const sentHeaders = this.headers();
         console.log(`[PayDunya] \u2192 ${method} ${url2}`);
         if (body) {
-          console.log(`[PayDunya]   payload: ${JSON.stringify(body)}`);
+          console.log(`[PayDunya]   payload: ${JSON.stringify(redactPayload2(body))}`);
         }
         let response;
         try {
@@ -107201,7 +107241,7 @@ var require_md5 = __commonJS({
         return method;
       };
       var nodeWrap = function(method) {
-        var crypto11 = __require("crypto");
+        var crypto12 = __require("crypto");
         var Buffer3 = __require("buffer").Buffer;
         var bufferFrom;
         if (Buffer3.from && !root.JS_MD5_NO_BUFFER_FROM) {
@@ -107213,7 +107253,7 @@ var require_md5 = __commonJS({
         }
         var nodeMethod = function(message) {
           if (typeof message === "string") {
-            return crypto11.createHash("md5").update(message, "utf8").digest("hex");
+            return crypto12.createHash("md5").update(message, "utf8").digest("hex");
           } else {
             if (message === null || message === void 0) {
               throw new Error(INPUT_ERROR);
@@ -107222,7 +107262,7 @@ var require_md5 = __commonJS({
             }
           }
           if (isArray(message) || isView2(message) || message.constructor === Buffer3) {
-            return crypto11.createHash("md5").update(bufferFrom(message)).digest("hex");
+            return crypto12.createHash("md5").update(bufferFrom(message)).digest("hex");
           } else {
             return method(message);
           }
@@ -257891,6 +257931,7 @@ var import_express_session = __toESM(require_express_session(), 1);
 var import_connect_pg_simple = __toESM(require_connect_pg_simple(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 init_src();
+import crypto11 from "node:crypto";
 import path4 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { existsSync as existsSync2 } from "node:fs";
@@ -257935,7 +257976,11 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 var router2 = (0, import_express2.Router)();
 var __dirname2 = dirname(fileURLToPath(import.meta.url));
-router2.get("/help", async (_req, res) => {
+router2.get("/help", async (req, res) => {
+  if (!req.session?.userId || req.session?.role !== "admin") {
+    res.status(403).json({ error: "Acc\xE8s refus\xE9" });
+    return;
+  }
   const checks = {};
   checks.server = {
     nodeVersion: process.version,
@@ -258014,7 +258059,7 @@ router2.get("/help", async (_req, res) => {
     aggregator: process.env["ACTIVE_AGGREGATOR"] ?? "(non d\xE9fini)"
   };
   checks.storage = {
-    supabaseUrl: process.env["SUPABASE_URL"] ?? "\u2717 non d\xE9fini",
+    supabaseUrl: process.env["SUPABASE_URL"] ? "\u2713 d\xE9fini" : "\u2717 non d\xE9fini",
     serviceRoleKey: process.env["SUPABASE_SERVICE_ROLE_KEY"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT \u2014 KYB uploads d\xE9sactiv\xE9s"
   };
   checks.email = {
@@ -262633,6 +262678,28 @@ Les pay-outs sont \xE0 nouveau disponibles pour tous les marchands.
     } catch (e) {
       await sendTo(token, chatId, `\u274C Erreur lors de la r\xE9activation des retraits: ${String(e).substring(0, 200)}`);
     }
+  } else if (cmd === "/blocked") {
+    try {
+      const rows = await db.select({ ip: blockedIpsTable.ip, reason: blockedIpsTable.reason, createdAt: blockedIpsTable.createdAt }).from(blockedIpsTable).orderBy(blockedIpsTable.createdAt).limit(20);
+      if (rows.length === 0) {
+        await sendTo(token, chatId, "\u2705 Aucune IP bloqu\xE9e actuellement.");
+        return;
+      }
+      const lines = rows.map(
+        (r) => `\u2022 <code>${r.ip}</code> \u2014 ${r.reason?.substring(0, 60) ?? "\u2014"}`
+      ).join("\n");
+      await sendTo(
+        token,
+        chatId,
+        `\u{1F6AB} <b>IPs Bloqu\xE9es (${rows.length})</b>
+
+${lines}
+
+\u{1F4C5} ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `\u274C Erreur: ${String(e).substring(0, 200)}`);
+    }
   } else if (cmd === "/help") {
     await sendTo(
       token,
@@ -262642,15 +262709,17 @@ Les pay-outs sont \xE0 nouveau disponibles pour tous les marchands.
 <b>Commandes :</b>
 /stats \u2014 Statistiques + \xE9tat des retraits
 /ip \u2014 Adresse IP du serveur
+/blocked \u2014 \u{1F6AB} Lister les IPs bloqu\xE9es (20 derni\xE8res)
 /stopretraits \u2014 \u{1F534} Bloquer TOUS les retraits instantan\xE9ment
 /activetraits \u2014 \u{1F7E2} R\xE9activer les retraits
 /help \u2014 Afficher cette aide
 
 <b>Alertes automatiques :</b>
+\u{1F6A8} Intrusion panel admin (hors Togo/VPN/hosting) \u2192 auto-bloqu\xE9
 \u2705\u274C\u{1F4F1} Toutes les tentatives de connexion (marchands + admin)
 \u26A0\uFE0F VPN / Proxy / H\xE9bergement suspect
 \u{1F30D} Connexion hors Afrique
-\u{1F6AB} Bouton bloquer IP (inline)
+\u{1F6AB} Bouton bloquer IP (inline) + \u{1F513} D\xE9bloquer
 \u{1F464} Nouveaux marchands
 \u{1F4B0} Paiements re\xE7us (API &amp; liens)
 \u{1F6A8} Gros montants (\u2265500 000 FCFA)
@@ -262687,12 +262756,34 @@ async function handleCallback(token, callbackId, chatId, data, fromName) {
         chatId,
         `\u{1F6AB} <b>IP Bloqu\xE9e</b>
 
-<code>${ip}</code> est d\xE9sormais bloqu\xE9e d\xE9finitivement sur la plateforme.
+<code>${ip}</code> est d\xE9sormais bloqu\xE9e d\xE9finitivement.
 \u{1F464} Par: ${fromName}
 \u{1F4C5} ${dt()}`
       );
     } catch (e) {
-      await sendTo(token, chatId, `\u274C Erreur lors du blocage de <code>${ip}</code>: ${String(e).substring(0, 200)}`);
+      await sendTo(token, chatId, `\u274C Erreur blocage <code>${ip}</code>: ${String(e).substring(0, 200)}`);
+    }
+  } else if (data.startsWith("unblock_ip:")) {
+    const ip = data.slice(11).trim();
+    if (!ip) {
+      await sendTo(token, chatId, "\u274C IP invalide.");
+      return;
+    }
+    try {
+      await db.delete(blockedIpsTable).where(eq(blockedIpsTable.ip, ip));
+      await sendTo(
+        token,
+        chatId,
+        `\u{1F513} <b>IP D\xE9bloqu\xE9e</b>
+
+<code>${ip}</code> a \xE9t\xE9 retir\xE9e de la liste noire.
+\u{1F464} Par: ${fromName}
+\u{1F4C5} ${dt()}
+
+\u26A0\uFE0F Si cette IP \xE9tait malveillante, utilisez /blocked pour v\xE9rifier.`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `\u274C Erreur d\xE9blocage <code>${ip}</code>: ${String(e).substring(0, 200)}`);
     }
   }
 }
@@ -262756,6 +262847,25 @@ function startPolling() {
 }
 var _spamCooldown = /* @__PURE__ */ new Map();
 var SPAM_COOLDOWN_MS = 30 * 60 * 1e3;
+async function notifyAdminIntrusion(opts) {
+  const flags = [];
+  if (opts.isVpn) flags.push(`\u26A0\uFE0F <b>VPN / Proxy</b> \u2014 ${opts.org}`);
+  if (opts.isHosting) flags.push(`\u{1F5A5}\uFE0F <b>H\xE9bergement</b> \u2014 ${opts.org}`);
+  if (!opts.isVpn && !opts.isHosting) flags.push(`\u{1F30D} <b>Pays bloqu\xE9 :</b> ${opts.country}`);
+  const text2 = `\u{1F6A8} <b>INTRUSION PANEL ADMIN \u2014 AUTO-BLOQU\xC9E</b>
+
+\u{1F310} IP: <code>${opts.ip}</code>
+\u{1F3F3}\uFE0F Pays: ${opts.country}
+${flags.join("\n")}
+\u{1F4CD} Route: <code>${opts.method} ${opts.path}</code>
+\u{1F4DD} Raison: ${opts.reason}
+
+\u2705 <b>IP bloqu\xE9e d\xE9finitivement en base.</b>
+\u{1F4C5} ${dt()}`;
+  await sendWithButtons(text2, [
+    [{ text: "\u{1F513} D\xE9bloquer (si l\xE9gitime)", callback_data: `unblock_ip:${opts.ip}` }]
+  ]);
+}
 async function notifyAttemptSpam(opts) {
   const key = `${opts.merchantId}:${opts.source}`;
   const now = Date.now();
@@ -266250,41 +266360,60 @@ async function adminGeoMiddleware(req, res, next) {
   const ip = getClientIp(req);
   const ua = (req.headers["user-agent"] ?? "").toLowerCase();
   if (BOT_UA_PATTERNS.some((p) => ua.includes(p))) {
-    try {
-      await db.insert(securityEventsTable).values({
-        eventType: "SUSPICIOUS_ACTIVITY",
-        userId: null,
-        ipAddress: ip,
-        userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
-        details: `Admin bot blocked \u2014 UA: ${ua.substring(0, 120)}`,
-        riskLevel: "high"
-      });
-    } catch {
-    }
+    db.insert(securityEventsTable).values({
+      eventType: "SUSPICIOUS_ACTIVITY",
+      userId: null,
+      ipAddress: ip,
+      userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+      details: `Admin bot bloqu\xE9 \u2014 UA: ${ua.substring(0, 120)}`,
+      riskLevel: "critical"
+    }).catch(() => {
+    });
     res.status(403).json({ error: "Acc\xE8s refus\xE9." });
     return;
   }
   if (isLocalIp(ip)) return next();
   if (getAdminAllowedIps().includes(ip)) return next();
-  const { country } = await resolveGeoInfo(ip);
-  if (country !== null && !ADMIN_ALLOWED_COUNTRIES.includes(country)) {
-    try {
-      await db.insert(securityEventsTable).values({
-        eventType: "IP_BLOCKED",
-        userId: null,
-        ipAddress: ip,
-        userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
-        details: `Admin geo-blocked \u2014 country: ${country}`,
-        riskLevel: "high"
-      });
-    } catch {
-    }
-    res.status(403).json({
-      error: "Acc\xE8s refus\xE9. Le panel admin n'est pas accessible depuis votre r\xE9gion."
-    });
-    return;
-  }
-  next();
+  const { country, isVpn, isHosting, org } = await resolveGeoInfo(ip);
+  const isWrongCountry = country !== null && !ADMIN_ALLOWED_COUNTRIES.includes(country);
+  const isGeoFailed = country === null;
+  const isSuspicious = isVpn || isHosting;
+  if (!isWrongCountry && !isGeoFailed && !isSuspicious) return next();
+  let reason;
+  if (isVpn) reason = `VPN/Proxy d\xE9tect\xE9 \u2014 org: ${org}`;
+  else if (isHosting) reason = `H\xE9bergement suspect \u2014 org: ${org}`;
+  else if (isWrongCountry) reason = `Acc\xE8s hors zone autoris\xE9e \u2014 pays: ${country}`;
+  else reason = "G\xE9olocalisation impossible \u2014 acc\xE8s refus\xE9 par pr\xE9caution";
+  db.insert(securityEventsTable).values({
+    eventType: "IP_BLOCKED",
+    userId: null,
+    ipAddress: ip,
+    userAgent: req.headers["user-agent"]?.substring(0, 500) ?? null,
+    details: `Admin intrusion auto-bloqu\xE9e \u2014 ${reason}`,
+    riskLevel: "critical"
+  }).catch(() => {
+  });
+  db.insert(blockedIpsTable).values({
+    ip,
+    reason: `Auto-bloqu\xE9 (acc\xE8s panel admin) \u2014 ${reason}`,
+    permanent: true
+  }).onConflictDoNothing().catch(() => {
+  });
+  notifyAdminIntrusion({
+    ip,
+    country: country ?? "inconnu",
+    isVpn,
+    isHosting,
+    org,
+    method: req.method,
+    path: req.path,
+    ua: req.headers["user-agent"] ?? "",
+    reason
+  }).catch(() => {
+  });
+  res.status(403).json({
+    error: "Acc\xE8s refus\xE9. Le panel admin n'est pas accessible depuis votre r\xE9seau."
+  });
 }
 var helmetMiddleware = helmet({
   contentSecurityPolicy: {
@@ -276480,7 +276609,7 @@ var payinSchema = external_exports2.object({
   currency: external_exports2.string().length(3),
   countryCode: external_exports2.string().length(2),
   operator: external_exports2.string().min(1),
-  phone: external_exports2.string().min(8),
+  phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
   description: external_exports2.string().optional(),
   externalRef: external_exports2.string().optional()
 });
@@ -276653,7 +276782,7 @@ var payoutSchema = external_exports2.object({
   currency: external_exports2.string().length(3),
   countryCode: external_exports2.string().length(2),
   operator: external_exports2.string().min(1),
-  phone: external_exports2.string().min(8),
+  phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
   description: external_exports2.string().optional(),
   externalRef: external_exports2.string().optional()
 });
@@ -277100,7 +277229,7 @@ router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
           legalRepDob: external_exports2.string().min(1),
           incorporationCountry: external_exports2.string().min(2),
           businessAddress: external_exports2.string().min(5),
-          legalRepPhone: external_exports2.string().min(8),
+          legalRepPhone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro repr\xE9sentant l\xE9gal invalide"),
           legalRepEmail: external_exports2.string().email()
         });
         const parsed = schema.safeParse(body);
@@ -277202,7 +277331,7 @@ router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         legalRepName: external_exports2.string().min(2),
         legalRepDob: external_exports2.string().optional(),
         legalRepNationality: external_exports2.string().min(2),
-        legalRepPhone: external_exports2.string().min(8),
+        legalRepPhone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro repr\xE9sentant l\xE9gal invalide"),
         legalRepEmail: external_exports2.string().email(),
         legalRepPosition: external_exports2.string().min(1),
         legalRepIdType: external_exports2.string().min(1),
@@ -277324,7 +277453,7 @@ router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
 var reversementSchema = external_exports2.object({
   countryCode: external_exports2.string().min(2),
   operator: external_exports2.string().min(1),
-  phone: external_exports2.string().min(8),
+  phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
   amount: external_exports2.number().min(200, "Le montant minimum est de 200"),
   note: external_exports2.string().optional()
 });
@@ -278181,7 +278310,7 @@ router11.get("/dashboard/attempts", requireAuth, async (req, res) => {
 var massPayoutSchema = external_exports2.object({
   description: external_exports2.string().optional(),
   recipients: external_exports2.array(external_exports2.object({
-    phone: external_exports2.string().min(8),
+    phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
     amount: external_exports2.number().positive(),
     countryCode: external_exports2.string().length(2),
     operator: external_exports2.string().min(1),
@@ -278855,7 +278984,7 @@ var initiateSchema = external_exports2.object({
   currency: external_exports2.string().length(3),
   country_code: external_exports2.string().length(2),
   operator: external_exports2.string().min(1),
-  phone: external_exports2.string().min(8),
+  phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
   order_id: external_exports2.string().min(1).max(128),
   webhook_url: external_exports2.string().url().optional(),
   description: external_exports2.string().max(255).optional(),
@@ -279631,7 +279760,7 @@ router13.get("/admin/stats", requireAdmin, async (req, res) => {
     db.selectDistinct({ domain: transactionsTable.webhookUrl }).from(transactionsTable).where(sql`${transactionsTable.webhookUrl} IS NOT NULL AND ${transactionsTable.webhookUrl} != ''`)
   ]);
   const merchantIds = [...new Set(recentTx.map((t) => t.userId))];
-  const merchants = merchantIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(merchantIds.join(","))}]::int[])`) : [];
+  const merchants = merchantIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, merchantIds)) : [];
   const merchantMap = Object.fromEntries(merchants.map((m) => [m.id, m]));
   const payinStats = txToday.find((t) => t.type === "payin");
   const payoutStats = txToday.find((t) => t.type === "payout");
@@ -280197,7 +280326,7 @@ router13.get("/admin/transactions", requireAdmin, async (req, res) => {
   }
   const [{ total }] = await db.select({ total: count() }).from(transactionsTable).where(where);
   const userIds = [...new Set(txs.map((t) => t.userId))];
-  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(userIds.join(","))}]::int[])`) : [];
+  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [];
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
   res.json({
     transactions: txs.map((t) => ({ ...t, merchant: userMap[t.userId] ?? null })),
@@ -280308,7 +280437,7 @@ router13.post("/admin/transactions/:id/sync-gateway", requireAdmin, async (req, 
 router13.get("/admin/wallets", requireAdmin, async (_req, res) => {
   const wallets = await db.select().from(walletsTable).orderBy(walletsTable.countryCode);
   const userIds = [...new Set(wallets.map((w) => w.userId))];
-  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(userIds.join(","))}]::int[])`) : [];
+  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [];
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
   const COUNTRY_MAP = {
     TG: { name: "Togo", flag: "\u{1F1F9}\u{1F1EC}", currency: "XOF" },
@@ -280543,7 +280672,7 @@ router13.get("/admin/api-keys", requireAdmin, async (req, res) => {
   }).from(apiKeysTable).orderBy(desc(apiKeysTable.createdAt)).limit(limitNum).offset(offset);
   const [{ total }] = await db.select({ total: count() }).from(apiKeysTable);
   const userIds = [...new Set(keys.map((k) => k.userId))];
-  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(userIds.join(","))}]::int[])`) : [];
+  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [];
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
   let result = keys.map((k) => ({ ...k, merchant: userMap[k.userId] ?? null }));
   if (search) {
@@ -280619,7 +280748,7 @@ router13.get("/admin/payment-links", requireAdmin, async (req, res) => {
   const links = await db.select().from(paymentLinksTable).orderBy(desc(paymentLinksTable.createdAt)).limit(limitNum).offset(offset);
   const [{ total }] = await db.select({ total: count() }).from(paymentLinksTable);
   const userIds = [...new Set(links.map((l) => l.userId))];
-  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(userIds.join(","))}]::int[])`) : [];
+  const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [];
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
   let result = links.map((l) => ({ ...l, merchant: userMap[l.userId] ?? null }));
   if (search) {
@@ -280651,7 +280780,7 @@ router13.get("/admin/logs", requireAdmin, async (req, res) => {
   const logs = await db.select().from(adminLogsTable).where(where).orderBy(desc(adminLogsTable.createdAt)).limit(limitNum).offset(offset);
   const [{ total }] = await db.select({ total: count() }).from(adminLogsTable).where(where);
   const adminIds = [...new Set(logs.map((l) => l.adminId))];
-  const admins = adminIds.length > 0 ? await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(sql`${usersTable.id} = ANY(ARRAY[${sql.raw(adminIds.join(","))}]::int[])`) : [];
+  const admins = adminIds.length > 0 ? await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(inArray(usersTable.id, adminIds)) : [];
   const adminMap = Object.fromEntries(admins.map((a) => [a.id, a]));
   res.json({ logs: logs.map((l) => ({ ...l, admin: adminMap[l.adminId] ?? null })), total: Number(total), page: pageNum, limit: limitNum });
 });
@@ -280692,7 +280821,7 @@ router13.get("/admin/blacklist", requireAdmin, async (req, res) => {
 });
 router13.post("/admin/blacklist", requireAdmin, async (req, res) => {
   const schema = external_exports2.object({
-    phone: external_exports2.string().min(6).max(20),
+    phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide"),
     reason: external_exports2.string().max(500).optional()
   });
   const parsed = schema.safeParse(req.body);
@@ -282029,7 +282158,7 @@ router17.patch("/pay/:token/attempt/:id", async (req, res) => {
   res.json({ ok: true });
 });
 var paySchema = external_exports2.object({
-  phone: external_exports2.string().min(8),
+  phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
   amount: external_exports2.number().min(200, "Le montant minimum est de 200"),
   countryCode: external_exports2.string().length(2),
   operator: external_exports2.string().min(1),
@@ -282436,9 +282565,9 @@ app.use(
       // Auto-create the table if it doesn't exist yet (e.g. fresh Supabase instance)
       createTableIfMissing: true
     }),
-    // Fallback secret prevents a synchronous throw if env var is missing.
-    // Sessions will be invalid but the process won't crash on Passenger.
-    secret: sessionSecret || "drimpay-fallback-secret-please-set-SESSION_SECRET",
+    // Fallback: aléatoire à chaque démarrage si SESSION_SECRET absent.
+    // Les sessions existantes seront invalidées mais le process ne crashe pas.
+    secret: sessionSecret || crypto11.randomBytes(32).toString("hex"),
     resave: false,
     saveUninitialized: false,
     name: "dp_sid",

@@ -190,7 +190,7 @@ const initiateSchema = z.object({
   currency: z.string().length(3),
   country_code: z.string().length(2),
   operator: z.string().min(1),
-  phone: z.string().min(8),
+  phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
   order_id: z.string().min(1).max(128),
   webhook_url: z.string().url().optional(),
   description: z.string().max(255).optional(),

@@ -517,7 +517,7 @@ export const en: Translations = {
   },
   terms: {
     title: "Terms & Conditions",
-    effectiveDate: "Effective date: May 1, 2025 · Last updated: May 1, 2025",
+    effectiveDate: "Effective date: July 11, 2026 · Last updated: July 11, 2026",
     sections: [
       { title: "1. Acceptance of Terms", content: "By accessing or using the DrimPay platform, API, or any associated services (collectively, the \"Services\"), you agree to be bound by these Terms and Conditions (\"Terms\"). If you are accessing the Services on behalf of a business entity, you represent that you have authority to bind that entity to these Terms. If you do not agree to these Terms, you may not use the Services.\n\nDrimPay reserves the right to modify these Terms at any time. Continued use of the Services after notification of changes constitutes acceptance of the revised Terms." },
       { title: "2. Eligibility and Account Registration", content: "To use DrimPay Services, you must be at least 18 years of age and a legal resident or registered business entity in a supported jurisdiction. You must provide accurate, current, and complete information during registration and maintain the accuracy of such information.\n\nBusiness accounts require successful completion of our Know Your Business (KYB) verification process before accessing live payment features. You are responsible for maintaining the confidentiality of your account credentials and API keys." },
@@ -534,7 +534,7 @@ export const en: Translations = {
   },
   privacy: {
     title: "Privacy Policy",
-    effectiveDate: "Effective date: May 1, 2025 · Last updated: May 1, 2025",
+    effectiveDate: "Effective date: July 11, 2026 · Last updated: July 11, 2026",
     sections: [
       { title: "1. Information We Collect", content: "DrimPay collects information you provide directly when creating an account, completing KYB verification, or using our Services. This includes:\n\n- Business information: company name, registration number, tax ID, business address\n- Personal information: name, email, phone number, government-issued ID of authorized representatives\n- Financial information: bank account details for settlement purposes\n- Transaction data: payment amounts, recipient details, timestamps, and transaction metadata\n- Technical data: API request logs, IP addresses, device information, and usage analytics\n- Communication data: support tickets, emails, and chat logs" },
       { title: "2. How We Use Your Information", content: "We use collected information for the following purposes:\n\n- Providing and improving our payment infrastructure services\n- Verifying your identity and business through our KYB process\n- Processing transactions and managing wallet balances\n- Complying with legal and regulatory obligations including AML/CTF requirements\n- Detecting and preventing fraud and unauthorized access\n- Sending service notifications, transaction confirmations, and security alerts\n- Analyzing platform usage to improve performance and user experience\n- Communicating about product updates and new features" },
