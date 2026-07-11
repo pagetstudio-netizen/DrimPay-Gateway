@@ -113,6 +113,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
   const t = useT();
+  const lang = useLang();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -207,6 +208,10 @@ export function Layout({ children }: { children: ReactNode }) {
                 <li><Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">{t.footer.pricing}</Link></li>
                 <li><Link href="/countries" className="text-muted-foreground hover:text-foreground transition-colors">{t.footer.countries}</Link></li>
                 <li><Link href="/security" className="text-muted-foreground hover:text-foreground transition-colors">{t.footer.security}</Link></li>
+                <li><Link href="/cartes-virtuelles" className="text-muted-foreground hover:text-foreground transition-colors">{lang === "fr" ? "Cartes Virtuelles" : "Virtual Cards"}</Link></li>
+                <li><Link href="/paiement-qr-code" className="text-muted-foreground hover:text-foreground transition-colors">{lang === "fr" ? "Paiement par QR Code" : "QR Code Payment"}</Link></li>
+                <li><Link href="/mass-payout" className="text-muted-foreground hover:text-foreground transition-colors">{lang === "fr" ? "Décaissements Massifs" : "Mass Payout"}</Link></li>
+                <li><Link href="/liens-de-paiement" className="text-muted-foreground hover:text-foreground transition-colors">{lang === "fr" ? "Liens de Paiement" : "Payment Links"}</Link></li>
               </ul>
             </div>
 

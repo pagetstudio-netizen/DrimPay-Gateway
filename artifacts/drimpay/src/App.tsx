@@ -34,6 +34,7 @@ import NotFound from "@/pages/not-found";
 
 import DocsPayin from "@/pages/docs-payin";
 import DocsPayout from "@/pages/docs-payout";
+import { VirtualCardsPage, QrPaymentPage, MassPayoutPage, PaymentLinksPage } from "@/pages/products";
 
 import DashboardOverview from "@/pages/dashboard/index";
 import DashboardWallets from "@/pages/dashboard/wallets";
@@ -205,6 +206,10 @@ function PublicSwitch() {
             <Route path="/dashboard-preview" component={DashboardPreview} />
             <Route path="/docs/payin" component={DocsPayin} />
             <Route path="/docs/payout" component={DocsPayout} />
+            <Route path="/cartes-virtuelles" component={VirtualCardsPage} />
+            <Route path="/paiement-qr-code" component={QrPaymentPage} />
+            <Route path="/mass-payout" component={MassPayoutPage} />
+            <Route path="/liens-de-paiement" component={PaymentLinksPage} />
             <Route path="/support" component={SupportPage} />
             <Route path="/faq" component={SupportPage} />
             <Route path="/help-center" component={SupportPage} />

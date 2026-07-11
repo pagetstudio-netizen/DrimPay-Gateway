@@ -326,4 +326,88 @@
     <priority>0.4</priority>
   </url>
 
+  <!-- ══════════════════════════════════════════════════
+       PAGES PRODUITS (FR + EN alternates)
+  ══════════════════════════════════════════════════ -->
+
+  <url>
+    <loc>https://drimpay.com/fr/cartes-virtuelles</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/cartes-virtuelles"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/cartes-virtuelles"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/cartes-virtuelles"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://drimpay.com/en/cartes-virtuelles</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/cartes-virtuelles"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/cartes-virtuelles"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/cartes-virtuelles"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://drimpay.com/fr/paiement-qr-code</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/paiement-qr-code"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/paiement-qr-code"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/paiement-qr-code"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://drimpay.com/en/paiement-qr-code</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/paiement-qr-code"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/paiement-qr-code"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/paiement-qr-code"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://drimpay.com/fr/mass-payout</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/mass-payout"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/mass-payout"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/mass-payout"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://drimpay.com/en/mass-payout</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/mass-payout"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/mass-payout"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/mass-payout"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://drimpay.com/fr/liens-de-paiement</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/liens-de-paiement"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/liens-de-paiement"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/liens-de-paiement"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://drimpay.com/en/liens-de-paiement</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://drimpay.com/fr/liens-de-paiement"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://drimpay.com/en/liens-de-paiement"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://drimpay.com/fr/liens-de-paiement"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
 </urlset>

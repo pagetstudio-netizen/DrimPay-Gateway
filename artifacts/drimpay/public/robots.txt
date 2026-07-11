@@ -9,4 +9,3 @@ Disallow: /pay/
 Crawl-delay: 1
 
 Sitemap: https://drimpay.com/sitemap.xml
-Sitemap: https://drimpay.com/sitemap-fr.xml
