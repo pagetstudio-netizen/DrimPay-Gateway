@@ -845,6 +845,106 @@ def drimpay_webhook():
             </section>
 
             {/* Wave Payment Flow */}
+            <section id="orange-otp" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-2">Orange Money OTP</h2>
+              <p className="text-muted-foreground mb-4">
+                Pour les pays <strong className="text-foreground">Côte d'Ivoire (CI)</strong>, <strong className="text-foreground">Sénégal (SN)</strong>, <strong className="text-foreground">Burkina Faso (BF)</strong> et <strong className="text-foreground">Mali (ML)</strong>, Orange Money utilise un code OTP (One Time Password) généré par le client via USSD. Ce code doit être passé dans le champ <code className="font-mono text-xs text-primary">operator_otp</code> au moment d'initier le paiement.
+              </p>
+              <Alert type="info" title="Flux OTP — comment ça marche">
+                Le client compose le code USSD correspondant à son pays <strong>avant</strong> de payer. Il reçoit un code à usage unique valable quelques minutes. Vous collectez ce code côté frontend et le transmettez dans <code className="font-mono text-xs">operator_otp</code> lors de l'appel à <code className="font-mono text-xs">POST /v2/payin/initiate</code>.
+              </Alert>
+
+              <h3 className="text-base font-semibold mb-4 mt-6">Codes USSD par pays</h3>
+              <div className="space-y-4">
+
+                {/* Burkina Faso */}
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-muted/20 border-b border-border">
+                    <span className="text-base">🇧🇫</span>
+                    <span className="font-semibold text-sm">Burkina Faso (BF)</span>
+                    <code className="ml-auto font-mono text-xs bg-muted/40 px-2 py-0.5 rounded text-primary">country_code: "BF"</code>
+                  </div>
+                  <div className="px-4 py-4 space-y-2">
+                    <p className="text-sm text-muted-foreground">Le client compose le code USSD suivant sur son téléphone Orange :</p>
+                    <div className="flex items-center gap-3 rounded-lg bg-muted/30 px-4 py-3">
+                      <code className="font-mono text-lg font-bold text-foreground tracking-widest">*144*4*6*montant#</code>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Il reçoit un code OTP par SMS ou via le menu USSD. Il entre ce code dans votre interface, puis vous le transmettez dans <code className="font-mono text-xs text-primary">operator_otp</code>.</p>
+                  </div>
+                </div>
+
+                {/* Côte d'Ivoire */}
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-muted/20 border-b border-border">
+                    <span className="text-base">🇨🇮</span>
+                    <span className="font-semibold text-sm">Côte d'Ivoire (CI)</span>
+                    <code className="ml-auto font-mono text-xs bg-muted/40 px-2 py-0.5 rounded text-primary">country_code: "CI"</code>
+                  </div>
+                  <div className="px-4 py-4 space-y-2">
+                    <p className="text-sm text-muted-foreground">Pour générer un code de paiement, le client compose :</p>
+                    <div className="flex items-center gap-3 rounded-lg bg-muted/30 px-4 py-3">
+                      <code className="font-mono text-lg font-bold text-foreground tracking-widest">#144*82#</code>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Un code OTP est généré et affiché sur l'écran du téléphone. Le client le saisit dans votre interface de paiement.</p>
+                  </div>
+                </div>
+
+                {/* Sénégal */}
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-muted/20 border-b border-border">
+                    <span className="text-base">🇸🇳</span>
+                    <span className="font-semibold text-sm">Sénégal (SN)</span>
+                    <code className="ml-auto font-mono text-xs bg-muted/40 px-2 py-0.5 rounded text-primary">country_code: "SN"</code>
+                  </div>
+                  <div className="px-4 py-4 space-y-2">
+                    <p className="text-sm text-muted-foreground">Pour obtenir un code OTP Orange Money, le client compose :</p>
+                    <div className="flex items-center gap-3 rounded-lg bg-muted/30 px-4 py-3">
+                      <code className="font-mono text-lg font-bold text-foreground tracking-widest">#144*82#</code>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Le code OTP est affiché directement sur l'écran USSD. Le client le transmet dans votre interface.</p>
+                  </div>
+                </div>
+
+                {/* Mali */}
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-muted/20 border-b border-border">
+                    <span className="text-base">🇲🇱</span>
+                    <span className="font-semibold text-sm">Mali (ML)</span>
+                    <code className="ml-auto font-mono text-xs bg-muted/40 px-2 py-0.5 rounded text-primary">country_code: "ML"</code>
+                  </div>
+                  <div className="px-4 py-4 space-y-2">
+                    <p className="text-sm text-muted-foreground">Le client compose le code USSD suivant, puis navigue dans le menu :</p>
+                    <div className="flex items-center gap-3 rounded-lg bg-muted/30 px-4 py-3">
+                      <code className="font-mono text-lg font-bold text-foreground tracking-widest">#144#</code>
+                    </div>
+                    <div className="flex items-start gap-2 mt-2">
+                      <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                        <span>→ Sélectionner <strong className="text-foreground">Paiement marchand</strong> (option 2)</span>
+                        <span>→ Valider — un code OTP est généré</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">Le client saisit ce code dans votre interface de paiement avant de confirmer.</p>
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-base font-semibold mb-3 mt-6">Exemple d'appel avec OTP</h3>
+              <CodeBlock lang="json" code={`POST /v2/payin/initiate
+{
+  "amount": 5000,
+  "currency": "XOF",
+  "country_code": "CI",
+  "operator": "orange",
+  "phone": "+2250700000000",
+  "order_id": "ORDER-20260711-001",
+  "operator_otp": "123456",
+  "webhook_url": "https://yourapp.com/webhooks/drimpay"
+}`} />
+              <Alert type="warning" title="OTP requis">
+                Si <code className="font-mono text-xs">operator_otp</code> est absent ou invalide pour ces pays, le paiement est rejeté avec une erreur <code className="font-mono text-xs">INVALID_OTP</code>. Assurez-vous de collecter le code USSD côté client avant d'initier la transaction.
+              </Alert>
+            </section>
+
             <section id="wave-flow" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4">Wave Payment Flow</h2>
               <p className="text-muted-foreground mb-4">
