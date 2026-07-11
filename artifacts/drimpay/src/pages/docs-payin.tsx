@@ -49,7 +49,7 @@ function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
           {copied ? <><Check className="w-3.5 h-3.5 text-green-400" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
         </button>
       </div>
-      <pre className="p-4 text-sm font-mono text-slate-200 overflow-x-auto leading-relaxed whitespace-pre">{code}</pre>
+      <pre className="p-4 text-sm font-mono overflow-x-auto leading-relaxed whitespace-pre" style={{ color: "#e2e8f0" }}>{code}</pre>
     </div>
   );
 }
