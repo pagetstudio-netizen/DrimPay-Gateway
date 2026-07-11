@@ -128,12 +128,13 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
             <p className="text-muted-foreground mb-6 text-sm">{t.careerDetail.applyDesc}</p>
             {job.applyUrl ? (
               <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" data-testid="apply-button">
-                <Button size="lg" className="text-primary-foreground font-semibold">{t.careerDetail.applyBtn}</Button>
+                <Button variant="primary" size="lg" className="font-semibold">{t.careerDetail.applyBtn}</Button>
               </a>
             ) : (
               <Button
+                variant="primary"
                 size="lg"
-                className="text-primary-foreground font-semibold"
+                className="font-semibold"
                 data-testid="apply-button"
                 onClick={() => navigate("/contact")}
               >
