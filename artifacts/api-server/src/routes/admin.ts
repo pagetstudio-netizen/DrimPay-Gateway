@@ -8,6 +8,8 @@ import {
   blacklistedPhonesTable, paymentLinkAttemptsTable, socialLinksTable,
   notificationsTable, supportUsersTable, globalBannersTable,
   userWebhooksTable, userAllowedIpsTable, jobsTable, walletExchangesTable,
+  reversementsTable, virtualCardOrdersTable, massPayoutJobsTable,
+  passwordResetTokensTable, emailVerificationTokensTable, knownDevicesTable,
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt, inArray } from "drizzle-orm";
 import crypto from "crypto";
@@ -461,9 +463,31 @@ router.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req: any,
 router.delete(AP + "/merchants/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) { res.status(400).json({ error: "Cannot delete yourself" }); return; }
-  await logAdminAction(req.session.userId, "DELETE_MERCHANT", "user", String(id), undefined, req.ip);
-  await db.delete(usersTable).where(eq(usersTable.id, id));
-  res.json({ ok: true });
+  try {
+    await logAdminAction(req.session.userId, "DELETE_MERCHANT", "user", String(id), undefined, req.ip);
+    // Cascade-delete in FK-safe order (many tables reference users without onDelete:cascade)
+    await db.delete(walletExchangesTable).where(eq(walletExchangesTable.userId, id));
+    await db.delete(reversementsTable).where(eq(reversementsTable.userId, id));
+    await db.delete(transactionsTable).where(eq(transactionsTable.userId, id));
+    await db.delete(paymentLinkAttemptsTable).where(eq(paymentLinkAttemptsTable.merchantId, id));
+    await db.delete(paymentLinksTable).where(eq(paymentLinksTable.userId, id));
+    await db.delete(walletsTable).where(eq(walletsTable.userId, id));
+    await db.delete(userWebhooksTable).where(eq(userWebhooksTable.userId, id));
+    await db.delete(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, id));
+    await db.delete(apiKeysTable).where(eq(apiKeysTable.userId, id));
+    await db.delete(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, id));
+    await db.delete(virtualCardOrdersTable).where(eq(virtualCardOrdersTable.userId, id));
+    await db.delete(massPayoutJobsTable).where(eq(massPayoutJobsTable.userId, id));
+    await db.delete(notificationsTable).where(eq(notificationsTable.userId, id));
+    await db.delete(passwordResetTokensTable).where(eq(passwordResetTokensTable.userId, id));
+    await db.delete(emailVerificationTokensTable).where(eq(emailVerificationTokensTable.userId, id));
+    await db.delete(knownDevicesTable).where(eq(knownDevicesTable.userId, id));
+    await db.update(globalBannersTable).set({ createdById: null }).where(eq(globalBannersTable.createdById, id));
+    await db.delete(usersTable).where(eq(usersTable.id, id));
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: "Impossible de supprimer ce marchand : " + (err?.message ?? String(err)) });
+  }
 });
 
 router.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (req: any, res: any) => {

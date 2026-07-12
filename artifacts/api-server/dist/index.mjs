@@ -280804,9 +280804,30 @@ router13.delete(AP + "/merchants/:id", requireAdmin, async (req, res) => {
     res.status(400).json({ error: "Cannot delete yourself" });
     return;
   }
-  await logAdminAction(req.session.userId, "DELETE_MERCHANT", "user", String(id), void 0, req.ip);
-  await db.delete(usersTable).where(eq(usersTable.id, id));
-  res.json({ ok: true });
+  try {
+    await logAdminAction(req.session.userId, "DELETE_MERCHANT", "user", String(id), void 0, req.ip);
+    await db.delete(walletExchangesTable).where(eq(walletExchangesTable.userId, id));
+    await db.delete(reversementsTable).where(eq(reversementsTable.userId, id));
+    await db.delete(transactionsTable).where(eq(transactionsTable.userId, id));
+    await db.delete(paymentLinkAttemptsTable).where(eq(paymentLinkAttemptsTable.merchantId, id));
+    await db.delete(paymentLinksTable).where(eq(paymentLinksTable.userId, id));
+    await db.delete(walletsTable).where(eq(walletsTable.userId, id));
+    await db.delete(userWebhooksTable).where(eq(userWebhooksTable.userId, id));
+    await db.delete(userAllowedIpsTable).where(eq(userAllowedIpsTable.userId, id));
+    await db.delete(apiKeysTable).where(eq(apiKeysTable.userId, id));
+    await db.delete(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, id));
+    await db.delete(virtualCardOrdersTable).where(eq(virtualCardOrdersTable.userId, id));
+    await db.delete(massPayoutJobsTable).where(eq(massPayoutJobsTable.userId, id));
+    await db.delete(notificationsTable).where(eq(notificationsTable.userId, id));
+    await db.delete(passwordResetTokensTable).where(eq(passwordResetTokensTable.userId, id));
+    await db.delete(emailVerificationTokensTable).where(eq(emailVerificationTokensTable.userId, id));
+    await db.delete(knownDevicesTable).where(eq(knownDevicesTable.userId, id));
+    await db.update(globalBannersTable).set({ createdById: null }).where(eq(globalBannersTable.createdById, id));
+    await db.delete(usersTable).where(eq(usersTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Impossible de supprimer ce marchand : " + (err?.message ?? String(err)) });
+  }
 });
 router13.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (req, res) => {
   const walletId = parseInt(req.params.walletId);

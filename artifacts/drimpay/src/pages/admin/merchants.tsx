@@ -33,7 +33,7 @@ const PANEL_TABS = [
 
 function MerchantPanel({
   merchant, onClose, onRefresh,
-}: { merchant: any; onClose: () => void; onRefresh: () => void }) {
+}: { merchant: any; onClose: () => void; onRefresh: () => Promise<void> }) {
   const [tab, setTab] = useState("infos");
 
   const [form, setForm] = useState({
@@ -120,10 +120,19 @@ function MerchantPanel({
     setSuspending(false);
   };
 
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const deleteMerchant = async () => {
     setDeleting(true);
-    await fetch(`${ADMIN_BASE}/merchants/${merchant.id}`, { method: "DELETE", credentials: "include" });
-    onRefresh();
+    setDeleteError(null);
+    const r = await fetch(`${ADMIN_BASE}/merchants/${merchant.id}`, { method: "DELETE", credentials: "include" });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setDeleteError(d.error ?? "Erreur lors de la suppression");
+      setDeleting(false);
+      return;
+    }
+    await onRefresh();
     onClose();
   };
 
@@ -501,6 +510,9 @@ function MerchantPanel({
               ) : (
                 <div className="space-y-2">
                   <p className="text-xs text-red-800 font-semibold text-center">Confirmer la suppression de <em>{merchant.companyName}</em> ?</p>
+                  {deleteError && (
+                    <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{deleteError}</p>
+                  )}
                   <div className="flex gap-2">
                     <button onClick={() => setConfirmDelete(false)}
                       className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">
@@ -508,7 +520,7 @@ function MerchantPanel({
                     </button>
                     <button onClick={deleteMerchant} disabled={deleting}
                       className="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-50">
-                      {deleting ? "..." : "Confirmer"}
+                      {deleting ? "Suppression..." : "Confirmer"}
                     </button>
                   </div>
                 </div>
@@ -675,7 +687,7 @@ export default function AdminMerchants() {
                   key={selected.id}
                   merchant={selected}
                   onClose={() => setSelected(null)}
-                  onRefresh={() => load()}
+                  onRefresh={load}
                 />
               </div>
             )}
