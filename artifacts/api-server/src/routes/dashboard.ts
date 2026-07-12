@@ -1796,22 +1796,37 @@ router.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async
   const net = +(amount - fee).toFixed(2);
   const reference = `WEX-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
-  // Débite immédiatement le balance source — l'échange reste en pending jusqu'à la
-  // validation admin. En cas de rejet, le balance est recrédité automatiquement.
-  await db
-    .update(walletsTable)
-    .set({ balance: sql`${walletsTable.balance} - ${amount}` })
-    .where(eq(walletsTable.id, fromWallet.id));
+  // Transaction atomique : débit source + création de l'échange en une seule opération.
+  // Le prédicat `balance >= amount` empêche tout débit si les fonds ont bougé entre
+  // la vérification initiale et l'écriture (race condition entre sessions concurrentes).
+  // Si le débit échoue, l'insert n'a jamais lieu — aucune dérive de ledger possible.
+  let exchange: typeof walletExchangesTable.$inferSelect;
+  try {
+    [exchange] = await db.transaction(async (trx) => {
+      const [debited] = await trx
+        .update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} - ${amount}` })
+        .where(and(eq(walletsTable.id, fromWallet.id), sql`${walletsTable.balance} >= ${amount}`))
+        .returning();
+      if (!debited) throw new Error("INSUFFICIENT_FUNDS");
 
-  const [exchange] = await db
-    .insert(walletExchangesTable)
-    .values({
-      userId, fromWalletId: fromWallet.id, toWalletId: toWallet.id,
-      fromCountryCode, toCountryCode, currency: fromMeta.currency,
-      amount: String(amount), fee: String(fee), netAmount: String(net),
-      note: note ?? null, reference, status: "pending", mode: currentMode,
-    })
-    .returning();
+      return trx
+        .insert(walletExchangesTable)
+        .values({
+          userId, fromWalletId: fromWallet.id, toWalletId: toWallet.id,
+          fromCountryCode, toCountryCode, currency: fromMeta.currency,
+          amount: String(amount), fee: String(fee), netAmount: String(net),
+          note: note ?? null, reference, status: "pending", mode: currentMode,
+        })
+        .returning();
+    });
+  } catch (err: any) {
+    if (err.message === "INSUFFICIENT_FUNDS") {
+      res.status(400).json({ error: "Solde disponible insuffisant dans ce wallet." });
+      return;
+    }
+    throw err;
+  }
 
   createNotification(
     userId, "info", "wallet",

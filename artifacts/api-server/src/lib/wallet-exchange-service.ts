@@ -32,24 +32,28 @@ export async function approveWalletExchange(id: number, actor: string): Promise<
   const amount = parseFloat(exchange.amount as string);
   const net = parseFloat(exchange.netAmount as string);
 
-  const applied = await db.transaction(async (trx) => {
-    // Le balance source a déjà été débité à l'initiation de l'échange.
-    // Ici on crédite uniquement le wallet destination.
-    await trx
-      .update(walletsTable)
-      .set({ balance: sql`${walletsTable.balance} + ${net}` })
-      .where(eq(walletsTable.id, exchange.toWalletId));
+  // La transition de statut est le verrou : un seul UPDATE concurrent peut passer de
+  // "pending" → "approved". Si la ligne a déjà été traitée, l'UPDATE retourne 0 lignes
+  // et on lève une erreur pour déclencher le rollback automatique de la transaction.
+  // Le crédit destination n'intervient qu'APRÈS confirmation du verrou.
+  try {
+    await db.transaction(async (trx) => {
+      const [updated] = await trx
+        .update(walletExchangesTable)
+        .set({ status: "approved", reviewedBy: actor, reviewedAt: new Date() })
+        .where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending")))
+        .returning();
+      if (!updated) throw new Error("ALREADY_PROCESSED");
 
-    const [updated] = await trx
-      .update(walletExchangesTable)
-      .set({ status: "approved", reviewedBy: actor, reviewedAt: new Date() })
-      .where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending")))
-      .returning();
-
-    return !!updated;
-  });
-
-  if (!applied) return { ok: false, error: "Échec de l'approbation (déjà traité)." };
+      await trx
+        .update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} + ${net}` })
+        .where(eq(walletsTable.id, exchange.toWalletId));
+    });
+  } catch (err: any) {
+    if (err.message === "ALREADY_PROCESSED") return { ok: false, error: "Cette demande a déjà été traitée." };
+    throw err;
+  }
 
   try {
     const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName })
@@ -79,25 +83,27 @@ export async function rejectWalletExchange(id: number, reason: string, actor: st
 
   const amount = parseFloat(exchange.amount as string);
 
-  const applied = await db.transaction(async (trx) => {
-    // Le balance source a été débité à l'initiation — on le rembourse intégralement.
-    await trx
-      .update(walletsTable)
-      .set({
-        balance: sql`${walletsTable.balance} + ${amount}`,
-      })
-      .where(eq(walletsTable.id, exchange.fromWalletId));
+  // Même verrou que l'approbation : la transition de statut passe en premier.
+  // Si l'échange est déjà traité, l'UPDATE retourne 0 lignes → rollback automatique.
+  // Le remboursement source n'intervient qu'APRÈS confirmation du verrou.
+  try {
+    await db.transaction(async (trx) => {
+      const [updated] = await trx
+        .update(walletExchangesTable)
+        .set({ status: "rejected", rejectionReason: reason, reviewedBy: actor, reviewedAt: new Date() })
+        .where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending")))
+        .returning();
+      if (!updated) throw new Error("ALREADY_PROCESSED");
 
-    const [updated] = await trx
-      .update(walletExchangesTable)
-      .set({ status: "rejected", rejectionReason: reason, reviewedBy: actor, reviewedAt: new Date() })
-      .where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending")))
-      .returning();
-
-    return !!updated;
-  });
-
-  if (!applied) return { ok: false, error: "Échec du rejet (déjà traité)." };
+      await trx
+        .update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} + ${amount}` })
+        .where(eq(walletsTable.id, exchange.fromWalletId));
+    });
+  } catch (err: any) {
+    if (err.message === "ALREADY_PROCESSED") return { ok: false, error: "Cette demande a déjà été traitée." };
+    throw err;
+  }
 
   try {
     const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName })

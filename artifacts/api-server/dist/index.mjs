@@ -262471,12 +262471,16 @@ async function approveWalletExchange(id, actor) {
   if (exchange.status !== "pending") return { ok: false, error: "Cette demande a d\xE9j\xE0 \xE9t\xE9 trait\xE9e." };
   const amount = parseFloat(exchange.amount);
   const net = parseFloat(exchange.netAmount);
-  const applied = await db.transaction(async (trx) => {
-    await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${net}` }).where(eq(walletsTable.id, exchange.toWalletId));
-    const [updated] = await trx.update(walletExchangesTable).set({ status: "approved", reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
-    return !!updated;
-  });
-  if (!applied) return { ok: false, error: "\xC9chec de l'approbation (d\xE9j\xE0 trait\xE9)." };
+  try {
+    await db.transaction(async (trx) => {
+      const [updated] = await trx.update(walletExchangesTable).set({ status: "approved", reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
+      if (!updated) throw new Error("ALREADY_PROCESSED");
+      await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${net}` }).where(eq(walletsTable.id, exchange.toWalletId));
+    });
+  } catch (err) {
+    if (err.message === "ALREADY_PROCESSED") return { ok: false, error: "Cette demande a d\xE9j\xE0 \xE9t\xE9 trait\xE9e." };
+    throw err;
+  }
   try {
     const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, exchange.userId));
     if (user) {
@@ -262508,14 +262512,16 @@ async function rejectWalletExchange(id, reason, actor) {
   if (!exchange) return { ok: false, error: "Demande introuvable." };
   if (exchange.status !== "pending") return { ok: false, error: "Cette demande a d\xE9j\xE0 \xE9t\xE9 trait\xE9e." };
   const amount = parseFloat(exchange.amount);
-  const applied = await db.transaction(async (trx) => {
-    await trx.update(walletsTable).set({
-      balance: sql`${walletsTable.balance} + ${amount}`
-    }).where(eq(walletsTable.id, exchange.fromWalletId));
-    const [updated] = await trx.update(walletExchangesTable).set({ status: "rejected", rejectionReason: reason, reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
-    return !!updated;
-  });
-  if (!applied) return { ok: false, error: "\xC9chec du rejet (d\xE9j\xE0 trait\xE9)." };
+  try {
+    await db.transaction(async (trx) => {
+      const [updated] = await trx.update(walletExchangesTable).set({ status: "rejected", rejectionReason: reason, reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
+      if (!updated) throw new Error("ALREADY_PROCESSED");
+      await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${amount}` }).where(eq(walletsTable.id, exchange.fromWalletId));
+    });
+  } catch (err) {
+    if (err.message === "ALREADY_PROCESSED") return { ok: false, error: "Cette demande a d\xE9j\xE0 \xE9t\xE9 trait\xE9e." };
+    throw err;
+  }
   try {
     const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, exchange.userId));
     if (user) {
@@ -278287,22 +278293,34 @@ router11.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, asy
   const fee = +(amount * WALLET_EXCHANGE_FEE_RATE).toFixed(2);
   const net = +(amount - fee).toFixed(2);
   const reference = `WEX-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
-  await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${amount}` }).where(eq(walletsTable.id, fromWallet.id));
-  const [exchange] = await db.insert(walletExchangesTable).values({
-    userId,
-    fromWalletId: fromWallet.id,
-    toWalletId: toWallet.id,
-    fromCountryCode,
-    toCountryCode,
-    currency: fromMeta.currency,
-    amount: String(amount),
-    fee: String(fee),
-    netAmount: String(net),
-    note: note ?? null,
-    reference,
-    status: "pending",
-    mode: currentMode
-  }).returning();
+  let exchange;
+  try {
+    [exchange] = await db.transaction(async (trx) => {
+      const [debited] = await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${amount}` }).where(and(eq(walletsTable.id, fromWallet.id), sql`${walletsTable.balance} >= ${amount}`)).returning();
+      if (!debited) throw new Error("INSUFFICIENT_FUNDS");
+      return trx.insert(walletExchangesTable).values({
+        userId,
+        fromWalletId: fromWallet.id,
+        toWalletId: toWallet.id,
+        fromCountryCode,
+        toCountryCode,
+        currency: fromMeta.currency,
+        amount: String(amount),
+        fee: String(fee),
+        netAmount: String(net),
+        note: note ?? null,
+        reference,
+        status: "pending",
+        mode: currentMode
+      }).returning();
+    });
+  } catch (err) {
+    if (err.message === "INSUFFICIENT_FUNDS") {
+      res.status(400).json({ error: "Solde disponible insuffisant dans ce wallet." });
+      return;
+    }
+    throw err;
+  }
   createNotification(
     userId,
     "info",
