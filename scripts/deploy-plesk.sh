@@ -2,45 +2,44 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # DrimPay — Déploiement Plesk
 #
-# Workflow recommandé :
-#   1. Sur Replit : faire les modifications + build + push GitHub
-#   2. Sur Plesk  : bash scripts/deploy-plesk.sh
+# Prérequis : avoir buildé + pushé depuis Replit (bash scripts/build.sh)
+# Les fichiers compilés (dist/) sont dans git — aucun build ici.
 #
-# Ce script fait : git pull → pnpm install → db push → restart Passenger
+# Usage :
+#   bash scripts/deploy-plesk.sh
+#
+# Ou manuellement :
+#   git pull origin main
+#   touch tmp/restart.txt
 # ──────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
-GREEN='\033[0;32m'; BLUE='\033[0;34m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
 log()   { echo -e "${BLUE}[deploy]${NC} $1"; }
 ok()    { echo -e "${GREEN}[ok]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[warn]${NC} $1"; }
-error() { echo -e "${RED}[error]${NC} $1"; exit 1; }
+error() { echo -e "${RED}[erreur]${NC} $1"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 echo ""
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}   DrimPay — Déploiement Plesk — $(date '+%d/%m/%Y %H:%M:%S')${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}${BLUE}   DrimPay — Déploiement Plesk — $(date '+%d/%m/%Y %H:%M:%S')${NC}"
+echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 # ── 1. Vérification env vars critiques ───────────────────────────────────────
 log "Vérification des variables d'environnement..."
-
 MISSING=()
-for VAR in SUPABASE_DATABASE_URL SESSION_SECRET; do
-  if [ -z "${!VAR:-}" ]; then
-    MISSING+=("$VAR")
-  fi
+for VAR in SUPABASE_DATABASE_URL SESSION_SECRET SUPABASE_SERVICE_ROLE_KEY; do
+  [ -z "${!VAR:-}" ] && MISSING+=("$VAR")
 done
-
 if [ ${#MISSING[@]} -gt 0 ]; then
-  warn "Variables manquantes dans l'environnement Plesk : ${MISSING[*]}"
-  warn "→ Plesk > Node.js > Environment Variables"
-  warn "L'application peut ne pas fonctionner correctement sans ces variables."
+  warn "Variables manquantes : ${MISSING[*]}"
+  warn "→ Plesk > Node.js App > Environment Variables"
 else
   ok "Variables d'environnement OK"
 fi
@@ -48,49 +47,45 @@ fi
 # ── 2. Git pull ───────────────────────────────────────────────────────────────
 log "Récupération du code depuis GitHub..."
 git pull origin main || error "git pull échoué — vérifiez les droits GitHub"
-ok "Code à jour — commit : $(git rev-parse --short HEAD)"
+COMMIT=$(git rev-parse --short HEAD)
+ok "Code à jour — commit : $COMMIT"
 
-# ── 3. Dépendances ────────────────────────────────────────────────────────────
-log "Installation des dépendances..."
-pnpm install --frozen-lockfile || error "pnpm install échoué"
-ok "Dépendances installées"
+# ── 3. Vérification des fichiers compilés ────────────────────────────────────
+log "Vérification des bundles..."
 
-# ── 4. Schéma DB ──────────────────────────────────────────────────────────────
-log "Synchronisation du schéma de base de données..."
-pnpm --filter @workspace/db run push && ok "Schéma DB à jour" || warn "DB push échoué — les tables existent peut-être déjà"
+BUNDLE="artifacts/api-server/dist/index.mjs"
+INDEX="artifacts/drimpay/dist/public/index.html"
 
-# ── 4b. Vérification du startup file ──────────────────────────────────────────
-if [ ! -f "start.cjs" ]; then
-  error "start.cjs introuvable — vérifiez que le git pull est complet"
-fi
-ok "start.cjs présent"
+[ ! -f "$BUNDLE" ] && error "Bundle API introuvable : $BUNDLE — avez-vous buildé sur Replit avant de pusher ?"
+[ ! -f "$INDEX" ]  && error "Frontend introuvable : $INDEX — avez-vous buildé sur Replit avant de pusher ?"
+[ ! -f "start.cjs" ] && error "start.cjs introuvable"
 
-# ── 5. Restart Passenger ──────────────────────────────────────────────────────
+ok "Bundles présents ✓"
+
+# ── 4. Restart Passenger ──────────────────────────────────────────────────────
 log "Redémarrage du serveur Node.js (Passenger)..."
 mkdir -p tmp
 touch tmp/restart.txt
 ok "Signal de redémarrage envoyé"
 
-# ── 6. Health check ───────────────────────────────────────────────────────────
-log "Vérification que l'application répond..."
-sleep 5
+# ── 5. Health check ───────────────────────────────────────────────────────────
+log "Attente du démarrage..."
+sleep 6
 APP_PORT="${PORT:-8080}"
 ATTEMPT=0
-until curl -sf "http://localhost:${APP_PORT}/health" >/dev/null 2>&1; do
+until curl -sf "http://localhost:${APP_PORT}/" >/dev/null 2>&1; do
   ATTEMPT=$((ATTEMPT + 1))
-  if [ $ATTEMPT -ge 20 ]; then
-    warn "Health check timeout après $((ATTEMPT * 2))s — vérifiez les logs Passenger"
-    break
-  fi
+  [ $ATTEMPT -ge 15 ] && { warn "Timeout après $((ATTEMPT * 2))s — vérifiez les logs Passenger"; break; }
   sleep 2
 done
 
-if curl -sf "http://localhost:${APP_PORT}/health" >/dev/null 2>&1; then
+if curl -sf "http://localhost:${APP_PORT}/" >/dev/null 2>&1; then
   ok "Application en ligne ✓"
-  HEALTH=$(curl -s "http://localhost:${APP_PORT}/health")
-  echo "   $HEALTH"
 fi
 
 echo ""
-echo -e "${GREEN}  ✓ Déploiement terminé — $(date '+%H:%M:%S')${NC}"
+echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}${GREEN}  ✓ Déploiement terminé — $(date '+%H:%M:%S')${NC}"
+echo -e "${BOLD}${GREEN}  commit : $COMMIT${NC}"
+echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
