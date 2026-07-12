@@ -267238,7 +267238,8 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
 router10.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
   if (!email3 || !code) {
-    res.status(400).json({ error: "Email et code requis." });
+    const missing = !email3 && !code ? "email+code" : !email3 ? "email" : "code";
+    res.status(400).json({ error: `${missing === "email" ? "Email" : missing === "code" ? "Code" : "Email et code"} requis.` });
     return;
   }
   const now = /* @__PURE__ */ new Date();
@@ -267251,7 +267252,7 @@ router10.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
         gt(emailVerificationTokensTable.expiresAt, now),
         isNull(emailVerificationTokensTable.usedAt)
       )
-    ).orderBy(emailVerificationTokensTable.createdAt).limit(1);
+    ).orderBy(desc(emailVerificationTokensTable.createdAt)).limit(1);
     record2 = rows[0];
   } catch (e) {
     res.status(500).json({ error: "Erreur serveur." });
@@ -267385,7 +267386,8 @@ router10.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) =>
 router10.post("/auth/verify-reset-code", codeVerifyRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
   if (!email3 || !code) {
-    res.status(400).json({ error: "Email et code requis." });
+    const missing = !email3 && !code ? "email+code" : !email3 ? "email" : "code";
+    res.status(400).json({ error: `${missing === "email" ? "Email" : missing === "code" ? "Code" : "Email et code"} requis.` });
     return;
   }
   const now = /* @__PURE__ */ new Date();
@@ -267396,7 +267398,7 @@ router10.post("/auth/verify-reset-code", codeVerifyRateLimiter, async (req, res)
       gt(passwordResetTokensTable.expiresAt, now),
       isNull(passwordResetTokensTable.usedAt)
     )
-  ).orderBy(passwordResetTokensTable.createdAt).limit(1);
+  ).orderBy(desc(passwordResetTokensTable.createdAt)).limit(1);
   if (!record2) {
     res.status(400).json({ error: "Code invalide ou expir\xE9." });
     return;
@@ -277787,6 +277789,17 @@ router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         }
         updateValues = parsed.data;
       } else if (stepNum === 3) {
+        const idSchema = external_exports2.object({
+          legalRepIdType: external_exports2.string().min(1, "Type de document requis"),
+          legalRepIdNumber: external_exports2.string().min(1, "Num\xE9ro de document requis"),
+          legalRepIdExpiry: external_exports2.string().min(1, "Date d'expiration requise")
+        });
+        const idParsed = idSchema.safeParse(body);
+        if (!idParsed.success) {
+          res.status(400).json({ error: "Donn\xE9es invalides", details: idParsed.error.flatten() });
+          return;
+        }
+        Object.assign(updateValues, idParsed.data);
         const files = req.files;
         const kycDocKeys = ["documentIdFront", "documentIdBack", "documentSelfie"];
         await Promise.all(kycDocKeys.map(async (key) => {
@@ -280889,6 +280902,24 @@ router13.get(AP + "/kyb", requireAdmin, async (req, res) => {
   const whereClause = conditions.length ? and(...conditions) : void 0;
   const orderCol = sortBy === "submittedAt" ? kybSubmissionsTable.submittedAt : sortBy === "status" ? kybSubmissionsTable.status : kybSubmissionsTable.createdAt;
   const orderFn = sortDir === "asc" ? asc(orderCol) : desc(orderCol);
+  const allIdRows = await db.select({
+    id: kybSubmissionsTable.id,
+    idNumber: kybSubmissionsTable.legalRepIdNumber,
+    userId: kybSubmissionsTable.userId,
+    status: kybSubmissionsTable.status,
+    userEmail: usersTable.email,
+    userCompanyName: usersTable.companyName
+  }).from(kybSubmissionsTable).innerJoin(usersTable, eq(kybSubmissionsTable.userId, usersTable.id)).where(and(
+    isNotNull(kybSubmissionsTable.legalRepIdNumber),
+    sql`trim(${kybSubmissionsTable.legalRepIdNumber}) != ''`
+  ));
+  const byIdNumber = /* @__PURE__ */ new Map();
+  for (const row of allIdRows) {
+    if (!row.idNumber) continue;
+    const key = row.idNumber.toLowerCase().trim();
+    if (!byIdNumber.has(key)) byIdNumber.set(key, []);
+    byIdNumber.get(key).push(row);
+  }
   const [submissions, [{ total }], countries] = await Promise.all([
     db.select({
       id: kybSubmissionsTable.id,
@@ -280939,10 +280970,21 @@ router13.get(AP + "/kyb", requireAdmin, async (req, res) => {
     db.select({ total: count() }).from(kybSubmissionsTable).innerJoin(usersTable, eq(kybSubmissionsTable.userId, usersTable.id)).where(whereClause),
     db.selectDistinct({ country: kybSubmissionsTable.incorporationCountry }).from(kybSubmissionsTable).where(sql`${kybSubmissionsTable.incorporationCountry} IS NOT NULL AND ${kybSubmissionsTable.incorporationCountry} != ''`)
   ]);
-  const enriched = submissions.map((s) => ({
-    ...s,
-    user: { id: s.userId, email: s.userEmail, companyName: s.userCompanyName }
-  }));
+  const enriched = submissions.map((s) => {
+    const key = s.legalRepIdNumber?.toLowerCase().trim();
+    const dupes = key ? (byIdNumber.get(key) ?? []).filter((d) => d.id !== s.id) : [];
+    return {
+      ...s,
+      user: { id: s.userId, email: s.userEmail, companyName: s.userCompanyName },
+      hasDuplicateId: dupes.length > 0,
+      duplicateAccounts: dupes.map((d) => ({
+        id: d.id,
+        email: d.userEmail,
+        companyName: d.userCompanyName,
+        status: d.status
+      }))
+    };
+  });
   const availableCountries = countries.map((c) => c.country).filter(Boolean).sort();
   res.json({ kyb: enriched, total: Number(total), page: pageNum, limit: limitNum, availableCountries });
 });
