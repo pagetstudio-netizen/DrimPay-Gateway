@@ -20537,27 +20537,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router20;
+    module.exports = Router21;
     module.exports.Route = Route;
-    function Router20(options) {
-      if (!(this instanceof Router20)) {
-        return new Router20(options);
+    function Router21(options) {
+      if (!(this instanceof Router21)) {
+        return new Router21(options);
       }
       const opts = options || {};
-      function router20(req, res, next) {
-        router20.handle(req, res, next);
+      function router21(req, res, next) {
+        router21.handle(req, res, next);
       }
-      Object.setPrototypeOf(router20, this);
-      router20.caseSensitive = opts.caseSensitive;
-      router20.mergeParams = opts.mergeParams;
-      router20.params = {};
-      router20.strict = opts.strict;
-      router20.stack = [];
-      return router20;
+      Object.setPrototypeOf(router21, this);
+      router21.caseSensitive = opts.caseSensitive;
+      router21.mergeParams = opts.mergeParams;
+      router21.params = {};
+      router21.strict = opts.strict;
+      router21.stack = [];
+      return router21;
     }
-    Router20.prototype = function() {
+    Router21.prototype = function() {
     };
-    Router20.prototype.param = function param2(name2, fn) {
+    Router21.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20577,7 +20577,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router20.prototype.handle = function handle(req, res, callback) {
+    Router21.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20704,7 +20704,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router20.prototype.use = function use(handler) {
+    Router21.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20737,7 +20737,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router20.prototype.route = function route(path5) {
+    Router21.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20752,7 +20752,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router20.prototype[method] = function(path5) {
+      Router21.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20935,13 +20935,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router20 = require_router();
+    var Router21 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router20 = null;
+      var router21 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20950,13 +20950,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router20 === null) {
-            router20 = new Router20({
+          if (router21 === null) {
+            router21 = new Router21({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router20;
+          return router21;
         }
       });
     };
@@ -21027,15 +21027,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router20 = this.router;
+      var router21 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router20.use(path5, fn2);
+          return router21.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router20.use(path5, function mounted_app(req, res, next) {
+        router21.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23562,7 +23562,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router20 = require_router();
+    var Router21 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23584,8 +23584,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router20.Route;
-    exports.Router = Router20;
+    exports.Route = Router21.Route;
+    exports.Router = Router21;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -258097,7 +258097,7 @@ import { join as join2, dirname as dirname2 } from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // src/app.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express21 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_express_session = __toESM(require_express_session(), 1);
 var import_connect_pg_simple = __toESM(require_connect_pg_simple(), 1);
@@ -258109,7 +258109,7 @@ import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { existsSync as existsSync2 } from "node:fs";
 
 // src/routes/index.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -258251,10 +258251,45 @@ router2.get("/help", async (req, res) => {
 });
 var help_default = router2;
 
-// src/routes/stats.ts
+// src/routes/diag.ts
 var import_express3 = __toESM(require_express2(), 1);
 var router3 = (0, import_express3.Router)();
-router3.get("/stats/platform", async (req, res) => {
+router3.get("/diag", (_req, res) => {
+  const check2 = (key, extra) => {
+    const val = process.env[key];
+    if (!val) return `\u2717 MANQUANT${extra ? ` \u2014 ${extra}` : ""}`;
+    return `\u2713 d\xE9fini (${val.length} chars)`;
+  };
+  const dbUrl = process.env["SUPABASE_DATABASE_URL"] || process.env["DATABASE_URL"];
+  const env = {
+    SESSION_SECRET: check2("SESSION_SECRET", "sessions invalides"),
+    SUPABASE_DATABASE_URL: dbUrl ? `\u2713 d\xE9fini (${dbUrl.length} chars)` : "\u2717 MANQUANT \u2014 base de donn\xE9es inaccessible",
+    SUPABASE_URL: check2("SUPABASE_URL"),
+    SUPABASE_SERVICE_ROLE_KEY: check2("SUPABASE_SERVICE_ROLE_KEY", "KYB uploads D\xC9SACTIV\xC9S"),
+    SUPABASE_ANON_KEY: check2("SUPABASE_ANON_KEY"),
+    RESEND_API_KEY: check2("RESEND_API_KEY", "emails d\xE9sactiv\xE9s"),
+    NODE_ENV: process.env["NODE_ENV"] ?? "(non d\xE9fini)",
+    PORT: process.env["PORT"] ?? "(non d\xE9fini)"
+  };
+  const missing = Object.entries(env).filter(([, v]) => v.startsWith("\u2717")).map(([k]) => k);
+  const ok = missing.length === 0;
+  res.status(ok ? 200 : 206).json({
+    status: ok ? "ok" : "partiel",
+    missingCount: missing.length,
+    missing,
+    env,
+    pid: process.pid,
+    uptime: `${Math.floor(process.uptime())}s`,
+    nodeVersion: process.version,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  });
+});
+var diag_default = router3;
+
+// src/routes/stats.ts
+var import_express4 = __toESM(require_express2(), 1);
+var router4 = (0, import_express4.Router)();
+router4.get("/stats/platform", async (req, res) => {
   res.json({
     totalTransactions: 4820341,
     totalVolume: "$2.4B",
@@ -258264,15 +258299,15 @@ router3.get("/stats/platform", async (req, res) => {
     merchantsOnboarded: 3200
   });
 });
-var stats_default = router3;
+var stats_default = router4;
 
 // src/routes/blog.ts
-var import_express4 = __toESM(require_express2(), 1);
+var import_express5 = __toESM(require_express2(), 1);
 init_src();
 init_src();
 init_drizzle_orm();
-var router4 = (0, import_express4.Router)();
-router4.get("/blog/categories", async (req, res) => {
+var router5 = (0, import_express5.Router)();
+router5.get("/blog/categories", async (req, res) => {
   try {
     const rows = await db.select({ category: blogArticlesTable.category, count: sql`count(*)::int` }).from(blogArticlesTable).groupBy(blogArticlesTable.category);
     const categories = rows.map((r) => ({
@@ -258286,7 +258321,7 @@ router4.get("/blog/categories", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-router4.get("/blog/articles", async (req, res) => {
+router5.get("/blog/articles", async (req, res) => {
   try {
     const page = Math.max(1, parseInt(String(req.query.page ?? "1")));
     const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? "9"))));
@@ -258307,7 +258342,7 @@ router4.get("/blog/articles", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-router4.get("/blog/articles/:slug", async (req, res) => {
+router5.get("/blog/articles/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
     const [article] = await db.select().from(blogArticlesTable).where(eq(blogArticlesTable.slug, slug));
@@ -258337,15 +258372,15 @@ function articleToResponse(a) {
     tags: a.tags
   };
 }
-var blog_default = router4;
+var blog_default = router5;
 
 // src/routes/jobs.ts
-var import_express5 = __toESM(require_express2(), 1);
+var import_express6 = __toESM(require_express2(), 1);
 init_src();
 init_src();
 init_drizzle_orm();
-var router5 = (0, import_express5.Router)();
-router5.get("/jobs", async (req, res) => {
+var router6 = (0, import_express6.Router)();
+router6.get("/jobs", async (req, res) => {
   try {
     const department = req.query.department ? String(req.query.department) : null;
     const location2 = req.query.location ? String(req.query.location) : null;
@@ -258358,7 +258393,7 @@ router5.get("/jobs", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-router5.get("/jobs/:id", async (req, res) => {
+router6.get("/jobs/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -258391,10 +258426,10 @@ function jobToResponse(j) {
     postedAt: j.postedAt.toISOString()
   };
 }
-var jobs_default = router5;
+var jobs_default = router6;
 
 // src/routes/contact.ts
-var import_express6 = __toESM(require_express2(), 1);
+var import_express7 = __toESM(require_express2(), 1);
 init_src();
 init_src();
 
@@ -263285,7 +263320,7 @@ async function detectChatId(token) {
 }
 
 // src/routes/contact.ts
-var router6 = (0, import_express6.Router)();
+var router7 = (0, import_express7.Router)();
 var contactSchema = external_exports2.object({
   name: external_exports2.string().min(2),
   email: external_exports2.string().email(),
@@ -263293,7 +263328,7 @@ var contactSchema = external_exports2.object({
   subject: external_exports2.string().min(3),
   message: external_exports2.string().min(10)
 });
-router6.post("/contact", async (req, res) => {
+router7.post("/contact", async (req, res) => {
   try {
     const parsed = contactSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -263321,14 +263356,14 @@ router6.post("/contact", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-var contact_default = router6;
+var contact_default = router7;
 
 // src/routes/status.ts
-var import_express7 = __toESM(require_express2(), 1);
+var import_express8 = __toESM(require_express2(), 1);
 init_src();
 init_src();
-var router7 = (0, import_express7.Router)();
-router7.get("/status/services", async (req, res) => {
+var router8 = (0, import_express8.Router)();
+router8.get("/status/services", async (req, res) => {
   try {
     const services = await db.select().from(serviceStatusesTable);
     const overallDegraded = services.some((s) => s.status === "degraded");
@@ -263350,7 +263385,7 @@ router7.get("/status/services", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-router7.get("/status/incidents", async (req, res) => {
+router8.get("/status/incidents", async (req, res) => {
   try {
     const incidents = await db.select().from(incidentsTable);
     res.json(
@@ -263370,14 +263405,14 @@ router7.get("/status/incidents", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-var status_default = router7;
+var status_default = router8;
 
 // src/routes/partners.ts
-var import_express8 = __toESM(require_express2(), 1);
+var import_express9 = __toESM(require_express2(), 1);
 init_src();
 init_src();
-var router8 = (0, import_express8.Router)();
-router8.get("/partners", async (req, res) => {
+var router9 = (0, import_express9.Router)();
+router9.get("/partners", async (req, res) => {
   try {
     const partners = await db.select().from(partnersTable);
     res.json(
@@ -263396,14 +263431,14 @@ router8.get("/partners", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-var partners_default = router8;
+var partners_default = router9;
 
 // src/routes/countries.ts
-var import_express9 = __toESM(require_express2(), 1);
+var import_express10 = __toESM(require_express2(), 1);
 init_src();
 init_src();
-var router9 = (0, import_express9.Router)();
-router9.get("/countries", async (req, res) => {
+var router10 = (0, import_express10.Router)();
+router10.get("/countries", async (req, res) => {
   try {
     const countries = await db.select().from(countriesTable);
     const operators = await db.select().from(operatorsTable);
@@ -263422,10 +263457,10 @@ router9.get("/countries", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-var countries_default = router9;
+var countries_default = router10;
 
 // src/routes/auth.ts
-var import_express10 = __toESM(require_express2(), 1);
+var import_express11 = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/bcryptjs@3.0.3/node_modules/bcryptjs/index.js
 import nodeCrypto from "crypto";
@@ -267029,7 +267064,7 @@ async function isSignupEnabled() {
 }
 
 // src/routes/auth.ts
-var router10 = (0, import_express10.Router)();
+var router11 = (0, import_express11.Router)();
 var ACCOUNT_LOCK_THRESHOLD = 5;
 var ACCOUNT_LOCK_DURATION_MS = 30 * 60 * 1e3;
 var KNOWN_DEVICE_TRUST_MS = 3 * 24 * 60 * 60 * 1e3;
@@ -267061,7 +267096,7 @@ async function generateVerificationToken(userId, email3, type) {
   await db.insert(emailVerificationTokensTable).values({ userId, email: email3, code, token, type, expiresAt });
   return { code, token };
 }
-router10.post("/auth/signup", signupRateLimiter, async (req, res) => {
+router11.post("/auth/signup", signupRateLimiter, async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -267108,7 +267143,7 @@ router10.post("/auth/signup", signupRateLimiter, async (req, res) => {
   }
   res.status(202).json({ requiresVerification: true, email: user.email });
 });
-router10.post("/auth/login", loginRateLimiter, async (req, res) => {
+router11.post("/auth/login", loginRateLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input" });
@@ -267230,7 +267265,7 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   });
   res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
 });
-router10.post("/auth/verify-email", emailSendRateLimiter, async (req, res) => {
+router11.post("/auth/verify-email", emailSendRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
   if (!email3 || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -267279,7 +267314,7 @@ router10.post("/auth/verify-email", emailSendRateLimiter, async (req, res) => {
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Email v\xE9rifi\xE9 : ${email3}`, riskLevel: "low" });
   res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
 });
-router10.get("/auth/activate", async (req, res) => {
+router11.get("/auth/activate", async (req, res) => {
   const { token } = req.query;
   if (!token) {
     res.redirect("/login?error=token_missing");
@@ -267325,7 +267360,7 @@ router10.get("/auth/activate", async (req, res) => {
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Activation lien email : ${user.email}`, riskLevel: "low" });
   res.redirect(user.role === "admin" ? "/admin" : "/dashboard");
 });
-router10.post("/auth/resend-verification", emailSendRateLimiter, async (req, res) => {
+router11.post("/auth/resend-verification", emailSendRateLimiter, async (req, res) => {
   const { email: email3 } = req.body;
   if (!email3) {
     res.status(400).json({ error: "Email requis." });
@@ -267345,7 +267380,7 @@ router10.post("/auth/resend-verification", emailSendRateLimiter, async (req, res
   }
   res.json({ ok: true });
 });
-router10.post("/auth/logout", async (req, res) => {
+router11.post("/auth/logout", async (req, res) => {
   if (req.session.userId) {
     await logSecurityEvent({ eventType: "LOGOUT", req, userId: req.session.userId, riskLevel: "low" });
   }
@@ -267353,7 +267388,7 @@ router10.post("/auth/logout", async (req, res) => {
     res.json({ ok: true });
   });
 });
-router10.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) => {
+router11.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) => {
   const { email: email3 } = req.body;
   if (!email3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3)) {
     res.status(400).json({ error: "Adresse email invalide." });
@@ -267377,7 +267412,7 @@ router10.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) =>
   }
   res.json({ ok: true, message: "Si ce compte existe, un email a \xE9t\xE9 envoy\xE9." });
 });
-router10.post("/auth/verify-reset-code", emailSendRateLimiter, async (req, res) => {
+router11.post("/auth/verify-reset-code", emailSendRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
   if (!email3 || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -267398,7 +267433,7 @@ router10.post("/auth/verify-reset-code", emailSendRateLimiter, async (req, res) 
   }
   res.json({ ok: true, token: record2.token });
 });
-router10.post("/auth/reset-password", async (req, res) => {
+router11.post("/auth/reset-password", async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password || password.length < 8) {
     res.status(400).json({ error: "Token et nouveau mot de passe (8 caract\xE8res min.) requis." });
@@ -267422,7 +267457,7 @@ router10.post("/auth/reset-password", async (req, res) => {
   await logSecurityEvent({ eventType: "PASSWORD_RESET", req, userId: record2.userId, riskLevel: "medium" });
   res.json({ ok: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
 });
-router10.post("/auth/forgot-password-support", emailSendRateLimiter, async (req, res) => {
+router11.post("/auth/forgot-password-support", emailSendRateLimiter, async (req, res) => {
   const { email: email3, message } = req.body;
   if (!email3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3)) {
     res.status(400).json({ error: "Adresse email invalide." });
@@ -267441,7 +267476,7 @@ router10.post("/auth/forgot-password-support", emailSendRateLimiter, async (req,
   }
   res.json({ ok: true, message: "Votre demande a \xE9t\xE9 transmise au support." });
 });
-router10.get("/auth/me", async (req, res) => {
+router11.get("/auth/me", async (req, res) => {
   if (!req.session.userId) {
     res.status(401).json({ error: "Not authenticated" });
     return;
@@ -267454,10 +267489,10 @@ router10.get("/auth/me", async (req, res) => {
   if (!req.session.mode) req.session.mode = "sandbox";
   res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode, isSupportAgent: user.isSupportAgent ?? false });
 });
-var auth_default = router10;
+var auth_default = router11;
 
 // src/routes/dashboard.ts
-var import_express11 = __toESM(require_express2(), 1);
+var import_express12 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
@@ -276821,7 +276856,7 @@ function getFrontendBaseUrl() {
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 var payLinkImageUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 var FEE_RATE = 0.035;
-var router11 = (0, import_express11.Router)();
+var router12 = (0, import_express12.Router)();
 function requireAuth(req, res, next) {
   if (!req.session?.userId) {
     res.status(401).json({ error: "Authentication required" });
@@ -276829,7 +276864,7 @@ function requireAuth(req, res, next) {
   }
   next();
 }
-router11.get("/dashboard/mode", requireAuth, async (req, res) => {
+router12.get("/dashboard/mode", requireAuth, async (req, res) => {
   if (!req.session.mode) req.session.mode = "sandbox";
   let kybStatus = "pending";
   if (req.session.role !== "admin") {
@@ -276841,7 +276876,7 @@ router11.get("/dashboard/mode", requireAuth, async (req, res) => {
   }
   res.json({ mode: req.session.mode, kybStatus });
 });
-router11.post("/dashboard/mode", requireAuth, async (req, res) => {
+router12.post("/dashboard/mode", requireAuth, async (req, res) => {
   const { mode } = req.body;
   if (mode !== "sandbox" && mode !== "live") {
     res.status(400).json({ error: "Mode invalide. Valeurs accept\xE9es : sandbox, live." });
@@ -276888,12 +276923,12 @@ async function getUserFeeRate(userId, type = "payin") {
   }
   return 0.035;
 }
-router11.get("/dashboard/status", requireAuth, async (req, res) => {
+router12.get("/dashboard/status", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const [kyb] = await db.select({ status: kybSubmissionsTable.status }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, userId));
   res.json({ kybStatus: kyb?.status ?? "pending" });
 });
-router11.get("/dashboard/overview", requireAuth, async (req, res) => {
+router12.get("/dashboard/overview", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
   const wallets = await db.select().from(walletsTable).where(
@@ -276953,7 +276988,7 @@ router11.get("/dashboard/overview", requireAuth, async (req, res) => {
     volumeChart
   });
 });
-router11.get("/dashboard/wallets", requireAuth, async (req, res) => {
+router12.get("/dashboard/wallets", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
   const wallets = await db.select().from(walletsTable).where(
@@ -277031,7 +277066,7 @@ router11.get("/dashboard/wallets", requireAuth, async (req, res) => {
   }));
   res.json(enriched);
 });
-router11.get("/dashboard/transactions", requireAuth, async (req, res) => {
+router12.get("/dashboard/transactions", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
   const { type, status, countryCode, page = "1", limit = "20" } = req.query;
@@ -277044,7 +277079,7 @@ router11.get("/dashboard/transactions", requireAuth, async (req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(transactionsTable).where(and(...conditions));
   res.json({ transactions: txs, total, page: parseInt(page), limit: parseInt(limit) });
 });
-router11.get("/dashboard/payments", requireAuth, async (req, res) => {
+router12.get("/dashboard/payments", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
   const { type, status, search, page = "1", limit = "20" } = req.query;
@@ -277064,7 +277099,7 @@ router11.get("/dashboard/payments", requireAuth, async (req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(transactionsTable).where(and(...conditions));
   res.json({ transactions: txs, total, page: pageNum, limit: limitNum });
 });
-router11.post("/dashboard/transactions/:id/resend-webhook", requireAuth, async (req, res) => {
+router12.post("/dashboard/transactions/:id/resend-webhook", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const txId = parseInt(req.params.id);
   const [tx] = await db.select().from(transactionsTable).where(and(eq(transactionsTable.id, txId), eq(transactionsTable.userId, userId)));
@@ -277118,7 +277153,7 @@ var payinSchema = external_exports2.object({
   description: external_exports2.string().optional(),
   externalRef: external_exports2.string().optional()
 });
-router11.post("/dashboard/payin", requireAuth, async (req, res) => {
+router12.post("/dashboard/payin", requireAuth, async (req, res) => {
   const parsed = payinSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -277291,7 +277326,7 @@ var payoutSchema = external_exports2.object({
   description: external_exports2.string().optional(),
   externalRef: external_exports2.string().optional()
 });
-router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
+router12.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
   const withdrawalLock = await getWithdrawalLockStatus(req.session.userId);
   if (withdrawalLock.locked) {
     res.status(423).json({
@@ -277555,7 +277590,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
   });
   res.status(201).json({ transaction: tx, fee, totalDebit, feeRate: `${payoutFeeRate * 100}%` });
 });
-router11.get("/dashboard/api-keys", requireAuth, async (req, res) => {
+router12.get("/dashboard/api-keys", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const keys = await db.select({
     id: apiKeysTable.id,
@@ -277569,7 +277604,7 @@ router11.get("/dashboard/api-keys", requireAuth, async (req, res) => {
   }).from(apiKeysTable).where(eq(apiKeysTable.userId, userId)).orderBy(desc(apiKeysTable.createdAt));
   res.json(keys);
 });
-router11.post("/dashboard/api-keys/:id/reveal", requireAuth, async (req, res) => {
+router12.post("/dashboard/api-keys/:id/reveal", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const keyId = parseInt(String(req.params.id));
   const { password } = req.body;
@@ -277599,7 +277634,7 @@ var createKeySchema = external_exports2.object({
   description: external_exports2.string().max(200).optional(),
   env: external_exports2.enum(["sandbox", "live"])
 });
-router11.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, res) => {
+router12.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const parsed = createKeySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input" });
@@ -277631,7 +277666,7 @@ router11.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req,
   });
   res.status(201).json({ ...key, warning: "Store this key securely." });
 });
-router11.delete("/dashboard/api-keys/:id", requireAuth, apiKeyRateLimiter, async (req, res) => {
+router12.delete("/dashboard/api-keys/:id", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const userId = req.session.userId;
   const keyId = parseInt(String(req.params.id));
   const [key] = await db.select().from(apiKeysTable).where(and(eq(apiKeysTable.id, keyId), eq(apiKeysTable.userId, userId)));
@@ -277651,7 +277686,7 @@ router11.delete("/dashboard/api-keys/:id", requireAuth, apiKeyRateLimiter, async
   });
   res.json({ ok: true });
 });
-router11.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, async (req, res) => {
+router12.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const userId = req.session.userId;
   const { env, password } = req.body;
   if (!["sandbox", "live"].includes(env)) {
@@ -277697,7 +277732,7 @@ router11.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, 
   });
   res.status(201).json({ ...key, rawKey });
 });
-router11.get("/dashboard/kyb", requireAuth, async (req, res) => {
+router12.get("/dashboard/kyb", requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const [user] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
@@ -277727,7 +277762,7 @@ async function upsertKybSubmission(userId, existingCount, updateValues) {
     throw err;
   }
 }
-router11.post("/dashboard/kyb", requireAuth, kybUpload.fields([
+router12.post("/dashboard/kyb", requireAuth, kybUpload.fields([
   { name: "documentIdFront", maxCount: 1 },
   { name: "documentIdBack", maxCount: 1 },
   { name: "documentSelfie", maxCount: 1 },
@@ -277995,13 +278030,13 @@ var reversementSchema = external_exports2.object({
   amount: external_exports2.number().min(200, "Le montant minimum est de 200"),
   note: external_exports2.string().optional()
 });
-router11.get("/dashboard/reversements", requireAuth, async (req, res) => {
+router12.get("/dashboard/reversements", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
   const rows = await db.select().from(reversementsTable).where(and(eq(reversementsTable.userId, userId), eq(reversementsTable.mode, currentMode))).orderBy(desc(reversementsTable.createdAt)).limit(50);
   res.json(rows);
 });
-router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (req, res) => {
+router12.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (req, res) => {
   const withdrawalLock = await getWithdrawalLockStatus(req.session.userId);
   if (withdrawalLock.locked) {
     res.status(423).json({
@@ -278223,13 +278258,13 @@ var walletExchangeSchema = external_exports2.object({
   amount: external_exports2.number().positive(),
   note: external_exports2.string().optional()
 });
-router11.get("/dashboard/wallet-exchanges", requireAuth, async (req, res) => {
+router12.get("/dashboard/wallet-exchanges", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
   const rows = await db.select().from(walletExchangesTable).where(and(eq(walletExchangesTable.userId, userId), eq(walletExchangesTable.mode, currentMode))).orderBy(desc(walletExchangesTable.createdAt)).limit(50);
   res.json(rows);
 });
-router11.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async (req, res) => {
+router12.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async (req, res) => {
   const parsed = walletExchangeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
@@ -278313,7 +278348,7 @@ router11.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, asy
   }
   res.status(201).json({ ...exchange, _sandbox: currentMode === "sandbox" });
 });
-router11.get("/dashboard/settings", requireAuth, async (req, res) => {
+router12.get("/dashboard/settings", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const [user] = await db.select({
     email: usersTable.email,
@@ -278327,7 +278362,7 @@ router11.get("/dashboard/settings", requireAuth, async (req, res) => {
   }
   res.json(user);
 });
-router11.patch("/dashboard/settings/webhook", requireAuth, async (req, res) => {
+router12.patch("/dashboard/settings/webhook", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const schema = external_exports2.object({
     webhookUrl: external_exports2.string().url("URL invalide").or(external_exports2.literal(""))
@@ -278340,7 +278375,7 @@ router11.patch("/dashboard/settings/webhook", requireAuth, async (req, res) => {
   await db.update(usersTable).set({ webhookUrl: result.data.webhookUrl || null }).where(eq(usersTable.id, userId));
   res.json({ success: true });
 });
-router11.patch("/dashboard/settings/ip", requireAuth, async (req, res) => {
+router12.patch("/dashboard/settings/ip", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const schema = external_exports2.object({
     staticIp: external_exports2.string().regex(/^(\d{1,3}\.){3}\d{1,3}$/, "Adresse IP invalide").or(external_exports2.literal(""))
@@ -278353,7 +278388,7 @@ router11.patch("/dashboard/settings/ip", requireAuth, async (req, res) => {
   await db.update(usersTable).set({ staticIp: result.data.staticIp || null }).where(eq(usersTable.id, userId));
   res.json({ success: true });
 });
-router11.get("/dashboard/webhooks", requireAuth, async (req, res) => {
+router12.get("/dashboard/webhooks", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const rows = await db.select({
     id: userWebhooksTable.id,
@@ -278367,7 +278402,7 @@ router11.get("/dashboard/webhooks", requireAuth, async (req, res) => {
   }).from(userWebhooksTable).leftJoin(apiKeysTable, eq(userWebhooksTable.apiKeyId, apiKeysTable.id)).where(eq(userWebhooksTable.userId, userId)).orderBy(asc(userWebhooksTable.createdAt));
   res.json(rows);
 });
-router11.post("/dashboard/webhooks", requireAuth, async (req, res) => {
+router12.post("/dashboard/webhooks", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const schema = external_exports2.object({
     url: external_exports2.string().url("URL invalide"),
@@ -278394,7 +278429,7 @@ router11.post("/dashboard/webhooks", requireAuth, async (req, res) => {
   const [row] = await db.insert(userWebhooksTable).values({ userId, url: parsed.data.url, label: parsed.data.label ?? null, apiKeyId: parsed.data.apiKeyId ?? null }).returning();
   res.status(201).json(row);
 });
-router11.delete("/dashboard/webhooks/:id", requireAuth, async (req, res) => {
+router12.delete("/dashboard/webhooks/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(String(req.params.id));
   const [row] = await db.select().from(userWebhooksTable).where(and(eq(userWebhooksTable.id, id), eq(userWebhooksTable.userId, userId)));
@@ -278405,7 +278440,7 @@ router11.delete("/dashboard/webhooks/:id", requireAuth, async (req, res) => {
   await db.delete(userWebhooksTable).where(eq(userWebhooksTable.id, id));
   res.json({ ok: true });
 });
-router11.get("/dashboard/allowed-ips", requireAuth, async (req, res) => {
+router12.get("/dashboard/allowed-ips", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const rows = await db.select({
     id: userAllowedIpsTable.id,
@@ -278419,7 +278454,7 @@ router11.get("/dashboard/allowed-ips", requireAuth, async (req, res) => {
   }).from(userAllowedIpsTable).leftJoin(apiKeysTable, eq(userAllowedIpsTable.apiKeyId, apiKeysTable.id)).where(eq(userAllowedIpsTable.userId, userId)).orderBy(asc(userAllowedIpsTable.createdAt));
   res.json(rows);
 });
-router11.post("/dashboard/allowed-ips", requireAuth, async (req, res) => {
+router12.post("/dashboard/allowed-ips", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const schema = external_exports2.object({
     ip: external_exports2.string().regex(/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/, "Adresse IP invalide (ex: 192.168.1.1)"),
@@ -278446,7 +278481,7 @@ router11.post("/dashboard/allowed-ips", requireAuth, async (req, res) => {
   const [row] = await db.insert(userAllowedIpsTable).values({ userId, ip: parsed.data.ip, label: parsed.data.label ?? null, apiKeyId: parsed.data.apiKeyId ?? null }).returning();
   res.status(201).json(row);
 });
-router11.delete("/dashboard/allowed-ips/:id", requireAuth, async (req, res) => {
+router12.delete("/dashboard/allowed-ips/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(String(req.params.id));
   const [row] = await db.select().from(userAllowedIpsTable).where(and(eq(userAllowedIpsTable.id, id), eq(userAllowedIpsTable.userId, userId)));
@@ -278457,7 +278492,7 @@ router11.delete("/dashboard/allowed-ips/:id", requireAuth, async (req, res) => {
   await db.delete(userAllowedIpsTable).where(eq(userAllowedIpsTable.id, id));
   res.json({ ok: true });
 });
-router11.patch("/dashboard/settings/password", requireAuth, async (req, res) => {
+router12.patch("/dashboard/settings/password", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const schema = external_exports2.object({
     currentPassword: external_exports2.string().min(1, "Mot de passe actuel requis"),
@@ -278494,13 +278529,13 @@ var createPaymentLinkSchema = external_exports2.object({
   maxUses: external_exports2.number().int().positive().optional(),
   expiresInDays: external_exports2.number().int().positive().optional()
 });
-router11.get("/dashboard/payment-links", requireAuth, async (req, res) => {
+router12.get("/dashboard/payment-links", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
   const links = await db.select().from(paymentLinksTable).where(and(eq(paymentLinksTable.userId, userId), eq(paymentLinksTable.mode, currentMode))).orderBy(desc(paymentLinksTable.createdAt));
   res.json(links);
 });
-router11.post("/dashboard/payment-links", requireAuth, payLinkImageUpload.single("image"), async (req, res) => {
+router12.post("/dashboard/payment-links", requireAuth, payLinkImageUpload.single("image"), async (req, res) => {
   const body = req.is("multipart/form-data") ? {
     ...req.body,
     fixedAmount: req.body.fixedAmount === "true" || req.body.fixedAmount === true,
@@ -278561,7 +278596,7 @@ router11.post("/dashboard/payment-links", requireAuth, payLinkImageUpload.single
   }).returning();
   res.status(201).json({ link });
 });
-router11.patch("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
+router12.patch("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(req.params.id);
   const { status } = req.body;
@@ -278573,7 +278608,7 @@ router11.patch("/dashboard/payment-links/:id", requireAuth, async (req, res) => 
   await db.update(paymentLinksTable).set({ status }).where(eq(paymentLinksTable.id, id));
   res.json({ ok: true });
 });
-router11.delete("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
+router12.delete("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(req.params.id);
   await db.delete(paymentLinksTable).where(and(eq(paymentLinksTable.id, id), eq(paymentLinksTable.userId, userId)));
@@ -278597,7 +278632,7 @@ var COUNTRY_CURRENCY = {
   CI: "XOF",
   CM: "XAF"
 };
-router11.get("/pay/:token", async (req, res) => {
+router12.get("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const [link] = await db.select({
     id: paymentLinksTable.id,
@@ -278666,7 +278701,7 @@ router11.get("/pay/:token", async (req, res) => {
     operatorMaintenance
   });
 });
-router11.post("/pay/:token", async (req, res) => {
+router12.post("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator, operatorOtp } = req.body;
   if (!phone || !reqAmount || reqAmount <= 0) {
@@ -278852,7 +278887,7 @@ router11.post("/pay/:token", async (req, res) => {
     }
   }
 });
-router11.post("/pay/:token/attempt", async (req, res) => {
+router12.post("/pay/:token/attempt", async (req, res) => {
   const { token } = req.params;
   const { phone, amount, name: name2, email: email3, countryCode, operator } = req.body;
   if (!phone) {
@@ -278908,7 +278943,7 @@ router11.post("/pay/:token/attempt", async (req, res) => {
     }
   })();
 });
-router11.patch("/pay/:token/attempt/:id", async (req, res) => {
+router12.patch("/pay/:token/attempt/:id", async (req, res) => {
   const { token, id } = req.params;
   const { status, transactionReference, note } = req.body;
   const allowed = ["initiated", "confirmed", "success", "failed", "abandoned"];
@@ -278936,7 +278971,7 @@ router11.patch("/pay/:token/attempt/:id", async (req, res) => {
   }
   res.json({ ok: true, attempt: updated });
 });
-router11.get("/dashboard/attempts", requireAuth, async (req, res) => {
+router12.get("/dashboard/attempts", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const { page = "1", limit = "50", status, linkId } = req.query;
   const pageNum = Math.max(1, parseInt(page));
@@ -278974,13 +279009,13 @@ var massPayoutSchema = external_exports2.object({
     note: external_exports2.string().optional()
   })).min(1).max(500)
 });
-router11.get("/dashboard/mass-payout", requireAuth, async (req, res) => {
+router12.get("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
   const jobs = await db.select().from(massPayoutJobsTable).where(and(eq(massPayoutJobsTable.userId, userId), eq(massPayoutJobsTable.mode, currentMode))).orderBy(desc(massPayoutJobsTable.createdAt)).limit(50);
   res.json(jobs);
 });
-router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
+router12.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const parsed = massPayoutSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
@@ -279134,7 +279169,7 @@ var relTime = (d) => {
   if (days < 7) return `Il y a ${days}j`;
   return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 };
-router11.get("/dashboard/notifications", requireAuth, async (req, res) => {
+router12.get("/dashboard/notifications", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const rows = await db.select().from(notificationsTable).where(eq(notificationsTable.userId, userId)).orderBy(desc(notificationsTable.createdAt)).limit(80);
   const notifications = rows.map((n) => ({
@@ -279144,28 +279179,28 @@ router11.get("/dashboard/notifications", requireAuth, async (req, res) => {
   const unreadCount = notifications.filter((n) => !n.read).length;
   res.json({ notifications, unreadCount });
 });
-router11.patch("/dashboard/notifications/:id/read", requireAuth, async (req, res) => {
+router12.patch("/dashboard/notifications/:id/read", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(req.params.id);
   await db.update(notificationsTable).set({ read: true }).where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, userId)));
   res.json({ ok: true });
 });
-router11.patch("/dashboard/notifications/read-all", requireAuth, async (req, res) => {
+router12.patch("/dashboard/notifications/read-all", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   await db.update(notificationsTable).set({ read: true }).where(eq(notificationsTable.userId, userId));
   res.json({ ok: true });
 });
-router11.delete("/dashboard/notifications/:id", requireAuth, async (req, res) => {
+router12.delete("/dashboard/notifications/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(req.params.id);
   await db.delete(notificationsTable).where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, userId)));
   res.json({ ok: true });
 });
-router11.get("/dashboard/support/links", requireAuth, async (_req, res) => {
+router12.get("/dashboard/support/links", requireAuth, async (_req, res) => {
   const rows = await db.select().from(socialLinksTable).where(eq(socialLinksTable.active, true)).orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
 });
-router11.get("/support/contact-info", async (_req, res) => {
+router12.get("/support/contact-info", async (_req, res) => {
   const settings = await db.select().from(adminSettingsTable).where(sql`${adminSettingsTable.key} IN ('contact_emails', 'contact_phones')`);
   const map2 = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   let emails = ["support@drimpay.com"];
@@ -279180,7 +279215,7 @@ router11.get("/support/contact-info", async (_req, res) => {
   }
   res.json({ emails, phones });
 });
-router11.get("/support/links", async (_req, res) => {
+router12.get("/support/links", async (_req, res) => {
   const rows = await db.select({
     name: socialLinksTable.name,
     platform: socialLinksTable.platform,
@@ -279189,7 +279224,7 @@ router11.get("/support/links", async (_req, res) => {
   }).from(socialLinksTable).where(eq(socialLinksTable.active, true)).orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
 });
-router11.get("/banners/active", async (_req, res) => {
+router12.get("/banners/active", async (_req, res) => {
   const rows = await db.select({
     id: globalBannersTable.id,
     message: globalBannersTable.message,
@@ -279220,12 +279255,12 @@ var createQrCodeSchema = external_exports2.object({
   expiresAt: external_exports2.string().optional(),
   status: external_exports2.enum(["active", "inactive"]).default("active")
 });
-router11.get("/dashboard/qr-codes", requireAuth, async (req, res) => {
+router12.get("/dashboard/qr-codes", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const rows = await db.select().from(qrCodesTable).where(eq(qrCodesTable.userId, userId)).orderBy(desc(qrCodesTable.createdAt));
   res.json(rows);
 });
-router11.post("/dashboard/qr-codes", requireAuth, payLinkImageUpload.single("image"), async (req, res) => {
+router12.post("/dashboard/qr-codes", requireAuth, payLinkImageUpload.single("image"), async (req, res) => {
   const userId = req.session.userId;
   const body = req.is("multipart/form-data") ? {
     ...req.body,
@@ -279269,7 +279304,7 @@ router11.post("/dashboard/qr-codes", requireAuth, payLinkImageUpload.single("ima
   }).returning();
   res.status(201).json(qr);
 });
-router11.patch("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
+router12.patch("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
@@ -279289,7 +279324,7 @@ router11.patch("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
   await db.update(qrCodesTable).set(updates).where(eq(qrCodesTable.id, id));
   res.json({ ok: true });
 });
-router11.delete("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
+router12.delete("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
@@ -279299,7 +279334,7 @@ router11.delete("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
   await db.delete(qrCodesTable).where(and(eq(qrCodesTable.id, id), eq(qrCodesTable.userId, userId)));
   res.json({ ok: true });
 });
-router11.get("/qr/:reference", async (req, res) => {
+router12.get("/qr/:reference", async (req, res) => {
   const { reference } = req.params;
   const [qr] = await db.select().from(qrCodesTable).where(eq(qrCodesTable.reference, reference));
   if (!qr) {
@@ -279338,7 +279373,7 @@ router11.get("/qr/:reference", async (req, res) => {
     countries
   });
 });
-router11.post("/qr/:reference", async (req, res) => {
+router12.post("/qr/:reference", async (req, res) => {
   const { reference } = req.params;
   const { phone, amount: reqAmount, countryCode: chosenCountry, operator: chosenOperator, operatorOtp } = req.body;
   if (!phone || !reqAmount || reqAmount <= 0) {
@@ -279543,7 +279578,7 @@ router11.post("/qr/:reference", async (req, res) => {
     });
   }
 });
-router11.get("/dashboard/payment-links", requireAuth, async (req, res) => {
+router12.get("/dashboard/payment-links", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const links = await db.select().from(paymentLinksTable).where(eq(paymentLinksTable.userId, userId)).orderBy(desc(paymentLinksTable.createdAt));
   res.json(links);
@@ -279561,7 +279596,7 @@ var createLinkSchema = external_exports2.object({
   collectBilling: external_exports2.boolean().default(false),
   displayShare: external_exports2.boolean().default(true)
 });
-router11.post("/dashboard/payment-links", requireAuth, async (req, res) => {
+router12.post("/dashboard/payment-links", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const parsed = createLinkSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -279597,7 +279632,7 @@ router11.post("/dashboard/payment-links", requireAuth, async (req, res) => {
   }).returning();
   res.status(201).json(link);
 });
-router11.patch("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
+router12.patch("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
@@ -279618,7 +279653,7 @@ router11.patch("/dashboard/payment-links/:id", requireAuth, async (req, res) => 
   const [updated] = await db.update(paymentLinksTable).set({ status: status ?? void 0 }).where(eq(paymentLinksTable.id, id)).returning();
   res.json(updated);
 });
-router11.delete("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
+router12.delete("/dashboard/payment-links/:id", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
@@ -279633,17 +279668,17 @@ router11.delete("/dashboard/payment-links/:id", requireAuth, async (req, res) =>
   await db.delete(paymentLinksTable).where(eq(paymentLinksTable.id, id));
   res.json({ ok: true });
 });
-var dashboard_default = router11;
+var dashboard_default = router12;
 
 // src/routes/v2payin.ts
-var import_express12 = __toESM(require_express2(), 1);
+var import_express13 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
 import crypto6 from "crypto";
 init_clapay();
 init_paydunya();
-var router12 = (0, import_express12.Router)();
+var router13 = (0, import_express13.Router)();
 var rateLimitStore = /* @__PURE__ */ new Map();
 function checkRateLimit(keyId) {
   const now = Date.now();
@@ -279774,7 +279809,7 @@ var initiateSchema = external_exports2.object({
     message: "expires_in_minutes must be 2, 5, or 10"
   }).optional().default(5)
 });
-router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
+router13.post("/v2/payin/initiate", resolveUser, async (req, res) => {
   const parsed = initiateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "INVALID_REQUEST", message: "Invalid parameters", details: parsed.error.flatten() });
@@ -280113,7 +280148,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     created_at: tx.createdAt.toISOString()
   });
 });
-router12.get("/v2/payin/transactions", resolveUser, async (req, res) => {
+router13.get("/v2/payin/transactions", resolveUser, async (req, res) => {
   const userId = req.resolvedUserId;
   const { status, country_code, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
@@ -280154,7 +280189,7 @@ router12.get("/v2/payin/transactions", resolveUser, async (req, res) => {
     }
   });
 });
-router12.get("/v2/payin/:reference", resolveUser, async (req, res) => {
+router13.get("/v2/payin/:reference", resolveUser, async (req, res) => {
   const userId = req.resolvedUserId;
   const { reference } = req.params;
   const [tx] = await db.select().from(transactionsTable).where(and(eq(transactionsTable.reference, reference), eq(transactionsTable.userId, userId)));
@@ -280189,7 +280224,7 @@ router12.get("/v2/payin/:reference", resolveUser, async (req, res) => {
     updated_at: tx.updatedAt.toISOString()
   });
 });
-router12.post("/v2/payin/:reference/resend-webhook", resolveUser, async (req, res) => {
+router13.post("/v2/payin/:reference/resend-webhook", resolveUser, async (req, res) => {
   const userId = req.resolvedUserId;
   const { reference } = req.params;
   const [tx] = await db.select().from(transactionsTable).where(and(eq(transactionsTable.reference, reference), eq(transactionsTable.userId, userId)));
@@ -280254,10 +280289,10 @@ router12.post("/v2/payin/:reference/resend-webhook", resolveUser, async (req, re
     signature_header: `t=${timestamp2},v1=${signature}`
   });
 });
-var v2payin_default = router12;
+var v2payin_default = router13;
 
 // src/routes/admin.ts
-var import_express13 = __toESM(require_express2(), 1);
+var import_express14 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
@@ -280425,7 +280460,7 @@ var contractUpload = (0, import_multer2.default)({
     cb(null, ok);
   }
 });
-var router13 = (0, import_express13.Router)();
+var router14 = (0, import_express14.Router)();
 var AP = `/${process.env["ADMIN_ROUTE_SECRET"] ?? "admin"}`;
 var _adminProbeCounter = /* @__PURE__ */ new Map();
 var PROBE_ALERT_THRESHOLD = 3;
@@ -280476,7 +280511,7 @@ async function logAdminAction(adminId, action, targetType, targetId, details, ip
   } catch {
   }
 }
-router13.get(AP + "/stats", requireAdmin, async (req, res) => {
+router14.get(AP + "/stats", requireAdmin, async (req, res) => {
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -280638,7 +280673,7 @@ router13.get(AP + "/stats", requireAdmin, async (req, res) => {
     statsResetAt: statsResetAt ? statsResetAt.toISOString() : null
   });
 });
-router13.post(AP + "/stats/reset", requireAdmin, async (req, res) => {
+router14.post(AP + "/stats/reset", requireAdmin, async (req, res) => {
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const [balanceRow] = await db.select({ total: sum(walletsTable.balance) }).from(walletsTable);
   const currentBalance = String(balanceRow?.total ?? "0");
@@ -280649,7 +280684,7 @@ router13.post(AP + "/stats/reset", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "RESET_STATS", "platform", "stats", `balance_snapshot=${currentBalance}`, req.ip);
   res.json({ ok: true, resetAt: now });
 });
-router13.get(AP + "/chart-data", requireAdmin, async (_req, res) => {
+router14.get(AP + "/chart-data", requireAdmin, async (_req, res) => {
   const days = 30;
   const result = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -280675,7 +280710,7 @@ router13.get(AP + "/chart-data", requireAdmin, async (_req, res) => {
   }
   res.json(result);
 });
-router13.get(AP + "/merchants", requireAdmin, async (req, res) => {
+router14.get(AP + "/merchants", requireAdmin, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -280703,7 +280738,7 @@ router13.get(AP + "/merchants", requireAdmin, async (req, res) => {
   }));
   res.json({ merchants: enriched, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.get(AP + "/merchants/:id", requireAdmin, async (req, res) => {
+router14.get(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   if (!user) {
@@ -280718,7 +280753,7 @@ router13.get(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   const recentTx = await db.select().from(transactionsTable).where(eq(transactionsTable.userId, id)).orderBy(desc(transactionsTable.createdAt)).limit(20);
   res.json({ ...user, passwordHash: void 0, wallets, kyb, apiKeys, webhooks, allowedIps, recentTransactions: recentTx });
 });
-router13.put(AP + "/merchants/:id", requireAdmin, async (req, res) => {
+router14.put(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { companyName, email: email3, country, role, payinFeePercent, payoutFeePercent } = req.body;
   const updateData = {};
@@ -280736,7 +280771,7 @@ router13.put(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_MERCHANT", "user", String(id), JSON.stringify(updateData), req.ip);
   res.json({ ok: true });
 });
-router13.patch(AP + "/merchants/:id/toggle-support-agent", requireAdmin, async (req, res) => {
+router14.patch(AP + "/merchants/:id/toggle-support-agent", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [user] = await db.select({ id: usersTable.id, email: usersTable.email, isSupportAgent: usersTable.isSupportAgent }).from(usersTable).where(eq(usersTable.id, id));
   if (!user) {
@@ -280748,7 +280783,7 @@ router13.patch(AP + "/merchants/:id/toggle-support-agent", requireAdmin, async (
   await logAdminAction(req.session.userId, next ? "GRANT_SUPPORT_AGENT" : "REVOKE_SUPPORT_AGENT", "user", String(id), user.email, req.ip);
   res.json({ ok: true, isSupportAgent: next });
 });
-router13.get(AP + "/merchants/support-agents", requireAdmin, async (_req, res) => {
+router14.get(AP + "/merchants/support-agents", requireAdmin, async (_req, res) => {
   const agents = await db.select({
     id: usersTable.id,
     email: usersTable.email,
@@ -280758,7 +280793,7 @@ router13.get(AP + "/merchants/support-agents", requireAdmin, async (_req, res) =
   }).from(usersTable).where(eq(usersTable.isSupportAgent, true)).orderBy(asc(usersTable.companyName));
   res.json({ agents });
 });
-router13.put(AP + "/merchants/:id/role", requireAdmin, async (req, res) => {
+router14.put(AP + "/merchants/:id/role", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) {
     res.status(400).json({ error: "Vous ne pouvez pas modifier votre propre r\xF4le" });
@@ -280779,15 +280814,15 @@ router13.put(AP + "/merchants/:id/role", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, action, "user", String(id), `${user.email} \u2192 role: ${role}`, req.ip);
   res.json({ ok: true, role });
 });
-router13.post(AP + "/merchants/:id/suspend", requireAdmin, async (req, res) => {
+router14.post(AP + "/merchants/:id/suspend", requireAdmin, async (req, res) => {
   res.json({ ok: true, message: "Compte suspendu (flag non impl\xE9ment\xE9 en DB, logu\xE9)" });
   await logAdminAction(req.session.userId, "SUSPEND_MERCHANT", "user", req.params.id, void 0, req.ip);
 });
-router13.post(AP + "/merchants/:id/activate", requireAdmin, async (req, res) => {
+router14.post(AP + "/merchants/:id/activate", requireAdmin, async (req, res) => {
   res.json({ ok: true, message: "Compte r\xE9activ\xE9" });
   await logAdminAction(req.session.userId, "ACTIVATE_MERCHANT", "user", req.params.id, void 0, req.ip);
 });
-router13.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req, res) => {
+router14.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const newPassword = crypto7.randomBytes(8).toString("hex");
   const hash2 = await bcryptjs_default.hash(newPassword, 12);
@@ -280795,7 +280830,7 @@ router13.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req, re
   await logAdminAction(req.session.userId, "RESET_PASSWORD", "user", String(id), void 0, req.ip);
   res.json({ ok: true, newPassword });
 });
-router13.delete(AP + "/merchants/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) {
     res.status(400).json({ error: "Cannot delete yourself" });
@@ -280805,7 +280840,7 @@ router13.delete(AP + "/merchants/:id", requireAdmin, async (req, res) => {
   await db.delete(usersTable).where(eq(usersTable.id, id));
   res.json({ ok: true });
 });
-router13.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (req, res) => {
+router14.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (req, res) => {
   const walletId = parseInt(req.params.walletId);
   const { balance } = req.body;
   if (balance === void 0 || isNaN(parseFloat(balance))) {
@@ -280816,7 +280851,7 @@ router13.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (r
   await logAdminAction(req.session.userId, "EDIT_WALLET_BALANCE", "wallet", String(walletId), `New balance: ${balance}`, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/kyb", requireAdmin, async (req, res) => {
+router14.get(AP + "/kyb", requireAdmin, async (req, res) => {
   const {
     status,
     page = "1",
@@ -280916,7 +280951,7 @@ router13.get(AP + "/kyb", requireAdmin, async (req, res) => {
   const availableCountries = countries.map((c) => c.country).filter(Boolean).sort();
   res.json({ kyb: enriched, total: Number(total), page: pageNum, limit: limitNum, availableCountries });
 });
-router13.put(AP + "/kyb/:id/approve", requireAdmin, async (req, res) => {
+router14.put(AP + "/kyb/:id/approve", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.update(kybSubmissionsTable).set({ status: "approved", reviewedAt: /* @__PURE__ */ new Date() }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "APPROVE_KYB", "kyb", String(id), void 0, req.ip);
@@ -280949,7 +280984,7 @@ router13.put(AP + "/kyb/:id/approve", requireAdmin, async (req, res) => {
   }
   res.json({ ok: true });
 });
-router13.put(AP + "/kyb/:id/reject", requireAdmin, async (req, res) => {
+router14.put(AP + "/kyb/:id/reject", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { reason } = req.body;
   if (!reason?.trim()) {
@@ -280987,7 +281022,7 @@ router13.put(AP + "/kyb/:id/reject", requireAdmin, async (req, res) => {
   }
   res.json({ ok: true });
 });
-router13.put(AP + "/kyb/:id/review", requireAdmin, async (req, res) => {
+router14.put(AP + "/kyb/:id/review", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.update(kybSubmissionsTable).set({ status: "under_review" }).where(eq(kybSubmissionsTable.id, id));
   await logAdminAction(req.session.userId, "REVIEW_KYB", "kyb", String(id), void 0, req.ip);
@@ -281005,7 +281040,7 @@ var ALLOWED_DOC_FIELDS = [
   "documentLicense",
   "documentId"
 ];
-router13.get(AP + "/kyb/:id/document/:field", requireAdmin, async (req, res) => {
+router14.get(AP + "/kyb/:id/document/:field", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { field } = req.params;
   if (!ALLOWED_DOC_FIELDS.includes(field)) {
@@ -281046,7 +281081,7 @@ router13.get(AP + "/kyb/:id/document/:field", requireAdmin, async (req, res) => 
     res.status(404).json({ error: "Fichier introuvable dans le stockage" });
   }
 });
-router13.get(AP + "/kyb/:id/contract", requireAdmin, async (req, res) => {
+router14.get(AP + "/kyb/:id/contract", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     res.status(400).json({ error: "ID invalide" });
@@ -281089,7 +281124,7 @@ router13.get(AP + "/kyb/:id/contract", requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la g\xE9n\xE9ration du PDF", details: err?.message });
   }
 });
-router13.get(AP + "/contract/info", requireAdmin, async (_req, res) => {
+router14.get(AP + "/contract/info", requireAdmin, async (_req, res) => {
   const info = await getContractTemplateInfo();
   if (!info) {
     res.json({ ok: false, error: "Fichier non trouv\xE9 dans Supabase" });
@@ -281097,7 +281132,7 @@ router13.get(AP + "/contract/info", requireAdmin, async (_req, res) => {
   }
   res.json({ ok: true, size: info.size, updatedAt: info.updatedAt });
 });
-router13.post(
+router14.post(
   "/admin/contract/upload",
   requireAdmin,
   contractUpload.single("contract"),
@@ -281117,7 +281152,7 @@ router13.post(
     }
   }
 );
-router13.get(AP + "/contract/download", requireAdmin, async (_req, res) => {
+router14.get(AP + "/contract/download", requireAdmin, async (_req, res) => {
   try {
     const buf = await downloadContractTemplate();
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -281129,7 +281164,7 @@ router13.get(AP + "/contract/download", requireAdmin, async (_req, res) => {
     res.status(404).json({ error: "Fichier introuvable" });
   }
 });
-router13.get(AP + "/transactions", requireAdmin, async (req, res) => {
+router14.get(AP + "/transactions", requireAdmin, async (req, res) => {
   const { type, status, countryCode, operator, search, mode, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -281159,7 +281194,7 @@ router13.get(AP + "/transactions", requireAdmin, async (req, res) => {
     limit: limitNum
   });
 });
-router13.post(AP + "/transactions/:id/force-resolve", requireAdmin, async (req, res) => {
+router14.post(AP + "/transactions/:id/force-resolve", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -281198,7 +281233,7 @@ router13.post(AP + "/transactions/:id/force-resolve", requireAdmin, async (req, 
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
-router13.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, res) => {
+router14.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -281258,7 +281293,7 @@ router13.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, r
     res.status(500).json({ error: err?.message ?? "Erreur lors de la synchronisation" });
   }
 });
-router13.get(AP + "/wallets", requireAdmin, async (_req, res) => {
+router14.get(AP + "/wallets", requireAdmin, async (_req, res) => {
   const wallets = await db.select().from(walletsTable).orderBy(walletsTable.countryCode);
   const userIds = [...new Set(wallets.map((w) => w.userId))];
   const users = userIds.length > 0 ? await db.select({ id: usersTable.id, companyName: usersTable.companyName, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [];
@@ -281285,7 +281320,7 @@ router13.get(AP + "/wallets", requireAdmin, async (_req, res) => {
   });
   res.json(byCountry);
 });
-router13.post(AP + "/wallets/:id/credit", requireAdmin, async (req, res) => {
+router14.post(AP + "/wallets/:id/credit", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { amount, note } = req.body;
   if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
@@ -281296,7 +281331,7 @@ router13.post(AP + "/wallets/:id/credit", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREDIT_WALLET", "wallet", String(id), `Amount: ${amount}, Note: ${note}`, req.ip);
   res.json({ ok: true });
 });
-router13.post(AP + "/wallets/:id/debit", requireAdmin, async (req, res) => {
+router14.post(AP + "/wallets/:id/debit", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { amount, note } = req.body;
   if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
@@ -281312,12 +281347,12 @@ router13.post(AP + "/wallets/:id/debit", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DEBIT_WALLET", "wallet", String(id), `Amount: ${amount}, Note: ${note}`, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/aggregators", requireAdmin, async (_req, res) => {
+router14.get(AP + "/aggregators", requireAdmin, async (_req, res) => {
   const aggs = await db.select().from(aggregatorsTable).orderBy(aggregatorsTable.name);
   const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.countryCode);
   res.json({ aggregators: aggs, operatorAggregators: opAggs });
 });
-router13.get(AP + "/wallet-exchanges", requireAdmin, async (req, res) => {
+router14.get(AP + "/wallet-exchanges", requireAdmin, async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
   const status = req.query.status;
@@ -281340,7 +281375,7 @@ router13.get(AP + "/wallet-exchanges", requireAdmin, async (req, res) => {
     total: Number(total)
   });
 });
-router13.get(AP + "/wallet-exchanges/:id", requireAdmin, async (req, res) => {
+router14.get(AP + "/wallet-exchanges/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
   if (!exchange) {
@@ -281352,7 +281387,7 @@ router13.get(AP + "/wallet-exchanges/:id", requireAdmin, async (req, res) => {
   const [toWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, exchange.toWalletId));
   res.json({ exchange, merchant: merchant ?? null, fromWallet: fromWallet ?? null, toWallet: toWallet ?? null });
 });
-router13.post(AP + "/wallet-exchanges/:id/approve", requireAdmin, async (req, res) => {
+router14.post(AP + "/wallet-exchanges/:id/approve", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [admin] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId));
   const result = await approveWalletExchange(id, admin?.email ?? "Admin");
@@ -281363,7 +281398,7 @@ router13.post(AP + "/wallet-exchanges/:id/approve", requireAdmin, async (req, re
   await logAdminAction(req.session.userId, "APPROVE_WALLET_EXCHANGE", "wallet_exchange", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.post(AP + "/wallet-exchanges/:id/reject", requireAdmin, async (req, res) => {
+router14.post(AP + "/wallet-exchanges/:id/reject", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { reason } = req.body;
   if (!reason?.trim()) {
@@ -281379,7 +281414,7 @@ router13.post(AP + "/wallet-exchanges/:id/reject", requireAdmin, async (req, res
   await logAdminAction(req.session.userId, "REJECT_WALLET_EXCHANGE", "wallet_exchange", String(id), reason, req.ip);
   res.json({ ok: true });
 });
-router13.post(AP + "/aggregators", requireAdmin, async (req, res) => {
+router14.post(AP + "/aggregators", requireAdmin, async (req, res) => {
   const { name: name2, code, description } = req.body;
   if (!name2 || !code) {
     res.status(400).json({ error: "name and code required" });
@@ -281389,7 +281424,7 @@ router13.post(AP + "/aggregators", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_AGGREGATOR", "aggregator", agg.code, name2, req.ip);
   res.status(201).json(agg);
 });
-router13.put(AP + "/aggregators/:id", requireAdmin, async (req, res) => {
+router14.put(AP + "/aggregators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { name: name2, description, active } = req.body;
   const data = {};
@@ -281400,7 +281435,7 @@ router13.put(AP + "/aggregators/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_AGGREGATOR", "aggregator", String(id), JSON.stringify(data), req.ip);
   res.json({ ok: true });
 });
-router13.post(AP + "/operator-aggregators", requireAdmin, async (req, res) => {
+router14.post(AP + "/operator-aggregators", requireAdmin, async (req, res) => {
   const { countryCode, operatorName, operatorType, aggregatorCode, dailyLimit, priority } = req.body;
   if (!countryCode || !operatorName || !aggregatorCode) {
     res.status(400).json({ error: "Missing required fields" });
@@ -281417,7 +281452,7 @@ router13.post(AP + "/operator-aggregators", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_OPERATOR_AGG", "operator_aggregator", String(oa.id), `${countryCode}/${operatorName} \u2192 ${aggregatorCode}`, req.ip);
   res.status(201).json(oa);
 });
-router13.put(AP + "/operator-aggregators/:id", requireAdmin, async (req, res) => {
+router14.put(AP + "/operator-aggregators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { aggregatorCode, dailyLimit, active, priority, blockDeposits, blockWithdrawals, blockApi, blockPaymentLinks, maintenanceMode } = req.body;
   const data = { updatedAt: /* @__PURE__ */ new Date() };
@@ -281434,19 +281469,19 @@ router13.put(AP + "/operator-aggregators/:id", requireAdmin, async (req, res) =>
   await logAdminAction(req.session.userId, "UPDATE_OPERATOR_AGG", "operator_aggregator", String(id), JSON.stringify(data), req.ip);
   res.json({ ok: true });
 });
-router13.delete(AP + "/operator-aggregators/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/operator-aggregators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(operatorAggregatorsTable).where(eq(operatorAggregatorsTable.id, id));
   await logAdminAction(req.session.userId, "DELETE_OPERATOR_AGG", "operator_aggregator", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/operators", requireAdmin, async (_req, res) => {
+router14.get(AP + "/operators", requireAdmin, async (_req, res) => {
   const ops = await db.select().from(operatorsTable).orderBy(operatorsTable.countryCode, operatorsTable.name);
   const opAggs = await db.select().from(operatorAggregatorsTable).orderBy(operatorAggregatorsTable.priority);
   const aggs = await db.select().from(aggregatorsTable).where(eq(aggregatorsTable.active, true)).orderBy(aggregatorsTable.name);
   res.json({ operators: ops, operatorAggregators: opAggs, aggregators: aggs });
 });
-router13.post(AP + "/operators", requireAdmin, async (req, res) => {
+router14.post(AP + "/operators", requireAdmin, async (req, res) => {
   const { countryCode, name: name2, type, aggregatorCode, dailyLimit } = req.body;
   if (!countryCode || !name2 || !type) {
     res.status(400).json({ error: "Missing fields" });
@@ -281466,7 +281501,7 @@ router13.post(AP + "/operators", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_OPERATOR", "operator", String(op.id), `${countryCode}/${name2}`, req.ip);
   res.status(201).json(op);
 });
-router13.put(AP + "/operators/:id", requireAdmin, async (req, res) => {
+router14.put(AP + "/operators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { name: name2, type, active, aggregatorCode, dailyLimit, blockDeposits, blockWithdrawals, blockApi, blockPaymentLinks, maintenanceMode } = req.body;
   const [existing] = await db.select().from(operatorsTable).where(eq(operatorsTable.id, id));
@@ -281516,7 +281551,7 @@ router13.put(AP + "/operators/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_OPERATOR", "operator", String(id), JSON.stringify(data), req.ip);
   res.json({ ok: true });
 });
-router13.post(AP + "/operators/country-toggle", requireAdmin, async (req, res) => {
+router14.post(AP + "/operators/country-toggle", requireAdmin, async (req, res) => {
   const { countryCode, active } = req.body;
   if (!countryCode || active === void 0) {
     res.status(400).json({ error: "Missing fields" });
@@ -281527,7 +281562,7 @@ router13.post(AP + "/operators/country-toggle", requireAdmin, async (req, res) =
   await logAdminAction(req.session.userId, active ? "BULK_ACTIVATE" : "BULK_DEACTIVATE", "operator", countryCode, `All operators in ${countryCode}`, req.ip);
   res.json({ ok: true });
 });
-router13.delete(AP + "/operators/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/operators/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(operatorsTable).where(eq(operatorsTable.id, id));
   if (existing) {
@@ -281540,7 +281575,7 @@ router13.delete(AP + "/operators/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_OPERATOR", "operator", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/api-keys", requireAdmin, async (req, res) => {
+router14.get(AP + "/api-keys", requireAdmin, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -281567,13 +281602,13 @@ router13.get(AP + "/api-keys", requireAdmin, async (req, res) => {
   }
   res.json({ keys: result, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.delete(AP + "/api-keys/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/api-keys/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.update(apiKeysTable).set({ status: "revoked" }).where(eq(apiKeysTable.id, id));
   await logAdminAction(req.session.userId, "REVOKE_API_KEY", "api_key", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/api-keys/:id/details", requireAdmin, async (req, res) => {
+router14.get(AP + "/api-keys/:id/details", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -281598,7 +281633,7 @@ router13.get(AP + "/api-keys/:id/details", requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Erreur serveur lors du chargement des d\xE9tails" });
   }
 });
-router13.post(AP + "/api-keys/:id/regenerate", requireAdmin, async (req, res) => {
+router14.post(AP + "/api-keys/:id/regenerate", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [old] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id));
   if (!old) {
@@ -281614,7 +281649,7 @@ router13.post(AP + "/api-keys/:id/regenerate", requireAdmin, async (req, res) =>
   await logAdminAction(req.session.userId, "REGENERATE_API_KEY", "api_key", String(id), JSON.stringify({ oldPrefix: old.prefix, newPrefix: prefix }), req.ip);
   res.json({ ...newKey, rawKey });
 });
-router13.patch(AP + "/api-keys/:id/status", requireAdmin, async (req, res) => {
+router14.patch(AP + "/api-keys/:id/status", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { status } = req.body;
   if (status !== "active" && status !== "revoked") {
@@ -281626,7 +281661,7 @@ router13.patch(AP + "/api-keys/:id/status", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, action, "api_key", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/payment-links", requireAdmin, async (req, res) => {
+router14.get(AP + "/payment-links", requireAdmin, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -281643,19 +281678,19 @@ router13.get(AP + "/payment-links", requireAdmin, async (req, res) => {
   }
   res.json({ links: result, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.delete(AP + "/payment-links/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/payment-links/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(paymentLinksTable).where(eq(paymentLinksTable.id, id));
   await logAdminAction(req.session.userId, "DELETE_PAYMENT_LINK", "payment_link", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.put(AP + "/payment-links/:id/suspend", requireAdmin, async (req, res) => {
+router14.put(AP + "/payment-links/:id/suspend", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   await db.update(paymentLinksTable).set({ status: "inactive" }).where(eq(paymentLinksTable.id, id));
   await logAdminAction(req.session.userId, "SUSPEND_PAYMENT_LINK", "payment_link", String(id), void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/logs", requireAdmin, async (req, res) => {
+router14.get(AP + "/logs", requireAdmin, async (req, res) => {
   const { page = "1", limit = "50", action } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -281670,12 +281705,12 @@ router13.get(AP + "/logs", requireAdmin, async (req, res) => {
   const adminMap = Object.fromEntries(admins.map((a) => [a.id, a]));
   res.json({ logs: logs.map((l) => ({ ...l, admin: adminMap[l.adminId] ?? null })), total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.get(AP + "/settings", requireAdmin, async (_req, res) => {
+router14.get(AP + "/settings", requireAdmin, async (_req, res) => {
   const settings = await db.select().from(adminSettingsTable);
   const map2 = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   res.json(map2);
 });
-router13.put(AP + "/settings", requireAdmin, async (req, res) => {
+router14.put(AP + "/settings", requireAdmin, async (req, res) => {
   const updates = req.body;
   for (const [key, value] of Object.entries(updates)) {
     await db.insert(adminSettingsTable).values({ key, value }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value, updatedAt: /* @__PURE__ */ new Date() } });
@@ -281683,7 +281718,7 @@ router13.put(AP + "/settings", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_SETTINGS", "settings", void 0, JSON.stringify(Object.keys(updates)), req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/blacklist", requireAdmin, async (req, res) => {
+router14.get(AP + "/blacklist", requireAdmin, async (req, res) => {
   const { search = "", page = "1", limit = "50" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -281705,7 +281740,7 @@ router13.get(AP + "/blacklist", requireAdmin, async (req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(blacklistedPhonesTable);
   res.json({ items: rows, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.post(AP + "/blacklist", requireAdmin, async (req, res) => {
+router14.post(AP + "/blacklist", requireAdmin, async (req, res) => {
   const schema = external_exports2.object({
     phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide"),
     reason: external_exports2.string().max(500).optional()
@@ -281731,7 +281766,7 @@ router13.post(AP + "/blacklist", requireAdmin, async (req, res) => {
     }
   }
 });
-router13.delete(AP + "/blacklist/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/blacklist/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [row] = await db.select().from(blacklistedPhonesTable).where(eq(blacklistedPhonesTable.id, id));
   if (!row) {
@@ -281745,7 +281780,7 @@ router13.delete(AP + "/blacklist/:id", requireAdmin, async (req, res) => {
   });
   res.json({ ok: true });
 });
-router13.post(AP + "/telegram/test", requireAdmin, async (req, res) => {
+router14.post(AP + "/telegram/test", requireAdmin, async (req, res) => {
   const { token, chatId } = req.body;
   if (!token || !chatId) {
     res.status(400).json({ error: "token et chatId requis" });
@@ -281754,7 +281789,7 @@ router13.post(AP + "/telegram/test", requireAdmin, async (req, res) => {
   const result = await testConnection(token.trim(), chatId.trim());
   res.json(result);
 });
-router13.get(AP + "/telegram/detect", requireAdmin, async (req, res) => {
+router14.get(AP + "/telegram/detect", requireAdmin, async (req, res) => {
   const token = req.query.token ?? "";
   if (!token) {
     res.status(400).json({ error: "token requis" });
@@ -281763,7 +281798,7 @@ router13.get(AP + "/telegram/detect", requireAdmin, async (req, res) => {
   const result = await detectChatId(token.trim());
   res.json(result);
 });
-router13.get(AP + "/attempts", requireAdmin, async (req, res) => {
+router14.get(AP + "/attempts", requireAdmin, async (req, res) => {
   const { page = "1", limit = "50", status, search } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
@@ -281799,7 +281834,7 @@ router13.get(AP + "/attempts", requireAdmin, async (req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(paymentLinkAttemptsTable).where(where);
   res.json({ attempts, total: Number(total), page: pageNum, limit: limitNum });
 });
-router13.patch(AP + "/attempts/:id/note", requireAdmin, async (req, res) => {
+router14.patch(AP + "/attempts/:id/note", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { note } = req.body;
   const [updated] = await db.update(paymentLinkAttemptsTable).set({ note: note ?? null, updatedAt: /* @__PURE__ */ new Date() }).where(eq(paymentLinkAttemptsTable.id, id)).returning();
@@ -281809,7 +281844,7 @@ router13.patch(AP + "/attempts/:id/note", requireAdmin, async (req, res) => {
   }
   res.json({ ok: true });
 });
-router13.get(AP + "/broadcast/recipients", requireAdmin, async (req, res) => {
+router14.get(AP + "/broadcast/recipients", requireAdmin, async (req, res) => {
   const { filter = "all" } = req.query;
   let users = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName, country: usersTable.country, createdAt: usersTable.createdAt }).from(usersTable).where(eq(usersTable.role, "user")).orderBy(usersTable.companyName);
   if (filter === "kyb_approved") {
@@ -281827,7 +281862,7 @@ router13.get(AP + "/broadcast/recipients", requireAdmin, async (req, res) => {
   }
   res.json({ recipients: users, total: users.length });
 });
-router13.post(AP + "/message/individual", requireAdmin, async (req, res) => {
+router14.post(AP + "/message/individual", requireAdmin, async (req, res) => {
   const { email: email3, subject, body } = req.body;
   if (!email3?.trim() || !subject?.trim() || !body?.trim()) {
     res.status(400).json({ error: "Email, sujet et message sont requis." });
@@ -281849,7 +281884,7 @@ router13.post(AP + "/message/individual", requireAdmin, async (req, res) => {
     res.status(500).json({ error: result.error ?? "\xC9chec de l'envoi." });
   }
 });
-router13.get(AP + "/merchants/search", requireAdmin, async (req, res) => {
+router14.get(AP + "/merchants/search", requireAdmin, async (req, res) => {
   const { q = "" } = req.query;
   if (q.trim().length < 2) {
     res.json({ merchants: [] });
@@ -281862,7 +281897,7 @@ router13.get(AP + "/merchants/search", requireAdmin, async (req, res) => {
   )).limit(8);
   res.json({ merchants });
 });
-router13.post(AP + "/broadcast", requireAdmin, async (req, res) => {
+router14.post(AP + "/broadcast", requireAdmin, async (req, res) => {
   const { subject, body, filter = "all" } = req.body;
   if (!subject?.trim() || !body?.trim()) {
     res.status(400).json({ error: "Sujet et message requis." });
@@ -281923,7 +281958,7 @@ router13.post(AP + "/broadcast", requireAdmin, async (req, res) => {
   );
   res.json({ ok: true, sent, failed, errors, quotaExceeded, remaining });
 });
-router13.post(AP + "/broadcast/resume-resend", requireAdmin, async (req, res) => {
+router14.post(AP + "/broadcast/resume-resend", requireAdmin, async (req, res) => {
   const { recipients, subject, body } = req.body;
   if (!Array.isArray(recipients) || recipients.length === 0) {
     res.status(400).json({ error: "recipients requis." });
@@ -281961,11 +281996,11 @@ router13.post(AP + "/broadcast/resume-resend", requireAdmin, async (req, res) =>
   );
   res.json({ ok: true, sent, failed, errors });
 });
-router13.get(AP + "/social-links", requireAdmin, async (req, res) => {
+router14.get(AP + "/social-links", requireAdmin, async (req, res) => {
   const rows = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder), asc(socialLinksTable.id));
   res.json(rows);
 });
-router13.post(AP + "/social-links", requireAdmin, async (req, res) => {
+router14.post(AP + "/social-links", requireAdmin, async (req, res) => {
   const { name: name2, platform, url: url2, description, sortOrder } = req.body;
   if (!name2?.trim() || !platform?.trim() || !url2?.trim()) {
     res.status(400).json({ error: "name, platform et url sont requis" });
@@ -281981,7 +282016,7 @@ router13.post(AP + "/social-links", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_SOCIAL_LINK", "social_link", String(row.id), name2, req.ip);
   res.json(row);
 });
-router13.put(AP + "/social-links/:id", requireAdmin, async (req, res) => {
+router14.put(AP + "/social-links/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { name: name2, platform, url: url2, description, sortOrder } = req.body;
   if (!name2?.trim() || !platform?.trim() || !url2?.trim()) {
@@ -281996,7 +282031,7 @@ router13.put(AP + "/social-links/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_SOCIAL_LINK", "social_link", String(id), name2, req.ip);
   res.json(row);
 });
-router13.patch(AP + "/social-links/:id/toggle", requireAdmin, async (req, res) => {
+router14.patch(AP + "/social-links/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [current] = await db.select().from(socialLinksTable).where(eq(socialLinksTable.id, id));
   if (!current) {
@@ -282007,7 +282042,7 @@ router13.patch(AP + "/social-links/:id/toggle", requireAdmin, async (req, res) =
   await logAdminAction(req.session.userId, row.active ? "ENABLE_SOCIAL_LINK" : "DISABLE_SOCIAL_LINK", "social_link", String(id), current.name, req.ip);
   res.json(row);
 });
-router13.delete(AP + "/social-links/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/social-links/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [deleted] = await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id)).returning();
   if (!deleted) {
@@ -282017,11 +282052,11 @@ router13.delete(AP + "/social-links/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_SOCIAL_LINK", "social_link", String(id), deleted.name, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/jobs", requireAdmin, async (req, res) => {
+router14.get(AP + "/jobs", requireAdmin, async (req, res) => {
   const rows = await db.select().from(jobsTable).orderBy(desc(jobsTable.postedAt));
   res.json(rows);
 });
-router13.post(AP + "/jobs", requireAdmin, async (req, res) => {
+router14.post(AP + "/jobs", requireAdmin, async (req, res) => {
   const { title, department, location: location2, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body;
   if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
@@ -282042,7 +282077,7 @@ router13.post(AP + "/jobs", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_JOB", "job", String(row.id), title, req.ip);
   res.json(row);
 });
-router13.put(AP + "/jobs/:id", requireAdmin, async (req, res) => {
+router14.put(AP + "/jobs/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { title, department, location: location2, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body;
   if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
@@ -282068,7 +282103,7 @@ router13.put(AP + "/jobs/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_JOB", "job", String(id), title, req.ip);
   res.json(row);
 });
-router13.patch(AP + "/jobs/:id/toggle", requireAdmin, async (req, res) => {
+router14.patch(AP + "/jobs/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [current] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
   if (!current) {
@@ -282079,7 +282114,7 @@ router13.patch(AP + "/jobs/:id/toggle", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, row.active ? "ENABLE_JOB" : "DISABLE_JOB", "job", String(id), current.title, req.ip);
   res.json(row);
 });
-router13.delete(AP + "/jobs/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/jobs/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [deleted] = await db.delete(jobsTable).where(eq(jobsTable.id, id)).returning();
   if (!deleted) {
@@ -282089,7 +282124,7 @@ router13.delete(AP + "/jobs/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_JOB", "job", String(id), deleted.title, req.ip);
   res.json({ ok: true });
 });
-router13.post(AP + "/telegram/save", requireAdmin, async (req, res) => {
+router14.post(AP + "/telegram/save", requireAdmin, async (req, res) => {
   const { token, chatId } = req.body;
   const updates = {};
   if (token !== void 0) updates["telegram_bot_token"] = token.trim();
@@ -282101,7 +282136,7 @@ router13.post(AP + "/telegram/save", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_TELEGRAM_CONFIG", "settings", void 0, void 0, req.ip);
   res.json({ ok: true });
 });
-router13.get(AP + "/support-agents", requireAdmin, async (req, res) => {
+router14.get(AP + "/support-agents", requireAdmin, async (req, res) => {
   const agents = await db.select({
     id: supportUsersTable.id,
     email: supportUsersTable.email,
@@ -282111,7 +282146,7 @@ router13.get(AP + "/support-agents", requireAdmin, async (req, res) => {
   }).from(supportUsersTable).orderBy(asc(supportUsersTable.createdAt));
   res.json({ agents });
 });
-router13.post(AP + "/support-agents", requireAdmin, async (req, res) => {
+router14.post(AP + "/support-agents", requireAdmin, async (req, res) => {
   const schema = external_exports2.object({
     email: external_exports2.string().email("Email invalide"),
     name: external_exports2.string().min(2, "Nom requis"),
@@ -282139,7 +282174,7 @@ router13.post(AP + "/support-agents", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_SUPPORT_AGENT", "support_user", String(agent.id), `Created support agent: ${email3}`, req.ip);
   res.status(201).json({ success: true, agent });
 });
-router13.patch(AP + "/support-agents/:id/reset-password", requireAdmin, async (req, res) => {
+router14.patch(AP + "/support-agents/:id/reset-password", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ newPassword: external_exports2.string().min(8, "Mot de passe : 8 caract\xE8res minimum") });
   const parsed = schema.safeParse(req.body);
@@ -282157,7 +282192,7 @@ router13.patch(AP + "/support-agents/:id/reset-password", requireAdmin, async (r
   await logAdminAction(req.session.userId, "RESET_SUPPORT_AGENT_PASSWORD", "support_user", String(id), void 0, req.ip);
   res.json({ success: true });
 });
-router13.delete(AP + "/support-agents/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/support-agents/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [agent] = await db.select({ id: supportUsersTable.id, email: supportUsersTable.email }).from(supportUsersTable).where(eq(supportUsersTable.id, id));
   if (!agent) {
@@ -282176,11 +282211,11 @@ var bannerImageUpload = (0, import_multer2.default)({
     cb(null, ok);
   }
 });
-router13.get(AP + "/global-banners", requireAdmin, async (_req, res) => {
+router14.get(AP + "/global-banners", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(globalBannersTable).orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
-router13.post(AP + "/global-banners/upload-image", requireAdmin, bannerImageUpload.single("image"), async (req, res) => {
+router14.post(AP + "/global-banners/upload-image", requireAdmin, bannerImageUpload.single("image"), async (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: "Aucun fichier re\xE7u" });
     return;
@@ -282201,7 +282236,7 @@ var bannerCreateSchema = external_exports2.object({
   imageUrl: external_exports2.string().optional(),
   active: external_exports2.boolean().default(true)
 });
-router13.post(AP + "/global-banners", requireAdmin, async (req, res) => {
+router14.post(AP + "/global-banners", requireAdmin, async (req, res) => {
   const parsed = bannerCreateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.issues });
@@ -282214,7 +282249,7 @@ router13.post(AP + "/global-banners", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "CREATE_BANNER", "global_banner", String(banner.id), parsed.data.message, req.ip);
   res.json(banner);
 });
-router13.patch(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
+router14.patch(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -282230,7 +282265,7 @@ router13.patch(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "UPDATE_BANNER", "global_banner", String(id), parsed.data.message, req.ip);
   res.json(updated);
 });
-router13.patch(AP + "/global-banners/:id/toggle", requireAdmin, async (req, res) => {
+router14.patch(AP + "/global-banners/:id/toggle", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -282241,7 +282276,7 @@ router13.patch(AP + "/global-banners/:id/toggle", requireAdmin, async (req, res)
   await logAdminAction(req.session.userId, updated.active ? "ENABLE_BANNER" : "DISABLE_BANNER", "global_banner", String(id), void 0, req.ip);
   res.json(updated);
 });
-router13.delete(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
+router14.delete(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select({ id: globalBannersTable.id }).from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -282252,16 +282287,16 @@ router13.delete(AP + "/global-banners/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_BANNER", "global_banner", String(id), void 0, req.ip);
   res.json({ success: true });
 });
-var admin_default = router13;
+var admin_default = router14;
 
 // src/routes/clapay-webhook.ts
-var import_express14 = __toESM(require_express2(), 1);
+var import_express15 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
 init_clapay();
 import crypto8 from "crypto";
-var router14 = (0, import_express14.Router)();
+var router15 = (0, import_express15.Router)();
 function signMerchantPayload(payload, secret, timestamp2) {
   return crypto8.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
 }
@@ -282281,7 +282316,7 @@ var STATUS_MAP = {
   "processing": "processing",
   "initiated": "processing"
 };
-router14.post("/webhooks/clapay", async (req, res) => {
+router15.post("/webhooks/clapay", async (req, res) => {
   res.status(200).json({ received: true });
   try {
     if (!isClapayConfigured()) {
@@ -282428,7 +282463,7 @@ router14.post("/webhooks/clapay", async (req, res) => {
     console.error("[Clapay Webhook] Erreur traitement:", err.message);
   }
 });
-router14.get("/webhooks/clapay", (_req, res) => {
+router15.get("/webhooks/clapay", (_req, res) => {
   res.json({
     service: "DrimPay",
     webhook: "clapay",
@@ -282437,20 +282472,20 @@ router14.get("/webhooks/clapay", (_req, res) => {
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
-var clapay_webhook_default = router14;
+var clapay_webhook_default = router15;
 
 // src/routes/paydunya-webhook.ts
-var import_express15 = __toESM(require_express2(), 1);
+var import_express16 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
 init_paydunya();
 import crypto9 from "crypto";
-var router15 = (0, import_express15.Router)();
+var router16 = (0, import_express16.Router)();
 function signMerchantPayload2(payload, secret, timestamp2) {
   return crypto9.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
 }
-router15.post("/webhooks/paydunya", async (req, res) => {
+router16.post("/webhooks/paydunya", async (req, res) => {
   res.status(200).json({ received: true });
   try {
     if (!isPayDunyaConfigured()) {
@@ -282609,7 +282644,7 @@ router15.post("/webhooks/paydunya", async (req, res) => {
     console.error("[PayDunya Webhook] Erreur traitement:", err.message);
   }
 });
-router15.get("/webhooks/paydunya", (_req, res) => {
+router16.get("/webhooks/paydunya", (_req, res) => {
   res.json({
     service: "DrimPay",
     webhook: "paydunya",
@@ -282618,15 +282653,15 @@ router15.get("/webhooks/paydunya", (_req, res) => {
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
-var paydunya_webhook_default = router15;
+var paydunya_webhook_default = router16;
 
 // src/routes/support-admin.ts
-var import_express16 = __toESM(require_express2(), 1);
+var import_express17 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
 init_mailer();
-var router16 = (0, import_express16.Router)();
+var router17 = (0, import_express17.Router)();
 var requireSupportAuth = async (req, res, next) => {
   if (req.session.supportAdminId) {
     next();
@@ -282657,7 +282692,7 @@ var requirePasswordChanged = async (req, res, next) => {
   }
   next();
 };
-router16.post("/support-admin/login", async (req, res) => {
+router17.post("/support-admin/login", async (req, res) => {
   const schema = external_exports2.object({ email: external_exports2.string().email(), password: external_exports2.string().min(1) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -282679,10 +282714,10 @@ router16.post("/support-admin/login", async (req, res) => {
   req.session.supportAdminId = user.id;
   res.json({ id: user.id, email: user.email, name: user.name, mustChangePassword: user.mustChangePassword });
 });
-router16.post("/support-admin/logout", (req, res) => {
+router17.post("/support-admin/logout", (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
-router16.get("/support-admin/me", requireSupportAuth, async (req, res) => {
+router17.get("/support-admin/me", requireSupportAuth, async (req, res) => {
   if (!req.session.supportAdminId && req.session.userId) {
     const [u2] = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, req.session.userId));
     if (!u2) {
@@ -282699,7 +282734,7 @@ router16.get("/support-admin/me", requireSupportAuth, async (req, res) => {
   }
   res.json(u);
 });
-router16.patch("/support-admin/change-password", requireSupportAuth, async (req, res) => {
+router17.patch("/support-admin/change-password", requireSupportAuth, async (req, res) => {
   const schema = external_exports2.object({
     currentPassword: external_exports2.string().min(1),
     newPassword: external_exports2.string().min(8, "Au moins 8 caract\xE8res")
@@ -282723,7 +282758,7 @@ router16.patch("/support-admin/change-password", requireSupportAuth, async (req,
   await db.update(supportUsersTable).set({ passwordHash: hash2, mustChangePassword: false }).where(eq(supportUsersTable.id, user.id));
   res.json({ success: true });
 });
-router16.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
   const [total] = await db.select({ c: count() }).from(contactSubmissionsTable);
@@ -282754,7 +282789,7 @@ router16.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged,
     recentMessages
   });
 });
-router16.get("/support-admin/messages", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/messages", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const { status, source, search } = req.query;
   const page = Math.max(1, parseInt(req.query.page ?? "1"));
   const limit = 20;
@@ -282775,7 +282810,7 @@ router16.get("/support-admin/messages", requireSupportAuth, requirePasswordChang
   const [totalRow] = await db.select({ c: count() }).from(contactSubmissionsTable).where(conditions.length ? and(...conditions) : void 0);
   res.json({ messages, total: Number(totalRow.c), page, pages: Math.ceil(Number(totalRow.c) / limit) });
 });
-router16.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [msg] = await db.select().from(contactSubmissionsTable).where(eq(contactSubmissionsTable.id, id));
   if (!msg) {
@@ -282791,7 +282826,7 @@ router16.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordC
   }).from(supportRepliesTable).leftJoin(supportUsersTable, eq(supportRepliesTable.supportUserId, supportUsersTable.id)).where(eq(supportRepliesTable.contactId, id)).orderBy(supportRepliesTable.sentAt);
   res.json({ ...msg, replies });
 });
-router16.patch("/support-admin/messages/:id/status", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.patch("/support-admin/messages/:id/status", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ status: external_exports2.enum(["unread", "in_progress", "replied", "closed"]) });
   const parsed = schema.safeParse(req.body);
@@ -282802,7 +282837,7 @@ router16.patch("/support-admin/messages/:id/status", requireSupportAuth, require
   await db.update(contactSubmissionsTable).set({ ticketStatus: parsed.data.status }).where(eq(contactSubmissionsTable.id, id));
   res.json({ success: true });
 });
-router16.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ body: external_exports2.string().min(1, "Le message ne peut pas \xEAtre vide") });
   const parsed = schema.safeParse(req.body);
@@ -282833,7 +282868,7 @@ router16.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePa
   res.json({ success: true, reply });
 });
 var SUPPORT_SETTING_KEYS = ["support_whatsapp", "support_email_1", "support_email_2", "support_hours", "support_telegram"];
-router16.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const { status, mode, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -282853,7 +282888,7 @@ router16.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePassw
     page: pageNum
   });
 });
-router16.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
   if (!exchange) {
@@ -282866,7 +282901,7 @@ router16.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requireP
   const toWallet = exchange.toWalletId ? (await db.select().from(walletsTable2).where(eq(walletsTable2.id, exchange.toWalletId)))[0] : null;
   res.json({ exchange, merchant: merchant ?? null, fromWallet: fromWallet ?? null, toWallet: toWallet ?? null });
 });
-router16.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const actorUser = req.session.supportAdminId ? (await db.select({ name: supportUsersTable.name }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId)))[0] : null;
   const actor = actorUser?.name ?? "Support";
@@ -282877,7 +282912,7 @@ router16.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth,
   }
   res.json({ ok: true });
 });
-router16.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const { reason } = req.body;
   if (!reason?.trim()) {
@@ -282893,12 +282928,12 @@ router16.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, 
   }
   res.json({ ok: true });
 });
-router16.get("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const rows = await db.select().from(supportSettingsTable);
   const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
   res.json(map2);
 });
-router16.patch("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.patch("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const updates = req.body;
   for (const key of SUPPORT_SETTING_KEYS) {
     if (key in updates) {
@@ -282907,11 +282942,11 @@ router16.patch("/support-admin/settings", requireSupportAuth, requirePasswordCha
   }
   res.json({ success: true });
 });
-router16.get("/support-admin/socials", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/socials", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const links = await db.select().from(socialLinksTable).orderBy(socialLinksTable.sortOrder);
   res.json(links);
 });
-router16.patch("/support-admin/socials/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.patch("/support-admin/socials/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ url: external_exports2.string(), active: external_exports2.boolean().optional() });
   const parsed = schema.safeParse(req.body);
@@ -282930,11 +282965,11 @@ var bannerSchema = external_exports2.object({
   buttonLink: external_exports2.string().optional(),
   active: external_exports2.boolean().default(true)
 });
-router16.get("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (_req, res) => {
+router17.get("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (_req, res) => {
   const rows = await db.select().from(globalBannersTable).orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
-router16.post("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.post("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const parsed = bannerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides" });
@@ -282943,7 +282978,7 @@ router16.post("/support-admin/global-banners", requireSupportAuth, requirePasswo
   const [banner] = await db.insert(globalBannersTable).values(parsed.data).returning();
   res.json(banner);
 });
-router16.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -282953,7 +282988,7 @@ router16.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, r
   const [updated] = await db.update(globalBannersTable).set({ active: !existing.active, updatedAt: /* @__PURE__ */ new Date() }).where(eq(globalBannersTable.id, id)).returning();
   res.json(updated);
 });
-router16.delete("/support-admin/global-banners/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.delete("/support-admin/global-banners/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select({ id: globalBannersTable.id }).from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -282963,22 +282998,22 @@ router16.delete("/support-admin/global-banners/:id", requireSupportAuth, require
   await db.delete(globalBannersTable).where(eq(globalBannersTable.id, id));
   res.json({ success: true });
 });
-router16.get("/support/config", async (req, res) => {
+router17.get("/support/config", async (req, res) => {
   const rows = await db.select().from(supportSettingsTable);
   const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
   res.json(map2);
 });
-var support_admin_default = router16;
+var support_admin_default = router17;
 
 // src/routes/pay.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
 import crypto10 from "crypto";
 init_clapay();
 init_paydunya();
-var router17 = (0, import_express17.Router)();
+var router18 = (0, import_express18.Router)();
 var CURRENCY_MAP = {
   TG: "XOF",
   BJ: "XOF",
@@ -282998,7 +283033,7 @@ var DEFAULT_OPERATORS = {
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"]
 };
 var FEE_RATE3 = 0.035;
-router17.get("/pay/status/:reference", async (req, res) => {
+router18.get("/pay/status/:reference", async (req, res) => {
   const { reference } = req.params;
   if (!reference) {
     res.status(400).json({ error: "Reference required" });
@@ -283034,7 +283069,7 @@ router17.get("/pay/status/:reference", async (req, res) => {
     failureReason: tx.failureReason ?? void 0
   });
 });
-router17.get("/pay/:token", async (req, res) => {
+router18.get("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const [link] = await db.select().from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
   if (!link) {
@@ -283088,7 +283123,7 @@ router17.get("/pay/:token", async (req, res) => {
     operatorMaintenance
   });
 });
-router17.post("/pay/:token/attempt", async (req, res) => {
+router18.post("/pay/:token/attempt", async (req, res) => {
   const { token } = req.params;
   const { phone, amount, name: name2, email: email3, countryCode, operator } = req.body;
   const [link] = await db.select({ id: paymentLinksTable.id, userId: paymentLinksTable.userId }).from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
@@ -283111,7 +283146,7 @@ router17.post("/pay/:token/attempt", async (req, res) => {
   }).returning();
   res.json({ attemptId: attempt.id });
 });
-router17.patch("/pay/:token/attempt/:id", async (req, res) => {
+router18.patch("/pay/:token/attempt/:id", async (req, res) => {
   const attemptId = parseInt(req.params.id);
   const { status, transactionReference } = req.body;
   if (isNaN(attemptId)) {
@@ -283134,7 +283169,7 @@ var paySchema = external_exports2.object({
   customerEmail: external_exports2.string().optional(),
   operatorOtp: external_exports2.string().optional()
 });
-router17.post("/pay/:token", async (req, res) => {
+router18.post("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const parsed = paySchema.safeParse(req.body);
   if (!parsed.success) {
@@ -283339,14 +283374,14 @@ router17.post("/pay/:token", async (req, res) => {
     }
   }
 });
-var pay_default = router17;
+var pay_default = router18;
 
 // src/routes/security.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-var router18 = (0, import_express18.Router)();
+var router19 = (0, import_express19.Router)();
 var AP2 = `/${process.env["ADMIN_ROUTE_SECRET"] ?? "admin"}`;
 function requireAdmin2(req, res, next) {
   if (!req.session?.userId || req.session?.role !== "admin") {
@@ -283355,7 +283390,7 @@ function requireAdmin2(req, res, next) {
   }
   next();
 }
-router18.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
+router19.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
   const limit = Math.min(parseInt(String(req.query.limit ?? "50")), 200);
   const offset = parseInt(String(req.query.offset ?? "0"));
   const riskLevel = req.query.riskLevel;
@@ -283380,11 +283415,11 @@ router18.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
   }).from(securityEventsTable);
   res.json({ events: rows, stats });
 });
-router18.get(AP2 + "/security/blocked-ips", requireAdmin2, async (req, res) => {
+router19.get(AP2 + "/security/blocked-ips", requireAdmin2, async (req, res) => {
   const rows = await db.select().from(blockedIpsTable).orderBy(desc(blockedIpsTable.createdAt));
   res.json(rows);
 });
-router18.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
+router19.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
   const schema = external_exports2.object({
     ip: external_exports2.string().min(3).max(64),
     reason: external_exports2.string().min(1).max(500),
@@ -283413,7 +283448,7 @@ router18.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router18.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, res) => {
+router19.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     res.status(400).json({ error: "ID invalide" });
@@ -283422,29 +283457,30 @@ router18.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, re
   await db.delete(blockedIpsTable).where(eq(blockedIpsTable.id, id));
   res.json({ ok: true });
 });
-var security_default = router18;
+var security_default = router19;
 
 // src/routes/index.ts
-var router19 = (0, import_express19.Router)();
-router19.use(auth_default);
-router19.use(health_default);
-router19.use(help_default);
-router19.use(stats_default);
-router19.use(blog_default);
-router19.use(jobs_default);
-router19.use(contact_default);
-router19.use(status_default);
-router19.use(partners_default);
-router19.use(countries_default);
-router19.use(dashboard_default);
-router19.use(v2payin_default);
-router19.use(admin_default);
-router19.use(clapay_webhook_default);
-router19.use(paydunya_webhook_default);
-router19.use(support_admin_default);
-router19.use(pay_default);
-router19.use(security_default);
-var routes_default = router19;
+var router20 = (0, import_express20.Router)();
+router20.use(auth_default);
+router20.use(health_default);
+router20.use(help_default);
+router20.use(diag_default);
+router20.use(stats_default);
+router20.use(blog_default);
+router20.use(jobs_default);
+router20.use(contact_default);
+router20.use(status_default);
+router20.use(partners_default);
+router20.use(countries_default);
+router20.use(dashboard_default);
+router20.use(v2payin_default);
+router20.use(admin_default);
+router20.use(clapay_webhook_default);
+router20.use(paydunya_webhook_default);
+router20.use(support_admin_default);
+router20.use(pay_default);
+router20.use(security_default);
+var routes_default = router20;
 
 // src/lib/logger.ts
 var import_pino = __toESM(require_pino(), 1);
@@ -283497,7 +283533,7 @@ function subdomainMiddleware(req, res, next) {
 }
 
 // src/app.ts
-var app = (0, import_express20.default)();
+var app = (0, import_express21.default)();
 var isProd = process.env["NODE_ENV"] === "production";
 if (isProd) {
   app.set("trust proxy", true);
@@ -283567,8 +283603,8 @@ app.use(
     }
   })
 );
-app.use(import_express20.default.json({ limit: "2mb" }));
-app.use(import_express20.default.urlencoded({ extended: true, limit: "2mb" }));
+app.use(import_express21.default.json({ limit: "2mb" }));
+app.use(import_express21.default.urlencoded({ extended: true, limit: "2mb" }));
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
@@ -283596,7 +283632,7 @@ var frontendDist = path4.resolve(__dirname3, "../../drimpay/dist/public");
 var indexHtml = path4.join(frontendDist, "index.html");
 if (existsSync2(frontendDist) && existsSync2(indexHtml)) {
   app.use(
-    import_express20.default.static(frontendDist, {
+    import_express21.default.static(frontendDist, {
       maxAge: "7d",
       etag: true,
       index: false,
@@ -283660,6 +283696,18 @@ if (effectivePort !== port) {
   crashLog("[PORT]", `Invalid PORT="${rawPort}" \u2014 falling back to 8080. Fix: remove PORT from Plesk custom env vars and let Passenger manage it.`);
 }
 logger.info({ port: effectivePort, env: process.env["NODE_ENV"] ?? "unknown" }, "Starting DrimPay API server");
+var envDiag = {
+  SESSION_SECRET: process.env["SESSION_SECRET"] ? `\u2713 (${process.env["SESSION_SECRET"].length} chars)` : "\u2717 MANQUANT",
+  SUPABASE_DATABASE_URL: process.env["SUPABASE_DATABASE_URL"] ? "\u2713 d\xE9fini" : process.env["DATABASE_URL"] ? "\u2713 (DATABASE_URL fallback)" : "\u2717 MANQUANT",
+  SUPABASE_URL: process.env["SUPABASE_URL"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+  SUPABASE_SERVICE_ROLE_KEY: process.env["SUPABASE_SERVICE_ROLE_KEY"] ? `\u2713 (${process.env["SUPABASE_SERVICE_ROLE_KEY"].length} chars) \u2014 KYB uploads actifs` : "\u2717 MANQUANT \u2014 KYB uploads D\xC9SACTIV\xC9S",
+  SUPABASE_ANON_KEY: process.env["SUPABASE_ANON_KEY"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+  RESEND_API_KEY: process.env["RESEND_API_KEY"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT \u2014 emails d\xE9sactiv\xE9s"
+};
+for (const [key, val] of Object.entries(envDiag)) {
+  const level = val.startsWith("\u2717") ? "warn" : "info";
+  logger[level]({ key, status: val }, `[ENV] ${key}: ${val}`);
+}
 var server = app_default.listen(effectivePort, "0.0.0.0", () => {
   logger.info({ port: effectivePort }, "Server listening");
   logClapayConfig();
