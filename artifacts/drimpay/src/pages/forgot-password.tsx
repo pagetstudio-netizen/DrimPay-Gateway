@@ -12,10 +12,17 @@ const inputCls = (err?: boolean) =>
     err ? "border-red-400 focus:border-red-400 focus:ring-red-400/10" : "border-gray-200"
   );
 
+const LS_FORGOT_EMAIL = "dp_forgot_email";
+
 export default function ForgotPassword() {
   const [, navigate] = useLocation();
   const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
+  // Restore email from localStorage so it survives a page reload at the
+  // code-entry step (e.g. mobile browser killed the tab while switching to
+  // the email app to read the code).
+  const [email, setEmail] = useState(() => {
+    try { return localStorage.getItem(LS_FORGOT_EMAIL) ?? ""; } catch { return ""; }
+  });
   const [code, setCode] = useState(["", "", "", "", ""]);
   const [resetToken, setResetToken] = useState("");
   const [password, setPassword] = useState("");
@@ -36,8 +43,11 @@ export default function ForgotPassword() {
     if (token) {
       setResetToken(token);
       setStep("password");
+    } else if (email) {
+      // Email already in state (restored from localStorage) — resume at code step
+      setStep("code");
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +60,8 @@ export default function ForgotPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
+      // Persist so the code step can recover the email after a page reload
+      try { localStorage.setItem(LS_FORGOT_EMAIL, email.trim()); } catch { /* ignore */ }
       setStep("code");
     } catch {
       setError("Une erreur est survenue. Veuillez réessayer.");
@@ -81,16 +93,22 @@ export default function ForgotPassword() {
     e.preventDefault();
     const fullCode = code.join("");
     if (fullCode.length < 5) { setError("Entrez les 5 chiffres du code."); return; }
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Adresse email introuvable — retournez à l'étape précédente pour la ressaisir.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
       const r = await fetch("/api/auth/verify-reset-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), code: fullCode }),
+        body: JSON.stringify({ email: trimmedEmail, code: fullCode }),
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error ?? "Code invalide ou expiré."); setLoading(false); return; }
+      try { localStorage.removeItem(LS_FORGOT_EMAIL); } catch { /* ignore */ }
       setResetToken(data.token);
       setStep("password");
     } catch {
@@ -246,7 +264,10 @@ export default function ForgotPassword() {
           {/* ── STEP CODE ─────────────────────────────────────────────────── */}
           {step === "code" && (
             <div className="space-y-5">
-              <button type="button" onClick={() => { setStep("email"); setCode(["", "", "", "", ""]); setError(""); setShowSupportForm(false); }}
+              <button type="button" onClick={() => {
+                try { localStorage.removeItem(LS_FORGOT_EMAIL); } catch { /* ignore */ }
+                setStep("email"); setCode(["", "", "", "", ""]); setError(""); setShowSupportForm(false);
+              }}
                 className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-2">
                 <ArrowLeft className="w-4 h-4" /> Changer l'email
               </button>
