@@ -7,7 +7,7 @@ import {
   usersTable, apiKeysTable, passwordResetTokensTable,
   emailVerificationTokensTable, knownDevicesTable,
 } from "@workspace/db/schema";
-import { eq, and, gt, isNull } from "drizzle-orm";
+import { eq, and, gt, isNull, desc } from "drizzle-orm";
 import { notifyNewUser, notifyLoginAttempt } from "../lib/telegram";
 import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail, sendPasswordResetSupportEmail } from "../lib/mailer";
 import {
@@ -279,7 +279,9 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
 router.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
   const { email, code } = req.body as { email?: string; code?: string };
   if (!email || !code) {
-    res.status(400).json({ error: "Email et code requis." });
+    // Log which field is missing to help diagnose proxy/header stripping issues
+    const missing = !email && !code ? "email+code" : !email ? "email" : "code";
+    res.status(400).json({ error: `${missing === "email" ? "Email" : missing === "code" ? "Code" : "Email et code"} requis.` });
     return;
   }
 
@@ -297,7 +299,10 @@ router.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
           isNull(emailVerificationTokensTable.usedAt),
         )
       )
-      .orderBy(emailVerificationTokensTable.createdAt)
+      // DESC = most recently generated code first. When the user resends,
+      // a new code is created and sent by email — the backend must match
+      // against the NEWEST code or the user's fresh code will always miss.
+      .orderBy(desc(emailVerificationTokensTable.createdAt))
       .limit(1);
     record = rows[0];
   } catch (e) {
@@ -476,7 +481,8 @@ router.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) => {
 router.post("/auth/verify-reset-code", codeVerifyRateLimiter, async (req, res) => {
   const { email, code } = req.body as { email?: string; code?: string };
   if (!email || !code) {
-    res.status(400).json({ error: "Email et code requis." });
+    const missing = !email && !code ? "email+code" : !email ? "email" : "code";
+    res.status(400).json({ error: `${missing === "email" ? "Email" : missing === "code" ? "Code" : "Email et code"} requis.` });
     return;
   }
 
@@ -492,7 +498,8 @@ router.post("/auth/verify-reset-code", codeVerifyRateLimiter, async (req, res) =
         isNull(passwordResetTokensTable.usedAt),
       )
     )
-    .orderBy(passwordResetTokensTable.createdAt)
+    // DESC = most recently generated code first (same fix as verify-email)
+    .orderBy(desc(passwordResetTokensTable.createdAt))
     .limit(1);
 
   if (!record) {
