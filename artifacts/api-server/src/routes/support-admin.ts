@@ -245,7 +245,7 @@ router.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswor
 });
 
 router.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
   if (!exchange) { res.status(404).json({ error: "Échange introuvable" }); return; }
 
@@ -262,7 +262,7 @@ router.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePas
 });
 
 router.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const actorUser = req.session.supportAdminId
     ? (await db.select({ name: supportUsersTable.name }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId)))[0]
     : null;
@@ -273,7 +273,7 @@ router.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, r
 });
 
 router.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const { reason } = req.body;
   if (!reason?.trim()) { res.status(400).json({ error: "Motif requis" }); return; }
   const actorUser = req.session.supportAdminId
