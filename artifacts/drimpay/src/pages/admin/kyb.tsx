@@ -164,6 +164,36 @@ function KybDetailModal({ kyb, onClose, onRefresh }: { kyb: any; onClose: () => 
 
         <div className="p-6 space-y-4">
 
+          {/* ── Alerte doublon de pièce d'identité ── */}
+          {kyb.hasDuplicateId && kyb.duplicateAccounts?.length > 0 && (
+            <div className="bg-orange-50 border border-orange-300 rounded-xl p-4 flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-orange-800 mb-1">
+                  ⚠ Numéro de pièce d'identité déjà utilisé sur {kyb.duplicateAccounts.length} autre{kyb.duplicateAccounts.length > 1 ? "s" : ""} compte{kyb.duplicateAccounts.length > 1 ? "s" : ""}
+                </p>
+                <p className="text-xs text-orange-700 mb-2">
+                  Le numéro <span className="font-mono font-semibold">{kyb.legalRepIdNumber}</span> ({kyb.legalRepIdType}) est enregistré sur les dossiers suivants :
+                </p>
+                <div className="space-y-1.5">
+                  {kyb.duplicateAccounts.map((acc: any) => (
+                    <div key={acc.id} className="flex items-center gap-2 text-xs bg-orange-100/60 rounded-lg px-3 py-1.5">
+                      <span className="font-mono text-orange-600 shrink-0">#{acc.id}</span>
+                      <span className="font-semibold text-orange-900 truncate">{acc.companyName ?? "—"}</span>
+                      <span className="text-orange-600 truncate">{acc.email}</span>
+                      <span className={cn(
+                        "ml-auto shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-semibold",
+                        STATUS_COLORS[acc.status] ?? "bg-gray-100 text-gray-600"
+                      )}>
+                        {STATUS_LABELS[acc.status] ?? acc.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Raison de rejet affichée */}
           {kyb.status === "rejected" && kyb.rejectionReason && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
@@ -589,9 +619,16 @@ export default function AdminKyb() {
                         {k.submittedAt ? new Date(k.submittedAt).toLocaleDateString("fr-FR") : "—"}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold whitespace-nowrap", STATUS_COLORS[k.status])}>
-                          {STATUS_LABELS[k.status] ?? k.status}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold whitespace-nowrap", STATUS_COLORS[k.status])}>
+                            {STATUS_LABELS[k.status] ?? k.status}
+                          </span>
+                          {k.hasDuplicateId && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-orange-100 text-orange-700 border border-orange-300 whitespace-nowrap flex items-center gap-1">
+                              <AlertTriangle className="w-2.5 h-2.5" /> Pièce dupliquée
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setSelected(k)}

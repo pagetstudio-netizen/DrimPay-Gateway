@@ -96,11 +96,18 @@ const kycStep2Schema = z.object({
   website: z.string().url("URL invalide").or(z.literal("")).optional(),
 });
 
+const kycStep3IdSchema = z.object({
+  legalRepIdType:   z.string().min(1, "Type de document requis"),
+  legalRepIdNumber: z.string().min(1, "Numéro de document requis"),
+  legalRepIdExpiry: z.string().min(1, "Date d'expiration requise"),
+});
+
 type Step1Data = z.infer<typeof step1Schema>;
 type Step2Data = z.infer<typeof step2Schema>;
 type Step4Data = z.infer<typeof step4Schema>;
 type KycStep1Data = z.infer<typeof kycStep1Schema>;
 type KycStep2Data = z.infer<typeof kycStep2Schema>;
+type KycStep3IdData = z.infer<typeof kycStep3IdSchema>;
 
 const kybStatusConfig: Record<string, { label: string; color: string; bg: string; icon: any; description: string }> = {
   pending: {
@@ -330,6 +337,15 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
     },
   });
 
+  const form3 = useForm<KycStep3IdData>({
+    resolver: zodResolver(kycStep3IdSchema),
+    defaultValues: {
+      legalRepIdType:   kyb?.legalRepIdType ?? "",
+      legalRepIdNumber: kyb?.legalRepIdNumber ?? "",
+      legalRepIdExpiry: kyb?.legalRepIdExpiry ?? "",
+    },
+  });
+
   const setFile = (key: string) => (file: File | null) =>
     setUploadedFiles(prev => ({ ...prev, [key]: file }));
 
@@ -378,7 +394,7 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
     finally { setSubmitting(false); }
   });
 
-  const handleStep3Submit = async () => {
+  const handleStep3Submit = form3.handleSubmit(async (idValues) => {
     if (submitting) return;
     setError("");
     if (!kycDocsReady) {
@@ -387,13 +403,13 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
     }
     setSubmitting(true);
     try {
-      const result = await saveStep(3, {}, KYC_ID_DOCS.map(d => d.key));
+      const result = await saveStep(3, idValues, KYC_ID_DOCS.map(d => d.key));
       lsClear();
       onSubmitted(result);
       setSubmitted(true);
     } catch (e: any) { setError(e.message); }
     finally { setSubmitting(false); }
-  };
+  });
 
   const progressPercent = ((step - 1) / (KYC_STEPS.length - 1)) * 100;
 
@@ -621,16 +637,73 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
           </motion.div>
         )}
 
-        {/* ── KYC STEP 3: Documents d'identité + Soumission ── */}
+        {/* ── KYC STEP 3: Pièce d'identité (infos + photos) + Soumission ── */}
         {step === 3 && (
           <motion.div key="kyc3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-5">
+
+            {/* ── Informations de la pièce ── */}
+            <Form {...form3}>
+              <div className="rounded-xl border border-border bg-card p-6">
+                <h3 className="font-semibold mb-1 flex items-center gap-2 text-base">
+                  <CreditCard className="w-4 h-4 text-primary" />
+                  Informations de la pièce d'identité
+                </h3>
+                <p className="text-xs text-muted-foreground mb-5">
+                  Renseignez les informations de votre pièce officielle — ces données sont utilisées pour vérifier l'unicité du document.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form3.control} name="legalRepIdType" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type de document <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <PopupSelect
+                          options={ID_TYPES.map(t => ({ value: t, label: t }))}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Sélectionner"
+                          title="Type de document"
+                          disabled={!isEditable}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form3.control} name="legalRepIdNumber" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Numéro du document <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input className="pl-9" placeholder="TG12345678" disabled={!isEditable} {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form3.control} name="legalRepIdExpiry" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date d'expiration <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input className="pl-9" type="date" disabled={!isEditable} {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+              </div>
+            </Form>
+
+            {/* ── Photos de la pièce ── */}
             <div className="rounded-xl border border-border bg-card p-6">
               <h3 className="font-semibold mb-1 flex items-center gap-2 text-base">
-                <CreditCard className="w-4 h-4 text-primary" />
-                Vérification d'identité
+                <Upload className="w-4 h-4 text-primary" />
+                Photos de la pièce d'identité
               </h3>
               <p className="text-xs text-muted-foreground mb-5">
-                Trois documents sont requis : recto de la pièce, verso, et un selfie vous tenant la pièce en main. Formats acceptés : PDF, JPG, PNG · max 10 Mo.
+                Trois fichiers sont requis : recto, verso, et un selfie vous tenant la pièce en main. Formats acceptés : PDF, JPG, PNG · max 10 Mo.
               </p>
               <div className="grid grid-cols-1 gap-3">
                 {KYC_ID_DOCS.map((doc) => (
@@ -666,7 +739,7 @@ function PersonalKyc({ kyb, isEditable, onSubmitted }: { kyb: any; isEditable: b
                 type="button"
                 onClick={handleStep3Submit}
                 className="bg-primary text-black gap-2"
-                disabled={submitting || !kycDocsReady}
+                disabled={submitting}
               >
                 {submitting ? (
                   <><span className="animate-spin inline-block w-4 h-4 border-2 border-black/30 border-t-black rounded-full" /> Soumission...</>

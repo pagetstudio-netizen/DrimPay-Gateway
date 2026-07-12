@@ -1209,6 +1209,20 @@ router.post("/dashboard/kyb", requireAuth, kybUpload.fields([
         }
         updateValues = parsed.data;
       } else if (stepNum === 3) {
+        // ── ID document text fields ──────────────────────────────────────────
+        const idSchema = z.object({
+          legalRepIdType:   z.string().min(1, "Type de document requis"),
+          legalRepIdNumber: z.string().min(1, "Numéro de document requis"),
+          legalRepIdExpiry: z.string().min(1, "Date d'expiration requise"),
+        });
+        const idParsed = idSchema.safeParse(body);
+        if (!idParsed.success) {
+          res.status(400).json({ error: "Données invalides", details: idParsed.error.flatten() });
+          return;
+        }
+        Object.assign(updateValues, idParsed.data);
+
+        // ── Document uploads ─────────────────────────────────────────────────
         const files = req.files as Record<string, Express.Multer.File[]> | undefined;
         const kycDocKeys = ["documentIdFront", "documentIdBack", "documentSelfie"];
         await Promise.all(kycDocKeys.map(async (key) => {

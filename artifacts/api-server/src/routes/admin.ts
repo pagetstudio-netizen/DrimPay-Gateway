@@ -11,7 +11,7 @@ import {
   reversementsTable, virtualCardOrdersTable, massPayoutJobsTable,
   passwordResetTokensTable, emailVerificationTokensTable, knownDevicesTable,
 } from "@workspace/db/schema";
-import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt, inArray, isNotNull } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import path from "path";
@@ -546,6 +546,31 @@ router.get(AP + "/kyb", requireAdmin, async (req: any, res: any) => {
     : kybSubmissionsTable.createdAt;
   const orderFn = sortDir === "asc" ? asc(orderCol) : desc(orderCol);
 
+  // ── Duplicate ID detection: find all legalRepIdNumber used by more than one account ──
+  const allIdRows = await db.select({
+    id: kybSubmissionsTable.id,
+    idNumber: kybSubmissionsTable.legalRepIdNumber,
+    userId: kybSubmissionsTable.userId,
+    status: kybSubmissionsTable.status,
+    userEmail: usersTable.email,
+    userCompanyName: usersTable.companyName,
+  })
+  .from(kybSubmissionsTable)
+  .innerJoin(usersTable, eq(kybSubmissionsTable.userId, usersTable.id))
+  .where(and(
+    isNotNull(kybSubmissionsTable.legalRepIdNumber),
+    sql`trim(${kybSubmissionsTable.legalRepIdNumber}) != ''`,
+  ));
+
+  // Group by normalised ID number → find duplicates
+  const byIdNumber = new Map<string, typeof allIdRows>();
+  for (const row of allIdRows) {
+    if (!row.idNumber) continue;
+    const key = row.idNumber.toLowerCase().trim();
+    if (!byIdNumber.has(key)) byIdNumber.set(key, []);
+    byIdNumber.get(key)!.push(row);
+  }
+
   const [submissions, [{ total }], countries] = await Promise.all([
     db.select({
       id: kybSubmissionsTable.id,
@@ -609,10 +634,21 @@ router.get(AP + "/kyb", requireAdmin, async (req: any, res: any) => {
       .where(sql`${kybSubmissionsTable.incorporationCountry} IS NOT NULL AND ${kybSubmissionsTable.incorporationCountry} != ''`),
   ]);
 
-  const enriched = submissions.map(s => ({
-    ...s,
-    user: { id: s.userId, email: s.userEmail, companyName: s.userCompanyName },
-  }));
+  const enriched = submissions.map(s => {
+    const key = s.legalRepIdNumber?.toLowerCase().trim();
+    const dupes = key ? (byIdNumber.get(key) ?? []).filter(d => d.id !== s.id) : [];
+    return {
+      ...s,
+      user: { id: s.userId, email: s.userEmail, companyName: s.userCompanyName },
+      hasDuplicateId: dupes.length > 0,
+      duplicateAccounts: dupes.map(d => ({
+        id: d.id,
+        email: d.userEmail,
+        companyName: d.userCompanyName,
+        status: d.status,
+      })),
+    };
+  });
 
   const availableCountries = countries.map(c => c.country).filter(Boolean).sort();
 
