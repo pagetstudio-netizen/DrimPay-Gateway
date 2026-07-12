@@ -74,7 +74,7 @@ export default function DocPayout() {
             <p className="text-xs text-muted-foreground mt-1">
               L'API Pay-out est <strong className="text-foreground">exclusivement réservée aux comptes Entreprise</strong> vérifiés (KYB approuvé).
               Les comptes personnels ne peuvent pas utiliser cette API. Pour retirer des fonds depuis un compte personnel,
-              utilisez la fonctionnalité <strong className="text-foreground">Reversement</strong> depuis votre dashboard (frais : 5%).
+              utilisez la fonctionnalité <strong className="text-foreground">Reversement</strong> depuis votre dashboard (frais : 3,5%).
             </p>
           </div>
         </div>
@@ -315,7 +315,7 @@ COMMIT;`} />
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-muted-foreground mb-4">
               Les frais de <strong className="text-foreground">3% (Compte Entreprise)</strong> sont calculés sur le montant brut et déduits de votre wallet.
-              Les comptes personnels ne peuvent pas accéder à l'API Pay-out — ils utilisent le Reversement dashboard (5%).
+              Les comptes personnels ne peuvent pas accéder à l'API Pay-out — ils utilisent le Reversement dashboard (3,5%).
             </p>
             <CodeBlock code={`// Exemple : pay-out de 25 000 XOF (compte entreprise)
 amount       = 25 000 XOF

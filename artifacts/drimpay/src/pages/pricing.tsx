@@ -14,29 +14,29 @@ export default function Pricing() {
   const lang = useLang();
   useSEO({
     title: lang === "fr"
-      ? "Tarification DrimPay — 5% Particuliers (Payin) · 3% Entreprises (Payin & Payout)"
-      : "DrimPay Pricing — 5% Personal (Payin) · 3% Business (Payin & Payout)",
+      ? "Tarification DrimPay — 3,5% Particuliers · 3% Entreprises (Payin & Payout)"
+      : "DrimPay Pricing — 3.5% Personal · 3% Business (Payin & Payout)",
     description: lang === "fr"
-      ? "Tarification transparente DrimPay : 5% pour les particuliers sur Payin uniquement, 3% fixe pour les entreprises sur Payin et Payout. Sans abonnement, sans frais cachés."
-      : "Transparent DrimPay pricing: 5% for personal accounts on Payin only, flat 3% for businesses on Payin and Payout. No subscription, no hidden fees.",
+      ? "Tarification transparente DrimPay : 3,5% pour les particuliers sur Payin, 3% fixe pour les entreprises sur Payin et Payout. Sans abonnement, sans frais cachés."
+      : "Transparent DrimPay pricing: 3.5% for personal accounts on Payin, flat 3% for businesses on Payin and Payout. No subscription, no hidden fees.",
     keywords: lang === "fr"
-      ? "tarif paiement Afrique, frais Mobile Money, 5% particuliers, 3% entreprises, prix API paiement"
-      : "Africa payment pricing, Mobile Money fees, 5% personal, 3% business, payment API cost",
+      ? "tarif paiement Afrique, frais Mobile Money, 3,5% particuliers, 3% entreprises, prix API paiement"
+      : "Africa payment pricing, Mobile Money fees, 3.5% personal, 3% business, payment API cost",
     jsonLd: [
       webPageSchema(
         `${SITE_URL}/${lang}/pricing`,
         lang === "fr" ? "Tarification DrimPay" : "DrimPay Pricing",
-        lang === "fr" ? "5% particuliers (Payin uniquement), 3% entreprises (Payin & Payout). Frais transparents." : "5% personal (Payin only), 3% businesses (Payin & Payout). Transparent fees.",
+        lang === "fr" ? "3,5% particuliers (Payin), 3% entreprises (Payin & Payout). Frais transparents." : "3.5% personal (Payin), 3% businesses (Payin & Payout). Transparent fees.",
         [{ name: lang === "fr" ? "Tarification" : "Pricing", url: `${SITE_URL}/${lang}/pricing` }],
       ),
       faqSchema(lang === "fr" ? [
-        { question: "Quels sont les frais DrimPay pour les particuliers ?", answer: "DrimPay applique un taux de 5% sur le Payin pour les particuliers. Le Payout n'est pas disponible sur les comptes personnels. Ce taux est négociable selon le volume." },
+        { question: "Quels sont les frais DrimPay pour les particuliers ?", answer: "DrimPay applique un taux de 3,5% sur le Payin pour les particuliers. Le Payout n'est pas disponible sur les comptes personnels. Ce taux est négociable selon le volume." },
         { question: "Quels sont les frais DrimPay pour les entreprises ?", answer: "DrimPay applique un taux fixe de 3% sur chaque transaction réussie pour les entreprises, aussi bien sur le Payin que sur le Payout." },
         { question: "Pourquoi le Payout n'est-il pas disponible pour les particuliers ?", answer: "Le Payout (décaissement) est réservé aux comptes entreprise vérifiés (KYB). Les particuliers peuvent uniquement encaisser des paiements via le Payin." },
         { question: "Y a-t-il un abonnement mensuel ?", answer: "Non. DrimPay fonctionne sur un modèle pay-as-you-go. Vous payez uniquement sur les transactions réussies." },
         { question: "DrimPay est-il disponible en mode sandbox ?", answer: "Oui. Chaque compte DrimPay inclut un environnement sandbox complet pour tester vos intégrations sans argent réel." },
       ] : [
-        { question: "What are DrimPay's fees for personal accounts?", answer: "DrimPay charges 5% on Payin for personal accounts. Payout is not available on personal accounts. The rate is negotiable based on volume." },
+        { question: "What are DrimPay's fees for personal accounts?", answer: "DrimPay charges 3.5% on Payin for personal accounts. Payout is not available on personal accounts. The rate is negotiable based on volume." },
         { question: "What are DrimPay's fees for business accounts?", answer: "DrimPay charges a flat 3% on every successful transaction for businesses, on both Payin and Payout." },
         { question: "Why is Payout not available for personal accounts?", answer: "Payout (disbursement) is reserved for KYB-verified business accounts. Personal accounts can only collect payments via Payin." },
         { question: "Is there a monthly subscription?", answer: "No. DrimPay operates on a pay-as-you-go model. You only pay on successful transactions." },

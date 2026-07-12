@@ -402,7 +402,7 @@ export default function MassPayout() {
               <h2 className="text-xl font-bold mb-2 text-gray-900">Fonctionnalité réservée aux Entreprises</h2>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
                 Le Paiement de Masse est exclusivement disponible pour les <strong className="text-foreground">comptes Entreprise</strong>.
-                Les comptes personnels peuvent retirer leurs fonds via la fonctionnalité <strong className="text-foreground">Reversement</strong> (frais : 5%).
+                Les comptes personnels peuvent retirer leurs fonds via la fonctionnalité <strong className="text-foreground">Reversement</strong> (frais : 3,5%).
               </p>
             </div>
             <a href="/dashboard/reversement"

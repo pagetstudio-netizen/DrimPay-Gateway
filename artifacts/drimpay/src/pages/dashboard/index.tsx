@@ -183,7 +183,7 @@ export default function DashboardOverview() {
       imgSrc: "/stat-fees.png",
       color: "bg-violet-500",
       trend: "neutral" as const,
-      trendLabel: (user as any)?.accountType === "personal" ? "5%/tx" : "3,5%/tx",
+      trendLabel: "3,5%/tx",
     },
     {
       label: "Transactions",
