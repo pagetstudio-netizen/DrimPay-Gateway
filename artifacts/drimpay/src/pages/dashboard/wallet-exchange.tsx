@@ -263,7 +263,7 @@ export default function WalletExchange() {
               <ul className="space-y-0.5 text-blue-600 text-xs">
                 <li>• Les échanges sont possibles uniquement entre pays de <b>même devise</b> (ex : XOF → XOF)</li>
                 <li>• Des frais de <b>3%</b> sont appliqués sur le montant échangé</li>
-                <li>• Chaque demande est validée par un administrateur (délai variable)</li>
+                <li>• Chaque demande est traitée par notre équipe (délai variable)</li>
                 <li>• Si vous n'avez pas de wallet dans le pays destination, il sera <b>créé automatiquement</b></li>
               </ul>
             </div>
