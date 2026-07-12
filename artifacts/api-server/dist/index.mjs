@@ -262472,7 +262472,10 @@ async function approveWalletExchange(id, actor) {
   const amount = parseFloat(exchange.amount);
   const net = parseFloat(exchange.netAmount);
   const applied = await db.transaction(async (trx) => {
-    const [fromRow] = await trx.update(walletsTable).set({ lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}` }).where(and(eq(walletsTable.id, exchange.fromWalletId), sql`${walletsTable.lockedBalance} >= ${amount}`)).returning();
+    const [fromRow] = await trx.update(walletsTable).set({
+      balance: sql`${walletsTable.balance} - ${amount}`,
+      lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`
+    }).where(and(eq(walletsTable.id, exchange.fromWalletId), sql`${walletsTable.lockedBalance} >= ${amount}`)).returning();
     if (!fromRow) return false;
     await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${net}` }).where(eq(walletsTable.id, exchange.toWalletId));
     const [updated] = await trx.update(walletExchangesTable).set({ status: "approved", reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
@@ -262512,8 +262515,7 @@ async function rejectWalletExchange(id, reason, actor) {
   const amount = parseFloat(exchange.amount);
   const applied = await db.transaction(async (trx) => {
     await trx.update(walletsTable).set({
-      lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`,
-      balance: sql`${walletsTable.balance} + ${amount}`
+      lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`
     }).where(eq(walletsTable.id, exchange.fromWalletId));
     const [updated] = await trx.update(walletExchangesTable).set({ status: "rejected", rejectionReason: reason, reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
     return !!updated;

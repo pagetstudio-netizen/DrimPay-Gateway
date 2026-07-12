@@ -33,10 +33,15 @@ export async function approveWalletExchange(id: number, actor: string): Promise<
   const net = parseFloat(exchange.netAmount as string);
 
   const applied = await db.transaction(async (trx) => {
-    // Libère la réservation (lockedBalance) du wallet source et débite définitivement.
+    // Libère la réservation ET débite définitivement le balance du wallet source.
+    // À l'initiation, lockedBalance avait été augmenté de `amount` sans toucher balance.
+    // Ici on réduit les deux : balance baisse définitivement, lockedBalance est libéré.
     const [fromRow] = await trx
       .update(walletsTable)
-      .set({ lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}` })
+      .set({
+        balance:       sql`${walletsTable.balance} - ${amount}`,
+        lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`,
+      })
       .where(and(eq(walletsTable.id, exchange.fromWalletId), sql`${walletsTable.lockedBalance} >= ${amount}`))
       .returning();
     if (!fromRow) return false;
@@ -86,12 +91,13 @@ export async function rejectWalletExchange(id: number, reason: string, actor: st
   const amount = parseFloat(exchange.amount as string);
 
   const applied = await db.transaction(async (trx) => {
-    // Libère la réservation : les fonds retournent au solde disponible du wallet source.
+    // Libère uniquement la réservation (lockedBalance).
+    // Le balance n'a jamais été réduit à l'initiation (seul lockedBalance avait augmenté),
+    // donc on ne touche PAS au balance — l'ajouter ici doublerait l'argent.
     await trx
       .update(walletsTable)
       .set({
         lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`,
-        balance: sql`${walletsTable.balance} + ${amount}`,
       })
       .where(eq(walletsTable.id, exchange.fromWalletId));
 
