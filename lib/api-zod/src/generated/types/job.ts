@@ -10,6 +10,7 @@ import type { JobType } from "./jobType";
 export interface Job {
   id: number;
   title: string;
+  slug?: string | null;
   department: string;
   location: string;
   type: JobType;

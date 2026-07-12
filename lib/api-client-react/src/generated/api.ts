@@ -548,14 +548,14 @@ export function useListJobs<
 }
 
 /**
- * @summary Get a single job listing
+ * @summary Get a single job listing by numeric ID or custom slug
  */
-export const getGetJobUrl = (id: number) => {
+export const getGetJobUrl = (id: string) => {
   return `/api/jobs/${id}`;
 };
 
 export const getJob = async (
-  id: number,
+  id: string,
   options?: RequestInit,
 ): Promise<Job> => {
   return customFetch<Job>(getGetJobUrl(id), {
@@ -564,7 +564,7 @@ export const getJob = async (
   });
 };
 
-export const getGetJobQueryKey = (id: number) => {
+export const getGetJobQueryKey = (id: string) => {
   return [`/api/jobs/${id}`] as const;
 };
 
@@ -572,7 +572,7 @@ export const getGetJobQueryOptions = <
   TData = Awaited<ReturnType<typeof getJob>>,
   TError = ErrorType<unknown>,
 >(
-  id: number,
+  id: string,
   options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getJob>>, TError, TData>;
     request?: SecondParameter<typeof customFetch>;
@@ -600,14 +600,14 @@ export type GetJobQueryResult = NonNullable<Awaited<ReturnType<typeof getJob>>>;
 export type GetJobQueryError = ErrorType<unknown>;
 
 /**
- * @summary Get a single job listing
+ * @summary Get a single job listing by numeric ID or custom slug
  */
 
 export function useGetJob<
   TData = Awaited<ReturnType<typeof getJob>>,
   TError = ErrorType<unknown>,
 >(
-  id: number,
+  id: string,
   options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getJob>>, TError, TData>;
     request?: SecondParameter<typeof customFetch>;

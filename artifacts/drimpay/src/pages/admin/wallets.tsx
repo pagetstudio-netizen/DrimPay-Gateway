@@ -35,8 +35,16 @@ function CreditDebitModal({ wallet, type, onClose, onDone }: { wallet: any; type
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200"><X className="w-4 h-4" /></button>
         </div>
         <div className="bg-gray-50 rounded-xl p-3 mb-5">
-          <p className="text-xs text-gray-500">{wallet.merchant?.companyName ?? "—"} · {wallet.countryCode}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-xs text-gray-500">{wallet.merchant?.companyName ?? "—"} · {wallet.countryCode}</p>
+            <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-semibold", wallet.mode === "live" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+              {wallet.mode === "live" ? "LIVE" : "SANDBOX"}
+            </span>
+          </div>
           <p className="text-lg font-bold text-gray-900">{fmt(parseFloat(wallet.balance), wallet.currency)}</p>
+          {wallet.mode !== "live" && (
+            <p className="text-[11px] text-amber-600 mt-1">Ce wallet est en mode Sandbox — pas de fonds réels.</p>
+          )}
         </div>
         <div className="space-y-4">
           <div>
@@ -94,7 +102,7 @@ function CountrySection({ country, onRefresh }: { country: any; onRefresh: () =>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      {["ID", "Marchand", "Email", "Solde", "Solde bloqué", "Statut", "Créé le", "Actions"].map(h => (
+                      {["ID", "Marchand", "Email", "Type", "Solde", "Solde bloqué", "Statut", "Créé le", "Actions"].map(h => (
                         <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -105,6 +113,11 @@ function CountrySection({ country, onRefresh }: { country: any; onRefresh: () =>
                         <td className="px-4 py-3 text-xs font-mono text-gray-400">#{w.id}</td>
                         <td className="px-4 py-3 font-semibold text-gray-900 text-xs">{w.merchant?.companyName ?? shortId(w.userId)}</td>
                         <td className="px-4 py-3 text-xs text-gray-500">{w.merchant?.email ?? "—"}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", w.mode === "live" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+                            {w.mode === "live" ? "Live" : "Sandbox"}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 font-bold text-emerald-600 text-xs">{fmt(parseFloat(w.balance), w.currency)}</td>
                         <td className="px-4 py-3 text-xs text-gray-500">{fmt(parseFloat(w.lockedBalance), w.currency)}</td>
                         <td className="px-4 py-3">

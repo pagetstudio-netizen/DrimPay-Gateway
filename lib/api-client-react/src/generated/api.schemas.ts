@@ -58,6 +58,7 @@ export const JobType = {
 export interface Job {
   id: number;
   title: string;
+  slug?: string | null;
   department: string;
   location: string;
   type: JobType;

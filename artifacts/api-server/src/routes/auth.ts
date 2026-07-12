@@ -17,6 +17,7 @@ import {
   loginRateLimiter,
   signupRateLimiter,
   emailSendRateLimiter,
+  codeVerifyRateLimiter,
   resolveGeoInfo,
   getClientIp,
 } from "../middlewares/security";
@@ -275,7 +276,7 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
 
 // ─── VERIFY EMAIL (code or after activation link) ────────────────────────────
 
-router.post("/auth/verify-email", emailSendRateLimiter, async (req, res) => {
+router.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
   const { email, code } = req.body as { email?: string; code?: string };
   if (!email || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -472,7 +473,7 @@ router.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) => {
   res.json({ ok: true, message: "Si ce compte existe, un email a été envoyé." });
 });
 
-router.post("/auth/verify-reset-code", emailSendRateLimiter, async (req, res) => {
+router.post("/auth/verify-reset-code", codeVerifyRateLimiter, async (req, res) => {
   const { email, code } = req.body as { email?: string; code?: string };
   if (!email || !code) {
     res.status(400).json({ error: "Email et code requis." });

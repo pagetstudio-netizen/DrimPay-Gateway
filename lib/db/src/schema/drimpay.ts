@@ -274,6 +274,7 @@ export const blogArticlesTable = pgTable("blog_articles", {
 export const jobsTable = pgTable("jobs", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
+  slug: text("slug").unique(),
   department: text("department").notNull(),
   location: text("location").notNull(),
   type: jobTypeEnum("type").notNull().default("full-time"),

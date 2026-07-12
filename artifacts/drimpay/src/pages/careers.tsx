@@ -103,7 +103,7 @@ export default function Careers() {
                       <span>{new Date(job.postedAt).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                     </div>
                   </div>
-                  <Link href={`/careers/${job.id}`}>
+                  <Link href={`/careers/${job.slug || job.id}`}>
                     <Button variant="outline" size="sm" className="shrink-0">{t.careers.viewPosition} <ArrowRight className="ml-2 w-4 h-4" /></Button>
                   </Link>
                 </motion.div>

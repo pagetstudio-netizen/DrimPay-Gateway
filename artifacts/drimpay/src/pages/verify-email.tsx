@@ -7,7 +7,17 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function VerifyEmailPage() {
   const params = new URLSearchParams(window.location.search);
-  const email = params.get("email") ?? "";
+  // Prefer the URL's ?email=, but fall back to what login/signup stashed in
+  // sessionStorage right before redirecting here. Without this, a link that
+  // loses its query string (email security scanners, restored tabs, etc.)
+  // silently sends an empty email to the server: the code you type is
+  // correct, but the request is rejected as "Email et code requis".
+  let email = params.get("email") ?? "";
+  if (!email) {
+    try { email = sessionStorage.getItem("dp_verify_email") ?? ""; } catch { /* ignore */ }
+  } else {
+    try { sessionStorage.setItem("dp_verify_email", email); } catch { /* ignore */ }
+  }
   const type = (params.get("type") ?? "signup") as "signup" | "new_device";
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
@@ -54,6 +64,10 @@ export default function VerifyEmailPage() {
 
   const verify = async () => {
     if (code.length !== 6) { setError("Entrez les 6 chiffres du code."); return; }
+    if (!email) {
+      setError("Votre adresse email a été perdue. Retournez à la page de connexion et réessayez.");
+      return;
+    }
     setStatus("loading"); setError("");
     try {
       const r = await fetch(`${BASE}/api/auth/verify-email`, {
@@ -153,9 +167,16 @@ export default function VerifyEmailPage() {
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-5">
-                <p className="text-sm text-gray-500 mb-5">
-                  Code envoyé à <span className="font-semibold text-gray-900">{email}</span>
-                </p>
+                {email ? (
+                  <p className="text-sm text-gray-500 mb-5">
+                    Code envoyé à <span className="font-semibold text-gray-900">{email}</span>
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-2 text-amber-600 text-sm mb-5 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    Adresse email introuvable. <Link href="/login" className="underline font-semibold">Retournez à la connexion</Link> pour recevoir un nouveau code.
+                  </div>
+                )}
 
                 <div className="grid grid-cols-6 gap-2 mb-5" onPaste={handlePaste}>
                   {digits.map((d, i) => (

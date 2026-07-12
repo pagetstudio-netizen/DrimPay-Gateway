@@ -144,13 +144,13 @@ paths:
     get:
       operationId: getJob
       tags: [jobs]
-      summary: Get a single job listing
+      summary: Get a single job listing by numeric ID or custom slug
       parameters:
         - name: id
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Job listing
@@ -351,6 +351,9 @@ components:
           type: integer
         title:
           type: string
+        slug:
+          type: string
+          nullable: true
         department:
           type: string
         location:

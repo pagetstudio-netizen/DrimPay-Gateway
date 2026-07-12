@@ -10,6 +10,7 @@ import { ADMIN_BASE } from "@/lib/admin-api";
 type Job = {
   id: number;
   title: string;
+  slug: string | null;
   department: string;
   location: string;
   type: string;
@@ -31,8 +32,17 @@ const JOB_TYPES = [
 
 const DEPARTMENTS = ["Engineering", "Product", "Marketing", "Support", "Operations"];
 
+function slugify(input: string): string {
+  return input
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 type FormState = {
   title: string;
+  slug: string;
   department: string;
   location: string;
   type: string;
@@ -46,6 +56,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   title: "",
+  slug: "",
   department: DEPARTMENTS[0],
   location: "",
   type: "full-time",
@@ -95,6 +106,7 @@ export default function AdminJobs() {
     setEditId(job.id);
     setForm({
       title: job.title,
+      slug: job.slug ?? "",
       department: job.department,
       location: job.location,
       type: job.type,
@@ -126,6 +138,7 @@ export default function AdminJobs() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: form.title.trim(),
+          slug: form.slug.trim() || null,
           department: form.department.trim(),
           location: form.location.trim(),
           type: form.type,
@@ -238,6 +251,30 @@ export default function AdminJobs() {
                     placeholder="Ex: Ingénieur Backend Senior"
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Lien personnalisé (slug)</label>
+                  <div className="flex items-center gap-0 rounded-xl border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary">
+                    <span className="px-3 py-2.5 text-xs text-gray-400 bg-gray-50 border-r border-gray-200 whitespace-nowrap">/careers/</span>
+                    <input
+                      value={form.slug}
+                      onChange={(e) => setForm((f) => ({
+                        ...f,
+                        slug: e.target.value
+                          .toLowerCase()
+                          .replace(/[^a-z0-9-]+/g, "-")
+                          .replace(/-+/g, "-"),
+                      }))}
+                      placeholder={slugify(form.title) || "emploi-monteur-video"}
+                      className="flex-1 px-3 py-2.5 text-sm focus:outline-none min-w-0"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {form.slug.trim()
+                      ? `Lien final : drimpay.com/fr/careers/${form.slug.trim()}`
+                      : `Vide = lien basé sur l'ID (ex: /careers/${editId ?? "1"})`}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -403,6 +440,9 @@ export default function AdminJobs() {
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{job.location}</span>
                         <span>Publié le {new Date(job.postedAt).toLocaleDateString("fr-FR")}</span>
                       </div>
+                      <p className="text-xs text-gray-400 mb-1 font-mono truncate">
+                        drimpay.com/fr/careers/{job.slug || job.id}
+                      </p>
                       {job.applyUrl && (
                         <a
                           href={job.applyUrl}

@@ -107,6 +107,7 @@ export const ListJobsQueryParams = zod.object({
 export const ListJobsResponseItem = zod.object({
   id: zod.number(),
   title: zod.string(),
+  slug: zod.string().nullish(),
   department: zod.string(),
   location: zod.string(),
   type: zod.enum(["full-time", "part-time", "contract", "internship"]),
@@ -120,15 +121,16 @@ export const ListJobsResponseItem = zod.object({
 export const ListJobsResponse = zod.array(ListJobsResponseItem);
 
 /**
- * @summary Get a single job listing
+ * @summary Get a single job listing by numeric ID or custom slug
  */
 export const GetJobParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 export const GetJobResponse = zod.object({
   id: zod.number(),
   title: zod.string(),
+  slug: zod.string().nullish(),
   department: zod.string(),
   location: zod.string(),
   type: zod.enum(["full-time", "part-time", "contract", "internship"]),

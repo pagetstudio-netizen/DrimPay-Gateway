@@ -53,6 +53,12 @@ export default function Login() {
       return;
     }
     if (result.requiresVerification && result.email) {
+      // Fallback used by /verify-email if the URL's ?email= is ever lost
+      // (e.g. corporate email-scanner link rewriting, tab restored by the
+      // browser without its query string) — without this, the code you type
+      // is correct but the request goes out with an empty email and the
+      // server rejects it as "Email et code requis".
+      try { sessionStorage.setItem("dp_verify_email", result.email); } catch { /* ignore */ }
       window.location.assign(`/verify-email?email=${encodeURIComponent(result.email)}&type=new_device`);
       return;
     }

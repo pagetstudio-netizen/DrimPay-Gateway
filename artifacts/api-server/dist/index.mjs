@@ -56059,6 +56059,7 @@ var init_drimpay = __esm({
     jobsTable = pgTable("jobs", {
       id: serial("id").primaryKey(),
       title: text("title").notNull(),
+      slug: text("slug").unique(),
       department: text("department").notNull(),
       location: text("location").notNull(),
       type: jobTypeEnum("type").notNull().default("full-time"),
@@ -258353,6 +258354,7 @@ router5.get("/jobs", async (req, res) => {
     if (department) jobs = jobs.filter((j) => j.department === department);
     if (location2) jobs = jobs.filter((j) => j.location.toLowerCase().includes(location2.toLowerCase()));
     res.json(jobs.map(jobToResponse));
+    return;
   } catch (err) {
     req.log.error({ err }, "Failed to list jobs");
     res.status(500).json({ error: "Internal server error" });
@@ -258360,12 +258362,9 @@ router5.get("/jobs", async (req, res) => {
 });
 router5.get("/jobs/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid ID" });
-      return;
-    }
-    const [job] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
+    const param2 = req.params.id;
+    const numericId = /^\d+$/.test(param2) ? parseInt(param2, 10) : NaN;
+    const [job] = await db.select().from(jobsTable).where(!isNaN(numericId) ? eq(jobsTable.id, numericId) : eq(jobsTable.slug, param2));
     if (!job) {
       res.status(404).json({ error: "Job not found" });
       return;
@@ -258380,6 +258379,7 @@ function jobToResponse(j) {
   return {
     id: j.id,
     title: j.title,
+    slug: j.slug,
     department: j.department,
     location: j.location,
     type: j.type,
@@ -266975,6 +266975,11 @@ var emailSendRateLimiter = makeRateLimiter(
   3,
   "Trop de tentatives. R\xE9essayez dans 1 minute."
 );
+var codeVerifyRateLimiter = makeRateLimiter(
+  6e4,
+  10,
+  "Trop de tentatives. R\xE9essayez dans 1 minute."
+);
 var WITHDRAWAL_LOCK_THRESHOLD = 4;
 var WITHDRAWAL_LOCK_DURATION_MS = 30 * 60 * 1e3;
 async function getWithdrawalLockStatus(userId) {
@@ -267230,7 +267235,7 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   });
   res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
 });
-router10.post("/auth/verify-email", emailSendRateLimiter, async (req, res) => {
+router10.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
   if (!email3 || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -267377,7 +267382,7 @@ router10.post("/auth/forgot-password", emailSendRateLimiter, async (req, res) =>
   }
   res.json({ ok: true, message: "Si ce compte existe, un email a \xE9t\xE9 envoy\xE9." });
 });
-router10.post("/auth/verify-reset-code", emailSendRateLimiter, async (req, res) => {
+router10.post("/auth/verify-reset-code", codeVerifyRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
   if (!email3 || !code) {
     res.status(400).json({ error: "Email et code requis." });
@@ -280527,7 +280532,7 @@ router13.get(AP + "/stats", requireAdmin, async (req, res) => {
       total: sum(transactionsTable.amount),
       fees: sum(transactionsTable.fee),
       cnt: count()
-    }).from(transactionsTable).where(and(gte(transactionsTable.createdAt, today), lt(transactionsTable.createdAt, tomorrow), eq(transactionsTable.mode, "live"))).groupBy(transactionsTable.type),
+    }).from(transactionsTable).where(and(gte(transactionsTable.createdAt, today), lt(transactionsTable.createdAt, tomorrow), eq(transactionsTable.mode, "live"), eq(transactionsTable.status, "success"))).groupBy(transactionsTable.type),
     db.select({
       type: transactionsTable.type,
       status: transactionsTable.status,
@@ -280569,15 +280574,16 @@ router13.get(AP + "/stats", requireAdmin, async (req, res) => {
   const totalSuccessCount = allSuccess.reduce((a, t) => a + Number(t.cnt), 0);
   const totalTxCount = txAll.reduce((a, t) => a + Number(t.cnt), 0);
   const successRate = totalTxCount > 0 ? Math.round(totalSuccessCount / totalTxCount * 100) : 0;
-  const totalFeesAll = txAll.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
-  const totalPayinVol = txAll.filter((t) => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
-  const totalPayoutVol = txAll.filter((t) => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const totalFeesAll = allSuccess.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
+  const totalPayinVol = allSuccess.filter((t) => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const totalPayoutVol = allSuccess.filter((t) => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
   const totalTxVolume = totalPayinVol + totalPayoutVol;
   const liveTx = txAll.filter((t) => t.mode === "live");
   const sandboxTx = txAll.filter((t) => t.mode === "sandbox");
-  const livePayinVol = liveTx.filter((t) => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
-  const livePayoutVol = liveTx.filter((t) => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
-  const liveFees = liveTx.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
+  const liveSuccess = liveTx.filter((t) => t.status === "success");
+  const livePayinVol = liveSuccess.filter((t) => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const livePayoutVol = liveSuccess.filter((t) => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const liveFees = liveSuccess.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
   const liveCount = liveTx.reduce((a, t) => a + Number(t.cnt), 0);
   const sandboxCount = sandboxTx.reduce((a, t) => a + Number(t.cnt), 0);
   const domains = domainesRaw.map((r) => {
@@ -282041,18 +282047,30 @@ router13.delete(AP + "/social-links/:id", requireAdmin, async (req, res) => {
   await logAdminAction(req.session.userId, "DELETE_SOCIAL_LINK", "social_link", String(id), deleted.name, req.ip);
   res.json({ ok: true });
 });
+function slugify(input) {
+  return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100);
+}
 router13.get(AP + "/jobs", requireAdmin, async (req, res) => {
   const rows = await db.select().from(jobsTable).orderBy(desc(jobsTable.postedAt));
   res.json(rows);
 });
 router13.post(AP + "/jobs", requireAdmin, async (req, res) => {
-  const { title, department, location: location2, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body;
+  const { title, slug, department, location: location2, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body;
   if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
     return;
   }
+  const finalSlug = slug?.trim() ? slugify(slug.trim()) : null;
+  if (finalSlug) {
+    const [existing] = await db.select({ id: jobsTable.id }).from(jobsTable).where(eq(jobsTable.slug, finalSlug));
+    if (existing) {
+      res.status(400).json({ error: "Ce lien personnalis\xE9 est d\xE9j\xE0 utilis\xE9 par une autre offre" });
+      return;
+    }
+  }
   const [row] = await db.insert(jobsTable).values({
     title: title.trim(),
+    slug: finalSlug,
     department: department.trim(),
     location: location2.trim(),
     type: type || "full-time",
@@ -282068,13 +282086,22 @@ router13.post(AP + "/jobs", requireAdmin, async (req, res) => {
 });
 router13.put(AP + "/jobs/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { title, department, location: location2, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body;
+  const { title, slug, department, location: location2, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body;
   if (!title?.trim() || !department?.trim() || !location2?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
     return;
   }
+  const finalSlug = slug?.trim() ? slugify(slug.trim()) : null;
+  if (finalSlug) {
+    const [existing] = await db.select({ id: jobsTable.id }).from(jobsTable).where(eq(jobsTable.slug, finalSlug));
+    if (existing && existing.id !== id) {
+      res.status(400).json({ error: "Ce lien personnalis\xE9 est d\xE9j\xE0 utilis\xE9 par une autre offre" });
+      return;
+    }
+  }
   const [row] = await db.update(jobsTable).set({
     title: title.trim(),
+    slug: finalSlug,
     department: department.trim(),
     location: location2.trim(),
     type: type || "full-time",

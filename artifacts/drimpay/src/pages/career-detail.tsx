@@ -8,9 +8,9 @@ import { useT, useLang } from "@/lib/i18n";
 import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 
 export default function CareerDetail({ params }: { params: { id: string } }) {
-  const id = parseInt(params.id);
+  const id = params.id;
   const { data: job, isLoading } = useGetJob(id, {
-    query: { enabled: !isNaN(id), queryKey: getGetJobQueryKey(id) },
+    query: { enabled: !!id, queryKey: getGetJobQueryKey(id) },
   });
   const [, navigate] = useLocation();
   const t = useT();
@@ -28,12 +28,12 @@ export default function CareerDetail({ params }: { params: { id: string } }) {
         : "Join the DrimPay team and help build Africa's payment infrastructure.",
     jsonLd: job ? [
       webPageSchema(
-        `${SITE_URL}/${lang}/careers/${params.id}`,
+        `${SITE_URL}/${lang}/careers/${job.slug || params.id}`,
         job.title,
         `${job.title} at DrimPay`,
         [
           { name: lang === "fr" ? "Carrières" : "Careers", url: `${SITE_URL}/${lang}/careers` },
-          { name: job.title, url: `${SITE_URL}/${lang}/careers/${params.id}` },
+          { name: job.title, url: `${SITE_URL}/${lang}/careers/${job.slug || params.id}` },
         ],
       ),
       {

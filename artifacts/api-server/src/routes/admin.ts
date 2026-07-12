@@ -156,7 +156,7 @@ router.get(AP + "/stats", requireAdmin, async (req: any, res: any) => {
       fees: sum(transactionsTable.fee),
       cnt: count(),
     }).from(transactionsTable)
-      .where(and(gte(transactionsTable.createdAt, today), lt(transactionsTable.createdAt, tomorrow), eq(transactionsTable.mode, "live")))
+      .where(and(gte(transactionsTable.createdAt, today), lt(transactionsTable.createdAt, tomorrow), eq(transactionsTable.mode, "live"), eq(transactionsTable.status, "success")))
       .groupBy(transactionsTable.type),
     db.select({
       type: transactionsTable.type,
@@ -211,17 +211,18 @@ router.get(AP + "/stats", requireAdmin, async (req: any, res: any) => {
   const totalTxCount = txAll.reduce((a, t) => a + Number(t.cnt), 0);
   const successRate = totalTxCount > 0 ? Math.round((totalSuccessCount / totalTxCount) * 100) : 0;
 
-  const totalFeesAll = txAll.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
-  const totalPayinVol = txAll.filter(t => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
-  const totalPayoutVol = txAll.filter(t => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const totalFeesAll = allSuccess.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
+  const totalPayinVol = allSuccess.filter(t => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const totalPayoutVol = allSuccess.filter(t => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
   const totalTxVolume = totalPayinVol + totalPayoutVol;
 
   // Live mode (API) vs sandbox
   const liveTx = txAll.filter(t => t.mode === "live");
   const sandboxTx = txAll.filter(t => t.mode === "sandbox");
-  const livePayinVol = liveTx.filter(t => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
-  const livePayoutVol = liveTx.filter(t => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
-  const liveFees = liveTx.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
+  const liveSuccess = liveTx.filter(t => t.status === "success");
+  const livePayinVol = liveSuccess.filter(t => t.type === "payin").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const livePayoutVol = liveSuccess.filter(t => t.type === "payout").reduce((a, t) => a + parseFloat(String(t.total ?? 0)), 0);
+  const liveFees = liveSuccess.reduce((a, t) => a + parseFloat(String(t.fees ?? 0)), 0);
   const liveCount = liveTx.reduce((a, t) => a + Number(t.cnt), 0);
   const sandboxCount = sandboxTx.reduce((a, t) => a + Number(t.cnt), 0);
 
@@ -1878,22 +1879,37 @@ router.delete(AP + "/social-links/:id", requireAdmin, async (req: any, res: any)
 
 // ── Jobs (Careers) ──────────────────────────────────────────────────────────
 
+function slugify(input: string): string {
+  return input
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+}
+
 router.get(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
   const rows = await db.select().from(jobsTable).orderBy(desc(jobsTable.postedAt));
   res.json(rows);
 });
 
 router.post(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
-  const { title, department, location, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body as {
-    title?: string; department?: string; location?: string; type?: string; remote?: boolean;
+  const { title, slug, department, location, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body as {
+    title?: string; slug?: string; department?: string; location?: string; type?: string; remote?: boolean;
     description?: string; requirements?: string[]; responsibilities?: string[]; applyUrl?: string; active?: boolean;
   };
   if (!title?.trim() || !department?.trim() || !location?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
     return;
   }
+  const finalSlug = slug?.trim() ? slugify(slug.trim()) : null;
+  if (finalSlug) {
+    const [existing] = await db.select({ id: jobsTable.id }).from(jobsTable).where(eq(jobsTable.slug, finalSlug));
+    if (existing) { res.status(400).json({ error: "Ce lien personnalisé est déjà utilisé par une autre offre" }); return; }
+  }
   const [row] = await db.insert(jobsTable).values({
     title: title.trim(),
+    slug: finalSlug,
     department: department.trim(),
     location: location.trim(),
     type: (type as any) || "full-time",
@@ -1910,17 +1926,23 @@ router.post(AP + "/jobs", requireAdmin, async (req: any, res: any) => {
 
 router.put(AP + "/jobs/:id", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
-  const { title, department, location, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body as {
-    title?: string; department?: string; location?: string; type?: string; remote?: boolean;
+  const { title, slug, department, location, type, remote, description, requirements, responsibilities, applyUrl, active } = req.body as {
+    title?: string; slug?: string; department?: string; location?: string; type?: string; remote?: boolean;
     description?: string; requirements?: string[]; responsibilities?: string[]; applyUrl?: string; active?: boolean;
   };
   if (!title?.trim() || !department?.trim() || !location?.trim() || !description?.trim()) {
     res.status(400).json({ error: "title, department, location et description sont requis" });
     return;
   }
+  const finalSlug = slug?.trim() ? slugify(slug.trim()) : null;
+  if (finalSlug) {
+    const [existing] = await db.select({ id: jobsTable.id }).from(jobsTable).where(eq(jobsTable.slug, finalSlug));
+    if (existing && existing.id !== id) { res.status(400).json({ error: "Ce lien personnalisé est déjà utilisé par une autre offre" }); return; }
+  }
   const [row] = await db.update(jobsTable)
     .set({
       title: title.trim(),
+      slug: finalSlug,
       department: department.trim(),
       location: location.trim(),
       type: (type as any) || "full-time",

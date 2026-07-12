@@ -392,10 +392,22 @@ export const adminRateLimiter = makeRateLimiter(
   "Trop de requêtes vers le panel admin. Réessayez dans 1 minute."
 );
 
-// Envoi d'emails (resend verification, forgot password, verify email/code) :
-// protège contre le clic répété sur "Envoyer" / "Renvoyer".
+// Envoi d'emails (resend verification, forgot password) : protège contre le
+// clic répété sur "Envoyer" / "Renvoyer". Ne doit PAS être partagé avec les
+// routes de vérification de code ci-dessous : sinon quelques clics sur
+// "Renvoyer le code" épuisent le quota et la tentative de saisie du code
+// échoue avec un message de rate-limit trompeur ("trop de tentatives") au
+// lieu du vrai résultat (code correct/incorrect).
 export const emailSendRateLimiter = makeRateLimiter(
   60_000, 3,
+  "Trop de tentatives. Réessayez dans 1 minute."
+);
+
+// Vérification d'un code (email/reset) : plus permissif que l'envoi, car
+// l'utilisateur peut légitimement se tromper de chiffre plusieurs fois de
+// suite avant de réussir.
+export const codeVerifyRateLimiter = makeRateLimiter(
+  60_000, 10,
   "Trop de tentatives. Réessayez dans 1 minute."
 );
 
