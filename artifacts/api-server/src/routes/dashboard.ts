@@ -1773,7 +1773,7 @@ router.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async
     return;
   }
 
-  const available = parseFloat(fromWallet.balance as string) - parseFloat(fromWallet.lockedBalance as string);
+  const available = parseFloat(fromWallet.balance as string);
   if (amount > available) {
     res.status(400).json({ error: "Solde disponible insuffisant dans ce wallet." });
     return;
@@ -1796,10 +1796,11 @@ router.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async
   const net = +(amount - fee).toFixed(2);
   const reference = `WEX-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
-  // Réserve les fonds (lockedBalance) en attendant la validation admin.
+  // Débite immédiatement le balance source — l'échange reste en pending jusqu'à la
+  // validation admin. En cas de rejet, le balance est recrédité automatiquement.
   await db
     .update(walletsTable)
-    .set({ lockedBalance: sql`${walletsTable.lockedBalance} + ${amount}` })
+    .set({ balance: sql`${walletsTable.balance} - ${amount}` })
     .where(eq(walletsTable.id, fromWallet.id));
 
   const [exchange] = await db

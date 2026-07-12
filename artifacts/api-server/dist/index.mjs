@@ -262472,16 +262472,11 @@ async function approveWalletExchange(id, actor) {
   const amount = parseFloat(exchange.amount);
   const net = parseFloat(exchange.netAmount);
   const applied = await db.transaction(async (trx) => {
-    const [fromRow] = await trx.update(walletsTable).set({
-      balance: sql`${walletsTable.balance} - ${amount}`,
-      lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`
-    }).where(and(eq(walletsTable.id, exchange.fromWalletId), sql`${walletsTable.lockedBalance} >= ${amount}`)).returning();
-    if (!fromRow) return false;
     await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${net}` }).where(eq(walletsTable.id, exchange.toWalletId));
     const [updated] = await trx.update(walletExchangesTable).set({ status: "approved", reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
     return !!updated;
   });
-  if (!applied) return { ok: false, error: "\xC9chec de l'approbation (fonds insuffisants ou d\xE9j\xE0 trait\xE9)." };
+  if (!applied) return { ok: false, error: "\xC9chec de l'approbation (d\xE9j\xE0 trait\xE9)." };
   try {
     const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, exchange.userId));
     if (user) {
@@ -262515,7 +262510,7 @@ async function rejectWalletExchange(id, reason, actor) {
   const amount = parseFloat(exchange.amount);
   const applied = await db.transaction(async (trx) => {
     await trx.update(walletsTable).set({
-      lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`
+      balance: sql`${walletsTable.balance} + ${amount}`
     }).where(eq(walletsTable.id, exchange.fromWalletId));
     const [updated] = await trx.update(walletExchangesTable).set({ status: "rejected", rejectionReason: reason, reviewedBy: actor, reviewedAt: /* @__PURE__ */ new Date() }).where(and(eq(walletExchangesTable.id, id), eq(walletExchangesTable.status, "pending"))).returning();
     return !!updated;
@@ -278280,7 +278275,7 @@ router11.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, asy
     res.status(400).json({ error: `Aucun wallet ${currentMode} actif pour ${fromMeta.name}.` });
     return;
   }
-  const available = parseFloat(fromWallet.balance) - parseFloat(fromWallet.lockedBalance);
+  const available = parseFloat(fromWallet.balance);
   if (amount > available) {
     res.status(400).json({ error: "Solde disponible insuffisant dans ce wallet." });
     return;
@@ -278292,7 +278287,7 @@ router11.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, asy
   const fee = +(amount * WALLET_EXCHANGE_FEE_RATE).toFixed(2);
   const net = +(amount - fee).toFixed(2);
   const reference = `WEX-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
-  await db.update(walletsTable).set({ lockedBalance: sql`${walletsTable.lockedBalance} + ${amount}` }).where(eq(walletsTable.id, fromWallet.id));
+  await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${amount}` }).where(eq(walletsTable.id, fromWallet.id));
   const [exchange] = await db.insert(walletExchangesTable).values({
     userId,
     fromWalletId: fromWallet.id,

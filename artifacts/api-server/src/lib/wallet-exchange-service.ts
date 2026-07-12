@@ -33,19 +33,8 @@ export async function approveWalletExchange(id: number, actor: string): Promise<
   const net = parseFloat(exchange.netAmount as string);
 
   const applied = await db.transaction(async (trx) => {
-    // Libère la réservation ET débite définitivement le balance du wallet source.
-    // À l'initiation, lockedBalance avait été augmenté de `amount` sans toucher balance.
-    // Ici on réduit les deux : balance baisse définitivement, lockedBalance est libéré.
-    const [fromRow] = await trx
-      .update(walletsTable)
-      .set({
-        balance:       sql`${walletsTable.balance} - ${amount}`,
-        lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`,
-      })
-      .where(and(eq(walletsTable.id, exchange.fromWalletId), sql`${walletsTable.lockedBalance} >= ${amount}`))
-      .returning();
-    if (!fromRow) return false;
-
+    // Le balance source a déjà été débité à l'initiation de l'échange.
+    // Ici on crédite uniquement le wallet destination.
     await trx
       .update(walletsTable)
       .set({ balance: sql`${walletsTable.balance} + ${net}` })
@@ -60,7 +49,7 @@ export async function approveWalletExchange(id: number, actor: string): Promise<
     return !!updated;
   });
 
-  if (!applied) return { ok: false, error: "Échec de l'approbation (fonds insuffisants ou déjà traité)." };
+  if (!applied) return { ok: false, error: "Échec de l'approbation (déjà traité)." };
 
   try {
     const [user] = await db.select({ email: usersTable.email, companyName: usersTable.companyName })
@@ -91,13 +80,11 @@ export async function rejectWalletExchange(id: number, reason: string, actor: st
   const amount = parseFloat(exchange.amount as string);
 
   const applied = await db.transaction(async (trx) => {
-    // Libère uniquement la réservation (lockedBalance).
-    // Le balance n'a jamais été réduit à l'initiation (seul lockedBalance avait augmenté),
-    // donc on ne touche PAS au balance — l'ajouter ici doublerait l'argent.
+    // Le balance source a été débité à l'initiation — on le rembourse intégralement.
     await trx
       .update(walletsTable)
       .set({
-        lockedBalance: sql`${walletsTable.lockedBalance} - ${amount}`,
+        balance: sql`${walletsTable.balance} + ${amount}`,
       })
       .where(eq(walletsTable.id, exchange.fromWalletId));
 
