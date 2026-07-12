@@ -258254,7 +258254,11 @@ var help_default = router2;
 // src/routes/diag.ts
 var import_express3 = __toESM(require_express2(), 1);
 var router3 = (0, import_express3.Router)();
-router3.get("/diag", (_req, res) => {
+router3.get("/diag", (req, res) => {
+  if (!req.session?.userId || req.session?.role !== "admin") {
+    res.status(403).json({ error: "Acc\xE8s refus\xE9" });
+    return;
+  }
   const check2 = (key, extra) => {
     const val = process.env[key];
     if (!val) return `\u2717 MANQUANT${extra ? ` \u2014 ${extra}` : ""}`;
@@ -258268,6 +258272,10 @@ router3.get("/diag", (_req, res) => {
     SUPABASE_SERVICE_ROLE_KEY: check2("SUPABASE_SERVICE_ROLE_KEY", "KYB uploads D\xC9SACTIV\xC9S"),
     SUPABASE_ANON_KEY: check2("SUPABASE_ANON_KEY"),
     RESEND_API_KEY: check2("RESEND_API_KEY", "emails d\xE9sactiv\xE9s"),
+    PAYDUNYA_MASTER_KEY: check2("PAYDUNYA_MASTER_KEY", "PayDunya d\xE9sactiv\xE9"),
+    PAYDUNYA_PRIVATE_KEY: check2("PAYDUNYA_PRIVATE_KEY"),
+    PAYDUNYA_TOKEN: check2("PAYDUNYA_TOKEN"),
+    CLAPAY_API_TOKEN: check2("CLAPAY_API_TOKEN", "ClaPay d\xE9sactiv\xE9"),
     NODE_ENV: process.env["NODE_ENV"] ?? "(non d\xE9fini)",
     PORT: process.env["PORT"] ?? "(non d\xE9fini)"
   };
