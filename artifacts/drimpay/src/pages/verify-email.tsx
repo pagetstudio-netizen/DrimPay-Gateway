@@ -7,19 +7,23 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function VerifyEmailPage() {
   const params = new URLSearchParams(window.location.search);
-  // Prefer the URL's ?email=, but fall back to what login/signup stashed in
-  // sessionStorage right before redirecting here. Without this, a link that
-  // loses its query string (email security scanners, restored tabs, etc.)
-  // silently sends an empty email to the server: the code you type is
-  // correct, but the request is rejected as "Email et code requis".
-  let email = params.get("email") ?? "";
-  if (!email) {
-    try { email = sessionStorage.getItem("dp_verify_email") ?? ""; } catch { /* ignore */ }
+  // Prefer the URL's ?email=, then fall back to what login/signup stashed in
+  // localStorage right before redirecting here (localStorage, not
+  // sessionStorage, so it survives a killed/restored mobile tab or a
+  // reopened browser — sessionStorage alone was still getting lost on real
+  // phones). If both are gone, the field below lets the user type it in
+  // directly instead of being stuck: without one of these, the code you
+  // type is correct but the request is rejected as "Email et code requis"
+  // because the email half of the pair never reaches the server.
+  let initialEmail = params.get("email") ?? "";
+  if (!initialEmail) {
+    try { initialEmail = localStorage.getItem("dp_verify_email") ?? ""; } catch { /* ignore */ }
   } else {
-    try { sessionStorage.setItem("dp_verify_email", email); } catch { /* ignore */ }
+    try { localStorage.setItem("dp_verify_email", initialEmail); } catch { /* ignore */ }
   }
   const type = (params.get("type") ?? "signup") as "signup" | "new_device";
 
+  const [email, setEmail] = useState(initialEmail);
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [error, setError] = useState("");
@@ -64,17 +68,19 @@ export default function VerifyEmailPage() {
 
   const verify = async () => {
     if (code.length !== 6) { setError("Entrez les 6 chiffres du code."); return; }
-    if (!email) {
-      setError("Votre adresse email a été perdue. Retournez à la page de connexion et réessayez.");
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Indiquez votre adresse email ci-dessus pour valider le code.");
       return;
     }
+    try { localStorage.setItem("dp_verify_email", trimmedEmail); } catch { /* ignore */ }
     setStatus("loading"); setError("");
     try {
       const r = await fetch(`${BASE}/api/auth/verify-email`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email: trimmedEmail, code }),
       });
       const data = await r.json();
       if (!r.ok) {
@@ -93,13 +99,16 @@ export default function VerifyEmailPage() {
   };
 
   const resend = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) { setError("Indiquez votre adresse email ci-dessus pour recevoir un nouveau code."); return; }
+    try { localStorage.setItem("dp_verify_email", trimmedEmail); } catch { /* ignore */ }
     setResendStatus("loading");
     try {
       await fetch(`${BASE}/api/auth/resend-verification`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: trimmedEmail }),
       });
     } catch { /* ignore */ }
     setResendStatus("sent");
@@ -167,14 +176,24 @@ export default function VerifyEmailPage() {
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-5">
-                {email ? (
+                {initialEmail ? (
                   <p className="text-sm text-gray-500 mb-5">
                     Code envoyé à <span className="font-semibold text-gray-900">{email}</span>
                   </p>
                 ) : (
-                  <div className="flex items-center gap-2 text-amber-600 text-sm mb-5 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    Adresse email introuvable. <Link href="/login" className="underline font-semibold">Retournez à la connexion</Link> pour recevoir un nouveau code.
+                  <div className="mb-5">
+                    <div className="flex items-center gap-2 text-amber-600 text-sm mb-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      Adresse email introuvable — indiquez-la ci-dessous pour continuer.
+                    </div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="votre@email.com"
+                      className="w-full h-11 px-3 rounded-xl border-2 outline-none text-sm"
+                      style={{ borderColor: "#e5e7eb" }}
+                    />
                   </div>
                 )}
 

@@ -224,7 +224,7 @@ export default function Signup() {
     });
     if (result.error) { setServerError(result.error); setStatus("idle"); return; }
     if (result.requiresVerification && result.email) {
-      try { sessionStorage.setItem("dp_verify_email", result.email); } catch { /* ignore */ }
+      try { localStorage.setItem("dp_verify_email", result.email); } catch { /* ignore */ }
       window.location.assign(`/verify-email?email=${encodeURIComponent(result.email)}&type=signup`);
       return;
     }
