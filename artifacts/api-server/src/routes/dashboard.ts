@@ -39,7 +39,7 @@ import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntil
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { settlePayinStatus } from "../lib/payin-settlement";
-import { getWebhookBaseUrl } from "../lib/base-urls";
+import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -525,6 +525,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
         const r = await (client as ClapayClient).initiatePayin({
           amount, currency, country_code: countryCode, operator, phone, reference,
           order_id: reference, callback_url: callbackUrl, description,
+          return_url: `${getFrontendBaseUrl()}/dashboard`,
         });
         if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
@@ -2391,6 +2392,7 @@ router.post("/pay/:token", async (req, res) => {
         amount, currency: effectiveCurrency, country_code: effectiveCountry,
         operator: effectiveOperator, phone, reference, order_id: reference,
         callback_url: callbackUrl, description: `Payment link: ${link.title}`,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
       });
       if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
       gatewayRef = r.clapay_reference;
@@ -3219,6 +3221,7 @@ router.post("/qr/:reference", async (req, res) => {
         amount, currency: effectiveCurrency, country_code: effectiveCountry, operator: effectiveOperator, phone,
         reference: txReference, order_id: tx.orderId!,
         callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
         description: `QR payment: ${qr.name}`,
         operator_otp: operatorOtp,
       });

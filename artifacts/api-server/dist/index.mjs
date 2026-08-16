@@ -277186,7 +277186,8 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
           reference,
           order_id: reference,
           callback_url: callbackUrl,
-          description
+          description,
+          return_url: `${getFrontendBaseUrl()}/dashboard`
         });
         if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
@@ -278828,7 +278829,8 @@ router11.post("/pay/:token", async (req, res) => {
         reference,
         order_id: reference,
         callback_url: callbackUrl,
-        description: `Payment link: ${link.title}`
+        description: `Payment link: ${link.title}`,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`
       });
       if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
       gatewayRef = r.clapay_reference;
@@ -279500,6 +279502,7 @@ router11.post("/qr/:reference", async (req, res) => {
         reference: txReference,
         order_id: tx.orderId,
         callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
         description: `QR payment: ${qr.name}`,
         operator_otp: operatorOtp
       });
