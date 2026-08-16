@@ -262565,6 +262565,42 @@ async function rejectWalletExchange(id, reason, actor) {
 // src/lib/telegram.ts
 var STARTUP_COOLDOWN_MS = 4 * 60 * 60 * 1e3;
 var STARTUP_FLAG = path.join("/tmp", "drimpay-startup-notif.txt");
+var COUNTRY_META = {
+  TG: { flag: "\u{1F1F9}\u{1F1EC}", name: "Togo" },
+  BJ: { flag: "\u{1F1E7}\u{1F1EF}", name: "B\xE9nin" },
+  CI: { flag: "\u{1F1E8}\u{1F1EE}", name: "C\xF4te d'Ivoire" },
+  SN: { flag: "\u{1F1F8}\u{1F1F3}", name: "S\xE9n\xE9gal" },
+  BF: { flag: "\u{1F1E7}\u{1F1EB}", name: "Burkina Faso" },
+  GN: { flag: "\u{1F1EC}\u{1F1F3}", name: "Guin\xE9e" },
+  ML: { flag: "\u{1F1F2}\u{1F1F1}", name: "Mali" },
+  NE: { flag: "\u{1F1F3}\u{1F1EA}", name: "Niger" },
+  CM: { flag: "\u{1F1E8}\u{1F1F2}", name: "Cameroun" },
+  GA: { flag: "\u{1F1EC}\u{1F1E6}", name: "Gabon" },
+  CG: { flag: "\u{1F1E8}\u{1F1EC}", name: "Congo" },
+  GH: { flag: "\u{1F1EC}\u{1F1ED}", name: "Ghana" },
+  NG: { flag: "\u{1F1F3}\u{1F1EC}", name: "Nigeria" }
+};
+async function buildWalletsSummary(userId, mode) {
+  try {
+    const wallets = await db.select({
+      countryCode: walletsTable.countryCode,
+      currency: walletsTable.currency,
+      balance: walletsTable.balance
+    }).from(walletsTable).where(and(eq(walletsTable.userId, userId), eq(walletsTable.mode, mode)));
+    if (!wallets.length) return "";
+    const lines = wallets.map((w) => {
+      const meta = COUNTRY_META[w.countryCode.toUpperCase()] ?? { flag: "\u{1F30D}", name: w.countryCode };
+      const bal = parseFloat(String(w.balance));
+      return `  ${meta.flag} ${meta.name} \u2014 <b>${bal.toLocaleString("fr-FR")} ${w.currency}</b>`;
+    });
+    return `
+
+\u{1F4BC} <b>Soldes actuels :</b>
+${lines.join("\n")}`;
+  } catch {
+    return "";
+  }
+}
 var _cache = null;
 var CACHE_TTL = 3e4;
 function invalidateTelegramCache() {
@@ -262782,7 +262818,7 @@ async function notifyPayin(opts) {
 \u{1F30D} ${opts.country}
 \u{1F516} <code>${opts.reference}</code>
 ${opts.mode === "live" ? "\u{1F7E2} LIVE" : "\u{1F535} SANDBOX"}
-\u{1F4C5} ${dt()}`
+\u{1F4C5} ${dt()}${opts.walletsSummary ?? ""}`
   );
 }
 async function notifyPayinConfirmed(opts) {
@@ -262800,7 +262836,7 @@ async function notifyPayinConfirmed(opts) {
 \u{1F516} <code>${opts.reference}</code>
 \u{1F517} Gateway: ${opts.gateway}
 ${opts.mode === "live" ? "\u{1F7E2} LIVE" : "\u{1F535} SANDBOX"}
-\u{1F4C5} ${dt()}`
+\u{1F4C5} ${dt()}${opts.walletsSummary ?? ""}`
   );
 }
 async function notifyKybSubmitted(opts) {
@@ -262835,7 +262871,7 @@ async function notifyReversement(opts) {
 \u{1F4F1} ${opts.operator} \u2192 ${opts.phone}
 \u{1F30D} ${opts.country}
 ${opts.mode === "live" ? "\u{1F7E2} LIVE" : "\u{1F535} SANDBOX"}
-\u{1F4C5} ${dt()}`
+\u{1F4C5} ${dt()}${opts.walletsSummary ?? ""}`
   );
 }
 async function notifyWalletExchange(opts) {
@@ -278320,6 +278356,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
   });
   try {
     const [user] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+    const walletsSummary = await buildWalletsSummary(userId, currentMode);
     notifyReversement({
       company: user?.companyName ?? "?",
       amount,
@@ -278327,7 +278364,8 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
       operator,
       phone,
       country: countryCode,
-      mode: currentMode
+      mode: currentMode,
+      walletsSummary
     }).catch(() => {
     });
   } catch {
@@ -279568,6 +279606,7 @@ router11.post("/qr/:reference", async (req, res) => {
       updatedAt: /* @__PURE__ */ new Date()
     }).where(eq(qrCodesTable.id, qr.id));
     try {
+      const walletsSummary = await buildWalletsSummary(qr.userId, merchantMode);
       notifyPayin({
         company: merchantInfo?.companyName ?? "?",
         amount,
@@ -279579,7 +279618,8 @@ router11.post("/qr/:reference", async (req, res) => {
         country: effectiveCountry,
         reference: txReference,
         mode: merchantMode,
-        source: "qr"
+        source: "qr",
+        walletsSummary
       }).catch(() => {
       });
     } catch {
@@ -280187,6 +280227,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
   }
   try {
     const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+    const walletsSummary = await buildWalletsSummary(userId, mode);
     notifyPayin({
       company: merchant?.companyName ?? "?",
       amount,
@@ -280198,7 +280239,8 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       country: country_code,
       reference,
       mode,
-      source: "api"
+      source: "api",
+      walletsSummary
     }).catch(() => {
     });
   } catch {

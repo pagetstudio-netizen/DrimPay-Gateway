@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { adminSettingsTable, usersTable, transactionsTable, blockedIpsTable, walletExchangesTable } from "@workspace/db/schema";
+import { adminSettingsTable, usersTable, transactionsTable, blockedIpsTable, walletExchangesTable, walletsTable } from "@workspace/db/schema";
 import { eq, and, gte, lt, sum, count, desc } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
@@ -7,6 +7,52 @@ import { approveWalletExchange, rejectWalletExchange } from "./wallet-exchange-s
 
 const STARTUP_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 heures
 const STARTUP_FLAG = path.join("/tmp", "drimpay-startup-notif.txt");
+
+// ─── Country meta for wallet summary display ──────────────────────────────────
+const COUNTRY_META: Record<string, { flag: string; name: string }> = {
+  TG: { flag: "🇹🇬", name: "Togo" },
+  BJ: { flag: "🇧🇯", name: "Bénin" },
+  CI: { flag: "🇨🇮", name: "Côte d'Ivoire" },
+  SN: { flag: "🇸🇳", name: "Sénégal" },
+  BF: { flag: "🇧🇫", name: "Burkina Faso" },
+  GN: { flag: "🇬🇳", name: "Guinée" },
+  ML: { flag: "🇲🇱", name: "Mali" },
+  NE: { flag: "🇳🇪", name: "Niger" },
+  CM: { flag: "🇨🇲", name: "Cameroun" },
+  GA: { flag: "🇬🇦", name: "Gabon" },
+  CG: { flag: "🇨🇬", name: "Congo" },
+  GH: { flag: "🇬🇭", name: "Ghana" },
+  NG: { flag: "🇳🇬", name: "Nigeria" },
+};
+
+/**
+ * Fetches all wallets of a merchant for a given mode and formats them
+ * as a Telegram-ready string showing the balance per country.
+ */
+export async function buildWalletsSummary(userId: number, mode: string): Promise<string> {
+  try {
+    const wallets = await db
+      .select({
+        countryCode: walletsTable.countryCode,
+        currency: walletsTable.currency,
+        balance: walletsTable.balance,
+      })
+      .from(walletsTable)
+      .where(and(eq(walletsTable.userId, userId), eq(walletsTable.mode, mode)));
+
+    if (!wallets.length) return "";
+
+    const lines = wallets.map(w => {
+      const meta = COUNTRY_META[w.countryCode.toUpperCase()] ?? { flag: "🌍", name: w.countryCode };
+      const bal = parseFloat(String(w.balance));
+      return `  ${meta.flag} ${meta.name} — <b>${bal.toLocaleString("fr-FR")} ${w.currency}</b>`;
+    });
+
+    return `\n\n💼 <b>Soldes actuels :</b>\n${lines.join("\n")}`;
+  } catch {
+    return "";
+  }
+}
 
 // ─── Config cache ──────────────────────────────────────────────────────────────
 interface TGConfig { token: string; chatId: string }
@@ -202,6 +248,7 @@ export async function notifyPayin(opts: {
   company: string; amount: number; fee: number; net: number;
   currency: string; operator: string; phone: string;
   country: string; reference: string; mode: string; source: "api" | "link" | "qr";
+  walletsSummary?: string;
 }) {
   const large = opts.amount >= LARGE;
   const src = opts.source === "api" ? "API" : opts.source === "qr" ? "QR" : "Lien";
@@ -218,7 +265,7 @@ export async function notifyPayin(opts: {
 🌍 ${opts.country}
 🔖 <code>${opts.reference}</code>
 ${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
-📅 ${dt()}`
+📅 ${dt()}${opts.walletsSummary ?? ""}`
   );
 }
 
@@ -226,7 +273,7 @@ export async function notifyPayinConfirmed(opts: {
   company: string; amount: number; fee: number; net: number;
   currency: string; operator: string; phone: string;
   country: string; reference: string; mode: string; source: "api" | "link" | "qr";
-  gateway: string;
+  gateway: string; walletsSummary?: string;
 }) {
   const large = opts.amount >= LARGE;
   const src = opts.source === "api" ? "API" : opts.source === "qr" ? "QR" : "Lien";
@@ -244,7 +291,7 @@ export async function notifyPayinConfirmed(opts: {
 🔖 <code>${opts.reference}</code>
 🔗 Gateway: ${opts.gateway}
 ${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
-📅 ${dt()}`
+📅 ${dt()}${opts.walletsSummary ?? ""}`
   );
 }
 
@@ -273,6 +320,7 @@ export async function notifyKybDecision(opts: {
 export async function notifyReversement(opts: {
   company: string; amount: number; currency: string;
   operator: string; phone: string; country: string; mode: string;
+  walletsSummary?: string;
 }) {
   await send(
 `💸 <b>Demande de Retrait</b>
@@ -282,7 +330,7 @@ export async function notifyReversement(opts: {
 📱 ${opts.operator} → ${opts.phone}
 🌍 ${opts.country}
 ${opts.mode === "live" ? "🟢 LIVE" : "🔵 SANDBOX"}
-📅 ${dt()}`
+📅 ${dt()}${opts.walletsSummary ?? ""}`
   );
 }
 

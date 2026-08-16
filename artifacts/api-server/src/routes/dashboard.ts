@@ -28,7 +28,7 @@ import { eq, and, desc, sum, count, sql, gte, asc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange, notifyCriticalError } from "../lib/telegram";
+import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange, notifyCriticalError, buildWalletsSummary } from "../lib/telegram";
 import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { isMaintenanceModeOn } from "../lib/admin-settings";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
@@ -1737,9 +1737,11 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
 
   try {
     const [user] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, userId));
+    const walletsSummary = await buildWalletsSummary(userId, currentMode);
     notifyReversement({
       company: user?.companyName ?? "?",
       amount, currency: countryMeta.currency, operator, phone, country: countryCode, mode: currentMode,
+      walletsSummary,
     }).catch(() => {});
   } catch {}
 
@@ -3243,6 +3245,7 @@ router.post("/qr/:reference", async (req, res) => {
       .where(eq(qrCodesTable.id, qr.id));
 
     try {
+      const walletsSummary = await buildWalletsSummary(qr.userId, merchantMode);
       notifyPayin({
         company: merchantInfo?.companyName ?? "?",
         amount, fee, net: netAmount,
@@ -3251,6 +3254,7 @@ router.post("/qr/:reference", async (req, res) => {
         phone, country: effectiveCountry,
         reference: txReference,
         mode: merchantMode, source: "qr",
+        walletsSummary,
       }).catch(() => {});
     } catch {}
 

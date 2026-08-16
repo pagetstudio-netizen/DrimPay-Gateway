@@ -14,7 +14,7 @@ import bcrypt from "bcryptjs";
 import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
-import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure } from "../lib/telegram";
+import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure, buildWalletsSummary } from "../lib/telegram";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
 import { isMaintenanceModeOn } from "../lib/admin-settings";
@@ -495,6 +495,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
   try {
     const [merchant] = await db.select({ companyName: usersTable.companyName })
       .from(usersTable).where(eq(usersTable.id, userId));
+    const walletsSummary = await buildWalletsSummary(userId, mode);
     notifyPayin({
       company: merchant?.companyName ?? "?",
       amount,
@@ -507,6 +508,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       reference,
       mode,
       source: "api",
+      walletsSummary,
     }).catch(() => {});
   } catch {}
 
