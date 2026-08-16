@@ -29,6 +29,7 @@ const SETTINGS_GROUPS = [
     fields: [
       { key: "maintenance_mode", label: "Mode maintenance global", type: "boolean", hint: "Désactive toutes les transactions sur la plateforme" },
       { key: "platform_block_withdrawals", label: "Bloquer TOUS les retraits", type: "boolean", hint: "Bloque immédiatement tous les pay-out et reversements sur toute la plateforme" },
+      { key: "wallet_exchange_enabled", label: "Échange entre wallets activé", type: "boolean", hint: "Désactiver pour mettre l'échange de wallets en maintenance — les utilisateurs verront un écran de maintenance" },
       { key: "sandbox_enabled", label: "Mode sandbox activé", type: "boolean", hint: "Permet les transactions en mode test" },
       { key: "live_enabled", label: "Mode live activé", type: "boolean", hint: "Permet les transactions en production" },
       { key: "new_signup_enabled", label: "Inscriptions ouvertes", type: "boolean", hint: "Autoriser les nouvelles inscriptions marchands" },

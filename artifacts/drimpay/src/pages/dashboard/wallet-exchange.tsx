@@ -130,7 +130,33 @@ function CountrySelect({
   );
 }
 
+function MaintenanceScreen() {
+  return (
+    <DashboardLayout>
+      <div className="max-w-lg mx-auto flex flex-col items-center justify-center py-20 text-center px-4">
+        <img
+          src="/construction.png"
+          alt="En maintenance"
+          className="w-56 h-56 object-contain mb-8 drop-shadow-xl"
+        />
+        <h2 className="text-2xl font-extrabold text-gray-900 mb-3">
+          Fonctionnalité en maintenance
+        </h2>
+        <p className="text-gray-500 text-base leading-relaxed max-w-sm">
+          Bonjour, nous sommes vraiment désolés, cette fonctionnalité est en maintenance.
+          Vous devez patienter jusqu'au moment du rétablissement.
+        </p>
+        <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-sm font-semibold">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          Retour prévu dès que possible
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
+
 export default function WalletExchange() {
+  const [maintenance, setMaintenance] = useState<boolean | null>(null);
   const [wallets, setWallets] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingWallets, setLoadingWallets] = useState(true);
@@ -162,9 +188,20 @@ export default function WalletExchange() {
   }
 
   useEffect(() => {
+    // Check maintenance status first
+    fetch(`${BASE}/api/dashboard/wallet-exchange-status`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : { enabled: true })
+      .then(d => setMaintenance(!d.enabled))
+      .catch(() => setMaintenance(false));
+
     loadWallets();
     loadHistory();
   }, []);
+
+  // Show maintenance screen if disabled by admin
+  if (maintenance === true) return <MaintenanceScreen />;
+  // Brief null state while checking (avoid flicker)
+  if (maintenance === null) return null;
 
   // Build source options: wallets the user HAS with available balance
   const walletByCountry: Record<string, any> = {};

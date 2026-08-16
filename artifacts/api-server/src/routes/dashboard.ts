@@ -1757,6 +1757,16 @@ const walletExchangeSchema = z.object({
   note: z.string().optional(),
 });
 
+// Returns whether wallet exchange is enabled (for the maintenance screen)
+router.get("/dashboard/wallet-exchange-status", requireAuth, async (_req, res) => {
+  const [setting] = await db
+    .select({ value: adminSettingsTable.value })
+    .from(adminSettingsTable)
+    .where(eq(adminSettingsTable.key, "wallet_exchange_enabled"))
+    .limit(1);
+  res.json({ enabled: setting?.value !== "false" });
+});
+
 router.get("/dashboard/wallet-exchanges", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
@@ -1770,6 +1780,16 @@ router.get("/dashboard/wallet-exchanges", requireAuth, async (req, res) => {
 });
 
 router.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async (req, res) => {
+  // ── Maintenance check ─────────────────────────────────────────────────────
+  const [exchangeSetting] = await db
+    .select({ value: adminSettingsTable.value })
+    .from(adminSettingsTable)
+    .where(eq(adminSettingsTable.key, "wallet_exchange_enabled"))
+    .limit(1);
+  if (exchangeSetting?.value === "false") {
+    res.status(503).json({ error: "maintenance", maintenance: true });
+    return;
+  }
   const parsed = walletExchangeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });

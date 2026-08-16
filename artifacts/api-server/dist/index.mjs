@@ -278341,6 +278341,10 @@ var walletExchangeSchema = external_exports2.object({
   amount: external_exports2.number().positive(),
   note: external_exports2.string().optional()
 });
+router11.get("/dashboard/wallet-exchange-status", requireAuth, async (_req, res) => {
+  const [setting] = await db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, "wallet_exchange_enabled")).limit(1);
+  res.json({ enabled: setting?.value !== "false" });
+});
 router11.get("/dashboard/wallet-exchanges", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
@@ -278348,6 +278352,11 @@ router11.get("/dashboard/wallet-exchanges", requireAuth, async (req, res) => {
   res.json(rows);
 });
 router11.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, async (req, res) => {
+  const [exchangeSetting] = await db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, "wallet_exchange_enabled")).limit(1);
+  if (exchangeSetting?.value === "false") {
+    res.status(503).json({ error: "maintenance", maintenance: true });
+    return;
+  }
   const parsed = walletExchangeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
