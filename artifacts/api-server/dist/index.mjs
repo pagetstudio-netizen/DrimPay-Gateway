@@ -258254,7 +258254,22 @@ var help_default = router2;
 
 // src/routes/stats.ts
 var import_express3 = __toESM(require_express2(), 1);
+init_src();
+init_schema2();
+init_drizzle_orm();
 var router3 = (0, import_express3.Router)();
+router3.get("/fees", async (_req, res) => {
+  try {
+    const rows = await db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value }).from(adminSettingsTable).where(inArray(adminSettingsTable.key, ["default_payin_fee_percent", "default_payout_fee_percent"]));
+    const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    const payin = parseFloat(map2["default_payin_fee_percent"] ?? "3.5");
+    const payout = parseFloat(map2["default_payout_fee_percent"] ?? "3.5");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json({ payin, payout, payin_display: `${payin}%`, payout_display: `${payout}%` });
+  } catch {
+    res.json({ payin: 3.5, payout: 3.5, payin_display: "3.5%", payout_display: "3.5%" });
+  }
+});
 router3.get("/stats/platform", async (req, res) => {
   res.json({
     totalTransactions: 4820341,
@@ -276894,7 +276909,6 @@ function getFrontendBaseUrl() {
 // src/routes/dashboard.ts
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 var payLinkImageUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
-var FEE_RATE = 0.035;
 var router11 = (0, import_express11.Router)();
 function requireAuth(req, res, next) {
   if (!req.session?.userId) {
@@ -276948,20 +276962,38 @@ async function createNotification(userId, type, category, title, body, href = "/
   }
 }
 async function getUserFeeRate(userId, type = "payin") {
-  const [user] = await db.select({
-    accountType: usersTable.accountType,
-    payinFeePercent: usersTable.payinFeePercent,
-    payoutFeePercent: usersTable.payoutFeePercent
-  }).from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) return 0.035;
+  const feeKey = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+  const [[user], [platformSetting]] = await Promise.all([
+    db.select({
+      payinFeePercent: usersTable.payinFeePercent,
+      payoutFeePercent: usersTable.payoutFeePercent
+    }).from(usersTable).where(eq(usersTable.id, userId)),
+    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, feeKey)).limit(1)
+  ]);
+  const platformDefault = platformSetting?.value ? parseFloat(platformSetting.value) / 100 : 0.035;
+  if (!user) return platformDefault;
   if (type === "payin" && user.payinFeePercent !== null && user.payinFeePercent !== void 0) {
     return parseFloat(String(user.payinFeePercent)) / 100;
   }
   if (type === "payout" && user.payoutFeePercent !== null && user.payoutFeePercent !== void 0) {
     return parseFloat(String(user.payoutFeePercent)) / 100;
   }
-  return 0.035;
+  return platformDefault;
 }
+router11.get("/dashboard/fee-rate", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const [payinRate, payoutRate] = await Promise.all([
+    getUserFeeRate(userId, "payin"),
+    getUserFeeRate(userId, "payout")
+  ]);
+  const fmt = (r) => parseFloat((r * 100).toFixed(4));
+  res.json({
+    payin: fmt(payinRate),
+    payout: fmt(payoutRate),
+    payin_display: `${fmt(payinRate)}%`,
+    payout_display: `${fmt(payoutRate)}%`
+  });
+});
 router11.get("/dashboard/status", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const [kyb] = await db.select({ status: kybSubmissionsTable.status }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, userId));
@@ -279089,9 +279121,10 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const [massPayoutUserRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
   const currentMode = req.session.mode ?? "sandbox";
   const { description, recipients } = parsed.data;
+  const userPayoutFeeRate = await getUserFeeRate(userId, "payout");
   const totalsPerCountry = {};
   for (const r of recipients) {
-    const fee = Math.round(r.amount * FEE_RATE * 100) / 100;
+    const fee = Math.round(r.amount * userPayoutFeeRate * 100) / 100;
     totalsPerCountry[r.countryCode] = (totalsPerCountry[r.countryCode] ?? 0) + r.amount + fee;
   }
   const walletCache = {};
@@ -279135,7 +279168,7 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   for (const r of recipients) {
     try {
       const countryCurrency = COUNTRIES.find((c) => c.code === r.countryCode)?.currency ?? "XOF";
-      const fee = Math.round(r.amount * FEE_RATE * 100) / 100;
+      const fee = Math.round(r.amount * userPayoutFeeRate * 100) / 100;
       const totalDebit = r.amount + fee;
       const txRef = `MASS-OUT-${Date.now()}-${crypto5.randomBytes(3).toString("hex").toUpperCase()}`;
       const wallet = walletCache[r.countryCode];
@@ -279859,7 +279892,7 @@ var COUNTRIES2 = {
   SN: "XOF",
   CI: "XOF"
 };
-var FEE_RATE2 = 0.035;
+var FEE_RATE = 0.035;
 var initiateSchema = external_exports2.object({
   amount: external_exports2.number().min(200, "Le montant minimum est de 200"),
   currency: external_exports2.string().length(3),
@@ -279948,7 +279981,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
   } else {
     if (!assertGeoMatch(wallet.countryCode, country_code, res)) return;
   }
-  const fee = Math.round(amount * FEE_RATE2 * 100) / 100;
+  const fee = Math.round(amount * FEE_RATE * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `${country_code}-${crypto6.randomBytes(8).toString("hex").toUpperCase()}`;
   const signatureKey = generateSignatureKey();
@@ -283285,7 +283318,7 @@ var DEFAULT_OPERATORS = {
   SN: ["Orange Money", "Wave"],
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"]
 };
-var FEE_RATE3 = 0.035;
+var FEE_RATE2 = 0.035;
 router17.get("/pay/status/:reference", async (req, res) => {
   const { reference } = req.params;
   if (!reference) {
@@ -283464,7 +283497,7 @@ router17.post("/pay/:token", async (req, res) => {
     return;
   }
   const [merchantInfo] = await db.select({ companyName: usersTable.companyName, webhookUrl: usersTable.webhookUrl }).from(usersTable).where(eq(usersTable.id, link.userId));
-  const fee = Math.round(amount * FEE_RATE3 * 100) / 100;
+  const fee = Math.round(amount * FEE_RATE2 * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `PL-${countryCode}-${crypto10.randomBytes(8).toString("hex").toUpperCase()}`;
   const signatureKey = crypto10.randomBytes(32).toString("hex");

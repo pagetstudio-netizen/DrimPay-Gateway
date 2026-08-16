@@ -1,4 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+function useFeeRate() {
+  const [rate, setRate] = useState({ payin: 3.5, payin_display: "3,5%" });
+  useEffect(() => {
+    fetch("/api/dashboard/fee-rate", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.payin != null) setRate({ payin: d.payin, payin_display: d.payin_display }); })
+      .catch(() => {});
+  }, []);
+  return rate;
+}
 import {
   ArrowDownLeft, Copy, CheckCircle2, ChevronDown, ChevronRight,
   BookOpen, KeyRound, Send, SearchCheck, List, Webhook, Activity,
@@ -53,6 +64,7 @@ function Param({ name, type, required, desc }: { name: string; type: string; req
 }
 
 export default function DocPayin() {
+  const feeRate = useFeeRate();
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
@@ -65,8 +77,7 @@ export default function DocPayin() {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 font-semibold">Frais Entreprise : 3%</span>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-500 font-semibold">Frais Compte Personnel : 3,5%</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 font-semibold">Frais Pay-in : {feeRate.payin_display}</span>
             <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-mono">v2.0</span>
           </div>
         </div>
@@ -74,11 +85,11 @@ export default function DocPayin() {
         <div className="flex items-start gap-3 p-4 rounded-xl border border-primary/20 bg-primary/5 mb-8">
           <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-foreground mb-1">Frais selon le type de compte</p>
+            <p className="text-sm font-semibold text-foreground mb-1">Frais de Pay-in</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Les frais prélevés sur chaque Pay-in dépendent du type de votre compte :<br />
-              <strong className="text-foreground">Compte Entreprise</strong> — 3% par transaction (API, Lien de paiement, QR code, Reversement)<br />
-              <strong className="text-foreground">Compte Personnel</strong> — 3,5% par transaction (API Pay-in, Lien de paiement, QR code, Reversement dashboard). L'API Pay-out et le Paiement de Masse ne sont pas accessibles aux comptes personnels.
+              Votre taux Pay-in actuel est de <strong className="text-foreground">{feeRate.payin_display}</strong> par transaction réussie.
+              Ce taux est appliqué sur l'API Pay-in, les Liens de paiement, les QR codes et le Reversement dashboard.
+              Le taux est négociable selon le volume — contactez notre équipe pour un accord personnalisé.
             </p>
           </div>
         </div>
@@ -87,7 +98,7 @@ export default function DocPayin() {
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
             L'API Pay-in DrimPay vous permet d'initier des collectes de fonds via Mobile Money dans 7 pays d'Afrique de l'Ouest et Centrale.
             Chaque transaction est créditée sur le wallet du pays correspondant.
-            Des frais de <strong className="text-foreground">3,5% (tous comptes)</strong> sont prélevés sur chaque transaction réussie.
+            Des frais de <strong className="text-foreground">{feeRate.payin_display}</strong> sont prélevés sur chaque transaction réussie.
           </p>
           <div className="rounded-xl border border-border bg-card overflow-hidden font-mono text-sm">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">

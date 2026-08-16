@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
@@ -6,6 +7,22 @@ import {
 } from "lucide-react";
 import { useT, useLang } from "@/lib/i18n";
 import { useSEO, webPageSchema, faqSchema, SITE_URL } from "@/lib/seo";
+
+function usePlatformFees() {
+  const [fees, setFees] = useState({ payin: 3.5, payout: 3.5 });
+  useEffect(() => {
+    fetch("/api/fees")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.payin != null) setFees({ payin: d.payin, payout: d.payout }); })
+      .catch(() => {});
+  }, []);
+  return fees;
+}
+
+function fmtRate(n: number, lang: string) {
+  const s = Number.isInteger(n) ? `${n}` : n.toString();
+  return lang === "fr" ? `${s.replace(".", ",")}%` : `${s}%`;
+}
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
@@ -47,6 +64,8 @@ export default function Pricing() {
 
   const p = t.pricing.personal;
   const b = t.pricing.businessCard;
+  const fees = usePlatformFees();
+  const rateStr = fmtRate(fees.payin, lang);
 
   return (
     <div className="bg-[#F8F6F1]">
@@ -94,7 +113,7 @@ export default function Pricing() {
               </div>
 
               <div className="mb-2">
-                <span className="text-5xl font-extrabold text-[#0f0f0f]">{p.rate}</span>
+                <span className="text-5xl font-extrabold text-[#0f0f0f]">{rateStr}</span>
                 <span className="text-[#0f0f0f]/40 text-sm ml-2">{p.per}</span>
               </div>
 
@@ -156,7 +175,7 @@ export default function Pricing() {
               </div>
 
               <div className="mb-6">
-                <span className="text-5xl font-extrabold text-[#0f0f0f]">{b.rate}</span>
+                <span className="text-5xl font-extrabold text-[#0f0f0f]">{rateStr}</span>
                 <span className="text-[#0f0f0f]/40 text-sm ml-2">{b.per}</span>
               </div>
 
@@ -215,31 +234,38 @@ export default function Pricing() {
                 </tr>
               </thead>
               <tbody>
-                {t.pricing.feeRows.map((row, i) => (
+                {t.pricing.feeRows.map((row, i) => {
+                  // First 2 rows = payin + payout → use live platform rate
+                  const isDynamic = i < 2;
+                  const displayFee = isDynamic ? rateStr : null;
+                  const feePersonal = displayFee ?? row.feePersonal;
+                  const feeBusiness = displayFee ?? row.feeBusiness;
+                  return (
                   <tr key={i} className="border-b border-[#E5E3DC] last:border-0 hover:bg-[#F8F6F1] transition-colors">
                     <td className="px-5 py-4 font-semibold text-[#0f0f0f]">{row.type}</td>
                     <td className="px-5 py-4">
-                      {row.feePersonal === "—" ? (
+                      {feePersonal === "—" ? (
                         <span className="text-[#0f0f0f]/30">—</span>
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-700 text-xs font-bold border border-blue-500/20">
-                          {row.feePersonal}
+                          {feePersonal}
                         </span>
                       )}
                     </td>
                     <td className="px-5 py-4">
-                      {row.feeBusiness === "—" ? (
+                      {feeBusiness === "—" ? (
                         <span className="text-[#0f0f0f]/30">—</span>
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#B5F03C]/15 text-[#3a7a00] text-xs font-bold border border-[#B5F03C]/20">
-                          {row.feeBusiness}
+                          {feeBusiness}
                         </span>
                       )}
                     </td>
                     <td className="px-5 py-4 text-[#0f0f0f]/55">{row.min}</td>
                     <td className="px-5 py-4 text-[#0f0f0f]/55">{row.max}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

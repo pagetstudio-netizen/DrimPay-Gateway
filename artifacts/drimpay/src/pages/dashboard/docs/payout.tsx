@@ -1,4 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+function useFeeRate() {
+  const [rate, setRate] = useState({ payout: 3.5, payout_display: "3,5%" });
+  useEffect(() => {
+    fetch("/api/dashboard/fee-rate", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.payout != null) setRate({ payout: d.payout, payout_display: d.payout_display }); })
+      .catch(() => {});
+  }, []);
+  return rate;
+}
 import {
   ArrowUpRight, Copy, CheckCircle2, AlertTriangle,
   Send, SearchCheck, Webhook, Activity, UserCheck,
@@ -50,6 +61,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon?: React.
 }
 
 export default function DocPayout() {
+  const feeRate = useFeeRate();
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
@@ -62,7 +74,7 @@ export default function DocPayout() {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 font-semibold">Frais Entreprise : 3%</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 font-semibold">Frais Pay-out : {feeRate.payout_display}</span>
             <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-mono">v2.0</span>
           </div>
         </div>
@@ -93,7 +105,7 @@ export default function DocPayout() {
         <Section title="Introduction" icon={Globe}>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
             L'API Pay-out DrimPay vous permet d'envoyer des fonds vers un numéro Mobile Money dans 7 pays d'Afrique de l'Ouest et Centrale.
-            Les frais de <strong className="text-foreground">3%</strong> sont débités du wallet du pays cible à chaque transaction réussie.
+            Les frais de <strong className="text-foreground">{feeRate.payout_display}</strong> sont débités du wallet du pays cible à chaque transaction réussie.
           </p>
           <div className="rounded-xl border border-border bg-card overflow-hidden font-mono text-sm">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -314,13 +326,13 @@ COMMIT;`} />
         <Section title="Calcul des frais" icon={Calculator}>
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-muted-foreground mb-4">
-              Les frais de <strong className="text-foreground">3% (Compte Entreprise)</strong> sont calculés sur le montant brut et déduits de votre wallet.
-              Les comptes personnels ne peuvent pas accéder à l'API Pay-out — ils utilisent le Reversement dashboard (3,5%).
+              Les frais de <strong className="text-foreground">{feeRate.payout_display}</strong> sont calculés sur le montant brut et déduits de votre wallet.
+              Le taux affiché ici est votre taux réel actuel — il peut être personnalisé par l'équipe DrimPay selon votre volume.
             </p>
-            <CodeBlock code={`// Exemple : pay-out de 25 000 XOF (compte entreprise)
+            <CodeBlock code={`// Exemple : pay-out de 25 000 XOF
 amount       = 25 000 XOF
-fee (3%)     =    750 XOF
-total_debit  = 25 750 XOF  // Montant prélevé sur votre wallet
+fee (${feeRate.payout_display.replace(".", ",")})     = ${Math.round(25000 * feeRate.payout / 100).toLocaleString("fr-FR")} XOF
+total_debit  = ${(25000 + Math.round(25000 * feeRate.payout / 100)).toLocaleString("fr-FR")} XOF  // Montant prélevé sur votre wallet
 beneficiary  = 25 000 XOF  // Montant reçu par le bénéficiaire`} lang="text" />
           </div>
         </Section>

@@ -121,21 +121,52 @@ async function createNotification(
   } catch {}
 }
 
+async function getPlatformDefaultFee(type: "payin" | "payout"): Promise<number> {
+  const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+  try {
+    const [row] = await db.select({ value: adminSettingsTable.value })
+      .from(adminSettingsTable).where(eq(adminSettingsTable.key, key)).limit(1);
+    if (row?.value) return parseFloat(row.value) / 100;
+  } catch {}
+  return 0.035;
+}
+
 async function getUserFeeRate(userId: number, type: "payin" | "payout" = "payin"): Promise<number> {
-  const [user] = await db.select({
-    accountType: usersTable.accountType,
-    payinFeePercent: usersTable.payinFeePercent,
-    payoutFeePercent: usersTable.payoutFeePercent,
-  }).from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) return 0.035;
+  const feeKey = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+  const [[user], [platformSetting]] = await Promise.all([
+    db.select({
+      payinFeePercent: usersTable.payinFeePercent,
+      payoutFeePercent: usersTable.payoutFeePercent,
+    }).from(usersTable).where(eq(usersTable.id, userId)),
+    db.select({ value: adminSettingsTable.value })
+      .from(adminSettingsTable).where(eq(adminSettingsTable.key, feeKey)).limit(1),
+  ]);
+  const platformDefault = platformSetting?.value ? parseFloat(platformSetting.value) / 100 : 0.035;
+  if (!user) return platformDefault;
   if (type === "payin" && user.payinFeePercent !== null && user.payinFeePercent !== undefined) {
     return parseFloat(String(user.payinFeePercent)) / 100;
   }
   if (type === "payout" && user.payoutFeePercent !== null && user.payoutFeePercent !== undefined) {
     return parseFloat(String(user.payoutFeePercent)) / 100;
   }
-  return 0.035;
+  return platformDefault;
 }
+
+// Returns the authenticated user's actual fee rates (honours per-merchant overrides + platform default)
+router.get("/dashboard/fee-rate", requireAuth, async (req: any, res: any) => {
+  const userId = req.session.userId!;
+  const [payinRate, payoutRate] = await Promise.all([
+    getUserFeeRate(userId, "payin"),
+    getUserFeeRate(userId, "payout"),
+  ]);
+  const fmt = (r: number) => parseFloat((r * 100).toFixed(4));
+  res.json({
+    payin: fmt(payinRate),
+    payout: fmt(payoutRate),
+    payin_display: `${fmt(payinRate)}%`,
+    payout_display: `${fmt(payoutRate)}%`,
+  });
+});
 
 router.get("/dashboard/status", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
@@ -2631,10 +2662,13 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const currentMode = req.session.mode ?? "sandbox";
   const { description, recipients } = parsed.data;
 
+  // Resolve this user's payout fee rate (honours admin overrides + platform default)
+  const userPayoutFeeRate = await getUserFeeRate(userId, "payout");
+
   // ── 1. Aggregate total needed (amount + fee) per country ──────────────────
   const totalsPerCountry: Record<string, number> = {};
   for (const r of recipients) {
-    const fee = Math.round(r.amount * FEE_RATE * 100) / 100;
+    const fee = Math.round(r.amount * userPayoutFeeRate * 100) / 100;
     totalsPerCountry[r.countryCode] = (totalsPerCountry[r.countryCode] ?? 0) + r.amount + fee;
   }
 
@@ -2692,7 +2726,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   for (const r of recipients) {
     try {
       const countryCurrency = COUNTRIES.find(c => c.code === r.countryCode)?.currency ?? "XOF";
-      const fee = Math.round(r.amount * FEE_RATE * 100) / 100;
+      const fee = Math.round(r.amount * userPayoutFeeRate * 100) / 100;
       const totalDebit = r.amount + fee;
       const txRef = `MASS-OUT-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 
