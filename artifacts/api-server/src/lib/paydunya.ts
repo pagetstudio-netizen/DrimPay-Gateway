@@ -778,7 +778,7 @@ export function getPayDunyaClient(): PayDunyaClient {
     const privateKey    = process.env.PAYDUNYA_PRIVATE_KEY;
     const publicKey     = process.env.PAYDUNYA_PUBLIC_KEY ?? "";
     const token         = process.env.PAYDUNYA_TOKEN;
-    const webhookSecret = process.env.PAYDUNYA_WEBHOOK_SECRET ?? "placeholder-secret";
+    const webhookSecret = process.env.PAYDUNYA_WEBHOOK_SECRET ?? "";
 
     if (!masterKey || !privateKey || !token) {
       throw new Error(

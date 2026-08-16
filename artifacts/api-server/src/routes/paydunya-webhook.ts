@@ -50,11 +50,14 @@ router.post("/webhooks/paydunya", async (req: any, res: any) => {
       ""
     ) as string;
 
-    // TODO: Décommenter quand le secret est configuré
-    // if (receivedHash && !client.verifyWebhookSignature(rawBody, receivedHash)) {
-    //   console.warn("[PayDunya Webhook] Hash invalide — rejeté");
-    //   return;
-    // }
+    // Vérifier la signature si PAYDUNYA_WEBHOOK_SECRET est configuré
+    if (process.env.PAYDUNYA_WEBHOOK_SECRET && process.env.PAYDUNYA_WEBHOOK_SECRET !== "placeholder-secret") {
+      if (!receivedHash || !client.verifyWebhookSignature(rawBody, receivedHash)) {
+        console.warn("[PayDunya Webhook] Signature invalide ou absente — webhook rejeté");
+        res.status(401).json({ error: "Invalid webhook signature" });
+        return;
+      }
+    }
 
     // Parser l'événement
     const event: PayDunyaWebhookPayload = client.parseWebhookEvent(req.body);

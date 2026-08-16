@@ -106508,7 +106508,7 @@ function getPayDunyaClient() {
     const privateKey = process.env.PAYDUNYA_PRIVATE_KEY;
     const publicKey = process.env.PAYDUNYA_PUBLIC_KEY ?? "";
     const token = process.env.PAYDUNYA_TOKEN;
-    const webhookSecret = process.env.PAYDUNYA_WEBHOOK_SECRET ?? "placeholder-secret";
+    const webhookSecret = process.env.PAYDUNYA_WEBHOOK_SECRET ?? "";
     if (!masterKey || !privateKey || !token) {
       throw new Error(
         "PayDunya non configur\xE9. D\xE9finissez PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY, PAYDUNYA_PUBLIC_KEY et PAYDUNYA_TOKEN dans les secrets."
@@ -282790,6 +282790,13 @@ router15.post("/webhooks/paydunya", async (req, res) => {
     const client = getPayDunyaClient();
     const rawBody = JSON.stringify(req.body);
     const receivedHash = req.headers["x-paydunya-hash"] ?? req.headers["x-hash"] ?? req.body?.data?.hash ?? req.body?.hash ?? "";
+    if (process.env.PAYDUNYA_WEBHOOK_SECRET && process.env.PAYDUNYA_WEBHOOK_SECRET !== "placeholder-secret") {
+      if (!receivedHash || !client.verifyWebhookSignature(rawBody, receivedHash)) {
+        console.warn("[PayDunya Webhook] Signature invalide ou absente \u2014 webhook rejet\xE9");
+        res.status(401).json({ error: "Invalid webhook signature" });
+        return;
+      }
+    }
     const event = client.parseWebhookEvent(req.body);
     console.log(`[PayDunya Webhook] \xC9v\xE9nement: ${event.event} | ref: ${event.our_reference}`);
     if (!event.our_reference) {
