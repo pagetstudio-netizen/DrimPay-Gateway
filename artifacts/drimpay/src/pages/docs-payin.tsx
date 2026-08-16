@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -105,10 +105,22 @@ function Alert({ type, title, children }: { type: "warning" | "info" | "success"
   );
 }
 
+function usePlatformFees() {
+  const [fees, setFees] = useState({ payin: 3.5, payout: 3.5 });
+  useEffect(() => {
+    fetch("/api/fees")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.payin != null) setFees({ payin: d.payin, payout: d.payout }); })
+      .catch(() => {});
+  }, []);
+  return fees;
+}
+
 export default function DocsPayin() {
   const [active, setActive] = useState("introduction");
   const [langTab, setLangTab] = useState("curl");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const fees = usePlatformFees();
   const lang = useLang();
   useSEO({
     title: lang === "fr"
@@ -589,7 +601,7 @@ def drimpay_webhook():
                 The DrimPay Pay-in API lets you initiate Mobile Money collection requests directly from your backend. The customer never leaves your interface — you send us the phone number and amount, we send the payment prompt to their phone, they confirm, and you receive a signed webhook with the result.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                DrimPay charges a flat <strong className="text-foreground">3.5% fee on Payin</strong> for all accounts (personal &amp; business). The net amount is credited to your country-specific wallet immediately upon confirmation.
+                DrimPay charges a flat <strong className="text-foreground">{fees.payin}% fee on Payin</strong> for all accounts (personal &amp; business). The net amount is credited to your country-specific wallet immediately upon confirmation.
               </p>
               <Alert type="info" title="Full payment flow">
                 <ol className="list-decimal list-inside space-y-1 mt-1">
