@@ -605,6 +605,38 @@ async function handleCallback(token: string, callbackId: string, chatId: string,
       await sendTo(token, chatId, `❌ Échec rejet #${id}: ${result.error}`);
     }
 
+  } else if (data === "disable_payouts:1") {
+    try {
+      await db.insert(adminSettingsTable).values({ key: "payouts_enabled", value: "false" })
+        .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: "false", updatedAt: new Date() } });
+      await sendTo(token, chatId,
+`🔴 <b>Retraits DÉSACTIVÉS</b>
+
+Tous les pay-outs sont bloqués instantanément.
+👤 Par: ${fromName}
+📅 ${dt()}
+
+Utilisez /activetraits pour réactiver.`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `❌ Erreur: ${String(e).substring(0, 200)}`);
+    }
+
+  } else if (data === "enable_payouts:1") {
+    try {
+      await db.insert(adminSettingsTable).values({ key: "payouts_enabled", value: "true" })
+        .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: "true", updatedAt: new Date() } });
+      await sendTo(token, chatId,
+`🟢 <b>Retraits RÉACTIVÉS</b>
+
+Les pay-outs sont à nouveau disponibles.
+👤 Par: ${fromName}
+📅 ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `❌ Erreur: ${String(e).substring(0, 200)}`);
+    }
+
   } else if (data.startsWith("unblock_ip:")) {
     // Débloquer une IP auto-bloquée (ex: faux positif admin légitime)
     const ip = data.slice(11).trim();
@@ -757,6 +789,47 @@ Un marchand a déclenché <b>${opts.count} tentatives</b> en ${opts.windowMinute
 Vérifiez l'activité de ce marchand — possible abus ou test automatisé.
 📅 ${dt()}`
   );
+}
+
+// ─── Admin action notifications ───────────────────────────────────────────────
+const ACTION_META: Record<string, { icon: string; label: string }> = {
+  CREDIT_WALLET:        { icon: "💰", label: "Wallet Crédité" },
+  DEBIT_WALLET:         { icon: "💸", label: "Wallet Débité" },
+  EDIT_WALLET_BALANCE:  { icon: "✏️",  label: "Solde Wallet Modifié" },
+  SUSPEND_MERCHANT:     { icon: "🔴", label: "Marchand Suspendu" },
+  ACTIVATE_MERCHANT:    { icon: "✅", label: "Marchand Activé" },
+  DELETE_MERCHANT:      { icon: "🗑️",  label: "Marchand Supprimé" },
+  RESET_PASSWORD:       { icon: "🔑", label: "Mot de Passe Réinitialisé" },
+  PROMOTE_ADMIN:        { icon: "👑", label: "Promu Administrateur" },
+  DEMOTE_ADMIN:         { icon: "🔽", label: "Rétrogradé Marchand" },
+  RESET_STATS:          { icon: "🔄", label: "Statistiques Réinitialisées" },
+  UPDATE_MERCHANT:      { icon: "📝", label: "Profil Marchand Modifié" },
+  GRANT_SUPPORT_AGENT:  { icon: "🤝", label: "Agent Support Activé" },
+  REVOKE_SUPPORT_AGENT: { icon: "❌", label: "Agent Support Révoqué" },
+};
+
+export async function notifyAdminAction(opts: {
+  action: string;
+  adminEmail: string;
+  targetLabel: string;
+  details?: string;
+  mode?: string;
+  buttons?: Array<Array<{ text: string; callback_data: string }>>;
+}) {
+  const meta = ACTION_META[opts.action] ?? { icon: "🔔", label: opts.action };
+  const modeTag = opts.mode === "live" ? "\n🟢 LIVE" : opts.mode === "sandbox" ? "\n🔵 SANDBOX" : "";
+
+  const text =
+`${meta.icon} <b>Action Admin — ${meta.label}</b>
+
+👤 Admin: ${opts.adminEmail}
+🎯 Cible: ${opts.targetLabel}${opts.details ? `\n📝 ${opts.details}` : ""}${modeTag}
+📅 ${dt()}`;
+
+  const defaultButtons: Array<Array<{ text: string; callback_data: string }>> = [
+    [{ text: "🛑 Stopper tous les retraits", callback_data: "disable_payouts:1" }],
+  ];
+  await sendWithButtons(text, opts.buttons ?? defaultButtons);
 }
 
 // ─── Admin helpers (called from admin routes) ──────────────────────────────────

@@ -263124,6 +263124,38 @@ async function handleCallback(token, callbackId, chatId, data, fromName) {
     } else {
       await sendTo(token, chatId, `\u274C \xC9chec rejet #${id}: ${result.error}`);
     }
+  } else if (data === "disable_payouts:1") {
+    try {
+      await db.insert(adminSettingsTable).values({ key: "payouts_enabled", value: "false" }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: "false", updatedAt: /* @__PURE__ */ new Date() } });
+      await sendTo(
+        token,
+        chatId,
+        `\u{1F534} <b>Retraits D\xC9SACTIV\xC9S</b>
+
+Tous les pay-outs sont bloqu\xE9s instantan\xE9ment.
+\u{1F464} Par: ${fromName}
+\u{1F4C5} ${dt()}
+
+Utilisez /activetraits pour r\xE9activer.`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `\u274C Erreur: ${String(e).substring(0, 200)}`);
+    }
+  } else if (data === "enable_payouts:1") {
+    try {
+      await db.insert(adminSettingsTable).values({ key: "payouts_enabled", value: "true" }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: "true", updatedAt: /* @__PURE__ */ new Date() } });
+      await sendTo(
+        token,
+        chatId,
+        `\u{1F7E2} <b>Retraits R\xC9ACTIV\xC9S</b>
+
+Les pay-outs sont \xE0 nouveau disponibles.
+\u{1F464} Par: ${fromName}
+\u{1F4C5} ${dt()}`
+      );
+    } catch (e) {
+      await sendTo(token, chatId, `\u274C Erreur: ${String(e).substring(0, 200)}`);
+    }
   } else if (data.startsWith("unblock_ip:")) {
     const ip = data.slice(11).trim();
     if (!ip) {
@@ -263248,6 +263280,35 @@ Un marchand a d\xE9clench\xE9 <b>${opts.count} tentatives</b> en ${opts.windowMi
 V\xE9rifiez l'activit\xE9 de ce marchand \u2014 possible abus ou test automatis\xE9.
 \u{1F4C5} ${dt()}`
   );
+}
+var ACTION_META = {
+  CREDIT_WALLET: { icon: "\u{1F4B0}", label: "Wallet Cr\xE9dit\xE9" },
+  DEBIT_WALLET: { icon: "\u{1F4B8}", label: "Wallet D\xE9bit\xE9" },
+  EDIT_WALLET_BALANCE: { icon: "\u270F\uFE0F", label: "Solde Wallet Modifi\xE9" },
+  SUSPEND_MERCHANT: { icon: "\u{1F534}", label: "Marchand Suspendu" },
+  ACTIVATE_MERCHANT: { icon: "\u2705", label: "Marchand Activ\xE9" },
+  DELETE_MERCHANT: { icon: "\u{1F5D1}\uFE0F", label: "Marchand Supprim\xE9" },
+  RESET_PASSWORD: { icon: "\u{1F511}", label: "Mot de Passe R\xE9initialis\xE9" },
+  PROMOTE_ADMIN: { icon: "\u{1F451}", label: "Promu Administrateur" },
+  DEMOTE_ADMIN: { icon: "\u{1F53D}", label: "R\xE9trograd\xE9 Marchand" },
+  RESET_STATS: { icon: "\u{1F504}", label: "Statistiques R\xE9initialis\xE9es" },
+  UPDATE_MERCHANT: { icon: "\u{1F4DD}", label: "Profil Marchand Modifi\xE9" },
+  GRANT_SUPPORT_AGENT: { icon: "\u{1F91D}", label: "Agent Support Activ\xE9" },
+  REVOKE_SUPPORT_AGENT: { icon: "\u274C", label: "Agent Support R\xE9voqu\xE9" }
+};
+async function notifyAdminAction(opts) {
+  const meta = ACTION_META[opts.action] ?? { icon: "\u{1F514}", label: opts.action };
+  const modeTag = opts.mode === "live" ? "\n\u{1F7E2} LIVE" : opts.mode === "sandbox" ? "\n\u{1F535} SANDBOX" : "";
+  const text2 = `${meta.icon} <b>Action Admin \u2014 ${meta.label}</b>
+
+\u{1F464} Admin: ${opts.adminEmail}
+\u{1F3AF} Cible: ${opts.targetLabel}${opts.details ? `
+\u{1F4DD} ${opts.details}` : ""}${modeTag}
+\u{1F4C5} ${dt()}`;
+  const defaultButtons = [
+    [{ text: "\u{1F6D1} Stopper tous les retraits", callback_data: "disable_payouts:1" }]
+  ];
+  await sendWithButtons(text2, opts.buttons ?? defaultButtons);
 }
 async function testConnection(token, chatId) {
   try {
@@ -280557,7 +280618,7 @@ router13.get(AP + "/stats", requireAdmin, async (req, res) => {
     db.select({ count: count() }).from(walletsTable),
     db.select({ count: count() }).from(paymentLinksTable),
     db.select({ count: count() }).from(paymentLinksTable).where(eq(paymentLinksTable.status, "active")),
-    db.select({ total: sum(walletsTable.balance) }).from(walletsTable),
+    db.select({ total: sum(walletsTable.balance) }).from(walletsTable).where(eq(walletsTable.mode, "live")),
     db.select({
       type: transactionsTable.type,
       total: sum(transactionsTable.amount),
@@ -280680,7 +280741,7 @@ router13.get(AP + "/stats", requireAdmin, async (req, res) => {
 });
 router13.post(AP + "/stats/reset", requireAdmin, async (req, res) => {
   const now = (/* @__PURE__ */ new Date()).toISOString();
-  const [balanceRow] = await db.select({ total: sum(walletsTable.balance) }).from(walletsTable);
+  const [balanceRow] = await db.select({ total: sum(walletsTable.balance) }).from(walletsTable).where(eq(walletsTable.mode, "live"));
   const currentBalance = String(balanceRow?.total ?? "0");
   await Promise.all([
     db.insert(adminSettingsTable).values({ key: "stats_reset_at", value: now }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: now, updatedAt: /* @__PURE__ */ new Date() } }),
@@ -280809,7 +280870,10 @@ router13.put(AP + "/merchants/:id/role", requireAdmin, async (req, res) => {
     res.status(400).json({ error: "R\xF4le invalide" });
     return;
   }
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  const [[user], [admin]] = await Promise.all([
+    db.select().from(usersTable).where(eq(usersTable.id, id)),
+    db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId))
+  ]);
   if (!user) {
     res.status(404).json({ error: "Utilisateur introuvable" });
     return;
@@ -280817,15 +280881,53 @@ router13.put(AP + "/merchants/:id/role", requireAdmin, async (req, res) => {
   await db.update(usersTable).set({ role }).where(eq(usersTable.id, id));
   const action = role === "admin" ? "PROMOTE_ADMIN" : "DEMOTE_ADMIN";
   await logAdminAction(req.session.userId, action, "user", String(id), `${user.email} \u2192 role: ${role}`, req.ip);
+  notifyAdminAction({
+    action,
+    adminEmail: admin?.email ?? "?",
+    targetLabel: `${user.companyName ?? "?"} (${user.email})`,
+    details: `Nouveau r\xF4le : ${role}`,
+    buttons: [[{ text: "\u{1F6D1} Stopper tous les retraits", callback_data: "disable_payouts:1" }]]
+  }).catch(() => {
+  });
   res.json({ ok: true, role });
 });
 router13.post(AP + "/merchants/:id/suspend", requireAdmin, async (req, res) => {
+  const targetId = parseInt(req.params.id);
   res.json({ ok: true, message: "Compte suspendu (flag non impl\xE9ment\xE9 en DB, logu\xE9)" });
   await logAdminAction(req.session.userId, "SUSPEND_MERCHANT", "user", req.params.id, void 0, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, targetId)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId))
+    ]);
+    notifyAdminAction({
+      action: "SUSPEND_MERCHANT",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `${target?.companyName ?? "?"} (${target?.email ?? "?"})`,
+      buttons: [[{ text: "\u2705 R\xE9activer ce marchand", callback_data: `enable_payouts:1` }]]
+    }).catch(() => {
+    });
+  } catch {
+  }
 });
 router13.post(AP + "/merchants/:id/activate", requireAdmin, async (req, res) => {
+  const targetId = parseInt(req.params.id);
   res.json({ ok: true, message: "Compte r\xE9activ\xE9" });
   await logAdminAction(req.session.userId, "ACTIVATE_MERCHANT", "user", req.params.id, void 0, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, targetId)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId))
+    ]);
+    notifyAdminAction({
+      action: "ACTIVATE_MERCHANT",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `${target?.companyName ?? "?"} (${target?.email ?? "?"})`,
+      buttons: [[{ text: "\u{1F6D1} Stopper tous les retraits", callback_data: "disable_payouts:1" }]]
+    }).catch(() => {
+    });
+  } catch {
+  }
 });
 router13.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
@@ -280833,6 +280935,20 @@ router13.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req, re
   const hash2 = await bcryptjs_default.hash(newPassword, 12);
   await db.update(usersTable).set({ passwordHash: hash2 }).where(eq(usersTable.id, id));
   await logAdminAction(req.session.userId, "RESET_PASSWORD", "user", String(id), void 0, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, id)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId))
+    ]);
+    notifyAdminAction({
+      action: "RESET_PASSWORD",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `${target?.companyName ?? "?"} (${target?.email ?? "?"})`,
+      buttons: [[{ text: "\u{1F6D1} Stopper tous les retraits", callback_data: "disable_payouts:1" }]]
+    }).catch(() => {
+    });
+  } catch {
+  }
   res.json({ ok: true, newPassword });
 });
 router13.delete(AP + "/merchants/:id", requireAdmin, async (req, res) => {
@@ -280842,7 +280958,18 @@ router13.delete(AP + "/merchants/:id", requireAdmin, async (req, res) => {
     return;
   }
   try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, id)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId))
+    ]);
     await logAdminAction(req.session.userId, "DELETE_MERCHANT", "user", String(id), void 0, req.ip);
+    notifyAdminAction({
+      action: "DELETE_MERCHANT",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `${target?.companyName ?? "?"} (${target?.email ?? "?"})`,
+      buttons: [[{ text: "\u{1F6D1} Stopper tous les retraits", callback_data: "disable_payouts:1" }]]
+    }).catch(() => {
+    });
     await db.delete(walletExchangesTable).where(eq(walletExchangesTable.userId, id));
     await db.delete(reversementsTable).where(eq(reversementsTable.userId, id));
     await db.delete(transactionsTable).where(eq(transactionsTable.userId, id));
@@ -280873,8 +281000,25 @@ router13.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (r
     res.status(400).json({ error: "Invalid balance" });
     return;
   }
+  const [wallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, walletId));
   await db.update(walletsTable).set({ balance: String(parseFloat(balance)) }).where(eq(walletsTable.id, walletId));
   await logAdminAction(req.session.userId, "EDIT_WALLET_BALANCE", "wallet", String(walletId), `New balance: ${balance}`, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      wallet ? db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, wallet.userId)) : Promise.resolve([void 0]),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId))
+    ]);
+    notifyAdminAction({
+      action: "EDIT_WALLET_BALANCE",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `Wallet #${walletId} \u2014 ${target?.companyName ?? "?"} (${wallet?.countryCode ?? "?"} \xB7 ${wallet?.currency ?? "?"})`,
+      details: `Nouveau solde : ${parseFloat(balance).toLocaleString("fr-FR")} ${wallet?.currency ?? ""}`,
+      mode: wallet?.mode,
+      buttons: [[{ text: "\u{1F6D1} Stopper tous les retraits", callback_data: "disable_payouts:1" }]]
+    }).catch(() => {
+    });
+  } catch {
+  }
   res.json({ ok: true });
 });
 router13.get(AP + "/kyb", requireAdmin, async (req, res) => {
@@ -281382,8 +281526,25 @@ router13.post(AP + "/wallets/:id/credit", requireAdmin, async (req, res) => {
     res.status(400).json({ error: "Invalid amount" });
     return;
   }
+  const [wallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, id));
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${parseFloat(amount)}` }).where(eq(walletsTable.id, id));
   await logAdminAction(req.session.userId, "CREDIT_WALLET", "wallet", String(id), `Amount: ${amount}, Note: ${note}`, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      wallet ? db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, wallet.userId)) : Promise.resolve([void 0]),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId))
+    ]);
+    notifyAdminAction({
+      action: "CREDIT_WALLET",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `Wallet #${id} \u2014 ${target?.companyName ?? "?"} (${wallet?.countryCode ?? "?"} \xB7 ${wallet?.currency ?? "?"})`,
+      details: `+${parseFloat(amount).toLocaleString("fr-FR")} ${wallet?.currency ?? ""}${note ? ` \u2014 ${note}` : ""}`,
+      mode: wallet?.mode,
+      buttons: [[{ text: "\u{1F6D1} Stopper tous les retraits", callback_data: "disable_payouts:1" }]]
+    }).catch(() => {
+    });
+  } catch {
+  }
   res.json({ ok: true });
 });
 router13.post(AP + "/wallets/:id/debit", requireAdmin, async (req, res) => {
@@ -281400,6 +281561,22 @@ router13.post(AP + "/wallets/:id/debit", requireAdmin, async (req, res) => {
   }
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${parseFloat(amount)}` }).where(eq(walletsTable.id, id));
   await logAdminAction(req.session.userId, "DEBIT_WALLET", "wallet", String(id), `Amount: ${amount}, Note: ${note}`, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, wallet.userId)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId))
+    ]);
+    notifyAdminAction({
+      action: "DEBIT_WALLET",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `Wallet #${id} \u2014 ${target?.companyName ?? "?"} (${wallet?.countryCode ?? "?"} \xB7 ${wallet?.currency ?? "?"})`,
+      details: `-${parseFloat(amount).toLocaleString("fr-FR")} ${wallet?.currency ?? ""}${note ? ` \u2014 ${note}` : ""}`,
+      mode: wallet?.mode,
+      buttons: [[{ text: "\u{1F6D1} Stopper tous les retraits", callback_data: "disable_payouts:1" }]]
+    }).catch(() => {
+    });
+  } catch {
+  }
   res.json({ ok: true });
 });
 router13.get(AP + "/aggregators", requireAdmin, async (_req, res) => {

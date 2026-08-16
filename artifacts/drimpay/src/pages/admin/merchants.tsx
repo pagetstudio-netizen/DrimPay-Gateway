@@ -295,12 +295,25 @@ function MerchantPanel({
                 <p className="text-sm">Aucun wallet pour ce marchand</p>
               </div>
             )}
-            {wallets.map((w: any) => (
-              <div key={w.id} className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+            {wallets.map((w: any) => {
+              const isLive = w.mode === "live";
+              return (
+              <div key={w.id} className={`rounded-xl border p-4 ${isLive ? "bg-white border-emerald-200" : "bg-gray-50 border-gray-100"}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{w.countryCode} · {w.currency}</p>
-                    <p className="text-xs text-gray-400">ID wallet #{w.id}</p>
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-gray-900">{w.countryCode} · {w.currency}</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          isLive
+                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                            : "bg-amber-100 text-amber-700 border border-amber-200"
+                        }`}>
+                          {isLive ? "Production" : "Sandbox"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">ID wallet #{w.id}</p>
+                    </div>
                   </div>
                   {editingWallet !== w.id && (
                     <button onClick={() => { setEditingWallet(w.id); setNewBal(w.balance); }}
@@ -326,10 +339,13 @@ function MerchantPanel({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xl font-bold text-emerald-600">{parseFloat(w.balance).toLocaleString("fr-FR")} {w.currency}</p>
+                  <p className={`text-xl font-bold ${isLive ? "text-emerald-600" : "text-amber-600"}`}>
+                    {parseFloat(w.balance).toLocaleString("fr-FR")} {w.currency}
+                  </p>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

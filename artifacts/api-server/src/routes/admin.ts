@@ -21,7 +21,7 @@ import multer from "multer";
 import {
   notifyKybDecision, notifyBlacklist,
   testConnection, detectChatId, invalidateTelegramCache,
-  notifyLoginAttempt,
+  notifyLoginAttempt, notifyAdminAction,
 } from "../lib/telegram";
 import { logSecurityEvent, getClientIp } from "../middlewares/security";
 
@@ -149,7 +149,7 @@ router.get(AP + "/stats", requireAdmin, async (req: any, res: any) => {
     db.select({ count: count() }).from(walletsTable),
     db.select({ count: count() }).from(paymentLinksTable),
     db.select({ count: count() }).from(paymentLinksTable).where(eq(paymentLinksTable.status, "active")),
-    db.select({ total: sum(walletsTable.balance) }).from(walletsTable),
+    db.select({ total: sum(walletsTable.balance) }).from(walletsTable).where(eq(walletsTable.mode, "live")),
     db.select({
       type: transactionsTable.type,
       total: sum(transactionsTable.amount),
@@ -292,8 +292,8 @@ router.get(AP + "/stats", requireAdmin, async (req: any, res: any) => {
 router.post(AP + "/stats/reset", requireAdmin, async (req: any, res: any) => {
   const now = new Date().toISOString();
 
-  // Snapshot current platform balance so we can show delta = 0 after reset
-  const [balanceRow] = await db.select({ total: sum(walletsTable.balance) }).from(walletsTable);
+  // Snapshot current live platform balance so we can show delta = 0 after reset
+  const [balanceRow] = await db.select({ total: sum(walletsTable.balance) }).from(walletsTable).where(eq(walletsTable.mode, "live"));
   const currentBalance = String(balanceRow?.total ?? "0");
 
   await Promise.all([
@@ -434,22 +434,58 @@ router.put(AP + "/merchants/:id/role", requireAdmin, async (req: any, res: any) 
   if (id === req.session.userId) { res.status(400).json({ error: "Vous ne pouvez pas modifier votre propre rôle" }); return; }
   const { role } = req.body;
   if (!role || !["admin", "user"].includes(role)) { res.status(400).json({ error: "Rôle invalide" }); return; }
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  const [[user], [admin]] = await Promise.all([
+    db.select().from(usersTable).where(eq(usersTable.id, id)),
+    db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId)),
+  ]);
   if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
   await db.update(usersTable).set({ role }).where(eq(usersTable.id, id));
   const action = role === "admin" ? "PROMOTE_ADMIN" : "DEMOTE_ADMIN";
   await logAdminAction(req.session.userId, action, "user", String(id), `${user.email} → role: ${role}`, req.ip);
+  notifyAdminAction({
+    action,
+    adminEmail: admin?.email ?? "?",
+    targetLabel: `${user.companyName ?? "?"} (${user.email})`,
+    details: `Nouveau rôle : ${role}`,
+    buttons: [[{ text: "🛑 Stopper tous les retraits", callback_data: "disable_payouts:1" }]],
+  }).catch(() => {});
   res.json({ ok: true, role });
 });
 
 router.post(AP + "/merchants/:id/suspend", requireAdmin, async (req: any, res: any) => {
+  const targetId = parseInt(req.params.id);
   res.json({ ok: true, message: "Compte suspendu (flag non implémenté en DB, logué)" });
   await logAdminAction(req.session.userId, "SUSPEND_MERCHANT", "user", req.params.id, undefined, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, targetId)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId)),
+    ]);
+    notifyAdminAction({
+      action: "SUSPEND_MERCHANT",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `${target?.companyName ?? "?"} (${target?.email ?? "?"})`,
+      buttons: [[{ text: "✅ Réactiver ce marchand", callback_data: `enable_payouts:1` }]],
+    }).catch(() => {});
+  } catch {}
 });
 
 router.post(AP + "/merchants/:id/activate", requireAdmin, async (req: any, res: any) => {
+  const targetId = parseInt(req.params.id);
   res.json({ ok: true, message: "Compte réactivé" });
   await logAdminAction(req.session.userId, "ACTIVATE_MERCHANT", "user", req.params.id, undefined, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, targetId)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId)),
+    ]);
+    notifyAdminAction({
+      action: "ACTIVATE_MERCHANT",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `${target?.companyName ?? "?"} (${target?.email ?? "?"})`,
+      buttons: [[{ text: "🛑 Stopper tous les retraits", callback_data: "disable_payouts:1" }]],
+    }).catch(() => {});
+  } catch {}
 });
 
 router.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req: any, res: any) => {
@@ -458,6 +494,18 @@ router.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req: any,
   const hash = await bcrypt.hash(newPassword, 12);
   await db.update(usersTable).set({ passwordHash: hash }).where(eq(usersTable.id, id));
   await logAdminAction(req.session.userId, "RESET_PASSWORD", "user", String(id), undefined, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, id)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId)),
+    ]);
+    notifyAdminAction({
+      action: "RESET_PASSWORD",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `${target?.companyName ?? "?"} (${target?.email ?? "?"})`,
+      buttons: [[{ text: "🛑 Stopper tous les retraits", callback_data: "disable_payouts:1" }]],
+    }).catch(() => {});
+  } catch {}
   res.json({ ok: true, newPassword });
 });
 
@@ -465,7 +513,18 @@ router.delete(AP + "/merchants/:id", requireAdmin, async (req: any, res: any) =>
   const id = parseInt(req.params.id);
   if (id === req.session.userId) { res.status(400).json({ error: "Cannot delete yourself" }); return; }
   try {
+    // Fetch before deletion for notification
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, id)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId)),
+    ]);
     await logAdminAction(req.session.userId, "DELETE_MERCHANT", "user", String(id), undefined, req.ip);
+    notifyAdminAction({
+      action: "DELETE_MERCHANT",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `${target?.companyName ?? "?"} (${target?.email ?? "?"})`,
+      buttons: [[{ text: "🛑 Stopper tous les retraits", callback_data: "disable_payouts:1" }]],
+    }).catch(() => {});
     // Cascade-delete in FK-safe order (many tables reference users without onDelete:cascade)
     await db.delete(walletExchangesTable).where(eq(walletExchangesTable.userId, id));
     await db.delete(reversementsTable).where(eq(reversementsTable.userId, id));
@@ -495,8 +554,23 @@ router.put(AP + "/merchants/:userId/wallets/:walletId", requireAdmin, async (req
   const walletId = parseInt(req.params.walletId);
   const { balance } = req.body;
   if (balance === undefined || isNaN(parseFloat(balance))) { res.status(400).json({ error: "Invalid balance" }); return; }
+  const [wallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, walletId));
   await db.update(walletsTable).set({ balance: String(parseFloat(balance)) }).where(eq(walletsTable.id, walletId));
   await logAdminAction(req.session.userId, "EDIT_WALLET_BALANCE", "wallet", String(walletId), `New balance: ${balance}`, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      wallet ? db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, wallet.userId)) : Promise.resolve([undefined]),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId)),
+    ]);
+    notifyAdminAction({
+      action: "EDIT_WALLET_BALANCE",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `Wallet #${walletId} — ${target?.companyName ?? "?"} (${wallet?.countryCode ?? "?"} · ${wallet?.currency ?? "?"})`,
+      details: `Nouveau solde : ${parseFloat(balance).toLocaleString("fr-FR")} ${wallet?.currency ?? ""}`,
+      mode: wallet?.mode,
+      buttons: [[{ text: "🛑 Stopper tous les retraits", callback_data: "disable_payouts:1" }]],
+    }).catch(() => {});
+  } catch {}
   res.json({ ok: true });
 });
 
@@ -1080,8 +1154,23 @@ router.post(AP + "/wallets/:id/credit", requireAdmin, async (req: any, res: any)
   const id = parseInt(req.params.id);
   const { amount, note } = req.body;
   if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) { res.status(400).json({ error: "Invalid amount" }); return; }
+  const [wallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, id));
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${parseFloat(amount)}` }).where(eq(walletsTable.id, id));
   await logAdminAction(req.session.userId, "CREDIT_WALLET", "wallet", String(id), `Amount: ${amount}, Note: ${note}`, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      wallet ? db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, wallet.userId)) : Promise.resolve([undefined]),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId)),
+    ]);
+    notifyAdminAction({
+      action: "CREDIT_WALLET",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `Wallet #${id} — ${target?.companyName ?? "?"} (${wallet?.countryCode ?? "?"} · ${wallet?.currency ?? "?"})`,
+      details: `+${parseFloat(amount).toLocaleString("fr-FR")} ${wallet?.currency ?? ""}${note ? ` — ${note}` : ""}`,
+      mode: wallet?.mode,
+      buttons: [[{ text: "🛑 Stopper tous les retraits", callback_data: "disable_payouts:1" }]],
+    }).catch(() => {});
+  } catch {}
   res.json({ ok: true });
 });
 
@@ -1093,6 +1182,20 @@ router.post(AP + "/wallets/:id/debit", requireAdmin, async (req: any, res: any) 
   if (!wallet || parseFloat(String(wallet.balance)) < parseFloat(amount)) { res.status(400).json({ error: "Insufficient balance" }); return; }
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${parseFloat(amount)}` }).where(eq(walletsTable.id, id));
   await logAdminAction(req.session.userId, "DEBIT_WALLET", "wallet", String(id), `Amount: ${amount}, Note: ${note}`, req.ip);
+  try {
+    const [[target], [admin]] = await Promise.all([
+      db.select({ email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, wallet.userId)),
+      db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.session.userId)),
+    ]);
+    notifyAdminAction({
+      action: "DEBIT_WALLET",
+      adminEmail: admin?.email ?? "?",
+      targetLabel: `Wallet #${id} — ${target?.companyName ?? "?"} (${wallet?.countryCode ?? "?"} · ${wallet?.currency ?? "?"})`,
+      details: `-${parseFloat(amount).toLocaleString("fr-FR")} ${wallet?.currency ?? ""}${note ? ` — ${note}` : ""}`,
+      mode: wallet?.mode,
+      buttons: [[{ text: "🛑 Stopper tous les retraits", callback_data: "disable_payouts:1" }]],
+    }).catch(() => {});
+  } catch {}
   res.json({ ok: true });
 });
 
