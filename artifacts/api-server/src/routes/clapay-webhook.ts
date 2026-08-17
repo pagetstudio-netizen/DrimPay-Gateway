@@ -90,14 +90,36 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
       return;
     }
 
-    // Retrouver la transaction via notre référence
-    const [tx] = await db
-      .select()
-      .from(transactionsTable)
-      .where(eq(transactionsTable.reference, event.our_reference));
+    // Retrouver la transaction via notre référence interne
+    let [tx] = event.our_reference
+      ? await db.select().from(transactionsTable).where(eq(transactionsTable.reference, event.our_reference))
+      : [undefined];
+
+    // Fallback 1 : cherche par signature Clapay stockée comme externalRef
+    // (cas où Clapay utilise transaction_id pour leur propre ID, pas le nôtre)
+    if (!tx && event.clapay_reference) {
+      [tx] = await db
+        .select()
+        .from(transactionsTable)
+        .where(eq(transactionsTable.externalRef, event.clapay_reference));
+      if (tx) {
+        console.log(`[Clapay Webhook] Transaction trouvée via externalRef (signature): ${event.clapay_reference} → ref: ${tx.reference}`);
+      }
+    }
+
+    // Fallback 2 : cherche par gatewayReference
+    if (!tx && event.clapay_reference) {
+      [tx] = await db
+        .select()
+        .from(transactionsTable)
+        .where(eq(transactionsTable.gatewayReference, event.clapay_reference));
+      if (tx) {
+        console.log(`[Clapay Webhook] Transaction trouvée via gatewayReference: ${event.clapay_reference} → ref: ${tx.reference}`);
+      }
+    }
 
     if (!tx) {
-      console.warn(`[Clapay Webhook] Transaction non trouvée: ${event.our_reference}`);
+      console.warn(`[Clapay Webhook] Transaction non trouvée — our_ref: ${event.our_reference} | clapay_ref: ${event.clapay_reference}`);
       return;
     }
 

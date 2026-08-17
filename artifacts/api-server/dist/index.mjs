@@ -105980,11 +105980,14 @@ var init_clapay = __esm({
         }
         const raw = await this.request("POST", "/init/payment", requestBody);
         const statusPayment = raw?.status_payment ?? "";
-        const signature = raw?.signature ?? "";
+        const signature = raw?.signature ?? raw?.id ?? raw?.reference ?? // Ne pas utiliser raw?.transaction_id ici : c'est notre propre référence
+        // qu'on leur a envoyée, pas la leur.
+        "";
         const isOk = statusPayment === "INITIATED" || statusPayment === "PENDING" || statusPayment === "PROCESSING" || statusPayment === "SUCCESS" || !!signature;
+        const clapayRef = signature || params.reference;
         return {
           success: isOk,
-          clapay_reference: signature,
+          clapay_reference: clapayRef,
           status: isOk ? "processing" : "failed",
           payment_url: raw?.payment_url_operator ?? raw?.payment_url ?? void 0,
           ussd_code: raw?.payment_otp ?? void 0,
@@ -281532,17 +281535,21 @@ router13.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, r
       res.status(400).json({ error: "Seules les pay-in peuvent \xEAtre synchronis\xE9es" });
       return;
     }
-    if (!tx.externalRef) {
-      res.status(400).json({ error: "Pas de r\xE9f\xE9rence externe \u2014 impossible d'interroger la passerelle" });
+    const queryRef = tx.externalRef || tx.gatewayReference;
+    if (!queryRef) {
+      res.status(400).json({
+        error: "Aucune r\xE9f\xE9rence passerelle disponible (externalRef et gatewayReference vides). La transaction a peut-\xEAtre \xE9chou\xE9 avant d'\xEAtre enregistr\xE9e c\xF4t\xE9 fournisseur."
+      });
       return;
     }
     const { aggregator, client } = await resolveAggregator(tx.countryCode, tx.operator);
     let gatewayStatus;
-    let gatewayRef = tx.externalRef;
+    let gatewayRef = queryRef;
     if (aggregator === "clapay") {
       const { ClapayClient: ClapayClient5 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-      const r = await client.getStatus(tx.externalRef);
+      const r = await client.getStatus(queryRef);
       gatewayStatus = r.status;
+      if (r.clapay_reference) gatewayRef = r.clapay_reference;
     } else {
       const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
       const pd = client;
@@ -282678,9 +282685,21 @@ router14.post("/webhooks/clapay", async (req, res) => {
       console.warn("[Clapay Webhook] our_reference manquant \u2014 ignor\xE9");
       return;
     }
-    const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.reference, event.our_reference));
+    let [tx] = event.our_reference ? await db.select().from(transactionsTable).where(eq(transactionsTable.reference, event.our_reference)) : [void 0];
+    if (!tx && event.clapay_reference) {
+      [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.externalRef, event.clapay_reference));
+      if (tx) {
+        console.log(`[Clapay Webhook] Transaction trouv\xE9e via externalRef (signature): ${event.clapay_reference} \u2192 ref: ${tx.reference}`);
+      }
+    }
+    if (!tx && event.clapay_reference) {
+      [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.gatewayReference, event.clapay_reference));
+      if (tx) {
+        console.log(`[Clapay Webhook] Transaction trouv\xE9e via gatewayReference: ${event.clapay_reference} \u2192 ref: ${tx.reference}`);
+      }
+    }
     if (!tx) {
-      console.warn(`[Clapay Webhook] Transaction non trouv\xE9e: ${event.our_reference}`);
+      console.warn(`[Clapay Webhook] Transaction non trouv\xE9e \u2014 our_ref: ${event.our_reference} | clapay_ref: ${event.clapay_reference}`);
       return;
     }
     const newStatus = STATUS_MAP[event.status?.toLowerCase()] ?? "failed";

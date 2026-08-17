@@ -316,9 +316,18 @@ export class ClapayClient {
 
     // Réponse Nowallet V3 :
     // { country, currency, signature, available_operator, authorized_operator,
-    //   payment_url_operator?, payment_url?, status_payment, message, observation_error, payment_otp? }
+    //   payment_url_operator?, payment_url?, status_payment, message, observation_error, payment_otp?,
+    //   transaction_id? (parfois renvoyé comme leur ID interne) }
     const statusPayment: string = raw?.status_payment ?? "";
-    const signature: string = raw?.signature ?? "";
+    // Clapay renvoie leur référence interne sous "signature" mais aussi parfois
+    // sous "id", "reference", ou "transaction_id" selon la version de l'API.
+    const signature: string =
+      raw?.signature ??
+      raw?.id ??
+      raw?.reference ??
+      // Ne pas utiliser raw?.transaction_id ici : c'est notre propre référence
+      // qu'on leur a envoyée, pas la leur.
+      "";
 
     const isOk = statusPayment === "INITIATED" ||
       statusPayment === "PENDING" ||
@@ -326,9 +335,13 @@ export class ClapayClient {
       statusPayment === "SUCCESS" ||
       !!signature;
 
+    // Si Clapay n'a pas renvoyé de référence, on utilise la nôtre comme fallback
+    // pour que le sync-gateway puisse tenter une vérification ultérieure.
+    const clapayRef = signature || params.reference;
+
     return {
       success: isOk,
-      clapay_reference: signature,
+      clapay_reference: clapayRef,
       status: isOk ? "processing" : "failed",
       payment_url: raw?.payment_url_operator ?? raw?.payment_url ?? undefined,
       ussd_code: raw?.payment_otp ?? undefined,

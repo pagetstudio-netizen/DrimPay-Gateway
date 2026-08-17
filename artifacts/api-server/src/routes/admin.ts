@@ -1057,8 +1057,14 @@ router.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req: any
       res.status(400).json({ error: "Seules les pay-in peuvent être synchronisées" });
       return;
     }
-    if (!tx.externalRef) {
-      res.status(400).json({ error: "Pas de référence externe — impossible d'interroger la passerelle" });
+
+    // externalRef = signature Clapay ou token PayDunya stocké lors de l'init
+    // gatewayReference = référence mise à jour par le webhook ou le polling
+    const queryRef = tx.externalRef || tx.gatewayReference;
+    if (!queryRef) {
+      res.status(400).json({
+        error: "Aucune référence passerelle disponible (externalRef et gatewayReference vides). La transaction a peut-être échoué avant d'être enregistrée côté fournisseur.",
+      });
       return;
     }
 
@@ -1066,12 +1072,13 @@ router.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req: any
     const { aggregator, client } = await resolveAggregator(tx.countryCode, tx.operator);
 
     let gatewayStatus: string;
-    let gatewayRef = tx.externalRef;
+    let gatewayRef = queryRef;
 
     if (aggregator === "clapay") {
       const { ClapayClient } = await import("../lib/clapay.js");
-      const r = await (client as InstanceType<typeof ClapayClient>).getStatus(tx.externalRef);
+      const r = await (client as InstanceType<typeof ClapayClient>).getStatus(queryRef);
       gatewayStatus = r.status;
+      if (r.clapay_reference) gatewayRef = r.clapay_reference;
     } else {
       const { PayDunyaClient } = await import("../lib/paydunya.js");
       const pd = client as InstanceType<typeof PayDunyaClient>;
