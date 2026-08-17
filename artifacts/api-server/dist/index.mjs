@@ -105994,10 +105994,14 @@ var init_clapay = __esm({
           message: raw?.message ?? statusPayment ?? void 0
         };
       }
-      // ─── Initiate Pay-Out — à adapter selon endpoint Nowallet payout ──────────
+      // ─── Initiate Pay-Out — Nowallet V3 ──────────────────────────────────────
+      //
+      // L'endpoint exact varie selon la version de l'API Clapay/Nowallet.
+      // Priorité : CLAPAY_PAYOUT_ENDPOINT (env) → /disbursement → /init/payout
+      // Si la variable CLAPAY_PAYOUT_ENDPOINT est définie sur Plesk, elle est utilisée.
       async initiatePayout(params) {
         const operatorCode = toNowWalletOperatorCode(params.operator);
-        const raw = await this.request("POST", "/init/payout", {
+        const body = {
           transaction_id: params.reference,
           amount: params.amount,
           callback_url: params.callback_url,
@@ -106007,16 +106011,38 @@ var init_clapay = __esm({
           additional_infos: {
             customer_phone: params.phone
           }
-        });
-        const statusPayment = raw?.status_payment ?? "";
-        const signature = raw?.signature ?? "";
-        const isOk = !!signature || statusPayment === "INITIATED" || statusPayment === "PENDING";
-        return {
-          success: isOk,
-          clapay_reference: signature,
-          status: isOk ? "processing" : "failed",
-          message: raw?.message ?? statusPayment ?? void 0
         };
+        const configuredEndpoint = process.env.CLAPAY_PAYOUT_ENDPOINT?.trim();
+        const endpoints = configuredEndpoint ? [configuredEndpoint] : ["/disbursement", "/init/disbursement", "/payout/init", "/init/payout"];
+        let lastError = null;
+        for (const endpoint of endpoints) {
+          try {
+            const raw = await this.request("POST", endpoint, body);
+            const statusPayment = raw?.status_payment ?? "";
+            const signature = raw?.signature ?? raw?.id ?? raw?.reference ?? "";
+            const isOk = !!signature || statusPayment === "INITIATED" || statusPayment === "PENDING" || statusPayment === "PROCESSING" || statusPayment === "SUCCESS";
+            if (isOk || !raw?.message?.startsWith("Cannot")) {
+              console.info(`[Clapay] Payout initi\xE9 via ${endpoint} \u2014 status: ${statusPayment}`);
+              return {
+                success: isOk,
+                clapay_reference: signature || params.reference,
+                status: isOk ? "processing" : "failed",
+                message: raw?.message ?? statusPayment ?? void 0
+              };
+            }
+            console.warn(`[Clapay] Endpoint ${endpoint} introuvable (${raw?.message}) \u2014 tentative suivante`);
+            lastError = new Error(raw?.message ?? `Endpoint ${endpoint} non disponible`);
+          } catch (err) {
+            const msg = err?.message ?? String(err);
+            if (msg.includes("Cannot POST") || msg.includes("Cannot GET") || err?.statusCode === 404) {
+              console.warn(`[Clapay] Endpoint ${endpoint} non disponible (${msg}) \u2014 tentative suivante`);
+              lastError = err;
+              continue;
+            }
+            throw err;
+          }
+        }
+        throw lastError ?? new Error("Aucun endpoint de payout Clapay disponible. Configurez CLAPAY_PAYOUT_ENDPOINT dans les variables d'environnement Plesk.");
       }
       // ─── Check transaction status — POST /check/status/payment ────────────────
       async getStatus(clapaySignature) {
@@ -276831,14 +276857,33 @@ async function listActiveOperators(countryCode) {
 async function routePayout(params) {
   const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
   if (aggregator === "clapay") {
-    const c = client;
-    const res = await c.initiatePayout(params);
-    if (!res.success) throw new Error(res.message ?? "\xC9chec Clapay payout");
-    return {
-      aggregator,
-      externalRef: res.clapay_reference,
-      message: "Payout envoy\xE9 via Clapay"
-    };
+    try {
+      const c = client;
+      const res = await c.initiatePayout(params);
+      if (!res.success) throw new Error(res.message ?? "\xC9chec Clapay payout");
+      return {
+        aggregator,
+        externalRef: res.clapay_reference,
+        message: "Payout envoy\xE9 via Clapay"
+      };
+    } catch (clapayErr) {
+      const msg = clapayErr?.message ?? String(clapayErr);
+      const isEndpointMissing = msg.includes("Cannot POST") || msg.includes("endpoint de payout Clapay") || clapayErr?.statusCode === 404;
+      if (isEndpointMissing && isPayDunyaConfigured()) {
+        console.warn(
+          `[routePayout] Clapay payout indisponible (${msg}) \u2014 bascule automatique sur PayDunya pour ${params.operator} (${params.country_code}).`
+        );
+        const p = getPayDunyaClient();
+        const res = await p.initiatePayout(params);
+        if (!res.success) throw new Error(res.message ?? "\xC9chec PayDunya payout (fallback)");
+        return {
+          aggregator: "paydunya",
+          externalRef: res.paydunya_reference,
+          message: "Payout envoy\xE9 via PayDunya (fallback \u2014 endpoint Clapay non disponible)"
+        };
+      }
+      throw clapayErr;
+    }
   } else {
     const p = client;
     const res = await p.initiatePayout(params);

@@ -349,11 +349,15 @@ export class ClapayClient {
     };
   }
 
-  // ─── Initiate Pay-Out — à adapter selon endpoint Nowallet payout ──────────
+  // ─── Initiate Pay-Out — Nowallet V3 ──────────────────────────────────────
+  //
+  // L'endpoint exact varie selon la version de l'API Clapay/Nowallet.
+  // Priorité : CLAPAY_PAYOUT_ENDPOINT (env) → /disbursement → /init/payout
+  // Si la variable CLAPAY_PAYOUT_ENDPOINT est définie sur Plesk, elle est utilisée.
   async initiatePayout(params: ClapayPayoutRequest): Promise<ClapayPayoutResponse> {
     const operatorCode = toNowWalletOperatorCode(params.operator);
 
-    const raw = await this.request<any>("POST", "/init/payout", {
+    const body = {
       transaction_id: params.reference,
       amount: params.amount,
       callback_url: params.callback_url,
@@ -363,18 +367,46 @@ export class ClapayClient {
       additional_infos: {
         customer_phone: params.phone,
       },
-    });
-
-    const statusPayment: string = raw?.status_payment ?? "";
-    const signature: string = raw?.signature ?? "";
-    const isOk = !!signature || statusPayment === "INITIATED" || statusPayment === "PENDING";
-
-    return {
-      success: isOk,
-      clapay_reference: signature,
-      status: isOk ? "processing" : "failed",
-      message: raw?.message ?? statusPayment ?? undefined,
     };
+
+    // Endpoints à essayer dans l'ordre
+    const configuredEndpoint = process.env.CLAPAY_PAYOUT_ENDPOINT?.trim();
+    const endpoints = configuredEndpoint
+      ? [configuredEndpoint]
+      : ["/disbursement", "/init/disbursement", "/payout/init", "/init/payout"];
+
+    let lastError: Error | null = null;
+    for (const endpoint of endpoints) {
+      try {
+        const raw = await this.request<any>("POST", endpoint, body);
+        const statusPayment: string = raw?.status_payment ?? "";
+        const signature: string = raw?.signature ?? raw?.id ?? raw?.reference ?? "";
+        const isOk = !!signature || statusPayment === "INITIATED" || statusPayment === "PENDING" || statusPayment === "PROCESSING" || statusPayment === "SUCCESS";
+
+        if (isOk || !raw?.message?.startsWith("Cannot")) {
+          console.info(`[Clapay] Payout initié via ${endpoint} — status: ${statusPayment}`);
+          return {
+            success: isOk,
+            clapay_reference: signature || params.reference,
+            status: isOk ? "processing" : "failed",
+            message: raw?.message ?? statusPayment ?? undefined,
+          };
+        }
+        // "Cannot POST /..." → essayer le prochain endpoint
+        console.warn(`[Clapay] Endpoint ${endpoint} introuvable (${raw?.message}) — tentative suivante`);
+        lastError = new Error(raw?.message ?? `Endpoint ${endpoint} non disponible`);
+      } catch (err: any) {
+        const msg: string = err?.message ?? String(err);
+        if (msg.includes("Cannot POST") || msg.includes("Cannot GET") || err?.statusCode === 404) {
+          console.warn(`[Clapay] Endpoint ${endpoint} non disponible (${msg}) — tentative suivante`);
+          lastError = err;
+          continue; // essayer le prochain
+        }
+        throw err; // autre erreur → propager immédiatement
+      }
+    }
+
+    throw lastError ?? new Error("Aucun endpoint de payout Clapay disponible. Configurez CLAPAY_PAYOUT_ENDPOINT dans les variables d'environnement Plesk.");
   }
 
   // ─── Check transaction status — POST /check/status/payment ────────────────
