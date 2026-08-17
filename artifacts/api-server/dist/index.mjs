@@ -276857,33 +276857,14 @@ async function listActiveOperators(countryCode) {
 async function routePayout(params) {
   const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
   if (aggregator === "clapay") {
-    try {
-      const c = client;
-      const res = await c.initiatePayout(params);
-      if (!res.success) throw new Error(res.message ?? "\xC9chec Clapay payout");
-      return {
-        aggregator,
-        externalRef: res.clapay_reference,
-        message: "Payout envoy\xE9 via Clapay"
-      };
-    } catch (clapayErr) {
-      const msg = clapayErr?.message ?? String(clapayErr);
-      const isEndpointMissing = msg.includes("Cannot POST") || msg.includes("endpoint de payout Clapay") || clapayErr?.statusCode === 404;
-      if (isEndpointMissing && isPayDunyaConfigured()) {
-        console.warn(
-          `[routePayout] Clapay payout indisponible (${msg}) \u2014 bascule automatique sur PayDunya pour ${params.operator} (${params.country_code}).`
-        );
-        const p = getPayDunyaClient();
-        const res = await p.initiatePayout(params);
-        if (!res.success) throw new Error(res.message ?? "\xC9chec PayDunya payout (fallback)");
-        return {
-          aggregator: "paydunya",
-          externalRef: res.paydunya_reference,
-          message: "Payout envoy\xE9 via PayDunya (fallback \u2014 endpoint Clapay non disponible)"
-        };
-      }
-      throw clapayErr;
-    }
+    const c = client;
+    const res = await c.initiatePayout(params);
+    if (!res.success) throw new Error(res.message ?? "\xC9chec Clapay payout");
+    return {
+      aggregator,
+      externalRef: res.clapay_reference,
+      message: "Payout envoy\xE9 via Clapay"
+    };
   } else {
     const p = client;
     const res = await p.initiatePayout(params);
