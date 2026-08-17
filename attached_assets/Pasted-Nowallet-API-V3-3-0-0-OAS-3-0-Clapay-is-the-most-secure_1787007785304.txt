@@ -1,0 +1,118 @@
+Nowallet API V3
+ 3.0.0 
+OAS 3.0
+Clapay is the most secure electronic wallet that allows you to better see and manage your finances for free. Transfers between wallets, also make your Mobile Money transactions, but also pay on partner merchant sites.
+
+
+Authorize
+core-v3
+
+
+POST
+/nowallet/api/init/payment
+initiate one payment
+
+
+
+POST
+/nowallet/api/check/status/payment
+check transaction status from signature id
+
+
+
+GET
+/nowallet/api/check/transactions/single/balances/{country}
+get merchant balance per country
+
+
+
+GET
+/nowallet/api/check/transactions/global/balances/{currency}
+get all merchant balance per currency
+
+
+
+GET
+/nowallet/api/limitation/payment
+get payment limitation from country
+
+
+
+POST
+/nowallet/api/destroy/signature
+cancel payment
+
+
+
+GET
+/nowallet/api/countries/data
+get available countries covered by Clapay
+
+
+
+GET
+/nowallet/api/operators/data
+get available operators supported by country
+
+
+
+GET
+/nowallet/api/fees/by/country
+get transaction fees for one country
+
+
+
+Schemas
+ErrorResponseDto
+InitPaymentModelDTO
+InitPaymentResponseModelDto
+SignatureDTO
+StatePaymentResponseDto
+ResponseSingleBalanceDto
+ResponseGlobalBalanceDto{
+bglobal*	{...}
+example: OrderedMap { "balance": 200, "deposit": 140, "withdrawal": 60, "potentialBalance": 100, "possibleWithdrawal": 100, "update": "2025-01-01TZ00:00:00" }
+bcountry*	[...]
+}
+PaymentLimitationAmountDto{
+max_amount*	[...]
+min_amount*	[...]
+method*	[...]
+country*	[...]
+}
+CountryDto{
+code*	[...]
+name*	[...]
+indicatif*	[...]
+currency*	[...]
+phone_length*	[...]
+}
+OperatorNeedQrDto{
+MERCHANT*	[...]
+CASHIN*	[...]
+CASHOUT*	[...]
+}
+SecureDto
+OperatorDto{
+name*	[...]
+codeoperator*	[...]
+logo*	[...]
+code*	{...}
+example: OrderedMap { "MERCHANT": "ORANGEMONEYMERCHANTCODE", "CASHIN": "ORANGEMONEYCASHINCODE", "CASHOUT": "none" }
+startwith*	[...]
+otpstarter*	{...}
+example: OrderedMap { "MERCHANT": false, "CASHIN": false, "CASHOUT": false }
+active*	[...]
+secure*	{...}
+example: OrderedMap { "MERCHANT": false, "CASHIN": false, "CASHOUT": false }
+instruction*	{...}
+}
+MerchantFees{
+fee_cashin*	[...]
+fee_cashout*	[...]
+fee_merchant*	[...]
+country*	[...]
+currency*	[...]
+operator*	[...]
+rangefees*	[...]
+}
