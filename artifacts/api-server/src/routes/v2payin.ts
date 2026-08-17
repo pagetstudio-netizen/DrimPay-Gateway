@@ -424,6 +424,12 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         paymentUrl = pdRes.payment_url ?? null;
       }
 
+      // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver
+      // pendant les 20s de polling, et les fallbacks cherchent par externalRef en DB.
+      await db.update(transactionsTable)
+        .set({ externalRef, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, tx.id));
+
       // Polling du statut chez le fournisseur (API payin = 4s × max 20s)
       // L'utilisateur doit approuver sur son téléphone — on attend jusqu'à 20s,
       // puis le webhook confirme le statut final si toujours en attente.
@@ -437,7 +443,6 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       await db.update(transactionsTable)
         .set({
           status: verifiedStatus as any,
-          externalRef,
           ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
           updatedAt: new Date(),
         })

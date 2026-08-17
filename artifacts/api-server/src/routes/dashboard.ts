@@ -3304,6 +3304,12 @@ router.post("/qr/:reference", async (req, res) => {
       paymentUrl = pdRes.payment_url ?? null;
     }
 
+    // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver
+    // pendant les 20s de polling, et les fallbacks cherchent par externalRef en DB.
+    await db.update(transactionsTable)
+      .set({ externalRef })
+      .where(eq(transactionsTable.id, tx.id));
+
     // Polling du statut chez le fournisseur (le client doit approuver sur son téléphone).
     const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
       intervalMs: 4_000,
@@ -3311,10 +3317,6 @@ router.post("/qr/:reference", async (req, res) => {
     });
     const verifiedStatus = statusCheck?.status ?? "processing";
     const verifiedFailureReason = statusCheck?.failureReason;
-
-    await db.update(transactionsTable)
-      .set({ externalRef })
-      .where(eq(transactionsTable.id, tx.id));
 
     // Point de règlement unique — crédite le wallet et notifie si succès, idempotent
     // avec le webhook Clapay/PayDunya qui pourrait confirmer un peu plus tard.

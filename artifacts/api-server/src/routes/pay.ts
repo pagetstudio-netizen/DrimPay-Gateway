@@ -438,6 +438,12 @@ router.post("/pay/:token", async (req: any, res: any) => {
       paymentUrl = pdRes.payment_url ?? null;
     }
 
+    // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver
+    // pendant les 20s de polling, et les fallbacks cherchent par externalRef en DB.
+    await db.update(transactionsTable)
+      .set({ externalRef })
+      .where(eq(transactionsTable.id, tx.id));
+
     // Polling du statut chez le fournisseur (lien de paiement = 4s × max 20s)
     // L'utilisateur doit approuver sur son téléphone. On poll jusqu'à 20s,
     // puis le webhook confirme le statut final si toujours en attente.
@@ -447,12 +453,6 @@ router.post("/pay/:token", async (req: any, res: any) => {
     });
     const verifiedStatus = statusCheck?.status ?? "processing";
     const verifiedFailureReason = statusCheck?.failureReason;
-
-    // Point de règlement unique — crédite le wallet si succès, idempotent avec le
-    // webhook qui pourrait confirmer le même paiement un peu plus tard.
-    await db.update(transactionsTable)
-      .set({ externalRef })
-      .where(eq(transactionsTable.id, tx.id));
     await settlePayinStatus({
       txId: tx.id,
       status: verifiedStatus as any,

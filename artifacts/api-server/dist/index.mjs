@@ -279663,13 +279663,13 @@ router11.post("/qr/:reference", async (req, res) => {
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
     }
+    await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
     const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
       intervalMs: 4e3,
       maxDurationMs: 2e4
     });
     const verifiedStatus = statusCheck?.status ?? "processing";
     const verifiedFailureReason = statusCheck?.failureReason;
-    await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
     const settlement = await settlePayinStatus({
       txId: tx.id,
       status: verifiedStatus,
@@ -280140,6 +280140,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         externalRef = pdRes.paydunya_reference;
         paymentUrl = pdRes.payment_url ?? null;
       }
+      await db.update(transactionsTable).set({ externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
       const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
         intervalMs: 4e3,
         maxDurationMs: 2e4
@@ -280148,7 +280149,6 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       const verifiedFailureReason = statusCheck?.failureReason;
       await db.update(transactionsTable).set({
         status: verifiedStatus,
-        externalRef,
         ...verifiedFailureReason ? { failureReason: verifiedFailureReason } : {},
         updatedAt: /* @__PURE__ */ new Date()
       }).where(eq(transactionsTable.id, tx.id));
@@ -283662,13 +283662,13 @@ router17.post("/pay/:token", async (req, res) => {
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
     }
+    await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
     const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
       intervalMs: 4e3,
       maxDurationMs: 2e4
     });
     const verifiedStatus = statusCheck?.status ?? "processing";
     const verifiedFailureReason = statusCheck?.failureReason;
-    await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
     await settlePayinStatus({
       txId: tx.id,
       status: verifiedStatus,
