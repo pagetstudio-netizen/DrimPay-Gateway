@@ -29,7 +29,7 @@ const SETTINGS_GROUPS = [
     fields: [
       { key: "maintenance_mode", label: "Mode maintenance global", type: "boolean", hint: "Désactive toutes les transactions sur la plateforme" },
       { key: "platform_block_withdrawals", label: "Bloquer TOUS les retraits", type: "boolean", hint: "Bloque immédiatement tous les pay-out et reversements sur toute la plateforme" },
-      { key: "wallet_exchange_enabled", label: "Échange entre wallets activé", type: "boolean", hint: "Désactiver pour mettre l'échange de wallets en maintenance — les utilisateurs verront un écran de maintenance" },
+      { key: "wallet_exchange_enabled", label: "Échange entre wallets activé", type: "boolean", defaultValue: "true", hint: "Désactiver pour mettre l'échange de wallets en maintenance — les utilisateurs verront un écran de maintenance" },
       { key: "sandbox_enabled", label: "Mode sandbox activé", type: "boolean", hint: "Permet les transactions en mode test" },
       { key: "live_enabled", label: "Mode live activé", type: "boolean", hint: "Permet les transactions en production" },
       { key: "new_signup_enabled", label: "Inscriptions ouvertes", type: "boolean", hint: "Autoriser les nouvelles inscriptions marchands" },
@@ -673,7 +673,8 @@ export default function AdminSettings() {
                         <label className="text-sm font-semibold text-gray-700">{field.label}</label>
                         {field.type === "boolean" && (
                           <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" checked={get(field.key) === "true"}
+                            <input type="checkbox"
+                              checked={values[field.key] !== undefined ? values[field.key] === "true" : ("defaultValue" in field ? field.defaultValue === "true" : false)}
                               onChange={e => set(field.key, e.target.checked ? "true" : "false")}
                               className="sr-only peer" />
                             <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
