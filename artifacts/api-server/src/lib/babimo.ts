@@ -34,6 +34,13 @@ const PAYMENT_METHODS: Record<string, { payin: string; payout: string }> = {
   "mtn|BJ": { payin: "BN_CASHIN_MTN", payout: "BN_PM_MTN" },
   "mtn momo|BJ": { payin: "BN_CASHIN_MTN", payout: "BN_PM_MTN" },
   "mtn mobile money|BJ": { payin: "BN_CASHIN_MTN", payout: "BN_PM_MTN" },
+  // The Burkina Faso collection documents PM_* for pay-ins and CASHIN_* for
+  // transfers, despite the names looking reversed at first glance.
+  "orange|BF": { payin: "BF_PM_OM", payout: "BF_CASHIN_ORANGE" },
+  "orange money|BF": { payin: "BF_PM_OM", payout: "BF_CASHIN_ORANGE" },
+  "om|BF": { payin: "BF_PM_OM", payout: "BF_CASHIN_ORANGE" },
+  "moov|BF": { payin: "BF_PM_MOOV", payout: "BF_CASHIN_MOOV" },
+  "moov money|BF": { payin: "BF_PM_MOOV", payout: "BF_CASHIN_MOOV" },
 };
 
 const FINAL_STATUSES = new Set(["success", "successfull", "completed", "paid", "failed", "cancelled", "canceled", "expired"]);
@@ -55,6 +62,9 @@ function normalizeBabimoPhone(phone: string, countryCode: string): string {
   // caller supplied an international number, but preserve the local format
   // otherwise because the contract does not require a leading zero.
   if (country === "BJ" && digits.startsWith("229")) {
+    return digits.slice(3);
+  }
+  if (country === "BF" && digits.startsWith("226")) {
     return digits.slice(3);
   }
   if (country === "CI") return normalizeCoteDIvoirePhone(digits);
