@@ -5,3 +5,5 @@
 - [DrimPay OTP email lost](drimpay-otp-email-lost.md) — "email et code requis" despite correct code = missing `?email=` in URL, not a bad code; link-only flow bypasses this.
 - [DrimPay MTN Cameroon PayDunya](drimpay-mtn-cameroon-paydunya.md) — SoftPay and disbursement both use `mtn-cameroun`; SoftPay payload is namespaced `mtn_cameroun_*`.
 - [DrimPay Babimo routing](drimpay-babimo.md) — Babimo CI is an admin-selectable aggregator; do not hardcode operator routing or expose credentials.
+- [DrimPay merchant webhook secrets](drimpay-webhook-secrets.md) — stable HMAC secret is paired with each API key; avoid destructive schema pushes when legacy tables are detected.
+- [DrimPay fee rate resolution](drimpay-fee-rates.md) — country/operator rules affect new transactions; merchant overrides and stored historical fees remain protected.

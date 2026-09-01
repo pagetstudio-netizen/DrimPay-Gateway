@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   ArrowDownLeft, ArrowUpRight, ChevronRight, Copy, Check, BookOpen, Shield, Globe,
   Zap, Webhook, Code, Terminal, AlertTriangle, CheckCircle2, Clock, XCircle,
-  AlertCircle, Menu, X, Server, RefreshCw, Lock, Activity, Timer, Ban
+  AlertCircle, Menu, X, Server, RefreshCw, Lock, Activity, Timer, Ban, KeyRound
 } from "lucide-react";
 import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
 import { useLang } from "@/lib/i18n";
@@ -1165,6 +1165,13 @@ def drimpay_webhook():
             <section id="webhooks" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Webhook className="w-5 h-5 text-primary" /> Webhook Events</h2>
               <p className="text-muted-foreground mb-4">DrimPay sends a <code className="font-mono text-xs text-primary">POST</code> request to your <code className="font-mono text-xs text-primary">webhook_url</code> whenever a transaction status changes. Each request includes an HMAC-SHA256 signature.</p>
+              <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-4 mb-6 flex gap-3">
+                <KeyRound className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-violet-400 mb-1">Your webhook secret</p>
+                  <p className="text-sm text-muted-foreground">Each API key created in <strong className="text-foreground">Dashboard → API Keys</strong> has its own webhook secret. Copy it from the credential banner, or reveal it later by confirming your account password, then store it server-side as <code className="font-mono text-xs text-primary">DRIMPAY_WEBHOOK_SECRET</code>. Never expose it in a browser or send it in an API request.</p>
+                </div>
+              </div>
               <h3 className="text-base font-semibold mb-3">Event Types</h3>
               <div className="overflow-x-auto rounded-xl border border-border mb-6">
                 <table className="w-full text-sm">
@@ -1219,14 +1226,14 @@ X-DrimPay-Event: payin.success`} />
             <section id="webhook-signature" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-primary" /> Verify Webhook Signature</h2>
               <Alert type="warning" title="Always verify signatures">
-                Never process a webhook without verifying its HMAC signature. An unverified webhook could be spoofed by an attacker to fake successful payments.
+                Never process a webhook without verifying its HMAC signature. An unverified webhook could be spoofed by an attacker to fake successful payments. The secret is shown after creating or regenerating an API key and can be revealed later after confirming your account password.
               </Alert>
               <p className="text-muted-foreground mb-4">
                 DrimPay signs each webhook using <strong className="text-foreground">HMAC-SHA256</strong>. The signature is computed as:
               </p>
               <CodeBlock lang="bash" code={`HMAC_SHA256(key=DRIMPAY_WEBHOOK_SECRET, data="{timestamp}.{raw_body}")`} />
               <p className="text-sm text-muted-foreground mb-4">
-                The result is sent in <code className="font-mono text-xs text-primary">X-DrimPay-Signature</code> as <code className="font-mono text-xs">t=&#123;timestamp&#125;,v1=&#123;hex_signature&#125;</code>. The <code className="font-mono text-xs text-primary">DRIMPAY_WEBHOOK_SECRET</code> is provided by DrimPay when your integration is set up — contact <a href="mailto:api@drimpay.com" className="text-primary hover:underline">api@drimpay.com</a> if you need it.
+                The result is sent in <code className="font-mono text-xs text-primary">X-DrimPay-Signature</code> as <code className="font-mono text-xs">t=&#123;timestamp&#125;,v1=&#123;hex_signature&#125;</code>. Use the webhook secret belonging to the API key that initiated the transaction.
               </p>
               <div className="flex gap-2 mb-2">
                 {LANGS.map(l => (

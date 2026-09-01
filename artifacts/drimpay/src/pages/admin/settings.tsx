@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Settings, Save, RefreshCw, AlertTriangle, CheckCircle2,
   Send, Bot, Eye, EyeOff, Zap, Search, Mail, MessageCircle,
-  Phone, Plus, Trash2,
+  Phone, Plus, Trash2, Percent,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,145 @@ const SETTINGS_GROUPS = [
     ],
   },
 ];
+
+interface OperatorFeeRow {
+  id: number;
+  key: string;
+  countryCode: string;
+  name: string;
+  type: string;
+  active: boolean;
+  payin: number | null;
+  payout: number | null;
+}
+
+function OperatorFeesSection() {
+  const [rows, setRows] = useState<OperatorFeeRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ type: "ok" | "error"; message: string } | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${ADMIN_BASE}/operator-fees`, { credentials: "include" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error ?? "Impossible de charger les frais");
+      setRows(data?.operators ?? []);
+    } catch (error: any) {
+      setStatus({ type: "error", message: error?.message ?? "Impossible de charger les frais" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const setRate = (key: string, type: "payin" | "payout", value: string) => {
+    const parsed = value === "" ? null : Number(value);
+    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0 || parsed > 100)) return;
+    setRows(current => current.map(row => row.key === key ? { ...row, [type]: parsed } : row));
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setStatus(null);
+    try {
+      const rates = Object.fromEntries(rows.map(row => [
+        row.key,
+        { payin: row.payin, payout: row.payout },
+      ]));
+      const response = await fetch(`${ADMIN_BASE}/operator-fees`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rates }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error ?? "Échec de l'enregistrement");
+      setStatus({ type: "ok", message: "Les frais sont enregistrés et actifs pour les nouvelles transactions." });
+    } catch (error: any) {
+      setStatus({ type: "error", message: error?.message ?? "Échec de l'enregistrement" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="flex items-start justify-between gap-4 mb-2">
+        <div>
+          <h2 className="font-bold text-gray-900">Frais par pays et opérateur</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Laissez un champ vide pour utiliser le tarif par défaut. Les changements s'appliquent immédiatement aux nouvelles transactions.
+          </p>
+        </div>
+        <button
+          onClick={save}
+          disabled={saving || loading}
+          className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" /> {saving ? "Enregistrement..." : "Enregistrer"}
+        </button>
+      </div>
+
+      <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 text-xs text-blue-800 mb-5">
+        Ces tarifs sont utilisés pour les pay-in, pay-out, QR codes, liens de paiement et mass payouts. Les transactions déjà créées ne changent pas. Un tarif personnalisé attribué à un marchand reste prioritaire.
+      </div>
+
+      {status && (
+        <div className={cn(
+          "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium mb-4",
+          status.type === "ok" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800",
+        )}>
+          {status.type === "ok" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+          {status.message}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="space-y-3">{[...Array(5)].map((_, index) => <div key={index} className="h-14 bg-gray-50 rounded-xl animate-pulse" />)}</div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500">
+          Aucun opérateur configuré.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[560px]">
+            <div className="grid grid-cols-[1.2fr_1.5fr_1fr_1fr] gap-3 px-3 pb-2 text-[11px] uppercase tracking-wide font-bold text-gray-400">
+              <span>Pays</span><span>Opérateur</span><span>Pay-in (%)</span><span>Pay-out (%)</span>
+            </div>
+            <div className="space-y-2">
+              {rows.map(row => (
+                <div key={row.key} className={cn(
+                  "grid grid-cols-[1.2fr_1.5fr_1fr_1fr] items-center gap-3 rounded-xl border px-3 py-2.5",
+                  row.active ? "border-gray-100 bg-white" : "border-gray-100 bg-gray-50 opacity-60",
+                )}>
+                  <span className="text-sm font-semibold text-gray-700">{row.countryCode}</span>
+                  <span className="text-sm text-gray-700">{row.name}</span>
+                  <input
+                    type="number" min="0" max="100" step="0.01"
+                    value={row.payin ?? ""}
+                    onChange={event => setRate(row.key, "payin", event.target.value)}
+                    placeholder="Défaut"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <input
+                    type="number" min="0" max="100" step="0.01"
+                    value={row.payout ?? ""}
+                    onChange={event => setRate(row.key, "payout", event.target.value)}
+                    placeholder="Défaut"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SmtpSection({ allValues }: { allValues: Record<string, string> }) {
   const [host, setHost] = useState("");
@@ -611,7 +750,7 @@ export default function AdminSettings() {
                 <CheckCircle2 className="w-4 h-4" /> Enregistré !
               </div>
             )}
-            {activeGroup !== "telegram" && activeGroup !== "contact-info" && (
+            {activeGroup !== "telegram" && activeGroup !== "contact-info" && activeGroup !== "operator-fees" && (
               <button onClick={save} disabled={saving || loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 shadow-sm">
                 <Save className="w-4 h-4" /> {saving ? "Enregistrement..." : "Enregistrer"}
               </button>
@@ -634,6 +773,10 @@ export default function AdminSettings() {
                 {g.title}
               </button>
             ))}
+            <button onClick={() => setActiveGroup("operator-fees")}
+              className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "operator-fees" ? "bg-emerald-50 text-emerald-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
+              <Percent className="w-4 h-4" /> Frais par opérateur
+            </button>
             <button onClick={() => setActiveGroup("telegram")}
               className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "telegram" ? "bg-blue-50 text-blue-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
               <Bot className="w-4 h-4" /> Telegram Bot
@@ -660,6 +803,8 @@ export default function AdminSettings() {
             <WhatsAppSection allValues={values} />
           ) : activeGroup === "contact-info" ? (
             <ContactInfoSection />
+          ) : activeGroup === "operator-fees" ? (
+            <OperatorFeesSection />
           ) : (
             <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="font-bold text-gray-900 mb-5">{currentGroup.title}</h2>

@@ -672,23 +672,31 @@ COMMIT;`} />
                 <Shield className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-orange-400 mb-1">Webhook signature — mandatory</p>
-                  <p className="text-sm text-muted-foreground">Every webhook includes an <code className="font-mono text-xs">X-DrimPay-Signature</code> header in the format <code className="font-mono text-xs">sha256=HASH</code>. Always verify it before processing.</p>
+                  <p className="text-sm text-muted-foreground">Every API key has a dedicated webhook secret. Copy it from the credential banner in <strong className="text-foreground">Dashboard → Clés API</strong>, or reveal it later after confirming your account password. Store it only on your server and verify every webhook before processing.</p>
                 </div>
               </div>
               <h3 className="text-base font-semibold mb-2">Signature header</h3>
-              <CodeBlock lang="bash" code={`X-DrimPay-Signature: sha256=a3f9e1c2b4d5...`} />
+              <CodeBlock lang="bash" code={`X-DrimPay-Signature: t=1715000000,v1=a3f9e1c2b4d5...sha256hex...
+X-DrimPay-Timestamp: 1715000000
+X-DrimPay-Event: payout.success`} />
               <h3 className="text-base font-semibold mb-2 mt-4">Signature verification (Node.js)</h3>
               <CodeBlock lang="node.js" code={`const crypto = require("crypto");
 
 app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, res) => {
-  const signature = req.headers["x-drimpay-signature"]; // "sha256=<hex>"
+  const header = req.headers["x-drimpay-signature"] || "";
+  const [timestampPart, signaturePart] = header.split(",");
+  const timestamp = timestampPart?.split("=")[1];
+  const signature = signaturePart?.split("=")[1];
+  if (!timestamp || !signature || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) {
+    return res.status(400).send("Invalid or expired signature");
+  }
 
-  const expectedSignature = "sha256=" + crypto
-    .createHmac("sha256", process.env.WEBHOOK_SECRET)
-    .update(req.body) // raw Buffer — do NOT parse as JSON first
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.DRIMPAY_WEBHOOK_SECRET)
+    .update(timestamp + "." + req.body.toString("utf8")) // raw body
     .digest("hex");
 
-  if (signature !== expectedSignature) {
+  if (!crypto.timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expectedSignature, "hex"))) {
     return res.status(400).send("Invalid signature");
   }
 

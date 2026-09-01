@@ -157,6 +157,10 @@ export const apiKeysTable = pgTable("api_keys", {
   description: text("description"),
   keyHash: text("key_hash").notNull(),
   rawKey: text("raw_key"),
+  // HMAC secret used to verify webhook deliveries for this API key.
+  // Nullable for backwards compatibility with keys created before webhook
+  // secrets were introduced; the API lazily provisions missing secrets.
+  webhookSecret: text("webhook_secret"),
   prefix: text("prefix").notNull(),
   env: apiKeyEnvEnum("env").notNull().default("sandbox"),
   status: apiKeyStatusEnum("status").notNull().default("active"),

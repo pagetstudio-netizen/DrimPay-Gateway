@@ -42,13 +42,13 @@ export default function Blog() {
       <div className="pt-32 pb-20">
         <div className="container mx-auto px-4 md:px-8">
 
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mb-12">
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mx-auto mb-12 text-center">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6 text-[#0f0f0f] leading-[1.02]">{t.blog.title}</h1>
             <p className="text-xl text-[#0f0f0f]/55">{t.blog.desc}</p>
           </motion.div>
 
           {/* ── CATEGORY FILTERS ──────────────────────────────────── */}
-          <div className="flex flex-wrap gap-3 mb-12">
+          <div className="flex flex-wrap justify-center gap-3 mb-12">
             <button onClick={() => { setSelectedCategory(undefined); setPage(1); }} data-testid="category-all"
               className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors border ${!selectedCategory ? "bg-[#0f0f0f] text-white border-[#0f0f0f]" : "bg-white text-[#0f0f0f]/55 border-[#E5E3DC] hover:border-[#0f0f0f]/30"}`}>
               {t.blog.all}
@@ -82,15 +82,15 @@ export default function Blog() {
                         </div>
                       )}
                     </div>
-                    <div className="p-6 flex flex-col flex-1">
-                      <div className="flex items-center gap-3 mb-4">
+                    <div className="p-6 flex flex-col flex-1 text-center">
+                      <div className="flex items-center justify-center gap-3 mb-4">
                         <span className="text-xs font-semibold px-2 py-1 rounded-full bg-[#B5F03C]/20 text-[#3a7a00]">{article.category}</span>
                         <span className="flex items-center gap-1 text-xs text-[#0f0f0f]/40"><Clock className="w-3 h-3" />{article.readingTimeMinutes} {t.blog.minRead}</span>
                       </div>
                       <h2 className="font-extrabold text-lg mb-3 leading-tight text-[#0f0f0f] group-hover:text-[#3a7a00] transition-colors">{article.title}</h2>
                       <p className="text-sm text-[#0f0f0f]/55 leading-relaxed flex-1 mb-4 line-clamp-3">{article.excerpt}</p>
-                      <div className="flex items-center justify-between mt-auto">
-                        <div>
+                      <div className="flex items-center justify-center gap-6 mt-auto">
+                        <div className="text-center">
                           <p className="text-sm font-semibold text-[#0f0f0f]">{article.author}</p>
                           <p className="text-xs text-[#0f0f0f]/40">{new Date(article.publishedAt).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                         </div>

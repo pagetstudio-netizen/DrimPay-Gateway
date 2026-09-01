@@ -18807,14 +18807,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto13 = __require("crypto");
+    var crypto14 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash2 = crypto13.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto14.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash2 + '"';
     }
@@ -22243,17 +22243,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
-    var crypto13 = __require("crypto");
+    var crypto14 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto13.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto14.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto13.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto14.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -24463,11 +24463,11 @@ var require_on_headers = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.0.7/node_modules/cookie-signature/index.js
 var require_cookie_signature2 = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.0.7/node_modules/cookie-signature/index.js"(exports) {
-    var crypto13 = __require("crypto");
+    var crypto14 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto13.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto14.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -24476,7 +24476,7 @@ var require_cookie_signature2 = __commonJS({
       return sha1(mac) == sha1(val) ? str : false;
     };
     function sha1(str) {
-      return crypto13.createHash("sha1").update(str).digest("hex");
+      return crypto14.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -24485,8 +24485,8 @@ var require_cookie_signature2 = __commonJS({
 var require_random_bytes = __commonJS({
   "../../node_modules/.pnpm/random-bytes@1.0.0/node_modules/random-bytes/index.js"(exports, module) {
     "use strict";
-    var crypto13 = __require("crypto");
-    var generateAttempts = crypto13.randomBytes === crypto13.pseudoRandomBytes ? 1 : 3;
+    var crypto14 = __require("crypto");
+    var generateAttempts = crypto14.randomBytes === crypto14.pseudoRandomBytes ? 1 : 3;
     module.exports = randomBytes2;
     module.exports.sync = randomBytesSync;
     function randomBytes2(size, callback) {
@@ -24510,7 +24510,7 @@ var require_random_bytes = __commonJS({
       var err = null;
       for (var i = 0; i < generateAttempts; i++) {
         try {
-          return crypto13.randomBytes(size);
+          return crypto14.randomBytes(size);
         } catch (e) {
           err = e;
         }
@@ -24518,7 +24518,7 @@ var require_random_bytes = __commonJS({
       throw err;
     }
     function generateRandomBytes(size, attempts, callback) {
-      crypto13.randomBytes(size, function onRandomBytes(err, buf) {
+      crypto14.randomBytes(size, function onRandomBytes(err, buf) {
         if (!err) return callback(null, buf);
         if (!--attempts) return callback(err);
         setTimeout(generateRandomBytes.bind(null, size, attempts, callback), 10);
@@ -24860,7 +24860,7 @@ var require_express_session = __commonJS({
     "use strict";
     var Buffer3 = require_safe_buffer().Buffer;
     var cookie = require_cookie();
-    var crypto13 = __require("crypto");
+    var crypto14 = __require("crypto");
     var debug = require_src2()("express-session");
     var deprecate = require_depd()("express-session");
     var onHeaders = require_on_headers();
@@ -25233,7 +25233,7 @@ var require_express_session = __commonJS({
         }
         return val;
       });
-      return crypto13.createHash("sha1").update(str, "utf8").digest("hex");
+      return crypto14.createHash("sha1").update(str, "utf8").digest("hex");
     }
     function issecure(req, trustProxy) {
       if (req.connection && req.connection.encrypted) {
@@ -26646,7 +26646,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto13 = require_utils5();
+    var crypto14 = require_utils5();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function startSession(mechanisms, stream) {
       const candidates = ["SCRAM-SHA-256"];
@@ -26658,7 +26658,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto13.randomBytes(18).toString("base64");
+      const clientNonce = crypto14.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -26693,20 +26693,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto13.hashByName(hashName, peerCert);
+        const certHash = await crypto14.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto13.deriveKey(password, saltBytes, sv.iteration);
-      const clientKey = await crypto13.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto13.sha256(clientKey);
-      const clientSignature = await crypto13.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto14.deriveKey(password, saltBytes, sv.iteration);
+      const clientKey = await crypto14.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto14.sha256(clientKey);
+      const clientSignature = await crypto14.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto13.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto13.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto14.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto14.hmacSha256(serverKey, authMessage);
       session2.message = "SASLResponse";
       session2.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session2.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -28874,7 +28874,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto13 = require_utils5();
+    var crypto14 = require_utils5();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -29109,7 +29109,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto13.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto14.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -55952,6 +55952,10 @@ var init_drimpay = __esm({
       description: text("description"),
       keyHash: text("key_hash").notNull(),
       rawKey: text("raw_key"),
+      // HMAC secret used to verify webhook deliveries for this API key.
+      // Nullable for backwards compatibility with keys created before webhook
+      // secrets were introduced; the API lazily provisions missing secrets.
+      webhookSecret: text("webhook_secret"),
       prefix: text("prefix").notNull(),
       env: apiKeyEnvEnum("env").notNull().default("sandbox"),
       status: apiKeyStatusEnum("status").notNull().default("active"),
@@ -85610,9 +85614,9 @@ var require_disk = __commonJS({
     var fs3 = __require("fs");
     var os = __require("os");
     var path5 = __require("path");
-    var crypto13 = __require("crypto");
+    var crypto14 = __require("crypto");
     function getFilename(req, file2, cb) {
-      crypto13.randomBytes(16, function(err, raw) {
+      crypto14.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -107086,7 +107090,8 @@ __export(babimo_exports, {
   babimoPaymentMethod: () => babimoPaymentMethod,
   getBabimoClient: () => getBabimoClient,
   isAnyBabimoConfigured: () => isAnyBabimoConfigured,
-  isBabimoConfigured: () => isBabimoConfigured
+  isBabimoConfigured: () => isBabimoConfigured,
+  isBabimoPayoutSupported: () => isBabimoPayoutSupported
 });
 function normalizeCoteDIvoirePhone(phone) {
   const digits = String(phone ?? "").replace(/\D/g, "");
@@ -107144,6 +107149,9 @@ function isRejected(raw) {
 }
 function babimoPaymentMethod(operator, countryCode, operation = "payin") {
   return PAYMENT_METHODS[`${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`]?.[operation] ?? null;
+}
+function isBabimoPayoutSupported(operator, countryCode) {
+  return Boolean(babimoPaymentMethod(operator, countryCode, "payout"));
 }
 function countryKey(countryCode) {
   return countryCode.trim().toUpperCase();
@@ -107737,7 +107745,7 @@ var require_md5 = __commonJS({
         return method;
       };
       var nodeWrap = function(method) {
-        var crypto13 = __require("crypto");
+        var crypto14 = __require("crypto");
         var Buffer3 = __require("buffer").Buffer;
         var bufferFrom;
         if (Buffer3.from && !root.JS_MD5_NO_BUFFER_FROM) {
@@ -107749,7 +107757,7 @@ var require_md5 = __commonJS({
         }
         var nodeMethod = function(message) {
           if (typeof message === "string") {
-            return crypto13.createHash("md5").update(message, "utf8").digest("hex");
+            return crypto14.createHash("md5").update(message, "utf8").digest("hex");
           } else {
             if (message === null || message === void 0) {
               throw new Error(INPUT_ERROR);
@@ -107758,7 +107766,7 @@ var require_md5 = __commonJS({
             }
           }
           if (isArray(message) || isView2(message) || message.constructor === Buffer3) {
-            return crypto13.createHash("md5").update(bufferFrom(message)).digest("hex");
+            return crypto14.createHash("md5").update(bufferFrom(message)).digest("hex");
           } else {
             return method(message);
           }
@@ -258427,7 +258435,7 @@ var import_express_session = __toESM(require_express_session(), 1);
 var import_connect_pg_simple = __toESM(require_connect_pg_simple(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 init_src();
-import crypto12 from "node:crypto";
+import crypto13 from "node:crypto";
 import path4 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { existsSync as existsSync2 } from "node:fs";
@@ -267564,7 +267572,15 @@ router10.post("/auth/signup", signupRateLimiter, async (req, res) => {
     const rawKey = `dp_test_${crypto2.randomBytes(24).toString("hex")}`;
     const prefix = rawKey.substring(0, 12);
     const keyHash = await bcryptjs_default.hash(rawKey, 10);
-    await db.insert(apiKeysTable).values({ userId: user.id, name: "Cl\xE9 Sandbox", keyHash, prefix, env: "sandbox" });
+    const webhookSecret = `whsec_${crypto2.randomBytes(32).toString("hex")}`;
+    await db.insert(apiKeysTable).values({
+      userId: user.id,
+      name: "Cl\xE9 Sandbox",
+      keyHash,
+      prefix,
+      env: "sandbox",
+      webhookSecret
+    });
   } catch (e) {
     console.error("[DrimPay] Failed to auto-generate sandbox key at signup:", e);
   }
@@ -267935,7 +267951,7 @@ var import_express11 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-import crypto5 from "crypto";
+import crypto6 from "crypto";
 var import_multer = __toESM(require_multer(), 1);
 
 // src/lib/merchant-error.ts
@@ -277350,6 +277366,95 @@ function getFrontendBaseUrl() {
   return "https://drimpay.com";
 }
 
+// src/lib/webhook-secrets.ts
+init_drizzle_orm();
+init_src();
+init_schema2();
+import crypto5 from "crypto";
+function createWebhookSecret() {
+  return `whsec_${crypto5.randomBytes(32).toString("hex")}`;
+}
+async function ensureWebhookSecretForApiKey(apiKeyId) {
+  const [key] = await db.select({ id: apiKeysTable.id, webhookSecret: apiKeysTable.webhookSecret }).from(apiKeysTable).where(eq(apiKeysTable.id, apiKeyId));
+  if (!key) return null;
+  if (key.webhookSecret) return key.webhookSecret;
+  const webhookSecret = createWebhookSecret();
+  await db.update(apiKeysTable).set({ webhookSecret }).where(eq(apiKeysTable.id, apiKeyId));
+  return webhookSecret;
+}
+async function ensureLatestMerchantWebhookSecret(userId, env) {
+  const [key] = await db.select({ id: apiKeysTable.id }).from(apiKeysTable).where(and(
+    eq(apiKeysTable.userId, userId),
+    eq(apiKeysTable.env, env),
+    eq(apiKeysTable.status, "active")
+  )).orderBy(desc(apiKeysTable.createdAt)).limit(1);
+  return key ? ensureWebhookSecretForApiKey(key.id) : null;
+}
+
+// src/lib/fee-rates.ts
+init_src();
+init_schema2();
+init_drizzle_orm();
+var DEFAULT_FEE_RATE = 0.035;
+var OPERATOR_FEE_RATES_SETTING = "operator_fee_rates";
+function validPercent(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
+}
+function normalizeOperatorForFee(value) {
+  return value.toLowerCase().replace(/mobile\s*money/g, "").replace(/momo/g, "").replace(/money/g, "").replace(/[^a-z0-9]/g, "").trim();
+}
+function operatorFeeConfigKey(countryCode, operator) {
+  return `${countryCode.trim().toUpperCase()}:${normalizeOperatorForFee(operator)}`;
+}
+function parseOperatorFeeRates(raw) {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const result = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const item = value;
+      result[key] = {
+        payin: validPercent(item.payin) ? item.payin : null,
+        payout: validPercent(item.payout) ? item.payout : null
+      };
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+async function getPlatformDefaultFee(type) {
+  const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+  const [row] = await db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, key)).limit(1);
+  const value = row?.value ? parseFloat(row.value) / 100 : DEFAULT_FEE_RATE;
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : DEFAULT_FEE_RATE;
+}
+async function getFeeRate(userId, type, countryCode, operator) {
+  const feeKey = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+  const [[user], [platformSetting], [operatorSetting]] = await Promise.all([
+    db.select({
+      payinFeePercent: usersTable.payinFeePercent,
+      payoutFeePercent: usersTable.payoutFeePercent
+    }).from(usersTable).where(eq(usersTable.id, userId)),
+    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, feeKey)).limit(1),
+    countryCode && operator ? db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, OPERATOR_FEE_RATES_SETTING)).limit(1) : Promise.resolve([])
+  ]);
+  const merchantPercent = type === "payin" ? user?.payinFeePercent : user?.payoutFeePercent;
+  if (merchantPercent !== null && merchantPercent !== void 0) {
+    const merchantRate = parseFloat(String(merchantPercent)) / 100;
+    if (Number.isFinite(merchantRate) && merchantRate >= 0 && merchantRate <= 1) return merchantRate;
+  }
+  if (countryCode && operator && operatorSetting?.value) {
+    const configured = parseOperatorFeeRates(operatorSetting.value)[operatorFeeConfigKey(countryCode, operator)];
+    const operatorPercent = configured?.[type];
+    if (operatorPercent !== null && operatorPercent !== void 0) return operatorPercent / 100;
+  }
+  const platformPercent = platformSetting?.value ? parseFloat(platformSetting.value) / 100 : DEFAULT_FEE_RATE;
+  return Number.isFinite(platformPercent) && platformPercent >= 0 && platformPercent <= 1 ? platformPercent : await getPlatformDefaultFee(type);
+}
+
 // src/routes/dashboard.ts
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 var payLinkImageUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -277405,30 +277510,11 @@ async function createNotification(userId, type, category, title, body, href = "/
   } catch {
   }
 }
-async function getUserFeeRate(userId, type = "payin") {
-  const feeKey = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
-  const [[user], [platformSetting]] = await Promise.all([
-    db.select({
-      payinFeePercent: usersTable.payinFeePercent,
-      payoutFeePercent: usersTable.payoutFeePercent
-    }).from(usersTable).where(eq(usersTable.id, userId)),
-    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, feeKey)).limit(1)
-  ]);
-  const platformDefault = platformSetting?.value ? parseFloat(platformSetting.value) / 100 : 0.035;
-  if (!user) return platformDefault;
-  if (type === "payin" && user.payinFeePercent !== null && user.payinFeePercent !== void 0) {
-    return parseFloat(String(user.payinFeePercent)) / 100;
-  }
-  if (type === "payout" && user.payoutFeePercent !== null && user.payoutFeePercent !== void 0) {
-    return parseFloat(String(user.payoutFeePercent)) / 100;
-  }
-  return platformDefault;
-}
 router11.get("/dashboard/fee-rate", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const [payinRate, payoutRate] = await Promise.all([
-    getUserFeeRate(userId, "payin"),
-    getUserFeeRate(userId, "payout")
+    getFeeRate(userId, "payin"),
+    getFeeRate(userId, "payout")
   ]);
   const fmt = (r) => parseFloat((r * 100).toFixed(4));
   res.json({
@@ -277697,10 +277783,10 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
   if (!wallet) {
     [wallet] = await db.insert(walletsTable).values({ userId, countryCode, currency, mode: currentMode }).returning();
   }
-  const feeRate = await getUserFeeRate(userId, "payin");
+  const feeRate = await getFeeRate(userId, "payin", countryCode, operator);
   const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
-  const reference = `PAY-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
+  const reference = `PAY-${Date.now()}-${crypto6.randomBytes(4).toString("hex").toUpperCase()}`;
   if (currentMode === "live") {
     const [tx2] = await db.insert(transactionsTable).values({
       userId,
@@ -277909,7 +277995,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     res.status(400).json({ error: `Aucun wallet ${currentMode} trouv\xE9 pour le pays ${countryCode}. Vous ne pouvez effectuer un payout que depuis des pays o\xF9 vous avez re\xE7u des fonds.` });
     return;
   }
-  const payoutFeeRate = await getUserFeeRate(userId, "payout");
+  const payoutFeeRate = await getFeeRate(userId, "payout", countryCode, operator);
   const fee = Math.round(amount * payoutFeeRate * 100) / 100;
   const totalDebit = Math.round((amount + fee) * 100) / 100;
   const currentBalance = parseFloat(String(wallet.balance));
@@ -277917,7 +278003,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     res.status(400).json({ error: `Solde insuffisant. Disponible : ${currentBalance} ${currency}, Requis : ${totalDebit} ${currency} (dont frais ${payoutFeeRate * 100}% de ${fee} ${currency})` });
     return;
   }
-  const reference = `OUT-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
+  const reference = `OUT-${Date.now()}-${crypto6.randomBytes(4).toString("hex").toUpperCase()}`;
   if (currentMode === "live") {
     await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
     const [tx2] = await db.insert(transactionsTable).values({
@@ -278153,6 +278239,7 @@ router11.get("/dashboard/api-keys", requireAuth, async (req, res) => {
     prefix: apiKeysTable.prefix,
     env: apiKeysTable.env,
     status: apiKeysTable.status,
+    hasWebhookSecret: sql`${apiKeysTable.webhookSecret} IS NOT NULL`,
     lastUsedAt: apiKeysTable.lastUsedAt,
     createdAt: apiKeysTable.createdAt
   }).from(apiKeysTable).where(eq(apiKeysTable.userId, userId)).orderBy(desc(apiKeysTable.createdAt));
@@ -278176,12 +278263,22 @@ router11.post("/dashboard/api-keys/:id/reveal", requireAuth, async (req, res) =>
     res.status(401).json({ error: "Mot de passe incorrect" });
     return;
   }
-  const [key] = await db.select({ rawKey: apiKeysTable.rawKey, status: apiKeysTable.status }).from(apiKeysTable).where(and(eq(apiKeysTable.id, keyId), eq(apiKeysTable.userId, userId)));
+  const [key] = await db.select({
+    id: apiKeysTable.id,
+    rawKey: apiKeysTable.rawKey,
+    webhookSecret: apiKeysTable.webhookSecret,
+    status: apiKeysTable.status
+  }).from(apiKeysTable).where(and(eq(apiKeysTable.id, keyId), eq(apiKeysTable.userId, userId)));
   if (!key) {
     res.status(404).json({ error: "Cl\xE9 introuvable" });
     return;
   }
-  res.json({ rawKey: key.rawKey });
+  let webhookSecret = key.webhookSecret;
+  if (!webhookSecret) {
+    webhookSecret = `whsec_${crypto6.randomBytes(32).toString("hex")}`;
+    await db.update(apiKeysTable).set({ webhookSecret }).where(eq(apiKeysTable.id, key.id));
+  }
+  res.json({ rawKey: key.rawKey, webhookSecret });
 });
 var createKeySchema = external_exports2.object({
   name: external_exports2.string().min(1).max(60),
@@ -278196,15 +278293,26 @@ router11.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req,
   }
   const userId = req.session.userId;
   const { name: name2, description, env } = parsed.data;
-  const rawKey = `dp_${env}_sk_${crypto5.randomBytes(24).toString("hex")}`;
+  const rawKey = `dp_${env}_sk_${crypto6.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcryptjs_default.hash(rawKey, 10);
-  const [key] = await db.insert(apiKeysTable).values({ userId, name: name2, description: description ?? null, keyHash, rawKey, prefix, env }).returning({
+  const webhookSecret = `whsec_${crypto6.randomBytes(32).toString("hex")}`;
+  const [key] = await db.insert(apiKeysTable).values({
+    userId,
+    name: name2,
+    description: description ?? null,
+    keyHash,
+    rawKey,
+    webhookSecret,
+    prefix,
+    env
+  }).returning({
     id: apiKeysTable.id,
     name: apiKeysTable.name,
     description: apiKeysTable.description,
     prefix: apiKeysTable.prefix,
     rawKey: apiKeysTable.rawKey,
+    webhookSecret: apiKeysTable.webhookSecret,
     env: apiKeysTable.env,
     status: apiKeysTable.status,
     createdAt: apiKeysTable.createdAt
@@ -278218,7 +278326,11 @@ router11.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req,
     "/dashboard/api-keys"
   ).catch(() => {
   });
-  res.status(201).json({ ...key, warning: "Store this key securely." });
+  res.status(201).json({
+    ...key,
+    webhookSecret,
+    warning: "Store the API key and webhook secret securely. They are shown only once."
+  });
 });
 router11.delete("/dashboard/api-keys/:id", requireAuth, apiKeyRateLimiter, async (req, res) => {
   const userId = req.session.userId;
@@ -278262,15 +278374,17 @@ router11.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, 
     return;
   }
   await db.update(apiKeysTable).set({ status: "revoked" }).where(and(eq(apiKeysTable.userId, userId), eq(apiKeysTable.env, env)));
-  const rawKey = `dp_${env}_sk_${crypto5.randomBytes(24).toString("hex")}`;
+  const rawKey = `dp_${env}_sk_${crypto6.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcryptjs_default.hash(rawKey, 10);
+  const webhookSecret = `whsec_${crypto6.randomBytes(32).toString("hex")}`;
   const name2 = env === "sandbox" ? "Cl\xE9 Sandbox" : "Cl\xE9 Live";
-  const [key] = await db.insert(apiKeysTable).values({ userId, name: name2, keyHash, rawKey, prefix, env }).returning({
+  const [key] = await db.insert(apiKeysTable).values({ userId, name: name2, keyHash, rawKey, webhookSecret, prefix, env }).returning({
     id: apiKeysTable.id,
     name: apiKeysTable.name,
     prefix: apiKeysTable.prefix,
     rawKey: apiKeysTable.rawKey,
+    webhookSecret: apiKeysTable.webhookSecret,
     env: apiKeysTable.env,
     status: apiKeysTable.status,
     createdAt: apiKeysTable.createdAt
@@ -278284,7 +278398,12 @@ router11.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, 
     "/dashboard/api-keys"
   ).catch(() => {
   });
-  res.status(201).json({ ...key, rawKey });
+  res.status(201).json({
+    ...key,
+    rawKey,
+    webhookSecret,
+    warning: "Store the API key and webhook secret securely. They are shown only once."
+  });
 });
 router11.get("/dashboard/kyb", requireAuth, async (req, res) => {
   try {
@@ -278634,7 +278753,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     res.status(400).json({ error: `Aucun wallet ${currentMode} actif pour ce pays.` });
     return;
   }
-  const feeRate = await getUserFeeRate(userId, "payout");
+  const feeRate = await getFeeRate(userId, "payout", countryCode, operator);
   const fee = +(amount * feeRate).toFixed(2);
   const net = +(amount - fee).toFixed(2);
   const totalDebit = amount;
@@ -278652,7 +278771,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE });
     return;
   }
-  const reference = `REV-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
+  const reference = `REV-${Date.now()}-${crypto6.randomBytes(4).toString("hex").toUpperCase()}`;
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
   const baseUrl2 = getWebhookBaseUrl();
   const callbackUrl = `${baseUrl2}/api/webhooks/${resolvedAggregator}`;
@@ -278879,7 +278998,7 @@ router11.post("/dashboard/wallet-exchanges", requireAuth, payoutRateLimiter, asy
   }
   const fee = +(amount * WALLET_EXCHANGE_FEE_RATE).toFixed(2);
   const net = +(amount - fee).toFixed(2);
-  const reference = `WEX-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
+  const reference = `WEX-${Date.now()}-${crypto6.randomBytes(4).toString("hex").toUpperCase()}`;
   let exchange;
   try {
     [exchange] = await db.transaction(async (trx) => {
@@ -279008,6 +279127,7 @@ router11.post("/dashboard/webhooks", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Cl\xE9 API introuvable" });
       return;
     }
+    await ensureWebhookSecretForApiKey(key.id);
   }
   const existing = await db.select({ id: userWebhooksTable.id }).from(userWebhooksTable).where(eq(userWebhooksTable.userId, userId));
   if (existing.length >= 10) {
@@ -279156,7 +279276,7 @@ router11.post("/dashboard/payment-links", requireAuth, payLinkImageUpload.single
   const countryCodeStored = selectedCodes.join(",");
   const operatorStored = parsed.data.operator ?? "all";
   const currencyStored = parsed.data.currency ?? COUNTRY_CURRENCY2[selectedCodes[0]] ?? "XOF";
-  const token = crypto5.randomBytes(16).toString("hex");
+  const token = crypto6.randomBytes(16).toString("hex");
   const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 864e5) : void 0;
   const currentMode = req.session.mode ?? "sandbox";
   let imageUrl = null;
@@ -279343,10 +279463,10 @@ router11.post("/pay/:token", async (req, res) => {
     }
   }
   const amount = link.fixedAmount && link.amount ? parseFloat(String(link.amount)) : reqAmount;
-  const linkFeeRate = await getUserFeeRate(link.userId, "payin");
+  const linkFeeRate = await getFeeRate(link.userId, "payin", effectiveCountry, effectiveOperator);
   const fee = Math.round(amount * linkFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
-  const reference = `LNK-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
+  const reference = `LNK-${Date.now()}-${crypto6.randomBytes(4).toString("hex").toUpperCase()}`;
   const linkMode = link.mode ?? "live";
   let [wallet] = await db.select().from(walletsTable).where(and(
     eq(walletsTable.userId, link.userId),
@@ -279629,10 +279749,29 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const [massPayoutUserRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
   const currentMode = req.session.mode ?? "sandbox";
   const { description, recipients } = parsed.data;
-  const userPayoutFeeRate = await getUserFeeRate(userId, "payout");
+  const recipientFeeRates = await Promise.all(
+    recipients.map((r) => getFeeRate(userId, "payout", r.countryCode, r.operator))
+  );
+  const routePairs = [...new Map(
+    recipients.map((r) => [`${r.countryCode}:${r.operator.toLowerCase().trim()}`, r])
+  ).values()];
+  for (const recipient of routePairs) {
+    try {
+      const { aggregator } = await resolveAggregator(recipient.countryCode, recipient.operator, "payout");
+      if (aggregator === "babimo" && !isBabimoPayoutSupported(recipient.operator, recipient.countryCode)) {
+        throw new Error("Unsupported payout route");
+      }
+    } catch {
+      res.status(503).json({
+        error: `L'op\xE9rateur ${recipient.operator} (${recipient.countryCode}) n'est pas disponible pour ce mass payout.`,
+        code: "PAYOUT_ROUTE_UNAVAILABLE"
+      });
+      return;
+    }
+  }
   const totalsPerCountry = {};
-  for (const r of recipients) {
-    const fee = Math.round(r.amount * userPayoutFeeRate * 100) / 100;
+  for (const [index, r] of recipients.entries()) {
+    const fee = Math.round(r.amount * recipientFeeRates[index] * 100) / 100;
     totalsPerCountry[r.countryCode] = (totalsPerCountry[r.countryCode] ?? 0) + r.amount + fee;
   }
   const walletCache = {};
@@ -279658,7 +279797,7 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
     return;
   }
   const totalAmount = recipients.reduce((s, r) => s + r.amount, 0);
-  const reference = `MASS-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
+  const reference = `MASS-${Date.now()}-${crypto6.randomBytes(4).toString("hex").toUpperCase()}`;
   const currency = COUNTRIES.find((c) => c.code === recipients[0].countryCode)?.currency ?? "XOF";
   const [job] = await db.insert(massPayoutJobsTable).values({
     userId,
@@ -279673,12 +279812,12 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   let successCount = 0;
   let failedCount = 0;
   const baseUrl2 = getWebhookBaseUrl();
-  for (const r of recipients) {
+  for (const [index, r] of recipients.entries()) {
     try {
       const countryCurrency = COUNTRIES.find((c) => c.code === r.countryCode)?.currency ?? "XOF";
-      const fee = Math.round(r.amount * userPayoutFeeRate * 100) / 100;
+      const fee = Math.round(r.amount * recipientFeeRates[index] * 100) / 100;
       const totalDebit = r.amount + fee;
-      const txRef = `MASS-OUT-${Date.now()}-${crypto5.randomBytes(3).toString("hex").toUpperCase()}`;
+      const txRef = `MASS-OUT-${Date.now()}-${crypto6.randomBytes(3).toString("hex").toUpperCase()}`;
       const wallet = walletCache[r.countryCode];
       if (!wallet) {
         failedCount++;
@@ -280027,6 +280166,7 @@ router11.post("/qr/:reference", async (req, res) => {
   const [merchantInfo] = await db.select({ companyName: usersTable.companyName, webhookUrl: usersTable.webhookUrl }).from(usersTable).where(eq(usersTable.id, qr.userId));
   const [kybInfo] = await db.select({ status: kybSubmissionsTable.status }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, qr.userId));
   const merchantMode = kybInfo?.status === "approved" ? "live" : "sandbox";
+  const webhookSecret = await ensureLatestMerchantWebhookSecret(qr.userId, merchantMode);
   const isOrangeMoneyOp = /^orange( money)?$/i.test(effectiveOperator.trim());
   const OTP_REQUIRED_COUNTRIES = /* @__PURE__ */ new Set(["CI", "SN", "BF"]);
   if (merchantMode === "live" && isOrangeMoneyOp && OTP_REQUIRED_COUNTRIES.has(effectiveCountry) && !operatorOtp) {
@@ -280037,11 +280177,11 @@ router11.post("/qr/:reference", async (req, res) => {
     return;
   }
   const amount = qr.type === "fixed" && qr.amount ? parseFloat(String(qr.amount)) : reqAmount;
-  const qrFeeRate = await getUserFeeRate(qr.userId, "payin");
+  const qrFeeRate = await getFeeRate(qr.userId, "payin", effectiveCountry, effectiveOperator);
   const fee = Math.round(amount * qrFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
-  const txReference = `QR-${Date.now()}-${crypto5.randomBytes(4).toString("hex").toUpperCase()}`;
-  const signatureKey = crypto5.randomBytes(32).toString("hex");
+  const txReference = `QR-${Date.now()}-${crypto6.randomBytes(4).toString("hex").toUpperCase()}`;
+  const signatureKey = crypto6.randomBytes(32).toString("hex");
   let [wallet] = await db.select().from(walletsTable).where(and(
     eq(walletsTable.userId, qr.userId),
     eq(walletsTable.countryCode, effectiveCountry),
@@ -280067,7 +280207,7 @@ router11.post("/qr/:reference", async (req, res) => {
     phone,
     description: `QR payment: ${qr.name}`,
     webhookUrl: merchantInfo?.webhookUrl ?? void 0,
-    webhookSignatureKey: signatureKey,
+    webhookSignatureKey: webhookSecret ?? signatureKey,
     mode: merchantMode,
     requestPayload: JSON.stringify(req.body)
   }).returning();
@@ -280252,7 +280392,7 @@ router11.post("/dashboard/payment-links", requireAuth, async (req, res) => {
   };
   const primaryCountry = countryCodes[0];
   const currency = CURRENCY_MAP2[primaryCountry] ?? "XOF";
-  const token = crypto5.randomBytes(16).toString("hex");
+  const token = crypto6.randomBytes(16).toString("hex");
   const isMultiCountry = countryCodes.length > 1;
   const [link] = await db.insert(paymentLinksTable).values({
     userId,
@@ -280312,7 +280452,7 @@ var import_express12 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-import crypto6 from "crypto";
+import crypto7 from "crypto";
 init_clapay();
 init_paydunya();
 init_babimo();
@@ -280330,10 +280470,10 @@ function checkRateLimit(keyId) {
   return true;
 }
 function signPayload(payload, secret, timestamp2) {
-  return crypto6.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
+  return crypto7.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
 }
 function generateSignatureKey() {
-  return crypto6.randomBytes(32).toString("hex");
+  return crypto7.randomBytes(32).toString("hex");
 }
 async function resolveUser(req, res, next) {
   if (req.session?.userId) {
@@ -280364,9 +280504,11 @@ async function resolveUser(req, res, next) {
   }
   const activeKeys = await db.select().from(apiKeysTable).where(eq(apiKeysTable.status, "active"));
   let matchedUserId = null;
+  let matchedKey = null;
   for (const k of activeKeys) {
     if (await bcryptjs_default.compare(rawKey, k.keyHash)) {
       matchedUserId = k.userId;
+      matchedKey = k;
       break;
     }
   }
@@ -280376,6 +280518,7 @@ async function resolveUser(req, res, next) {
   }
   req.resolvedUserId = matchedUserId;
   req.resolvedMode = isLive ? "live" : "sandbox";
+  req.resolvedWebhookSecret = await ensureWebhookSecretForApiKey(matchedKey.id);
   next();
 }
 function assertGeoMatch(walletCountry, requestCountry, res) {
@@ -280432,7 +280575,6 @@ var COUNTRIES2 = {
   SN: "XOF",
   CI: "XOF"
 };
-var FEE_RATE = 0.035;
 var initiateSchema = external_exports2.object({
   amount: external_exports2.number().min(200, "Le montant minimum est de 200"),
   currency: external_exports2.string().length(3),
@@ -280523,9 +280665,10 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
   } else {
     if (!assertGeoMatch(wallet.countryCode, country_code, res)) return;
   }
-  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const feeRate = await getFeeRate(userId, "payin", country_code, operator);
+  const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
-  const reference = `${country_code}-${crypto6.randomBytes(8).toString("hex").toUpperCase()}`;
+  const reference = `${country_code}-${crypto7.randomBytes(8).toString("hex").toUpperCase()}`;
   const signatureKey = generateSignatureKey();
   const expiresAt = new Date(Date.now() + (expires_in_minutes ?? 5) * 6e4);
   const [tx] = await db.insert(transactionsTable).values({
@@ -280544,7 +280687,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     phone,
     description,
     webhookUrl: webhook_url,
-    webhookSignatureKey: signatureKey,
+    webhookSignatureKey: req.resolvedWebhookSecret ?? signatureKey,
     mode,
     expiresAt,
     requestPayload: JSON.stringify(req.body)
@@ -280786,7 +280929,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
           created_at: tx.createdAt.toISOString(),
           updated_at: (/* @__PURE__ */ new Date()).toISOString()
         };
-        await deliverWebhook(webhook_url, payload, signatureKey, tx.id);
+        await deliverWebhook(webhook_url, payload, req.resolvedWebhookSecret ?? signatureKey, tx.id);
       }
     }, 3e3);
   }
@@ -280956,7 +281099,7 @@ var import_express13 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-import crypto7 from "crypto";
+import crypto8 from "crypto";
 import path3 from "path";
 var import_multer2 = __toESM(require_multer(), 1);
 
@@ -281526,7 +281669,7 @@ router13.post(AP + "/merchants/:id/activate", requireAdmin, async (req, res) => 
 });
 router13.post(AP + "/merchants/:id/reset-password", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
-  const newPassword = crypto7.randomBytes(8).toString("hex");
+  const newPassword = crypto8.randomBytes(8).toString("hex");
   const hash2 = await bcryptjs_default.hash(newPassword, 12);
   await db.update(usersTable).set({ passwordHash: hash2 }).where(eq(usersTable.id, id));
   await logAdminAction(req.session.userId, "RESET_PASSWORD", "user", String(id), void 0, req.ip);
@@ -282478,7 +282621,7 @@ router13.post(AP + "/api-keys/:id/regenerate", requireAdmin, async (req, res) =>
     return;
   }
   const env = old.env;
-  const rawKey = `dp_${env}_sk_${crypto7.randomBytes(24).toString("hex")}`;
+  const rawKey = `dp_${env}_sk_${crypto8.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcryptjs_default.hash(rawKey, 10);
   await db.update(apiKeysTable).set({ status: "revoked" }).where(eq(apiKeysTable.id, id));
@@ -282554,6 +282697,56 @@ router13.put(AP + "/settings", requireAdmin, async (req, res) => {
   }
   await logAdminAction(req.session.userId, "UPDATE_SETTINGS", "settings", void 0, JSON.stringify(Object.keys(updates)), req.ip);
   res.json({ ok: true });
+});
+router13.get(AP + "/operator-fees", requireAdmin, async (_req, res) => {
+  const [operators, setting] = await Promise.all([
+    db.select().from(operatorsTable).orderBy(operatorsTable.countryCode, operatorsTable.name),
+    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, OPERATOR_FEE_RATES_SETTING)).limit(1)
+  ]);
+  const rates = parseOperatorFeeRates(setting?.[0]?.value);
+  res.json({
+    rates,
+    operators: operators.map((operator) => ({
+      id: operator.id,
+      countryCode: operator.countryCode,
+      name: operator.name,
+      type: operator.type,
+      active: operator.active,
+      key: operatorFeeConfigKey(operator.countryCode, operator.name),
+      payin: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payin ?? null,
+      payout: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payout ?? null
+    }))
+  });
+});
+router13.put(AP + "/operator-fees", requireAdmin, async (req, res) => {
+  const feeSchema = external_exports2.object({
+    payin: external_exports2.number().min(0).max(100).nullable(),
+    payout: external_exports2.number().min(0).max(100).nullable()
+  });
+  const parsed = external_exports2.object({
+    rates: external_exports2.record(external_exports2.string().min(3).max(200), feeSchema)
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Tarifs invalides. Chaque frais doit \xEAtre compris entre 0 et 100 %." });
+    return;
+  }
+  const operators = await db.select().from(operatorsTable);
+  const knownKeys = new Set(operators.map((operator) => operatorFeeConfigKey(operator.countryCode, operator.name)));
+  const unknownKey = Object.keys(parsed.data.rates).find((key) => !knownKeys.has(key));
+  if (unknownKey) {
+    res.status(400).json({ error: `Op\xE9rateur inconnu : ${unknownKey}` });
+    return;
+  }
+  const rates = parsed.data.rates;
+  await db.insert(adminSettingsTable).values({
+    key: OPERATOR_FEE_RATES_SETTING,
+    value: JSON.stringify(rates)
+  }).onConflictDoUpdate({
+    target: adminSettingsTable.key,
+    set: { value: JSON.stringify(rates), updatedAt: /* @__PURE__ */ new Date() }
+  });
+  await logAdminAction(req.session.userId, "UPDATE_OPERATOR_FEES", "settings", void 0, JSON.stringify(Object.keys(rates)), req.ip);
+  res.json({ ok: true, rates });
 });
 router13.get(AP + "/blacklist", requireAdmin, async (req, res) => {
   const { search = "", page = "1", limit = "50" } = req.query;
@@ -283153,10 +283346,10 @@ init_src();
 init_schema2();
 init_drizzle_orm();
 init_clapay();
-import crypto8 from "crypto";
+import crypto9 from "crypto";
 var router14 = (0, import_express14.Router)();
 function signMerchantPayload(payload, secret, timestamp2) {
-  return crypto8.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
+  return crypto9.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
 }
 var STATUS_MAP = {
   "success": "success",
@@ -283349,10 +283542,10 @@ init_src();
 init_schema2();
 init_drizzle_orm();
 init_paydunya();
-import crypto9 from "crypto";
+import crypto10 from "crypto";
 var router15 = (0, import_express15.Router)();
 function signMerchantPayload2(payload, secret, timestamp2) {
-  return crypto9.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
+  return crypto10.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
 }
 router15.post("/webhooks/paydunya", async (req, res) => {
   res.status(200).json({ received: true });
@@ -283536,7 +283729,7 @@ init_src();
 init_drizzle_orm();
 init_schema2();
 init_babimo();
-import crypto10 from "crypto";
+import crypto11 from "crypto";
 var router16 = (0, import_express16.Router)();
 function firstString2(...values) {
   for (const value of values) {
@@ -283570,7 +283763,7 @@ function normalizeStatus(value) {
   }
 }
 function signMerchantPayload3(payload, secret, timestamp2) {
-  return crypto10.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
+  return crypto11.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
 }
 router16.post("/webhooks/babimo", async (req, res) => {
   res.status(200).json({ received: true });
@@ -284079,7 +284272,7 @@ var import_express18 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-import crypto11 from "crypto";
+import crypto12 from "crypto";
 init_clapay();
 init_paydunya();
 init_babimo();
@@ -284102,7 +284295,6 @@ var DEFAULT_OPERATORS = {
   SN: ["Orange Money", "Wave"],
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"]
 };
-var FEE_RATE2 = 0.035;
 router18.get("/pay/status/:reference", async (req, res) => {
   const { reference } = req.params;
   if (!reference) {
@@ -284281,10 +284473,12 @@ router18.post("/pay/:token", async (req, res) => {
     return;
   }
   const [merchantInfo] = await db.select({ companyName: usersTable.companyName, webhookUrl: usersTable.webhookUrl }).from(usersTable).where(eq(usersTable.id, link.userId));
-  const fee = Math.round(amount * FEE_RATE2 * 100) / 100;
+  const webhookSecret = await ensureLatestMerchantWebhookSecret(link.userId, "live");
+  const feeRate = await getFeeRate(link.userId, "payin", countryCode, operator);
+  const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
-  const reference = `PL-${countryCode}-${crypto11.randomBytes(8).toString("hex").toUpperCase()}`;
-  const signatureKey = crypto11.randomBytes(32).toString("hex");
+  const reference = `PL-${countryCode}-${crypto12.randomBytes(8).toString("hex").toUpperCase()}`;
+  const signatureKey = crypto12.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 10 * 6e4);
   let [wallet] = await db.select().from(walletsTable).where(and(eq(walletsTable.userId, link.userId), eq(walletsTable.countryCode, countryCode)));
   if (!wallet) {
@@ -284311,7 +284505,7 @@ router18.post("/pay/:token", async (req, res) => {
     phone,
     description: link.title + (customerName ? ` \u2014 ${customerName}` : ""),
     webhookUrl: merchantInfo?.webhookUrl ?? void 0,
-    webhookSignatureKey: signatureKey,
+    webhookSignatureKey: webhookSecret ?? signatureKey,
     mode: "live",
     expiresAt,
     requestPayload: JSON.stringify(req.body)
@@ -284659,7 +284853,7 @@ app.use(
     }),
     // Fallback: aléatoire à chaque démarrage si SESSION_SECRET absent.
     // Les sessions existantes seront invalidées mais le process ne crashe pas.
-    secret: sessionSecret || crypto12.randomBytes(32).toString("hex"),
+    secret: sessionSecret || crypto13.randomBytes(32).toString("hex"),
     resave: false,
     saveUninitialized: false,
     name: "dp_sid",

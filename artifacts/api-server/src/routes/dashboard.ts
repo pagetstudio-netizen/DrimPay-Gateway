@@ -38,15 +38,15 @@ import { withRetry } from "../lib/retry";
 import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable, listActiveOperators, type AggregatorCode } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
-import { BabimoClient, BabimoError } from "../lib/babimo";
+import { BabimoClient, BabimoError, isBabimoPayoutSupported } from "../lib/babimo";
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
+import { ensureLatestMerchantWebhookSecret, ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
+import { getFeeRate } from "../lib/fee-rates";
 
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const payLinkImageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
-
-const FEE_RATE = 0.035;
 
 const router = Router();
 
@@ -122,43 +122,12 @@ async function createNotification(
   } catch {}
 }
 
-async function getPlatformDefaultFee(type: "payin" | "payout"): Promise<number> {
-  const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
-  try {
-    const [row] = await db.select({ value: adminSettingsTable.value })
-      .from(adminSettingsTable).where(eq(adminSettingsTable.key, key)).limit(1);
-    if (row?.value) return parseFloat(row.value) / 100;
-  } catch {}
-  return 0.035;
-}
-
-async function getUserFeeRate(userId: number, type: "payin" | "payout" = "payin"): Promise<number> {
-  const feeKey = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
-  const [[user], [platformSetting]] = await Promise.all([
-    db.select({
-      payinFeePercent: usersTable.payinFeePercent,
-      payoutFeePercent: usersTable.payoutFeePercent,
-    }).from(usersTable).where(eq(usersTable.id, userId)),
-    db.select({ value: adminSettingsTable.value })
-      .from(adminSettingsTable).where(eq(adminSettingsTable.key, feeKey)).limit(1),
-  ]);
-  const platformDefault = platformSetting?.value ? parseFloat(platformSetting.value) / 100 : 0.035;
-  if (!user) return platformDefault;
-  if (type === "payin" && user.payinFeePercent !== null && user.payinFeePercent !== undefined) {
-    return parseFloat(String(user.payinFeePercent)) / 100;
-  }
-  if (type === "payout" && user.payoutFeePercent !== null && user.payoutFeePercent !== undefined) {
-    return parseFloat(String(user.payoutFeePercent)) / 100;
-  }
-  return platformDefault;
-}
-
 // Returns the authenticated user's actual fee rates (honours per-merchant overrides + platform default)
 router.get("/dashboard/fee-rate", requireAuth, async (req: any, res: any) => {
   const userId = req.session.userId!;
   const [payinRate, payoutRate] = await Promise.all([
-    getUserFeeRate(userId, "payin"),
-    getUserFeeRate(userId, "payout"),
+    getFeeRate(userId, "payin"),
+    getFeeRate(userId, "payout"),
   ]);
   const fmt = (r: number) => parseFloat((r * 100).toFixed(4));
   res.json({
@@ -542,7 +511,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       .returning();
   }
 
-  const feeRate = await getUserFeeRate(userId, "payin");
+  const feeRate = await getFeeRate(userId, "payin", countryCode, operator);
   const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `PAY-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
@@ -751,7 +720,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
     return;
   }
 
-  const payoutFeeRate = await getUserFeeRate(userId, "payout");
+  const payoutFeeRate = await getFeeRate(userId, "payout", countryCode, operator);
   const fee = Math.round(amount * payoutFeeRate * 100) / 100;
   const totalDebit = Math.round((amount + fee) * 100) / 100;
   const currentBalance = parseFloat(String(wallet.balance));
@@ -990,6 +959,7 @@ router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
       prefix: apiKeysTable.prefix,
       env: apiKeysTable.env,
       status: apiKeysTable.status,
+      hasWebhookSecret: sql<boolean>`${apiKeysTable.webhookSecret} IS NOT NULL`,
       lastUsedAt: apiKeysTable.lastUsedAt,
       createdAt: apiKeysTable.createdAt,
     })
@@ -1022,13 +992,28 @@ router.post("/dashboard/api-keys/:id/reveal", requireAuth, async (req, res) => {
   if (!valid) { res.status(401).json({ error: "Mot de passe incorrect" }); return; }
 
   const [key] = await db
-    .select({ rawKey: apiKeysTable.rawKey, status: apiKeysTable.status })
+    .select({
+      id: apiKeysTable.id,
+      rawKey: apiKeysTable.rawKey,
+      webhookSecret: apiKeysTable.webhookSecret,
+      status: apiKeysTable.status,
+    })
     .from(apiKeysTable)
     .where(and(eq(apiKeysTable.id, keyId), eq(apiKeysTable.userId, userId)));
 
   if (!key) { res.status(404).json({ error: "Clé introuvable" }); return; }
 
-  res.json({ rawKey: key.rawKey });
+  // Keys created before webhook secrets were added are upgraded the first
+  // time their credentials are revealed.
+  let webhookSecret = key.webhookSecret;
+  if (!webhookSecret) {
+    webhookSecret = `whsec_${crypto.randomBytes(32).toString("hex")}`;
+    await db.update(apiKeysTable)
+      .set({ webhookSecret })
+      .where(eq(apiKeysTable.id, key.id));
+  }
+
+  res.json({ rawKey: key.rawKey, webhookSecret });
 });
 
 const createKeySchema = z.object({
@@ -1050,16 +1035,27 @@ router.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, r
   const rawKey = `dp_${env}_sk_${crypto.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcrypt.hash(rawKey, 10);
+  const webhookSecret = `whsec_${crypto.randomBytes(32).toString("hex")}`;
 
   const [key] = await db
     .insert(apiKeysTable)
-    .values({ userId, name, description: description ?? null, keyHash, rawKey, prefix, env })
+    .values({
+      userId,
+      name,
+      description: description ?? null,
+      keyHash,
+      rawKey,
+      webhookSecret,
+      prefix,
+      env,
+    })
     .returning({
       id: apiKeysTable.id,
       name: apiKeysTable.name,
       description: apiKeysTable.description,
       prefix: apiKeysTable.prefix,
       rawKey: apiKeysTable.rawKey,
+      webhookSecret: apiKeysTable.webhookSecret,
       env: apiKeysTable.env,
       status: apiKeysTable.status,
       createdAt: apiKeysTable.createdAt,
@@ -1071,7 +1067,11 @@ router.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, r
     `Une clé API ${env === "sandbox" ? "Sandbox" : "Live"} nommée "${name}" a été générée. Conservez-la en lieu sûr.`,
     "/dashboard/api-keys",
   ).catch(() => {});
-  res.status(201).json({ ...key, warning: "Store this key securely." });
+  res.status(201).json({
+    ...key,
+    webhookSecret,
+    warning: "Store the API key and webhook secret securely. They are shown only once.",
+  });
 });
 
 router.delete("/dashboard/api-keys/:id", requireAuth, apiKeyRateLimiter, async (req, res) => {
@@ -1136,16 +1136,18 @@ router.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, as
   const rawKey = `dp_${env}_sk_${crypto.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcrypt.hash(rawKey, 10);
+  const webhookSecret = `whsec_${crypto.randomBytes(32).toString("hex")}`;
   const name = env === "sandbox" ? "Clé Sandbox" : "Clé Live";
 
   const [key] = await db
     .insert(apiKeysTable)
-    .values({ userId, name, keyHash, rawKey, prefix, env: env as any })
+    .values({ userId, name, keyHash, rawKey, webhookSecret, prefix, env: env as any })
     .returning({
       id: apiKeysTable.id,
       name: apiKeysTable.name,
       prefix: apiKeysTable.prefix,
       rawKey: apiKeysTable.rawKey,
+      webhookSecret: apiKeysTable.webhookSecret,
       env: apiKeysTable.env,
       status: apiKeysTable.status,
       createdAt: apiKeysTable.createdAt,
@@ -1158,7 +1160,12 @@ router.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, as
     "/dashboard/api-keys",
   ).catch(() => {});
 
-  res.status(201).json({ ...key, rawKey });
+  res.status(201).json({
+    ...key,
+    rawKey,
+    webhookSecret,
+    warning: "Store the API key and webhook secret securely. They are shown only once.",
+  });
 });
 
 router.get("/dashboard/kyb", requireAuth, async (req, res) => {
@@ -1582,7 +1589,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
     return;
   }
 
-  const feeRate = await getUserFeeRate(userId, "payout");
+  const feeRate = await getFeeRate(userId, "payout", countryCode, operator);
   const fee = +(amount * feeRate).toFixed(2);
   const net = +(amount - fee).toFixed(2);
   const totalDebit = amount;
@@ -2015,6 +2022,7 @@ router.post("/dashboard/webhooks", requireAuth, async (req, res) => {
       .from(apiKeysTable)
       .where(and(eq(apiKeysTable.id, parsed.data.apiKeyId), eq(apiKeysTable.userId, userId)));
     if (!key) { res.status(400).json({ error: "Clé API introuvable" }); return; }
+    await ensureWebhookSecretForApiKey(key.id);
   }
 
   const existing = await db.select({ id: userWebhooksTable.id }).from(userWebhooksTable).where(eq(userWebhooksTable.userId, userId));
@@ -2396,7 +2404,7 @@ router.post("/pay/:token", async (req, res) => {
   }
 
   const amount = link.fixedAmount && link.amount ? parseFloat(String(link.amount)) : reqAmount;
-  const linkFeeRate = await getUserFeeRate(link.userId, "payin");
+  const linkFeeRate = await getFeeRate(link.userId, "payin", effectiveCountry, effectiveOperator);
   const fee = Math.round(amount * linkFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `LNK-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
@@ -2743,12 +2751,37 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const { description, recipients } = parsed.data;
 
   // Resolve this user's payout fee rate (honours admin overrides + platform default)
-  const userPayoutFeeRate = await getUserFeeRate(userId, "payout");
-
   // ── 1. Aggregate total needed (amount + fee) per country ──────────────────
+  // Resolve each recipient's rate now so one mass payout uses a consistent
+  // configuration even if an administrator edits fees while it is processing.
+  const recipientFeeRates = await Promise.all(
+    recipients.map(r => getFeeRate(userId, "payout", r.countryCode, r.operator)),
+  );
+
+  // Validate every distinct route before creating the job or debiting a wallet.
+  // Babimo handles mass payout as one payout request per recipient; all of its
+  // supported payout methods must therefore be available up front.
+  const routePairs = [...new Map(
+    recipients.map(r => [`${r.countryCode}:${r.operator.toLowerCase().trim()}`, r] as const),
+  ).values()];
+  for (const recipient of routePairs) {
+    try {
+      const { aggregator } = await resolveAggregator(recipient.countryCode, recipient.operator, "payout");
+      if (aggregator === "babimo" && !isBabimoPayoutSupported(recipient.operator, recipient.countryCode)) {
+        throw new Error("Unsupported payout route");
+      }
+    } catch {
+      res.status(503).json({
+        error: `L'opérateur ${recipient.operator} (${recipient.countryCode}) n'est pas disponible pour ce mass payout.`,
+        code: "PAYOUT_ROUTE_UNAVAILABLE",
+      });
+      return;
+    }
+  }
+
   const totalsPerCountry: Record<string, number> = {};
-  for (const r of recipients) {
-    const fee = Math.round(r.amount * userPayoutFeeRate * 100) / 100;
+  for (const [index, r] of recipients.entries()) {
+    const fee = Math.round(r.amount * recipientFeeRates[index] * 100) / 100;
     totalsPerCountry[r.countryCode] = (totalsPerCountry[r.countryCode] ?? 0) + r.amount + fee;
   }
 
@@ -2803,10 +2836,10 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
 
   const baseUrl = getWebhookBaseUrl();
 
-  for (const r of recipients) {
+  for (const [index, r] of recipients.entries()) {
     try {
       const countryCurrency = COUNTRIES.find(c => c.code === r.countryCode)?.currency ?? "XOF";
-      const fee = Math.round(r.amount * userPayoutFeeRate * 100) / 100;
+      const fee = Math.round(r.amount * recipientFeeRates[index] * 100) / 100;
       const totalDebit = r.amount + fee;
       const txRef = `MASS-OUT-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 
@@ -3234,6 +3267,7 @@ router.post("/qr/:reference", async (req, res) => {
     .from(kybSubmissionsTable)
     .where(eq(kybSubmissionsTable.userId, qr.userId));
   const merchantMode: "sandbox" | "live" = kybInfo?.status === "approved" ? "live" : "sandbox";
+  const webhookSecret = await ensureLatestMerchantWebhookSecret(qr.userId, merchantMode);
 
   // Orange Money CI/SN/BF exige un code de confirmation (OTP) généré par USSD
   // par le client avant l'appel à l'agrégateur — le vérifier tôt évite un aller-retour inutile.
@@ -3249,7 +3283,7 @@ router.post("/qr/:reference", async (req, res) => {
   }
 
   const amount = qr.type === "fixed" && qr.amount ? parseFloat(String(qr.amount)) : reqAmount;
-  const qrFeeRate = await getUserFeeRate(qr.userId, "payin");
+  const qrFeeRate = await getFeeRate(qr.userId, "payin", effectiveCountry, effectiveOperator);
   const fee = Math.round(amount * qrFeeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const txReference = `QR-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
@@ -3291,7 +3325,7 @@ router.post("/qr/:reference", async (req, res) => {
     phone,
     description: `QR payment: ${qr.name}`,
     webhookUrl: merchantInfo?.webhookUrl ?? undefined,
-    webhookSignatureKey: signatureKey,
+    webhookSignatureKey: webhookSecret ?? signatureKey,
     mode: merchantMode,
     requestPayload: JSON.stringify(req.body),
   }).returning();

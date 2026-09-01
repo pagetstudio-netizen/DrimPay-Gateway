@@ -13,6 +13,12 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt, inArray, isNotNull } from "drizzle-orm";
 import crypto from "crypto";
+import {
+  OPERATOR_FEE_RATES_SETTING,
+  operatorFeeConfigKey,
+  parseOperatorFeeRates,
+  type OperatorFeeRates,
+} from "../lib/fee-rates";
 import bcrypt from "bcryptjs";
 import path from "path";
 import fs from "fs";
@@ -1632,6 +1638,64 @@ router.put(AP + "/settings", requireAdmin, async (req: any, res: any) => {
   }
   await logAdminAction(req.session.userId, "UPDATE_SETTINGS", "settings", undefined, JSON.stringify(Object.keys(updates)), req.ip);
   res.json({ ok: true });
+});
+
+// ─── OPERATOR / COUNTRY FEES ─────────────────────────────────────────────────
+router.get(AP + "/operator-fees", requireAdmin, async (_req: any, res: any) => {
+  const [operators, setting] = await Promise.all([
+    db.select().from(operatorsTable).orderBy(operatorsTable.countryCode, operatorsTable.name),
+    db.select({ value: adminSettingsTable.value })
+      .from(adminSettingsTable)
+      .where(eq(adminSettingsTable.key, OPERATOR_FEE_RATES_SETTING))
+      .limit(1),
+  ]);
+  const rates = parseOperatorFeeRates(setting?.[0]?.value);
+  res.json({
+    rates,
+    operators: operators.map(operator => ({
+      id: operator.id,
+      countryCode: operator.countryCode,
+      name: operator.name,
+      type: operator.type,
+      active: operator.active,
+      key: operatorFeeConfigKey(operator.countryCode, operator.name),
+      payin: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payin ?? null,
+      payout: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payout ?? null,
+    })),
+  });
+});
+
+router.put(AP + "/operator-fees", requireAdmin, async (req: any, res: any) => {
+  const feeSchema = z.object({
+    payin: z.number().min(0).max(100).nullable(),
+    payout: z.number().min(0).max(100).nullable(),
+  });
+  const parsed = z.object({
+    rates: z.record(z.string().min(3).max(200), feeSchema),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Tarifs invalides. Chaque frais doit être compris entre 0 et 100 %." });
+    return;
+  }
+
+  const operators = await db.select().from(operatorsTable);
+  const knownKeys = new Set(operators.map(operator => operatorFeeConfigKey(operator.countryCode, operator.name)));
+  const unknownKey = Object.keys(parsed.data.rates).find(key => !knownKeys.has(key));
+  if (unknownKey) {
+    res.status(400).json({ error: `Opérateur inconnu : ${unknownKey}` });
+    return;
+  }
+
+  const rates: OperatorFeeRates = parsed.data.rates;
+  await db.insert(adminSettingsTable).values({
+    key: OPERATOR_FEE_RATES_SETTING,
+    value: JSON.stringify(rates),
+  }).onConflictDoUpdate({
+    target: adminSettingsTable.key,
+    set: { value: JSON.stringify(rates), updatedAt: new Date() },
+  });
+  await logAdminAction(req.session.userId, "UPDATE_OPERATOR_FEES", "settings", undefined, JSON.stringify(Object.keys(rates)), req.ip);
+  res.json({ ok: true, rates });
 });
 
 // ─── LISTE NOIRE (Blacklist) ───────────────────────────────────────────────────

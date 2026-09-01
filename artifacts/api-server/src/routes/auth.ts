@@ -102,7 +102,15 @@ router.post("/auth/signup", signupRateLimiter, async (req, res) => {
     const rawKey = `dp_test_${crypto.randomBytes(24).toString("hex")}`;
     const prefix = rawKey.substring(0, 12);
     const keyHash = await bcrypt.hash(rawKey, 10);
-    await db.insert(apiKeysTable).values({ userId: user.id, name: "Clé Sandbox", keyHash, prefix, env: "sandbox" });
+    const webhookSecret = `whsec_${crypto.randomBytes(32).toString("hex")}`;
+    await db.insert(apiKeysTable).values({
+      userId: user.id,
+      name: "Clé Sandbox",
+      keyHash,
+      prefix,
+      env: "sandbox",
+      webhookSecret,
+    });
   } catch (e) {
     console.error("[DrimPay] Failed to auto-generate sandbox key at signup:", e);
   }

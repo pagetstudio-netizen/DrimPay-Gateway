@@ -17,6 +17,7 @@ import {
   usersTable,
   walletsTable,
   transactionsTable,
+  apiKeysTable,
   operatorAggregatorsTable,
   blacklistedPhonesTable,
 } from "@workspace/db/schema";
@@ -30,6 +31,8 @@ import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram"
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { GENERIC_ERROR_MESSAGE, merchantFailureLabel } from "../lib/merchant-error";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
+import { ensureLatestMerchantWebhookSecret } from "../lib/webhook-secrets";
+import { getFeeRate } from "../lib/fee-rates";
 
 const router = Router();
 
@@ -47,8 +50,6 @@ const DEFAULT_OPERATORS: Record<string, string[]> = {
   SN: ["Orange Money", "Wave"],
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"],
 };
-
-const FEE_RATE = 0.035;
 
 function signPayload(payload: string, secret: string, timestamp: number): string {
   return crypto
@@ -325,8 +326,10 @@ router.post("/pay/:token", async (req: any, res: any) => {
     .select({ companyName: usersTable.companyName, webhookUrl: usersTable.webhookUrl })
     .from(usersTable)
     .where(eq(usersTable.id, link.userId));
+  const webhookSecret = await ensureLatestMerchantWebhookSecret(link.userId, "live");
 
-  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const feeRate = await getFeeRate(link.userId, "payin", countryCode, operator);
+  const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `PL-${countryCode}-${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
   const signatureKey = crypto.randomBytes(32).toString("hex");
@@ -364,7 +367,7 @@ router.post("/pay/:token", async (req: any, res: any) => {
     phone,
     description: link.title + (customerName ? ` — ${customerName}` : ""),
     webhookUrl: merchantInfo?.webhookUrl ?? undefined,
-    webhookSignatureKey: signatureKey,
+    webhookSignatureKey: webhookSecret ?? signatureKey,
     mode: "live",
     expiresAt,
     requestPayload: JSON.stringify(req.body),

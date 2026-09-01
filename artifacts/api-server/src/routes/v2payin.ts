@@ -19,6 +19,8 @@ import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure, buildWalletsS
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { GENERIC_ERROR_MESSAGE, MERCHANT_FAILURE_LABEL, merchantFailureLabel } from "../lib/merchant-error";
 import { isMaintenanceModeOn } from "../lib/admin-settings";
+import { ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
+import { getFeeRate } from "../lib/fee-rates";
 
 const router = Router();
 
@@ -95,9 +97,11 @@ async function resolveUser(
     .where(eq(apiKeysTable.status, "active"));
 
   let matchedUserId: number | null = null;
+  let matchedKey: (typeof activeKeys)[number] | null = null;
   for (const k of activeKeys) {
     if (await bcrypt.compare(rawKey, k.keyHash)) {
       matchedUserId = k.userId;
+      matchedKey = k;
       break;
     }
   }
@@ -109,6 +113,9 @@ async function resolveUser(
 
   req.resolvedUserId = matchedUserId;
   req.resolvedMode = isLive ? "live" : "sandbox";
+  // Keep webhook verification tied to the API key that initiated the
+  // transaction. Old keys receive a secret on first use.
+  req.resolvedWebhookSecret = await ensureWebhookSecretForApiKey(matchedKey!.id);
   next();
 }
 
@@ -181,8 +188,6 @@ const COUNTRIES: Record<string, string> = {
   TG: "XOF", BJ: "XOF", CM: "XAF", BF: "XOF",
   ML: "XOF", SN: "XOF", CI: "XOF",
 };
-
-const FEE_RATE = 0.035;
 
 const EXPIRY_MINUTES: Record<string, number> = { "2": 2, "5": 5, "10": 10 };
 
@@ -298,7 +303,8 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
     if (!assertGeoMatch(wallet.countryCode, country_code, res)) return;
   }
 
-  const fee = Math.round(amount * FEE_RATE * 100) / 100;
+  const feeRate = await getFeeRate(userId, "payin", country_code, operator);
+  const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
   const reference = `${country_code}-${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
   const signatureKey = generateSignatureKey();
@@ -322,7 +328,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       phone,
       description,
       webhookUrl: webhook_url,
-      webhookSignatureKey: signatureKey,
+      webhookSignatureKey: req.resolvedWebhookSecret ?? signatureKey,
       mode: mode as any,
       expiresAt,
       requestPayload: JSON.stringify(req.body),
@@ -581,7 +587,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
           created_at: tx.createdAt.toISOString(),
           updated_at: new Date().toISOString(),
         };
-        await deliverWebhook(webhook_url, payload, signatureKey, tx.id);
+        await deliverWebhook(webhook_url, payload, req.resolvedWebhookSecret ?? signatureKey, tx.id);
       }
     }, 3_000);
   }

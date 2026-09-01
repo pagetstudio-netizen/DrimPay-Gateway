@@ -22,6 +22,7 @@ type ApiKey = {
   prefix: string;
   env: "sandbox" | "live";
   status: "active" | "revoked";
+  hasWebhookSecret?: boolean;
   lastUsedAt?: string | null;
   createdAt: string;
 };
@@ -132,7 +133,7 @@ function PasswordModal({
         <p className="text-sm text-gray-500 text-center leading-relaxed mb-4">
           {isRegenerate
             ? `En régénérant, une nouvelle clé ${pending.env === "live" ? "Live" : "Sandbox"} sera générée pour remplacer l'actuelle.`
-            : <>Entrez votre mot de passe pour afficher la clé&nbsp;<strong className="text-gray-700">{keyName}</strong>.</>
+            : <>Confirmez votre identité avec le mot de passe du compte pour afficher la clé et le secret webhook de&nbsp;<strong className="text-gray-700">{keyName}</strong>.</>
           }
         </p>
 
@@ -198,7 +199,7 @@ function PasswordModal({
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : isRegenerate
                 ? <><RefreshCw className="w-4 h-4" /> Régénérer</>
-                : <><Eye className="w-4 h-4" /> Afficher la clé</>
+                : <><Eye className="w-4 h-4" /> Afficher les identifiants</>
             }
           </button>
         </div>
@@ -222,11 +223,16 @@ function ApiKeysTab() {
   const [formErr, setFormErr]         = useState("");
   const [kybStatus, setKybStatus]     = useState<KybStatus | null>(null);
   // newly created key shown inline (not modal)
-  const [newKeyBanner, setNewKeyBanner] = useState<{ rawKey: string; name: string } | null>(null);
+  const [newKeyBanner, setNewKeyBanner] = useState<{
+    rawKey: string;
+    webhookSecret: string;
+    name: string;
+  } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   // revealed key per id (password-gated)
   const [revealedKeys, setRevealedKeys] = useState<Map<number, string>>(new Map());
+  const [revealedWebhookSecrets, setRevealedWebhookSecrets] = useState<Map<number, string>>(new Map());
 
   // password modal
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
@@ -264,7 +270,11 @@ function ApiKeysTab() {
     if (!res.ok) { setFormErr(data.error ?? "Erreur lors de la création."); return; }
     // Show inline banner (not modal)
     setBannerDismissed(false);
-    setNewKeyBanner({ rawKey: data.rawKey, name: data.name ?? name.trim() });
+    setNewKeyBanner({
+      rawKey: data.rawKey,
+      webhookSecret: data.webhookSecret,
+      name: data.name ?? name.trim(),
+    });
     setName(""); setDescription(""); setEnv("sandbox");
     fetch_();
   };
@@ -274,6 +284,7 @@ function ApiKeysTab() {
     setDeleteId(null);
     // Remove from revealed cache
     setRevealedKeys(prev => { const m = new Map(prev); m.delete(id); return m; });
+    setRevealedWebhookSecrets(prev => { const m = new Map(prev); m.delete(id); return m; });
     fetch_();
   };
 
@@ -290,6 +301,10 @@ function ApiKeysTab() {
       const data = await res.json();
       if (!res.ok) return data.error ?? "Erreur";
       setRevealedKeys(prev => new Map(prev).set(pendingAction.keyId, data.rawKey));
+      if (data.webhookSecret) {
+        setRevealedWebhookSecrets(prev => new Map(prev).set(pendingAction.keyId, data.webhookSecret));
+        setKeys(prev => prev.map(k => k.id === pendingAction.keyId ? { ...k, hasWebhookSecret: true } : k));
+      }
       setPendingAction(null);
       return null;
     }
@@ -304,10 +319,15 @@ function ApiKeysTab() {
       if (!res.ok) return data.error ?? "Erreur";
       // Show banner with new key
       setBannerDismissed(false);
-      setNewKeyBanner({ rawKey: data.rawKey, name: data.name ?? `Clé ${pendingAction.env}` });
+      setNewKeyBanner({
+        rawKey: data.rawKey,
+        webhookSecret: data.webhookSecret,
+        name: data.name ?? `Clé ${pendingAction.env}`,
+      });
       setPendingAction(null);
       // Clear revealed cache (old keys are revoked)
       setRevealedKeys(new Map());
+      setRevealedWebhookSecrets(new Map());
       fetch_();
       return null;
     }
@@ -320,6 +340,7 @@ function ApiKeysTab() {
   const KeyCard = ({ k }: { k: ApiKey }) => {
     const isRevealed = revealedKeys.has(k.id);
     const rawKey = revealedKeys.get(k.id);
+    const webhookSecret = revealedWebhookSecrets.get(k.id);
 
     return (
       <motion.div key={k.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -354,6 +375,27 @@ function ApiKeysTab() {
               ? rawKey
               : `${k.prefix}••••••••••••••••••••••••`}
           </p>
+          {isRevealed && webhookSecret && (
+            <div className="mt-2 flex items-start gap-2 rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-2">
+              <Webhook className="w-3.5 h-3.5 text-violet-600 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold text-violet-700 uppercase tracking-wide">Secret webhook</p>
+                <p className="font-mono text-[11px] text-violet-900 break-all select-all">{webhookSecret}</p>
+              </div>
+              <button
+                onClick={() => copy(webhookSecret, `ws-${k.id}`)}
+                title="Copier le secret webhook"
+                className="p-1 rounded-md text-violet-500 hover:bg-violet-100 transition-colors shrink-0"
+              >
+                {copied === `ws-${k.id}` ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          )}
+          {!k.hasWebhookSecret && (
+            <p className="mt-1 text-[10px] text-amber-600 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Le secret sera généré lors de l'affichage sécurisé.
+            </p>
+          )}
           <p className="text-[10px] text-gray-400 mt-0.5">
             Créée le {new Date(k.createdAt).toLocaleDateString("fr-FR")}
             {k.lastUsedAt && ` · Utilisée le ${new Date(k.lastUsedAt).toLocaleDateString("fr-FR")}`}
@@ -369,7 +411,7 @@ function ApiKeysTab() {
                 setPendingAction({ mode: "reveal", keyId: k.id, keyName: k.name });
               }
             }}
-            title={isRevealed ? "Masquer" : "Voir la clé"}
+            title={isRevealed ? "Masquer" : "Voir la clé et le secret webhook"}
             className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-all"
           >
             {isRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -433,13 +475,17 @@ function ApiKeysTab() {
                 <CheckCircle2 className="w-4 h-4 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-900">Clé "{newKeyBanner.name}" créée</p>
-                <p className="text-xs text-gray-500">Copiez-la maintenant — vous ne pourrez la voir qu'en entrant votre mot de passe.</p>
+                <p className="text-sm font-bold text-gray-900">Clé et secret webhook créés pour "{newKeyBanner.name}"</p>
+                <p className="text-xs text-gray-500">Copiez-les maintenant ou réaffichez-les plus tard en confirmant votre identité avec le mot de passe du compte.</p>
               </div>
             </div>
 
             <div className="bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 font-mono text-sm break-all text-primary select-all mb-3">
               {newKeyBanner.rawKey}
+            </div>
+            <div className="bg-violet-950 border border-violet-800 rounded-xl px-4 py-3 font-mono text-sm break-all text-violet-200 select-all mb-3">
+              <span className="block text-[10px] font-sans font-semibold uppercase tracking-wide text-violet-400 mb-1">Secret webhook — HMAC SHA-256</span>
+              {newKeyBanner.webhookSecret}
             </div>
 
             <div className="flex items-center gap-3">
@@ -452,9 +498,18 @@ function ApiKeysTab() {
                   : <><Copy className="w-4 h-4" />Copier la clé</>
                 }
               </button>
+              <button
+                onClick={() => copy(newKeyBanner.webhookSecret, "banner-secret")}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-700 text-white text-sm font-bold hover:bg-violet-800 transition-colors"
+              >
+                {copied === "banner-secret"
+                  ? <><CheckCircle2 className="w-4 h-4 text-green-300" />Copié</>
+                  : <><Copy className="w-4 h-4" />Copier le secret</>
+                }
+              </button>
               <div className="flex items-center gap-1.5 text-xs text-amber-700">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                Cette clé ne s'affiche qu'une seule fois ici. Ensuite, votre mot de passe sera requis.
+                La clé et le secret restent consultables avec votre mot de passe. Ne partagez jamais le secret webhook.
               </div>
             </div>
           </motion.div>
@@ -544,7 +599,7 @@ function ApiKeysTab() {
             className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors disabled:opacity-60"
           >
             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-            Générer la clé
+            Générer la clé + le secret webhook
           </button>
         )}
       </div>
@@ -562,7 +617,7 @@ function ApiKeysTab() {
         {activeKeys.length > 0 && (
           <div className="mx-5 mt-4 mb-1 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
             <Lock className="w-3.5 h-3.5 shrink-0 text-gray-400" />
-            Cliquez sur <Eye className="w-3.5 h-3.5 inline mx-1" /> pour voir une clé — votre mot de passe sera demandé.
+            Cliquez sur <Eye className="w-3.5 h-3.5 inline mx-1" /> pour voir la clé et le secret webhook — votre mot de passe sera demandé.
             Cliquez sur <RefreshCw className="w-3.5 h-3.5 inline mx-1" /> pour régénérer.
           </div>
         )}
@@ -728,7 +783,7 @@ function WebhooksTab() {
     <div className="space-y-5">
       <div className="rounded-xl bg-primary/5 border border-primary/15 px-4 py-3 text-xs text-gray-600 leading-relaxed">
         <span className="text-primary font-semibold">Comment ça marche : </span>
-        DrimPay envoie une requête <code className="text-primary font-mono">POST</code> à chaque URL configurée à chaque changement d'état de transaction. Votre endpoint doit répondre avec un code <code className="text-primary font-mono">200</code>. Chaque requête est signée avec le header <code className="text-primary font-mono">X-DrimPay-Signature</code>.
+        DrimPay envoie une requête <code className="text-primary font-mono">POST</code> à chaque URL configurée à chaque changement d'état de transaction. Votre endpoint doit répondre avec un code <code className="text-primary font-mono">200</code>. Chaque requête est signée avec le header <code className="text-primary font-mono">X-DrimPay-Signature</code> et le secret webhook de l'application sélectionnée. Recalculez la signature avec <code className="text-primary font-mono">HMAC-SHA256(timestamp + "." + corps_brut)</code> avant de traiter le JSON.
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">

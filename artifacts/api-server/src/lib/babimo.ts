@@ -175,6 +175,10 @@ export function babimoPaymentMethod(
   return PAYMENT_METHODS[`${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`]?.[operation] ?? null;
 }
 
+export function isBabimoPayoutSupported(operator: string, countryCode: string): boolean {
+  return Boolean(babimoPaymentMethod(operator, countryCode, "payout"));
+}
+
 export class BabimoClient {
   private readonly config: BabimoConfig;
   private accessToken: string | null = null;
