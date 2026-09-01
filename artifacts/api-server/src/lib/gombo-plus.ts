@@ -47,7 +47,10 @@ const GOMBO_COUNTRIES = new Set(["TG", "BJ", "BF"]);
 const MAINTENANCE_OPERATOR = "om|BF";
 
 function countryKey(countryCode: string): string {
-  return String(countryCode ?? "").trim().toUpperCase();
+  const normalized = String(countryCode ?? "").trim().toUpperCase();
+  // Gombo's documentation contains both BN and BJ for Bénin; DrimPay's
+  // canonical country code is BJ, and the API examples use BJ.
+  return normalized === "BN" ? "BJ" : normalized;
 }
 
 function operatorKey(operator: string, countryCode: string): string {

@@ -107420,7 +107420,8 @@ __export(gombo_plus_exports, {
   isGomboPlusSupported: () => isGomboPlusSupported
 });
 function countryKey2(countryCode) {
-  return String(countryCode ?? "").trim().toUpperCase();
+  const normalized = String(countryCode ?? "").trim().toUpperCase();
+  return normalized === "BN" ? "BJ" : normalized;
 }
 function operatorKey(operator, countryCode) {
   return `${String(operator ?? "").trim().toLowerCase()}|${countryKey2(countryCode)}`;
