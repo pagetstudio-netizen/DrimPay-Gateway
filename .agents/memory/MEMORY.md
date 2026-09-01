@@ -3,3 +3,4 @@
 - [Supabase DB empty after reset](supabase-db-empty-reset.md) — zero tables in public schema means DB was wiped, not schema drift; fix with drizzle-kit push.
 - [DrimPay intermittent KYB 500](drimpay-kyb-intermittent-500.md) — "works sometimes" on Storage/DB routes = missing retry + unguarded `undefined` row, not schema drift.
 - [DrimPay OTP email lost](drimpay-otp-email-lost.md) — "email et code requis" despite correct code = missing `?email=` in URL, not a bad code; link-only flow bypasses this.
+- [DrimPay MTN Cameroon PayDunya](drimpay-mtn-cameroon-paydunya.md) — SoftPay and disbursement both use `mtn-cameroun`; SoftPay payload is namespaced `mtn_cameroun_*`.

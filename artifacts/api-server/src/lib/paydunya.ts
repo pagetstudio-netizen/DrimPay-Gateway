@@ -86,6 +86,7 @@ const WITHDRAW_MODE_MAP: Record<string, string> = {
   "moov|BF":              "moov-burkina-faso",
   // Cameroun
   "mtn momo|CM":          "mtn-cameroun",
+  "mtn mobile money|CM":  "mtn-cameroun",
   "mtn|CM":               "mtn-cameroun",
   "orange money|CM":      "orange-money-cameroun",
   "orange|CM":            "orange-money-cameroun",
@@ -548,9 +549,6 @@ export class PayDunyaClient {
       withdraw_mode:  withdrawMode,
       callback_url:   params.callback_url,
     };
-    if (params.reference) {
-      getInvoicePayload.disburse_id = params.reference;
-    }
 
     let getInvoiceRaw: any;
     try {

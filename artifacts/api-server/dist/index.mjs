@@ -106411,24 +106411,38 @@ var init_paydunya_softpay_map = __esm({
       },
       // ── Cameroun ──────────────────────────────────────────────────────────────
       "mtn momo|CM": {
-        slug: "mtn-cm",
+        slug: "mtn-cameroun",
         country: "CM",
         label: "MTN MoMo (Cameroun)",
         buildPayload: (p) => ({
-          mtn_cm_customer_fullname: p.fullName,
-          mtn_cm_email: p.email,
-          mtn_cm_phone_number: p.phone,
+          mtn_cameroun_customer_fullname: p.fullName,
+          mtn_cameroun_email: p.email,
+          mtn_cameroun_phone_number: p.phone,
+          mtn_cameroun_wallet_provider: "MTNCAMEROUN",
+          payment_token: p.paymentToken
+        })
+      },
+      "mtn mobile money|CM": {
+        slug: "mtn-cameroun",
+        country: "CM",
+        label: "MTN MoMo (Cameroun)",
+        buildPayload: (p) => ({
+          mtn_cameroun_customer_fullname: p.fullName,
+          mtn_cameroun_email: p.email,
+          mtn_cameroun_phone_number: p.phone,
+          mtn_cameroun_wallet_provider: "MTNCAMEROUN",
           payment_token: p.paymentToken
         })
       },
       "mtn|CM": {
-        slug: "mtn-cm",
+        slug: "mtn-cameroun",
         country: "CM",
         label: "MTN MoMo (Cameroun)",
         buildPayload: (p) => ({
-          mtn_cm_customer_fullname: p.fullName,
-          mtn_cm_email: p.email,
-          mtn_cm_phone_number: p.phone,
+          mtn_cameroun_customer_fullname: p.fullName,
+          mtn_cameroun_email: p.email,
+          mtn_cameroun_phone_number: p.phone,
+          mtn_cameroun_wallet_provider: "MTNCAMEROUN",
           payment_token: p.paymentToken
         })
       },
@@ -106574,6 +106588,7 @@ var init_paydunya = __esm({
       "moov|BF": "moov-burkina-faso",
       // Cameroun
       "mtn momo|CM": "mtn-cameroun",
+      "mtn mobile money|CM": "mtn-cameroun",
       "mtn|CM": "mtn-cameroun",
       "orange money|CM": "orange-money-cameroun",
       "orange|CM": "orange-money-cameroun"
@@ -106876,9 +106891,6 @@ var init_paydunya = __esm({
           withdraw_mode: withdrawMode,
           callback_url: params.callback_url
         };
-        if (params.reference) {
-          getInvoicePayload.disburse_id = params.reference;
-        }
         let getInvoiceRaw;
         try {
           getInvoiceRaw = await this.request(

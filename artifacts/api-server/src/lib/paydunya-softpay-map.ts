@@ -373,25 +373,39 @@ export const SOFTPAY_OPERATOR_MAP: Record<string, SoftPayOperatorConfig> = {
 
   // ── Cameroun ──────────────────────────────────────────────────────────────
   "mtn momo|CM": {
-    slug:    "mtn-cm",
+    slug:    "mtn-cameroun",
     country: "CM",
     label:   "MTN MoMo (Cameroun)",
     buildPayload: (p) => ({
-      mtn_cm_customer_fullname: p.fullName,
-      mtn_cm_email:             p.email,
-      mtn_cm_phone_number:      p.phone,
-      payment_token:            p.paymentToken,
+      mtn_cameroun_customer_fullname: p.fullName,
+      mtn_cameroun_email:             p.email,
+      mtn_cameroun_phone_number:      p.phone,
+      mtn_cameroun_wallet_provider:   "MTNCAMEROUN",
+      payment_token:                  p.paymentToken,
+    }),
+  },
+  "mtn mobile money|CM": {
+    slug:    "mtn-cameroun",
+    country: "CM",
+    label:   "MTN MoMo (Cameroun)",
+    buildPayload: (p) => ({
+      mtn_cameroun_customer_fullname: p.fullName,
+      mtn_cameroun_email:             p.email,
+      mtn_cameroun_phone_number:      p.phone,
+      mtn_cameroun_wallet_provider:   "MTNCAMEROUN",
+      payment_token:                  p.paymentToken,
     }),
   },
   "mtn|CM": {
-    slug:    "mtn-cm",
+    slug:    "mtn-cameroun",
     country: "CM",
     label:   "MTN MoMo (Cameroun)",
     buildPayload: (p) => ({
-      mtn_cm_customer_fullname: p.fullName,
-      mtn_cm_email:             p.email,
-      mtn_cm_phone_number:      p.phone,
-      payment_token:            p.paymentToken,
+      mtn_cameroun_customer_fullname: p.fullName,
+      mtn_cameroun_email:             p.email,
+      mtn_cameroun_phone_number:      p.phone,
+      mtn_cameroun_wallet_provider:   "MTNCAMEROUN",
+      payment_token:                  p.paymentToken,
     }),
   },
   "orange money|CM": {
