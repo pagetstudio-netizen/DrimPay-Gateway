@@ -48,6 +48,9 @@ router.get("/help", async (req: any, res) => {
     "CLAPAY_API_TOKEN",
     "CLAPAY_BASE_URL",
     "CLAPAY_WEBHOOK_SECRET",
+    "BABIMO_EMAIL",
+    "BABIMO_PASSWORD",
+    "BABIMO_BASE_URL",
     "RESEND_API_KEY",
     "NODE_ENV",
     "PORT",
@@ -106,6 +109,13 @@ router.get("/help", async (req: any, res) => {
     token: process.env["CLAPAY_API_TOKEN"] ? "✓ défini" : "✗ MANQUANT",
     webhookSecret: process.env["CLAPAY_WEBHOOK_SECRET"] ? "✓ défini" : "✗ MANQUANT",
     aggregator: process.env["ACTIVE_AGGREGATOR"] ?? "(non défini)",
+  };
+
+  checks.babimo = {
+    baseUrl: process.env["BABIMO_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
+    email: process.env["BABIMO_EMAIL"] ? "✓ défini" : "✗ MANQUANT",
+    password: process.env["BABIMO_PASSWORD"] ? "✓ défini" : "✗ MANQUANT",
+    aggregator: "babimo",
   };
 
   // ── Supabase Storage ─────────────────────────────────────────────────────

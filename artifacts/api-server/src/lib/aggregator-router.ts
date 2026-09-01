@@ -1,12 +1,12 @@
 /**
  * ─── Aggregator Router ────────────────────────────────────────────────────────
  *
- * Fonction centrale qui détermine quel agrégateur (Clapay ou PayDunya) doit
+ * Fonction centrale qui détermine quel agrégateur (Clapay, PayDunya ou Babimo) doit
  * traiter un paiement en consultant la table operator_aggregators.
  *
  * Logique :
  *   1. Cherche l'entrée operator_aggregators pour (countryCode, operatorName)
- *   2. Si trouvée → utilise l'agrégateur configuré (clapay | paydunya)
+ *   2. Si trouvée → utilise l'agrégateur configuré (clapay | paydunya | babimo)
  *   3. Sinon → fallback sur ACTIVE_AGGREGATOR env var
  *   4. Vérifie que l'agrégateur est disponible (configuré + actif)
  */
@@ -16,8 +16,9 @@ import { operatorAggregatorsTable, operatorsTable, adminSettingsTable } from "@w
 import { and, eq } from "drizzle-orm";
 import { getClapayClient, isClapayConfigured, ClapayClient } from "./clapay";
 import { getPayDunyaClient, isPayDunyaConfigured, PayDunyaClient } from "./paydunya";
+import { getBabimoClient, isBabimoConfigured, BabimoClient } from "./babimo";
 
-export type AggregatorCode = "clapay" | "paydunya";
+export type AggregatorCode = "clapay" | "paydunya" | "babimo";
 
 /**
  * Normalise un nom d'opérateur en "slug" comparable, pour faire correspondre
@@ -69,7 +70,7 @@ async function findOperatorAggregatorByCanonicalName(countryCode: string, canoni
 
 export interface RouteResult {
   aggregator: AggregatorCode;
-  client: ClapayClient | PayDunyaClient;
+  client: ClapayClient | PayDunyaClient | BabimoClient;
   opAgg: { aggregatorCode: string; active: boolean; maintenanceMode: boolean } | null;
 }
 
@@ -107,7 +108,7 @@ export async function resolveAggregator(
 
   if (opAgg) {
     const code = opAgg.aggregatorCode.toLowerCase();
-    if (code !== "clapay" && code !== "paydunya") {
+    if (code !== "clapay" && code !== "paydunya" && code !== "babimo") {
       throw new AggregatorUnavailableError(
         code as AggregatorCode,
         `Code agrégateur inconnu: "${opAgg.aggregatorCode}"`,
@@ -116,7 +117,7 @@ export async function resolveAggregator(
     aggregatorCode = code;
   } else {
     const preferred = (process.env.ACTIVE_AGGREGATOR ?? "paydunya").toLowerCase();
-    if (preferred !== "clapay" && preferred !== "paydunya") {
+    if (preferred !== "clapay" && preferred !== "paydunya" && preferred !== "babimo") {
       throw new AggregatorUnavailableError(
         "paydunya",
         `ACTIVE_AGGREGATOR invalide: "${preferred}"`,
@@ -135,7 +136,7 @@ export async function resolveAggregator(
     if (isClapayConfigured()) {
       return { aggregator: "clapay", client: getClapayClient(), opAgg: opAgg ?? null };
     }
-    // Clapay non configuré — fallback automatique sur PayDunya si pas de mapping explicite
+    // Clapay non configuré — fallback automatique sur PayDunya puis Babimo si pas de mapping explicite
     if (!explicitMapping && isPayDunyaConfigured()) {
       console.warn(
         `[AggregatorRouter] Clapay non configuré (CLAPAY_API_TOKEN manquant) — ` +
@@ -143,12 +144,24 @@ export async function resolveAggregator(
       );
       return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
     }
+    if (!explicitMapping && isBabimoConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Clapay non configuré — bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "babimo", client: getBabimoClient(), opAgg: null };
+    }
     throw new AggregatorNotConfiguredError("clapay");
-  } else {
+  } else if (aggregatorCode === "paydunya") {
     if (isPayDunyaConfigured()) {
       return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
     }
-    // PayDunya non configuré — fallback automatique sur Clapay si pas de mapping explicite
+    // PayDunya non configuré — fallback automatique sur Babimo puis Clapay si pas de mapping explicite
+    if (!explicitMapping && isBabimoConfigured()) {
+      console.warn(
+        `[AggregatorRouter] PayDunya non configuré — bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "babimo", client: getBabimoClient(), opAgg: null };
+    }
     if (!explicitMapping && isClapayConfigured()) {
       console.warn(
         `[AggregatorRouter] PayDunya non configuré (clés manquantes) — ` +
@@ -157,6 +170,23 @@ export async function resolveAggregator(
       return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
     }
     throw new AggregatorNotConfiguredError("paydunya");
+  } else {
+    if (isBabimoConfigured()) {
+      return { aggregator: "babimo", client: getBabimoClient(), opAgg: opAgg ?? null };
+    }
+    if (!explicitMapping && isPayDunyaConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Babimo non configuré — bascule automatique sur PayDunya pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
+    }
+    if (!explicitMapping && isClapayConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Babimo non configuré — bascule automatique sur Clapay pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
+    }
+    throw new AggregatorNotConfiguredError("babimo");
   }
 }
 
@@ -185,6 +215,8 @@ export interface PayinParams {
   reference: string;
   order_id: string;
   callback_url: string;
+  return_url?: string;
+  operator_otp?: string;
   description?: string;
 }
 
@@ -228,7 +260,7 @@ function mapPayDunyaStatus(s: string): StatusCheckResult["status"] {
  */
 async function fetchStatus(
   aggregator: AggregatorCode,
-  client: ClapayClient | PayDunyaClient,
+  client: ClapayClient | PayDunyaClient | BabimoClient,
   gatewayRef: string,
   operation: "payin" | "payout" = "payin",
 ): Promise<StatusCheckResult> {
@@ -239,7 +271,7 @@ async function fetchStatus(
       gatewayReference: r.clapay_reference || gatewayRef,
       failureReason: r.failure_reason,
     };
-  } else {
+  } else if (aggregator === "paydunya") {
     // PayDunya payouts use the disbursement check-status endpoint (disburse_token)
     // PayDunya payins use the checkout-invoice confirm endpoint (payment_token)
     const pd = client as PayDunyaClient;
@@ -249,6 +281,13 @@ async function fetchStatus(
     return {
       status: mapPayDunyaStatus(r.status),
       gatewayReference: r.paydunya_reference || gatewayRef,
+      failureReason: r.failure_reason,
+    };
+  } else {
+    const r = await (client as BabimoClient).getStatus(gatewayRef);
+    return {
+      status: r.status,
+      gatewayReference: r.babimo_reference || gatewayRef,
       failureReason: r.failure_reason,
     };
   }
@@ -266,7 +305,7 @@ async function fetchStatus(
  */
 export async function pollUntilSettled(
   aggregator: AggregatorCode,
-  client: ClapayClient | PayDunyaClient,
+  client: ClapayClient | PayDunyaClient | BabimoClient,
   gatewayRef: string,
   options?: {
     intervalMs?: number;
@@ -324,7 +363,7 @@ export async function pollUntilSettled(
  */
 export async function checkStatusAfterInit(
   aggregator: AggregatorCode,
-  client: ClapayClient | PayDunyaClient,
+  client: ClapayClient | PayDunyaClient | BabimoClient,
   gatewayRef: string,
 ): Promise<StatusCheckResult | null> {
   if (!gatewayRef) return null;
@@ -447,7 +486,7 @@ export async function routePayin(params: PayinParams): Promise<NormalizedPayinRe
       ussdCode: res.ussd_code ?? null,
       message: "Prompt de paiement envoyé via Clapay",
     };
-  } else {
+  } else if (aggregator === "paydunya") {
     const p = client as PayDunyaClient;
     const res = await p.initiatePayin(params);
     if (!res.success) throw new Error(res.message ?? "Échec PayDunya payin");
@@ -457,6 +496,17 @@ export async function routePayin(params: PayinParams): Promise<NormalizedPayinRe
       paymentUrl: res.payment_url ?? null,
       ussdCode: null,
       message: "Prompt de paiement envoyé via PayDunya",
+    };
+  } else {
+    const b = client as BabimoClient;
+    const res = await b.initiatePayin(params);
+    if (!res.success) throw new Error(res.message ?? "Échec Babimo payin");
+    return {
+      aggregator,
+      externalRef: res.babimo_reference,
+      paymentUrl: res.payment_url ?? null,
+      ussdCode: null,
+      message: "Paiement initié via Babimo",
     };
   }
 }
@@ -473,7 +523,7 @@ export async function routePayout(params: PayoutParams): Promise<NormalizedPayou
       externalRef: res.clapay_reference,
       message: "Payout envoyé via Clapay",
     };
-  } else {
+  } else if (aggregator === "paydunya") {
     const p = client as PayDunyaClient;
     const res = await p.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "Échec PayDunya payout");
@@ -481,6 +531,15 @@ export async function routePayout(params: PayoutParams): Promise<NormalizedPayou
       aggregator,
       externalRef: res.paydunya_reference,
       message: "Payout envoyé via PayDunya",
+    };
+  } else {
+    const b = client as BabimoClient;
+    const res = await b.initiatePayout(params);
+    if (!res.success) throw new Error(res.message ?? "Échec Babimo payout");
+    return {
+      aggregator,
+      externalRef: res.babimo_reference,
+      message: "Payout envoyé via Babimo",
     };
   }
 }

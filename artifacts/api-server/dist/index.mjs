@@ -18807,14 +18807,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto12 = __require("crypto");
+    var crypto13 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash2 = crypto12.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto13.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash2 + '"';
     }
@@ -20537,27 +20537,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router20;
+    module.exports = Router21;
     module.exports.Route = Route;
-    function Router20(options) {
-      if (!(this instanceof Router20)) {
-        return new Router20(options);
+    function Router21(options) {
+      if (!(this instanceof Router21)) {
+        return new Router21(options);
       }
       const opts = options || {};
-      function router20(req, res, next) {
-        router20.handle(req, res, next);
+      function router21(req, res, next) {
+        router21.handle(req, res, next);
       }
-      Object.setPrototypeOf(router20, this);
-      router20.caseSensitive = opts.caseSensitive;
-      router20.mergeParams = opts.mergeParams;
-      router20.params = {};
-      router20.strict = opts.strict;
-      router20.stack = [];
-      return router20;
+      Object.setPrototypeOf(router21, this);
+      router21.caseSensitive = opts.caseSensitive;
+      router21.mergeParams = opts.mergeParams;
+      router21.params = {};
+      router21.strict = opts.strict;
+      router21.stack = [];
+      return router21;
     }
-    Router20.prototype = function() {
+    Router21.prototype = function() {
     };
-    Router20.prototype.param = function param2(name2, fn) {
+    Router21.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20577,7 +20577,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router20.prototype.handle = function handle(req, res, callback) {
+    Router21.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20704,7 +20704,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router20.prototype.use = function use(handler) {
+    Router21.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20737,7 +20737,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router20.prototype.route = function route(path5) {
+    Router21.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20752,7 +20752,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router20.prototype[method] = function(path5) {
+      Router21.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20935,13 +20935,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router20 = require_router();
+    var Router21 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router20 = null;
+      var router21 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20950,13 +20950,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router20 === null) {
-            router20 = new Router20({
+          if (router21 === null) {
+            router21 = new Router21({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router20;
+          return router21;
         }
       });
     };
@@ -21027,15 +21027,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router20 = this.router;
+      var router21 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router20.use(path5, fn2);
+          return router21.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router20.use(path5, function mounted_app(req, res, next) {
+        router21.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -22243,17 +22243,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
-    var crypto12 = __require("crypto");
+    var crypto13 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto12.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto13.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto12.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto13.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -23562,7 +23562,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router20 = require_router();
+    var Router21 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23584,8 +23584,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router20.Route;
-    exports.Router = Router20;
+    exports.Route = Router21.Route;
+    exports.Router = Router21;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -24463,11 +24463,11 @@ var require_on_headers = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.0.7/node_modules/cookie-signature/index.js
 var require_cookie_signature2 = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.0.7/node_modules/cookie-signature/index.js"(exports) {
-    var crypto12 = __require("crypto");
+    var crypto13 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto12.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto13.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -24476,7 +24476,7 @@ var require_cookie_signature2 = __commonJS({
       return sha1(mac) == sha1(val) ? str : false;
     };
     function sha1(str) {
-      return crypto12.createHash("sha1").update(str).digest("hex");
+      return crypto13.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -24485,8 +24485,8 @@ var require_cookie_signature2 = __commonJS({
 var require_random_bytes = __commonJS({
   "../../node_modules/.pnpm/random-bytes@1.0.0/node_modules/random-bytes/index.js"(exports, module) {
     "use strict";
-    var crypto12 = __require("crypto");
-    var generateAttempts = crypto12.randomBytes === crypto12.pseudoRandomBytes ? 1 : 3;
+    var crypto13 = __require("crypto");
+    var generateAttempts = crypto13.randomBytes === crypto13.pseudoRandomBytes ? 1 : 3;
     module.exports = randomBytes2;
     module.exports.sync = randomBytesSync;
     function randomBytes2(size, callback) {
@@ -24510,7 +24510,7 @@ var require_random_bytes = __commonJS({
       var err = null;
       for (var i = 0; i < generateAttempts; i++) {
         try {
-          return crypto12.randomBytes(size);
+          return crypto13.randomBytes(size);
         } catch (e) {
           err = e;
         }
@@ -24518,7 +24518,7 @@ var require_random_bytes = __commonJS({
       throw err;
     }
     function generateRandomBytes(size, attempts, callback) {
-      crypto12.randomBytes(size, function onRandomBytes(err, buf) {
+      crypto13.randomBytes(size, function onRandomBytes(err, buf) {
         if (!err) return callback(null, buf);
         if (!--attempts) return callback(err);
         setTimeout(generateRandomBytes.bind(null, size, attempts, callback), 10);
@@ -24860,7 +24860,7 @@ var require_express_session = __commonJS({
     "use strict";
     var Buffer3 = require_safe_buffer().Buffer;
     var cookie = require_cookie();
-    var crypto12 = __require("crypto");
+    var crypto13 = __require("crypto");
     var debug = require_src2()("express-session");
     var deprecate = require_depd()("express-session");
     var onHeaders = require_on_headers();
@@ -25233,7 +25233,7 @@ var require_express_session = __commonJS({
         }
         return val;
       });
-      return crypto12.createHash("sha1").update(str, "utf8").digest("hex");
+      return crypto13.createHash("sha1").update(str, "utf8").digest("hex");
     }
     function issecure(req, trustProxy) {
       if (req.connection && req.connection.encrypted) {
@@ -26646,7 +26646,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto12 = require_utils5();
+    var crypto13 = require_utils5();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function startSession(mechanisms, stream) {
       const candidates = ["SCRAM-SHA-256"];
@@ -26658,7 +26658,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto12.randomBytes(18).toString("base64");
+      const clientNonce = crypto13.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -26693,20 +26693,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto12.hashByName(hashName, peerCert);
+        const certHash = await crypto13.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto12.deriveKey(password, saltBytes, sv.iteration);
-      const clientKey = await crypto12.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto12.sha256(clientKey);
-      const clientSignature = await crypto12.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto13.deriveKey(password, saltBytes, sv.iteration);
+      const clientKey = await crypto13.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto13.sha256(clientKey);
+      const clientSignature = await crypto13.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto12.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto12.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto13.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto13.hmacSha256(serverKey, authMessage);
       session2.message = "SASLResponse";
       session2.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session2.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -28874,7 +28874,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto12 = require_utils5();
+    var crypto13 = require_utils5();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -29109,7 +29109,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto12.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto13.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -29314,8 +29314,8 @@ var require_client = __commonJS({
         }
         return data;
       }
-      cancel(client, query) {
-        if (client.activeQuery === query) {
+      cancel(client2, query) {
+        if (client2.activeQuery === query) {
           const con = this.connection;
           if (this.host && this.host.indexOf("/") === 0) {
             con.connect(this.host + "/.s.PGSQL." + this.port);
@@ -29323,10 +29323,10 @@ var require_client = __commonJS({
             con.connect(this.port, this.host);
           }
           con.on("connect", function() {
-            con.cancel(client.processID, client.secretKey);
+            con.cancel(client2.processID, client2.secretKey);
           });
-        } else if (client._queryQueue.indexOf(query) !== -1) {
-          client._queryQueue.splice(client._queryQueue.indexOf(query), 1);
+        } else if (client2._queryQueue.indexOf(query) !== -1) {
+          client2._queryQueue.splice(client2._queryQueue.indexOf(query), 1);
         }
       }
       setTypeParser(oid, format, parseFn) {
@@ -29492,8 +29492,8 @@ var require_pg_pool = __commonJS({
       return i === -1 ? void 0 : list.splice(i, 1)[0];
     };
     var IdleItem = class {
-      constructor(client, idleListener, timeoutId) {
-        this.client = client;
+      constructor(client2, idleListener, timeoutId) {
+        this.client = client2;
         this.idleListener = idleListener;
         this.timeoutId = timeoutId;
       }
@@ -29512,8 +29512,8 @@ var require_pg_pool = __commonJS({
       }
       let rej;
       let res;
-      const cb = function(err, client) {
-        err ? rej(err) : res(client);
+      const cb = function(err, client2) {
+        err ? rej(err) : res(client2);
       };
       const result = new Promise2(function(resolve, reject) {
         res = resolve;
@@ -29524,15 +29524,15 @@ var require_pg_pool = __commonJS({
       });
       return { callback: cb, result };
     }
-    function makeIdleListener(pool2, client) {
+    function makeIdleListener(pool2, client2) {
       return function idleListener(err) {
-        err.client = client;
-        client.removeListener("error", idleListener);
-        client.on("error", () => {
+        err.client = client2;
+        client2.removeListener("error", idleListener);
+        client2.on("error", () => {
           pool2.log("additional client error after disconnection due to error", err);
         });
-        pool2._remove(client);
-        pool2.emit("error", err, client);
+        pool2._remove(client2);
+        pool2.emit("error", err, client2);
       };
     }
     var Pool4 = class extends EventEmitter {
@@ -29615,25 +29615,25 @@ var require_pg_pool = __commonJS({
         if (this._idle.length) {
           const idleItem = this._idle.pop();
           clearTimeout(idleItem.timeoutId);
-          const client = idleItem.client;
-          client.ref && client.ref();
+          const client2 = idleItem.client;
+          client2.ref && client2.ref();
           const idleListener = idleItem.idleListener;
-          return this._acquireClient(client, pendingItem, idleListener, false);
+          return this._acquireClient(client2, pendingItem, idleListener, false);
         }
         if (!this._isFull()) {
           return this.newClient(pendingItem);
         }
         throw new Error("unexpected condition");
       }
-      _remove(client, callback) {
-        const removed = removeWhere(this._idle, (item) => item.client === client);
+      _remove(client2, callback) {
+        const removed = removeWhere(this._idle, (item) => item.client === client2);
         if (removed !== void 0) {
           clearTimeout(removed.timeoutId);
         }
-        this._clients = this._clients.filter((c) => c !== client);
+        this._clients = this._clients.filter((c) => c !== client2);
         const context = this;
-        client.end(() => {
-          context.emit("remove", client);
+        client2.end(() => {
+          context.emit("remove", client2);
           if (typeof callback === "function") {
             callback();
           }
@@ -29674,34 +29674,34 @@ var require_pg_pool = __commonJS({
         return result;
       }
       newClient(pendingItem) {
-        const client = new this.Client(this.options);
-        this._clients.push(client);
-        const idleListener = makeIdleListener(this, client);
+        const client2 = new this.Client(this.options);
+        this._clients.push(client2);
+        const idleListener = makeIdleListener(this, client2);
         this.log("checking client timeout");
         let tid;
         let timeoutHit = false;
         if (this.options.connectionTimeoutMillis) {
           tid = setTimeout(() => {
-            if (client.connection) {
+            if (client2.connection) {
               this.log("ending client due to timeout");
               timeoutHit = true;
-              client.connection.stream.destroy();
-            } else if (!client.isConnected()) {
+              client2.connection.stream.destroy();
+            } else if (!client2.isConnected()) {
               this.log("ending client due to timeout");
               timeoutHit = true;
-              client.end();
+              client2.end();
             }
           }, this.options.connectionTimeoutMillis);
         }
         this.log("connecting new client");
-        client.connect((err) => {
+        client2.connect((err) => {
           if (tid) {
             clearTimeout(tid);
           }
-          client.on("error", idleListener);
+          client2.on("error", idleListener);
           if (err) {
             this.log("client failed to connect", err);
-            this._clients = this._clients.filter((c) => c !== client);
+            this._clients = this._clients.filter((c) => c !== client2);
             if (timeoutHit) {
               err = new Error("Connection terminated due to connection timeout", { cause: err });
             }
@@ -29712,13 +29712,13 @@ var require_pg_pool = __commonJS({
           } else {
             this.log("new client connected");
             if (this.options.onConnect) {
-              this._promiseTry(() => this.options.onConnect(client)).then(
+              this._promiseTry(() => this.options.onConnect(client2)).then(
                 () => {
-                  this._afterConnect(client, pendingItem, idleListener);
+                  this._afterConnect(client2, pendingItem, idleListener);
                 },
                 (hookErr) => {
-                  this._clients = this._clients.filter((c) => c !== client);
-                  client.end(() => {
+                  this._clients = this._clients.filter((c) => c !== client2);
+                  client2.end(() => {
                     this._pulseQueue();
                     if (!pendingItem.timedOut) {
                       pendingItem.callback(hookErr, void 0, NOOP);
@@ -29728,93 +29728,93 @@ var require_pg_pool = __commonJS({
               );
               return;
             }
-            return this._afterConnect(client, pendingItem, idleListener);
+            return this._afterConnect(client2, pendingItem, idleListener);
           }
         });
       }
-      _afterConnect(client, pendingItem, idleListener) {
+      _afterConnect(client2, pendingItem, idleListener) {
         if (this.options.maxLifetimeSeconds !== 0) {
           const maxLifetimeTimeout = setTimeout(() => {
             this.log("ending client due to expired lifetime");
-            this._expired.add(client);
-            const idleIndex = this._idle.findIndex((idleItem) => idleItem.client === client);
+            this._expired.add(client2);
+            const idleIndex = this._idle.findIndex((idleItem) => idleItem.client === client2);
             if (idleIndex !== -1) {
               this._acquireClient(
-                client,
-                new PendingItem((err, client2, clientRelease) => clientRelease()),
+                client2,
+                new PendingItem((err, client3, clientRelease) => clientRelease()),
                 idleListener,
                 false
               );
             }
           }, this.options.maxLifetimeSeconds * 1e3);
           maxLifetimeTimeout.unref();
-          client.once("end", () => clearTimeout(maxLifetimeTimeout));
+          client2.once("end", () => clearTimeout(maxLifetimeTimeout));
         }
-        return this._acquireClient(client, pendingItem, idleListener, true);
+        return this._acquireClient(client2, pendingItem, idleListener, true);
       }
       // acquire a client for a pending work item
-      _acquireClient(client, pendingItem, idleListener, isNew) {
+      _acquireClient(client2, pendingItem, idleListener, isNew) {
         if (isNew) {
-          this.emit("connect", client);
+          this.emit("connect", client2);
         }
-        this.emit("acquire", client);
-        client.release = this._releaseOnce(client, idleListener);
-        client.removeListener("error", idleListener);
+        this.emit("acquire", client2);
+        client2.release = this._releaseOnce(client2, idleListener);
+        client2.removeListener("error", idleListener);
         if (!pendingItem.timedOut) {
           if (isNew && this.options.verify) {
-            this.options.verify(client, (err) => {
+            this.options.verify(client2, (err) => {
               if (err) {
-                client.release(err);
+                client2.release(err);
                 return pendingItem.callback(err, void 0, NOOP);
               }
-              pendingItem.callback(void 0, client, client.release);
+              pendingItem.callback(void 0, client2, client2.release);
             });
           } else {
-            pendingItem.callback(void 0, client, client.release);
+            pendingItem.callback(void 0, client2, client2.release);
           }
         } else {
           if (isNew && this.options.verify) {
-            this.options.verify(client, client.release);
+            this.options.verify(client2, client2.release);
           } else {
-            client.release();
+            client2.release();
           }
         }
       }
       // returns a function that wraps _release and throws if called more than once
-      _releaseOnce(client, idleListener) {
+      _releaseOnce(client2, idleListener) {
         let released = false;
         return (err) => {
           if (released) {
             throwOnDoubleRelease();
           }
           released = true;
-          this._release(client, idleListener, err);
+          this._release(client2, idleListener, err);
         };
       }
       // release a client back to the poll, include an error
       // to remove it from the pool
-      _release(client, idleListener, err) {
-        client.on("error", idleListener);
-        client._poolUseCount = (client._poolUseCount || 0) + 1;
-        this.emit("release", err, client);
-        if (err || this.ending || !client._queryable || client._ending || client._poolUseCount >= this.options.maxUses) {
-          if (client._poolUseCount >= this.options.maxUses) {
+      _release(client2, idleListener, err) {
+        client2.on("error", idleListener);
+        client2._poolUseCount = (client2._poolUseCount || 0) + 1;
+        this.emit("release", err, client2);
+        if (err || this.ending || !client2._queryable || client2._ending || client2._poolUseCount >= this.options.maxUses) {
+          if (client2._poolUseCount >= this.options.maxUses) {
             this.log("remove expended client");
           }
-          return this._remove(client, this._pulseQueue.bind(this));
+          return this._remove(client2, this._pulseQueue.bind(this));
         }
-        const isExpired = this._expired.has(client);
+        const isExpired = this._expired.has(client2);
         if (isExpired) {
           this.log("remove expired client");
-          this._expired.delete(client);
-          return this._remove(client, this._pulseQueue.bind(this));
+          this._expired.delete(client2);
+          return this._remove(client2, this._pulseQueue.bind(this));
         }
         let tid;
         if (this.options.idleTimeoutMillis && this._isAboveMin()) {
           tid = setTimeout(() => {
             if (this._isAboveMin()) {
               this.log("remove idle client");
-              this._remove(client, this._pulseQueue.bind(this));
+              this._remove(client2, this._pulseQueue.bind(this));
             }
           }, this.options.idleTimeoutMillis);
           if (this.options.allowExitOnIdle) {
@@ -29822,9 +29822,9 @@ var require_pg_pool = __commonJS({
           }
         }
         if (this.options.allowExitOnIdle) {
-          client.unref();
+          client2.unref();
         }
-        this._idle.push(new IdleItem(client, idleListener, tid));
+        this._idle.push(new IdleItem(client2, idleListener, tid));
         this._pulseQueue();
       }
       query(text2, values, cb) {
@@ -29841,7 +29841,7 @@ var require_pg_pool = __commonJS({
         }
         const response = promisify(this.Promise, cb);
         cb = response.callback;
-        this.connect((err, client) => {
+        this.connect((err, client2) => {
           if (err) {
             return cb(err);
           }
@@ -29851,27 +29851,27 @@ var require_pg_pool = __commonJS({
               return;
             }
             clientReleased = true;
-            client.release(err2);
+            client2.release(err2);
             cb(err2);
           };
-          client.once("error", onError);
+          client2.once("error", onError);
           this.log("dispatching query");
           try {
-            client.query(text2, values, (err2, res) => {
+            client2.query(text2, values, (err2, res) => {
               this.log("query dispatched");
-              client.removeListener("error", onError);
+              client2.removeListener("error", onError);
               if (clientReleased) {
                 return;
               }
               clientReleased = true;
-              client.release(err2);
+              client2.release(err2);
               if (err2) {
                 return cb(err2);
               }
               return cb(void 0, res);
             });
           } catch (err2) {
-            client.release(err2);
+            client2.release(err2);
             return cb(err2);
           }
         });
@@ -29896,7 +29896,7 @@ var require_pg_pool = __commonJS({
         return this._idle.length;
       }
       get expiredCount() {
-        return this._clients.reduce((acc, client) => acc + (this._expired.has(client) ? 1 : 0), 0);
+        return this._clients.reduce((acc, client2) => acc + (this._expired.has(client2) ? 1 : 0), 0);
       }
       get totalCount() {
         return this._clients.length;
@@ -29977,13 +29977,13 @@ var require_query2 = __commonJS({
       );
       return this._promise;
     };
-    NativeQuery.prototype.submit = function(client) {
+    NativeQuery.prototype.submit = function(client2) {
       this.state = "running";
       const self2 = this;
-      this.native = client.native;
-      client.native.arrayMode = this._arrayMode;
+      this.native = client2.native;
+      client2.native.arrayMode = this._arrayMode;
       let after = function(err, rows, results) {
-        client.native.arrayMode = false;
+        client2.native.arrayMode = false;
         setImmediate(function() {
           self2.emit("_done");
         });
@@ -30019,16 +30019,16 @@ var require_query2 = __commonJS({
           console.error("This can cause conflicts and silent errors executing queries");
         }
         const values = (this.values || []).map(utils.prepareValue);
-        if (client.namedQueries[this.name]) {
-          if (this.text && client.namedQueries[this.name] !== this.text) {
+        if (client2.namedQueries[this.name]) {
+          if (this.text && client2.namedQueries[this.name] !== this.text) {
             const err = new Error(`Prepared statements must be unique - '${this.name}' was used for a different statement`);
             return after(err);
           }
-          return client.native.execute(this.name, values, after);
+          return client2.native.execute(this.name, values, after);
         }
-        return client.native.prepare(this.name, this.text, values.length, function(err) {
+        return client2.native.prepare(this.name, this.text, values.length, function(err) {
           if (err) return after(err);
-          client.namedQueries[self2.name] = self2.text;
+          client2.namedQueries[self2.name] = self2.text;
           return self2.native.execute(self2.name, values, after);
         });
       } else if (this.values) {
@@ -30037,11 +30037,11 @@ var require_query2 = __commonJS({
           return after(err);
         }
         const vals = this.values.map(utils.prepareValue);
-        client.native.query(this.text, vals, after);
+        client2.native.query(this.text, vals, after);
       } else if (this.queryMode === "extended") {
-        client.native.query(this.text, [], after);
+        client2.native.query(this.text, [], after);
       } else {
-        client.native.query(this.text, after);
+        client2.native.query(this.text, after);
       }
     };
   }
@@ -35113,7 +35113,7 @@ var require_logger = __commonJS({
       const onRequestSuccessObject = getFunctionOrDefault(opts.customSuccessObject, defaultSuccessfulRequestObjectProvider);
       const successMessage = getFunctionOrDefault(opts.customSuccessMessage, defaultSuccessfulRequestMessageProvider);
       const onRequestErrorObject = getFunctionOrDefault(opts.customErrorObject, defaultFailedRequestObjectProvider);
-      const errorMessage = getFunctionOrDefault(opts.customErrorMessage, defaultFailedRequestMessageProvider);
+      const errorMessage2 = getFunctionOrDefault(opts.customErrorMessage, defaultFailedRequestMessageProvider);
       delete opts.customSuccessfulMessage;
       delete opts.customErroredMessage;
       const quietReqLogger = !!opts.quietReqLogger;
@@ -35152,7 +35152,7 @@ var require_logger = __commonJS({
               [errKey]: error40,
               [responseTimeKey]: responseTime
             }),
-            errorMessage(req, res, error40, responseTime)
+            errorMessage2(req, res, error40, responseTime)
           );
           return;
         }
@@ -43485,9 +43485,9 @@ var init_session2 = __esm({
     init_utils();
     ({ Pool: Pool2, types: types2 } = esm_default);
     NodePgPreparedQuery = class extends PgPreparedQuery {
-      constructor(client, queryString, params, logger2, cache, queryMetadata, cacheConfig, fields, name2, _isResponseInArrayMode, customResultMapper) {
+      constructor(client2, queryString, params, logger2, cache, queryMetadata, cacheConfig, fields, name2, _isResponseInArrayMode, customResultMapper) {
         super({ sql: queryString, params }, cache, queryMetadata, cacheConfig);
-        this.client = client;
+        this.client = client2;
         this.queryString = queryString;
         this.params = params;
         this.logger = logger2;
@@ -43577,7 +43577,7 @@ var init_session2 = __esm({
         return tracer.startActiveSpan("drizzle.execute", async () => {
           const params = fillPlaceholders(this.params, placeholderValues);
           this.logger.logQuery(this.rawQueryConfig.text, params);
-          const { fields, rawQueryConfig: rawQuery, client, queryConfig: query, joinsNotNullableMap, customResultMapper } = this;
+          const { fields, rawQueryConfig: rawQuery, client: client2, queryConfig: query, joinsNotNullableMap, customResultMapper } = this;
           if (!fields && !customResultMapper) {
             return tracer.startActiveSpan("drizzle.driver.execute", async (span) => {
               span?.setAttributes({
@@ -43586,7 +43586,7 @@ var init_session2 = __esm({
                 "drizzle.query.params": JSON.stringify(params)
               });
               return this.queryWithCache(rawQuery.text, params, async () => {
-                return await client.query(rawQuery, params);
+                return await client2.query(rawQuery, params);
               });
             });
           }
@@ -43597,7 +43597,7 @@ var init_session2 = __esm({
               "drizzle.query.params": JSON.stringify(params)
             });
             return this.queryWithCache(query.text, params, async () => {
-              return await client.query(query, params);
+              return await client2.query(query, params);
             });
           });
           return tracer.startActiveSpan("drizzle.mapResponse", () => {
@@ -43627,9 +43627,9 @@ var init_session2 = __esm({
       }
     };
     NodePgSession = class _NodePgSession extends PgSession {
-      constructor(client, dialect, schema, options = {}) {
+      constructor(client2, dialect, schema, options = {}) {
         super(dialect);
-        this.client = client;
+        this.client = client2;
         this.schema = schema;
         this.options = options;
         this.logger = options.logger ?? new NoopLogger();
@@ -43701,7 +43701,7 @@ var init_session2 = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0/node_modules/drizzle-orm/node-postgres/driver.js
-function construct(client, config2 = {}) {
+function construct(client2, config2 = {}) {
   const dialect = new PgDialect({ casing: config2.casing });
   let logger2;
   if (config2.logger === true) {
@@ -43721,10 +43721,10 @@ function construct(client, config2 = {}) {
       tableNamesMap: tablesConfig.tableNamesMap
     };
   }
-  const driver = new NodePgDriver(client, dialect, { logger: logger2, cache: config2.cache });
+  const driver = new NodePgDriver(client2, dialect, { logger: logger2, cache: config2.cache });
   const session2 = driver.createSession(schema);
   const db2 = new NodePgDatabase(dialect, session2, schema);
-  db2.$client = client;
+  db2.$client = client2;
   db2.$cache = config2.cache;
   if (db2.$cache) {
     db2.$cache["invalidate"] = config2.cache?.onMutate;
@@ -43739,8 +43739,8 @@ function drizzle(...params) {
     return construct(instance, params[1]);
   }
   if (isConfig(params[0])) {
-    const { connection, client, ...drizzleConfig } = params[0];
-    if (client) return construct(client, drizzleConfig);
+    const { connection, client: client2, ...drizzleConfig } = params[0];
+    if (client2) return construct(client2, drizzleConfig);
     const instance = typeof connection === "string" ? new esm_default.Pool({
       connectionString: connection
     }) : new esm_default.Pool(connection);
@@ -43760,8 +43760,8 @@ var init_driver = __esm({
     init_utils();
     init_session2();
     NodePgDriver = class {
-      constructor(client, dialect, options = {}) {
-        this.client = client;
+      constructor(client2, dialect, options = {}) {
+        this.client = client2;
         this.dialect = dialect;
         this.options = options;
       }
@@ -85610,9 +85610,9 @@ var require_disk = __commonJS({
     var fs3 = __require("fs");
     var os = __require("os");
     var path5 = __require("path");
-    var crypto12 = __require("crypto");
+    var crypto13 = __require("crypto");
     function getFilename(req, file2, cb) {
-      crypto12.randomBytes(16, function(err, raw) {
+      crypto13.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -90113,13 +90113,13 @@ var require_websocket_factory = __commonJS({
         if (env.wsConstructor) {
           return env.wsConstructor;
         }
-        let errorMessage = env.error || "WebSocket not supported in this environment.";
+        let errorMessage2 = env.error || "WebSocket not supported in this environment.";
         if (env.workaround) {
-          errorMessage += `
+          errorMessage2 += `
 
 Suggested solution: ${env.workaround}`;
         }
-        throw new Error(errorMessage);
+        throw new Error(errorMessage2);
       }
       /**
        * Detects whether the runtime can establish WebSocket connections.
@@ -93034,13 +93034,13 @@ var require_RealtimeChannel = __commonJS({
         if (response.status === 202) {
           return { success: true };
         }
-        let errorMessage = response.statusText;
+        let errorMessage2 = response.statusText;
         try {
           const errorBody = await response.json();
-          errorMessage = errorBody.error || errorBody.message || errorMessage;
+          errorMessage2 = errorBody.error || errorBody.message || errorMessage2;
         } catch (_b) {
         }
-        return Promise.reject(new Error(errorMessage));
+        return Promise.reject(new Error(errorMessage2));
       }
       /**
        * Sends a message into the channel.
@@ -93583,9 +93583,9 @@ var require_RealtimeClient = __commonJS({
         try {
           this.socketAdapter.connect();
         } catch (error40) {
-          const errorMessage = error40.message;
-          if (errorMessage.includes("Node.js")) {
-            throw new Error(`${errorMessage}
+          const errorMessage2 = error40.message;
+          if (errorMessage2.includes("Node.js")) {
+            throw new Error(`${errorMessage2}
 
 To use Realtime in Node.js, you need to provide a WebSocket implementation:
 
@@ -93600,7 +93600,7 @@ Option 2: Install and provide the "ws" package:
     transport: ws
   })`);
           }
-          throw new Error(`WebSocket not available: ${errorMessage}`);
+          throw new Error(`WebSocket not available: ${errorMessage2}`);
         }
         this._handleNodeJsRaceCondition();
       }
@@ -95796,8 +95796,8 @@ var require_GoTrueAdminApi = __commonJS({
           return await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/admin/oauth/clients`, {
             body: params,
             headers: this.headers,
-            xform: (client) => {
-              return { data: client, error: null };
+            xform: (client2) => {
+              return { data: client2, error: null };
             }
           });
         } catch (error40) {
@@ -95817,8 +95817,8 @@ var require_GoTrueAdminApi = __commonJS({
         try {
           return await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/admin/oauth/clients/${clientId}`, {
             headers: this.headers,
-            xform: (client) => {
-              return { data: client, error: null };
+            xform: (client2) => {
+              return { data: client2, error: null };
             }
           });
         } catch (error40) {
@@ -95839,8 +95839,8 @@ var require_GoTrueAdminApi = __commonJS({
           return await (0, fetch_1._request)(this.fetch, "PUT", `${this.url}/admin/oauth/clients/${clientId}`, {
             body: params,
             headers: this.headers,
-            xform: (client) => {
-              return { data: client, error: null };
+            xform: (client2) => {
+              return { data: client2, error: null };
             }
           });
         } catch (error40) {
@@ -95880,8 +95880,8 @@ var require_GoTrueAdminApi = __commonJS({
         try {
           return await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/admin/oauth/clients/${clientId}/regenerate_secret`, {
             headers: this.headers,
-            xform: (client) => {
-              return { data: client, error: null };
+            xform: (client2) => {
+              return { data: client2, error: null };
             }
           });
         } catch (error40) {
@@ -96843,8 +96843,8 @@ var require_webauthn = __commonJS({
       return deepMerge(exports.DEFAULT_REQUEST_OPTIONS, baseOptions, overrides || {});
     }
     var WebAuthnApi = class {
-      constructor(client) {
-        this.client = client;
+      constructor(client2) {
+        this.client = client2;
         this.enroll = this._enroll.bind(this);
         this.challenge = this._challenge.bind(this);
         this.verify = this._verify.bind(this);
@@ -107078,6 +107078,272 @@ var init_paydunya = __esm({
   }
 });
 
+// src/lib/babimo.ts
+var babimo_exports = {};
+__export(babimo_exports, {
+  BabimoClient: () => BabimoClient,
+  BabimoError: () => BabimoError,
+  babimoPaymentMethod: () => babimoPaymentMethod,
+  getBabimoClient: () => getBabimoClient,
+  isBabimoConfigured: () => isBabimoConfigured
+});
+function normalizeCoteDIvoirePhone(phone) {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (digits.startsWith("225")) {
+    const local = digits.slice(3);
+    return local.startsWith("0") ? local : `0${local}`;
+  }
+  return digits.startsWith("0") ? digits : `0${digits}`;
+}
+function unwrap(raw) {
+  return raw?.data ?? raw?.result ?? raw;
+}
+function firstString(raw, keys) {
+  const candidates = [raw, raw?.data, raw?.result, raw?.data?.data, raw?.result?.data];
+  for (const object2 of candidates) {
+    if (!object2 || typeof object2 !== "object") continue;
+    for (const key of keys) {
+      const value = object2[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+  }
+  return "";
+}
+function responseStatus(raw) {
+  const value = firstString(raw, ["status", "transaction_status", "payment_status", "state"]);
+  return value.toLowerCase();
+}
+function mapStatus(raw) {
+  const status = (raw ?? "").toLowerCase();
+  if (status === "success" || status === "completed" || status === "paid") return "success";
+  if (status === "failed" || status === "error" || status === "rejected" || status === "declined") return "failed";
+  if (status === "cancelled" || status === "canceled") return "cancelled";
+  if (status === "expired") return "expired";
+  if (status === "processing" || status === "initiated" || status === "pending") return "processing";
+  return "pending";
+}
+function errorMessage(raw, fallback) {
+  return firstString(raw, ["message", "error", "response_text", "description"]) || fallback;
+}
+function isRejected(raw) {
+  const status = raw?.status ?? raw?.data?.status ?? raw?.result?.status;
+  return status === false || raw?.success === false || raw?.data?.success === false;
+}
+function babimoPaymentMethod(operator, countryCode) {
+  return PAYMENT_METHODS[`${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`] ?? null;
+}
+function isBabimoConfigured() {
+  return Boolean(process.env.BABIMO_EMAIL && process.env.BABIMO_PASSWORD);
+}
+function getBabimoClient() {
+  if (!client) {
+    const email3 = process.env.BABIMO_EMAIL;
+    const password = process.env.BABIMO_PASSWORD;
+    if (!email3 || !password) {
+      throw new Error("Babimo non configur\xE9. D\xE9finissez BABIMO_EMAIL et BABIMO_PASSWORD dans les Secrets Replit.");
+    }
+    client = new BabimoClient({
+      baseUrl: process.env.BABIMO_BASE_URL ?? DEFAULT_BASE_URL,
+      email: email3,
+      password
+    });
+  }
+  return client;
+}
+var DEFAULT_BASE_URL, PAYMENT_METHODS, FINAL_STATUSES, BabimoError, BabimoClient, client;
+var init_babimo = __esm({
+  "src/lib/babimo.ts"() {
+    "use strict";
+    DEFAULT_BASE_URL = "https://v2.b-pay.co/service/api/v1";
+    PAYMENT_METHODS = {
+      "mtn|CI": "MTN_CI",
+      "mtn momo|CI": "MTN_CI",
+      "mtn mobile money|CI": "MTN_CI",
+      "orange|CI": "OM_CI",
+      "orange money|CI": "OM_CI",
+      "om|CI": "OM_CI",
+      "wave|CI": "WAVE_CI",
+      "moov|CI": "MOOV_CI",
+      "moov money|CI": "MOOV_CI"
+    };
+    FINAL_STATUSES = /* @__PURE__ */ new Set(["success", "completed", "paid", "failed", "cancelled", "canceled", "expired"]);
+    BabimoError = class extends Error {
+      constructor(message, statusCode, raw) {
+        super(message);
+        this.statusCode = statusCode;
+        this.raw = raw;
+        this.name = "BabimoError";
+      }
+      statusCode;
+      raw;
+    };
+    BabimoClient = class {
+      config;
+      accessToken = null;
+      tokenExpiresAt = 0;
+      constructor(config2) {
+        this.config = { ...config2, baseUrl: config2.baseUrl.replace(/\/+$/, "") };
+      }
+      async login() {
+        let response;
+        try {
+          response = await fetch(`${this.config.baseUrl}/oauth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ email: this.config.email, password: this.config.password }),
+            signal: AbortSignal.timeout(3e4)
+          });
+        } catch (err) {
+          throw new BabimoError(`Erreur r\xE9seau Babimo lors de l'authentification : ${err?.message ?? err}`, 503, {
+            retryable: true
+          });
+        }
+        const raw = await this.readResponse(response);
+        if (!response.ok) {
+          throw new BabimoError(errorMessage(raw, `Babimo login HTTP ${response.status}`), response.status, raw);
+        }
+        const token = firstString(raw, ["token", "access_token", "accessToken"]);
+        if (!token) {
+          throw new BabimoError("Babimo n'a pas retourn\xE9 de token d'acc\xE8s.", 502, raw);
+        }
+        this.accessToken = token;
+        this.tokenExpiresAt = Date.now() + 20 * 60 * 1e3;
+        return token;
+      }
+      async readResponse(response) {
+        const text2 = await response.text();
+        if (!text2) return {};
+        try {
+          return JSON.parse(text2);
+        } catch {
+          throw new BabimoError(
+            `R\xE9ponse Babimo invalide (HTTP ${response.status})`,
+            response.status,
+            { bodyPreview: text2.slice(0, 500), retryable: false }
+          );
+        }
+      }
+      async request(method, path5, body, retry = true) {
+        const token = this.accessToken && Date.now() < this.tokenExpiresAt ? this.accessToken : await this.login();
+        let response;
+        try {
+          response = await fetch(`${this.config.baseUrl}${path5}`, {
+            method,
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: body ? JSON.stringify(body) : void 0,
+            signal: AbortSignal.timeout(3e4)
+          });
+        } catch (err) {
+          throw new BabimoError(`Erreur r\xE9seau Babimo : ${err?.message ?? err}`, 503, { retryable: true });
+        }
+        let raw;
+        try {
+          raw = await this.readResponse(response);
+        } catch (err) {
+          if (err instanceof BabimoError) throw err;
+          throw err;
+        }
+        if (response.status === 401 && retry) {
+          this.accessToken = null;
+          this.tokenExpiresAt = 0;
+          return this.request(method, path5, body, false);
+        }
+        if (!response.ok || isRejected(raw)) {
+          throw new BabimoError(errorMessage(raw, `Babimo API HTTP ${response.status}`), response.status, raw);
+        }
+        return raw;
+      }
+      async initiatePayin(params) {
+        const paymentMethod = babimoPaymentMethod(params.operator, params.country_code);
+        if (!paymentMethod) {
+          return {
+            success: false,
+            babimo_reference: "",
+            status: "failed",
+            message: `Op\xE9rateur "${params.operator}" (${params.country_code}) non support\xE9 par Babimo.`
+          };
+        }
+        const payload = {
+          currency: params.currency || "XOF",
+          payment_method: paymentMethod,
+          merchant_transaction_id: params.reference,
+          amount: params.amount,
+          telephone: normalizeCoteDIvoirePhone(params.phone),
+          success_url: params.return_url ?? params.callback_url,
+          failed_url: params.return_url ?? params.callback_url,
+          notify_url: params.callback_url,
+          refercence_cl: params.reference
+        };
+        if (paymentMethod === "OM_CI" && params.operator_otp) {
+          payload.otp_code = params.operator_otp;
+        }
+        const raw = await this.request("POST", "/paiement", payload);
+        const data = unwrap(raw);
+        const reference = firstString(raw, ["status_token", "statusToken", "transaction_id", "transactionId", "token"]);
+        if (!reference) {
+          throw new BabimoError("Babimo n'a pas retourn\xE9 de r\xE9f\xE9rence de transaction.", 502, raw);
+        }
+        return {
+          success: true,
+          babimo_reference: reference,
+          status: mapStatus(responseStatus(raw)),
+          payment_url: firstString(raw, ["payment_url", "paymentUrl", "url", "checkout_url"]) || (typeof data === "string" ? data : null),
+          message: errorMessage(raw, "Paiement Babimo initi\xE9.")
+        };
+      }
+      async initiatePayout(params) {
+        const paymentMethod = babimoPaymentMethod(params.operator, params.country_code);
+        if (!paymentMethod) {
+          return {
+            success: false,
+            babimo_reference: "",
+            status: "failed",
+            message: `Op\xE9rateur "${params.operator}" (${params.country_code}) non support\xE9 par Babimo pour les payouts.`
+          };
+        }
+        const raw = await this.request("POST", "/collect/cashin", {
+          payment_method: paymentMethod,
+          merchant_transaction_id: params.reference,
+          amount: params.amount,
+          telephone: normalizeCoteDIvoirePhone(params.phone),
+          notify_url: params.callback_url,
+          refercence_cl: params.reference
+        });
+        const reference = firstString(raw, ["status_token", "statusToken", "transaction_id", "transactionId", "token"]);
+        if (!reference) {
+          throw new BabimoError("Babimo n'a pas retourn\xE9 de r\xE9f\xE9rence de payout.", 502, raw);
+        }
+        return {
+          success: true,
+          babimo_reference: reference,
+          status: mapStatus(responseStatus(raw)),
+          message: errorMessage(raw, "Payout Babimo initi\xE9.")
+        };
+      }
+      async getStatus(reference) {
+        const raw = await this.request("GET", `/check-status/${encodeURIComponent(reference)}`);
+        const status = mapStatus(responseStatus(raw));
+        const data = unwrap(raw);
+        return {
+          babimo_reference: reference,
+          status,
+          amount: Number(data?.amount ?? raw?.amount ?? 0),
+          currency: String(data?.currency ?? raw?.currency ?? "XOF"),
+          failure_reason: status === "failed" ? errorMessage(raw, "Transaction Babimo \xE9chou\xE9e.") : void 0
+        };
+      }
+      static isFinalStatus(status) {
+        return FINAL_STATUSES.has((status ?? "").toLowerCase());
+      }
+    };
+    client = null;
+  }
+});
+
 // ../../node_modules/.pnpm/@noble+hashes@1.8.0/node_modules/@noble/hashes/cryptoNode.js
 var require_cryptoNode = __commonJS({
   "../../node_modules/.pnpm/@noble+hashes@1.8.0/node_modules/@noble/hashes/cryptoNode.js"(exports) {
@@ -107415,7 +107681,7 @@ var require_md5 = __commonJS({
         return method;
       };
       var nodeWrap = function(method) {
-        var crypto12 = __require("crypto");
+        var crypto13 = __require("crypto");
         var Buffer3 = __require("buffer").Buffer;
         var bufferFrom;
         if (Buffer3.from && !root.JS_MD5_NO_BUFFER_FROM) {
@@ -107427,7 +107693,7 @@ var require_md5 = __commonJS({
         }
         var nodeMethod = function(message) {
           if (typeof message === "string") {
-            return crypto12.createHash("md5").update(message, "utf8").digest("hex");
+            return crypto13.createHash("md5").update(message, "utf8").digest("hex");
           } else {
             if (message === null || message === void 0) {
               throw new Error(INPUT_ERROR);
@@ -107436,7 +107702,7 @@ var require_md5 = __commonJS({
             }
           }
           if (isArray(message) || isView2(message) || message.constructor === Buffer3) {
-            return crypto12.createHash("md5").update(bufferFrom(message)).digest("hex");
+            return crypto13.createHash("md5").update(bufferFrom(message)).digest("hex");
           } else {
             return method(message);
           }
@@ -258099,19 +258365,19 @@ import { join as join2, dirname as dirname2 } from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // src/app.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express21 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_express_session = __toESM(require_express_session(), 1);
 var import_connect_pg_simple = __toESM(require_connect_pg_simple(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 init_src();
-import crypto11 from "node:crypto";
+import crypto12 from "node:crypto";
 import path4 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { existsSync as existsSync2 } from "node:fs";
 
 // src/routes/index.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -258120,9 +258386,9 @@ var router = (0, import_express.Router)();
 router.get("/healthz", async (_req, res) => {
   const start = Date.now();
   try {
-    const client = await pool.connect();
-    await client.query("SELECT 1");
-    client.release();
+    const client2 = await pool.connect();
+    await client2.query("SELECT 1");
+    client2.release();
     res.json({
       status: "ok",
       db: "ok",
@@ -258183,6 +258449,9 @@ router2.get("/help", async (req, res) => {
     "CLAPAY_API_TOKEN",
     "CLAPAY_BASE_URL",
     "CLAPAY_WEBHOOK_SECRET",
+    "BABIMO_EMAIL",
+    "BABIMO_PASSWORD",
+    "BABIMO_BASE_URL",
     "RESEND_API_KEY",
     "NODE_ENV",
     "PORT",
@@ -258195,11 +258464,11 @@ router2.get("/help", async (req, res) => {
   checks.env = envChecks;
   const dbStart = Date.now();
   try {
-    const client = await pool.connect();
-    const result = await client.query(
+    const client2 = await pool.connect();
+    const result = await client2.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
     );
-    client.release();
+    client2.release();
     checks.database = {
       status: "\u2713 connect\xE9",
       latencyMs: Date.now() - dbStart,
@@ -258231,6 +258500,12 @@ router2.get("/help", async (req, res) => {
     token: process.env["CLAPAY_API_TOKEN"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
     webhookSecret: process.env["CLAPAY_WEBHOOK_SECRET"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
     aggregator: process.env["ACTIVE_AGGREGATOR"] ?? "(non d\xE9fini)"
+  };
+  checks.babimo = {
+    baseUrl: process.env["BABIMO_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
+    email: process.env["BABIMO_EMAIL"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+    password: process.env["BABIMO_PASSWORD"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+    aggregator: "babimo"
   };
   checks.storage = {
     supabaseUrl: process.env["SUPABASE_URL"] ? "\u2713 d\xE9fini" : "\u2717 non d\xE9fini",
@@ -258905,15 +259180,15 @@ var makeIssue = (params) => {
       message: issueData.message
     };
   }
-  let errorMessage = "";
+  let errorMessage2 = "";
   const maps = errorMaps.filter((m) => !!m).slice().reverse();
   for (const map2 of maps) {
-    errorMessage = map2(fullIssue, { data, defaultError: errorMessage }).message;
+    errorMessage2 = map2(fullIssue, { data, defaultError: errorMessage2 }).message;
   }
   return {
     ...issueData,
     path: fullPath,
-    message: errorMessage
+    message: errorMessage2
   };
 };
 var EMPTY_PATH = [];
@@ -265876,13 +266151,13 @@ var MemoryStore = class {
    * @public
    */
   async increment(key) {
-    const client = this.getClient(key);
+    const client2 = this.getClient(key);
     const now = Date.now();
-    if (client.resetTime.getTime() <= now) {
-      this.resetClient(client, now);
+    if (client2.resetTime.getTime() <= now) {
+      this.resetClient(client2, now);
     }
-    client.totalHits++;
-    return client;
+    client2.totalHits++;
+    return client2;
   }
   /**
    * Method to decrement a client's hit counter.
@@ -265892,8 +266167,8 @@ var MemoryStore = class {
    * @public
    */
   async decrement(key) {
-    const client = this.getClient(key);
-    if (client.totalHits > 0) client.totalHits--;
+    const client2 = this.getClient(key);
+    if (client2.totalHits > 0) client2.totalHits--;
   }
   /**
    * Method to reset a client's hit counter.
@@ -265937,10 +266212,10 @@ var MemoryStore = class {
    *
    * @return {Client} - The modified client that was passed in, to allow for chaining.
    */
-  resetClient(client, now = Date.now()) {
-    client.totalHits = 0;
-    client.resetTime.setTime(now + this.windowMs);
-    return client;
+  resetClient(client2, now = Date.now()) {
+    client2.totalHits = 0;
+    client2.resetTime.setTime(now + this.windowMs);
+    return client2;
   }
   /**
    * Retrieves or creates a client, given a key. Also ensures that the client being
@@ -265952,16 +266227,16 @@ var MemoryStore = class {
    */
   getClient(key) {
     if (this.current.has(key)) return this.current.get(key);
-    let client;
+    let client2;
     if (this.previous.has(key)) {
-      client = this.previous.get(key);
+      client2 = this.previous.get(key);
       this.previous.delete(key);
     } else {
-      client = { totalHits: 0, resetTime: /* @__PURE__ */ new Date() };
-      this.resetClient(client);
+      client2 = { totalHits: 0, resetTime: /* @__PURE__ */ new Date() };
+      this.resetClient(client2);
     }
-    this.current.set(key, client);
-    return client;
+    this.current.set(key, client2);
+    return client2;
   }
   /**
    * Move current clients to previous, create a new map for current.
@@ -272709,8 +272984,8 @@ function namespaceToPath(namespace) {
   return namespace.join("");
 }
 var NamespaceOperations = class {
-  constructor(client, prefix = "") {
-    this.client = client;
+  constructor(client2, prefix = "") {
+    this.client = client2;
     this.prefix = prefix;
   }
   async listNamespaces(parent) {
@@ -272778,8 +273053,8 @@ function namespaceToPath2(namespace) {
   return namespace.join("");
 }
 var TableOperations = class {
-  constructor(client, prefix = "", accessDelegation) {
-    this.client = client;
+  constructor(client2, prefix = "", accessDelegation) {
+    this.client = client2;
     this.prefix = prefix;
     this.accessDelegation = accessDelegation;
   }
@@ -276629,6 +276904,7 @@ init_schema2();
 init_drizzle_orm();
 init_clapay();
 init_paydunya();
+init_babimo();
 function operatorSlug(name2) {
   return name2.toLowerCase().replace(/mobile\s*money/g, "").replace(/momo/g, "").replace(/money/g, "").replace(/[^a-z0-9]/g, "").trim();
 }
@@ -276667,7 +276943,7 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
   const explicitMapping = !!opAgg;
   if (opAgg) {
     const code = opAgg.aggregatorCode.toLowerCase();
-    if (code !== "clapay" && code !== "paydunya") {
+    if (code !== "clapay" && code !== "paydunya" && code !== "babimo") {
       throw new AggregatorUnavailableError(
         code,
         `Code agr\xE9gateur inconnu: "${opAgg.aggregatorCode}"`
@@ -276676,7 +276952,7 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
     aggregatorCode = code;
   } else {
     const preferred = (process.env.ACTIVE_AGGREGATOR ?? "paydunya").toLowerCase();
-    if (preferred !== "clapay" && preferred !== "paydunya") {
+    if (preferred !== "clapay" && preferred !== "paydunya" && preferred !== "babimo") {
       throw new AggregatorUnavailableError(
         "paydunya",
         `ACTIVE_AGGREGATOR invalide: "${preferred}"`
@@ -276694,10 +276970,22 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
       );
       return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
     }
+    if (!explicitMapping && isBabimoConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Clapay non configur\xE9 \u2014 bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "babimo", client: getBabimoClient(), opAgg: null };
+    }
     throw new AggregatorNotConfiguredError("clapay");
-  } else {
+  } else if (aggregatorCode === "paydunya") {
     if (isPayDunyaConfigured()) {
       return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
+    }
+    if (!explicitMapping && isBabimoConfigured()) {
+      console.warn(
+        `[AggregatorRouter] PayDunya non configur\xE9 \u2014 bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "babimo", client: getBabimoClient(), opAgg: null };
     }
     if (!explicitMapping && isClapayConfigured()) {
       console.warn(
@@ -276706,6 +276994,23 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
       return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
     }
     throw new AggregatorNotConfiguredError("paydunya");
+  } else {
+    if (isBabimoConfigured()) {
+      return { aggregator: "babimo", client: getBabimoClient(), opAgg: opAgg ?? null };
+    }
+    if (!explicitMapping && isPayDunyaConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Babimo non configur\xE9 \u2014 bascule automatique sur PayDunya pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
+    }
+    if (!explicitMapping && isClapayConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Babimo non configur\xE9 \u2014 bascule automatique sur Clapay pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
+    }
+    throw new AggregatorNotConfiguredError("babimo");
   }
 }
 var SETTLED_STATUSES = /* @__PURE__ */ new Set(["success", "failed", "cancelled", "expired"]);
@@ -276721,25 +277026,32 @@ function mapPayDunyaStatus(s) {
   if (u === "processing" || u === "initiated") return "processing";
   return "pending";
 }
-async function fetchStatus(aggregator, client, gatewayRef, operation = "payin") {
+async function fetchStatus(aggregator, client2, gatewayRef, operation = "payin") {
   if (aggregator === "clapay") {
-    const r = await client.getStatus(gatewayRef);
+    const r = await client2.getStatus(gatewayRef);
     return {
       status: r.status,
       gatewayReference: r.clapay_reference || gatewayRef,
       failureReason: r.failure_reason
     };
-  } else {
-    const pd = client;
+  } else if (aggregator === "paydunya") {
+    const pd = client2;
     const r = operation === "payout" ? await pd.getPayoutStatus(gatewayRef) : await pd.getStatus(gatewayRef);
     return {
       status: mapPayDunyaStatus(r.status),
       gatewayReference: r.paydunya_reference || gatewayRef,
       failureReason: r.failure_reason
     };
+  } else {
+    const r = await client2.getStatus(gatewayRef);
+    return {
+      status: r.status,
+      gatewayReference: r.babimo_reference || gatewayRef,
+      failureReason: r.failure_reason
+    };
   }
 }
-async function pollUntilSettled(aggregator, client, gatewayRef, options) {
+async function pollUntilSettled(aggregator, client2, gatewayRef, options) {
   if (!gatewayRef) return null;
   const intervalMs = options?.intervalMs ?? 3e3;
   const maxDurationMs = options?.maxDurationMs ?? 25e3;
@@ -276751,7 +277063,7 @@ async function pollUntilSettled(aggregator, client, gatewayRef, options) {
   while (Date.now() < deadline) {
     attempt++;
     try {
-      const result = await fetchStatus(aggregator, client, gatewayRef, operation);
+      const result = await fetchStatus(aggregator, client2, gatewayRef, operation);
       lastResult = result;
       console.info(
         `[Poll#${attempt}] ${aggregator}/${gatewayRef} \u2192 ${result.status} (+${Date.now() - (deadline - maxDurationMs)}ms)`
@@ -276827,9 +277139,9 @@ async function listActiveOperators(countryCode) {
   }).map((op) => op.name);
 }
 async function routePayout(params) {
-  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
+  const { aggregator, client: client2 } = await resolveAggregator(params.country_code, params.operator, "payout");
   if (aggregator === "clapay") {
-    const c = client;
+    const c = client2;
     const res = await c.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "\xC9chec Clapay payout");
     return {
@@ -276837,8 +277149,8 @@ async function routePayout(params) {
       externalRef: res.clapay_reference,
       message: "Payout envoy\xE9 via Clapay"
     };
-  } else {
-    const p = client;
+  } else if (aggregator === "paydunya") {
+    const p = client2;
     const res = await p.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "\xC9chec PayDunya payout");
     return {
@@ -276846,12 +277158,22 @@ async function routePayout(params) {
       externalRef: res.paydunya_reference,
       message: "Payout envoy\xE9 via PayDunya"
     };
+  } else {
+    const b = client2;
+    const res = await b.initiatePayout(params);
+    if (!res.success) throw new Error(res.message ?? "\xC9chec Babimo payout");
+    return {
+      aggregator,
+      externalRef: res.babimo_reference,
+      message: "Payout envoy\xE9 via Babimo"
+    };
   }
 }
 
 // src/routes/dashboard.ts
 init_clapay();
 init_paydunya();
+init_babimo();
 
 // src/lib/payin-settlement.ts
 init_src();
@@ -277259,7 +277581,8 @@ var payinSchema = external_exports2.object({
   operator: external_exports2.string().min(1),
   phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
   description: external_exports2.string().optional(),
-  externalRef: external_exports2.string().optional()
+  externalRef: external_exports2.string().optional(),
+  operatorOtp: external_exports2.string().max(32).optional()
 });
 router11.post("/dashboard/payin", requireAuth, async (req, res) => {
   const parsed = payinSchema.safeParse(req.body);
@@ -277269,7 +277592,7 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
   }
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
-  const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
+  const { amount, currency, countryCode, operator, phone, description, externalRef, operatorOtp } = parsed.data;
   const opCheck = await checkOperatorAvailable(countryCode, operator, "deposits");
   if (!opCheck.ok) {
     res.status(opCheck.status).json({ error: opCheck.error });
@@ -277302,12 +277625,28 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
       mode: currentMode
     }).returning();
     try {
-      const { aggregator, client } = await resolveAggregator(countryCode, operator);
+      const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
       const baseUrl2 = getWebhookBaseUrl();
       const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
       let gatewayRef;
       if (aggregator === "clapay") {
-        const r = await client.initiatePayin({
+        const r = await client2.initiatePayin({
+          amount,
+          currency,
+          country_code: countryCode,
+          operator,
+          phone,
+          reference,
+          order_id: reference,
+          callback_url: callbackUrl,
+          description,
+          return_url: `${getFrontendBaseUrl()}/dashboard`,
+          operator_otp: operatorOtp
+        });
+        if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
+        gatewayRef = r.clapay_reference;
+      } else if (aggregator === "paydunya") {
+        const r = await client2.initiatePayin({
           amount,
           currency,
           country_code: countryCode,
@@ -277319,24 +277658,24 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
           description,
           return_url: `${getFrontendBaseUrl()}/dashboard`
         });
-        if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
-        gatewayRef = r.clapay_reference;
+        if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
+        gatewayRef = r.paydunya_reference;
       } else {
-        const r = await client.initiatePayin({
+        const r = await client2.initiatePayin({
           amount,
           currency,
           country_code: countryCode,
           operator,
           phone,
           reference,
-          order_id: reference,
           callback_url: callbackUrl,
-          description
+          return_url: `${getFrontendBaseUrl()}/dashboard`,
+          operator_otp: operatorOtp
         });
-        if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
-        gatewayRef = r.paydunya_reference;
+        if (!r.success) throw new BabimoError(r.message ?? "\xC9chec Babimo", 502, r);
+        gatewayRef = r.babimo_reference;
       }
-      const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
+      const statusCheck = await pollUntilSettled(aggregator, client2, gatewayRef, {
         intervalMs: 4e3,
         maxDurationMs: 2e4
       });
@@ -277371,7 +277710,7 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
       });
     } catch (err) {
       const realReason = err?.message ?? String(err);
-      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : "?";
       await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx2.id));
       const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
       res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
@@ -277505,9 +277844,9 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       mode: currentMode
     }).returning();
     let aggregator;
-    let client;
+    let client2;
     try {
-      ({ aggregator, client } = await resolveAggregator(countryCode, operator, "payout"));
+      ({ aggregator, client: client2 } = await resolveAggregator(countryCode, operator, "payout"));
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
       const realReason = err?.message ?? String(err);
@@ -277541,7 +277880,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     try {
       console.log(`[Payout] \u2192 Initiation ${aggregator} | ref: ${reference} | ${amount} ${currency} | ${operator} (${countryCode}) \u2192 ${phone}`);
       if (aggregator === "clapay") {
-        const r = await client.initiatePayout({
+        const r = await client2.initiatePayout({
           amount,
           currency,
           country_code: countryCode,
@@ -277554,8 +277893,8 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
         console.log(`[Payout] \u2190 R\xE9ponse Clapay: ${JSON.stringify(r)}`);
         if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
-      } else {
-        const r = await client.initiatePayout({
+      } else if (aggregator === "paydunya") {
+        const r = await client2.initiatePayout({
           amount,
           currency,
           country_code: countryCode,
@@ -277568,6 +277907,19 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
         console.log(`[Payout] \u2190 R\xE9ponse PayDunya: ${JSON.stringify(r)}`);
         if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
+      } else {
+        const r = await client2.initiatePayout({
+          amount,
+          currency,
+          country_code: countryCode,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl
+        });
+        console.log(`[Payout] \u2190 R\xE9ponse Babimo: ${JSON.stringify(r)}`);
+        if (!r.success) throw new BabimoError(r.message ?? "\xC9chec Babimo", 502, r);
+        gatewayRef = r.babimo_reference;
       }
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
@@ -277620,7 +277972,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     });
     (async () => {
       try {
-        const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
+        const statusCheck = await pollUntilSettled(aggregator, client2, gatewayRef, {
           intervalMs: 3e3,
           maxDurationMs: 3e4,
           operation: "payout"
@@ -278290,8 +278642,8 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     await db.update(transactionsTable).set({ status: "processing", externalRef: result.externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     (async () => {
       try {
-        const { client } = await resolveAggregator(countryCode, operator, "payout");
-        const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
+        const { client: client2 } = await resolveAggregator(countryCode, operator, "payout");
+        const statusCheck = await pollUntilSettled(resolvedAggregator, client2, result.externalRef, {
           intervalMs: 3e3,
           maxDurationMs: 3e4,
           operation: "payout"
@@ -278955,13 +279307,13 @@ router11.post("/pay/:token", async (req, res) => {
     return;
   }
   try {
-    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const { aggregator, client: client2 } = await resolveAggregator(effectiveCountry, effectiveOperator);
     const baseUrl2 = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
     let gatewayRef;
     let gatewayPaymentUrl;
     if (aggregator === "clapay") {
-      const r = await client.initiatePayin({
+      const r = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -278975,8 +279327,8 @@ router11.post("/pay/:token", async (req, res) => {
       });
       if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
       gatewayRef = r.clapay_reference;
-    } else {
-      const r = await client.initiatePayin({
+    } else if (aggregator === "paydunya") {
+      const r = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -278986,11 +279338,27 @@ router11.post("/pay/:token", async (req, res) => {
         order_id: reference,
         callback_url: callbackUrl,
         description: `Payment link: ${link.title}`,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
         operator_otp: operatorOtp
       });
       if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
       gatewayRef = r.paydunya_reference;
       gatewayPaymentUrl = r.payment_url;
+    } else {
+      const r = await client2.initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
+        operator_otp: operatorOtp
+      });
+      if (!r.success) throw new BabimoError(r.message ?? "\xC9chec Babimo", 502, r);
+      gatewayRef = r.babimo_reference;
+      gatewayPaymentUrl = r.payment_url ?? void 0;
     }
     await db.update(transactionsTable).set({ status: "processing", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     await db.update(paymentLinksTable).set({ uses: sql`${paymentLinksTable.uses} + 1` }).where(eq(paymentLinksTable.id, link.id));
@@ -279007,7 +279375,7 @@ router11.post("/pay/:token", async (req, res) => {
     });
   } catch (err) {
     const realReason = err?.message ?? "Erreur agr\xE9gateur";
-    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : "?";
     await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
     res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
@@ -279253,11 +279621,11 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
         ;
         (async () => {
           try {
-            const { aggregator, client } = await resolveAggregator(r.countryCode, r.operator, "payout");
+            const { aggregator, client: client2 } = await resolveAggregator(r.countryCode, r.operator, "payout");
             const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
             let gatewayRef;
             if (aggregator === "clapay") {
-              const resp = await client.initiatePayout({
+              const resp = await client2.initiatePayout({
                 amount: r.amount,
                 currency: countryCurrency,
                 country_code: r.countryCode,
@@ -279269,8 +279637,8 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               });
               if (!resp.success) throw new Error(resp.message ?? "Clapay failed");
               gatewayRef = resp.clapay_reference;
-            } else {
-              const resp = await client.initiatePayout({
+            } else if (aggregator === "paydunya") {
+              const resp = await client2.initiatePayout({
                 amount: r.amount,
                 currency: countryCurrency,
                 country_code: r.countryCode,
@@ -279282,6 +279650,18 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               });
               if (!resp.success) throw new Error(resp.message ?? "PayDunya failed");
               gatewayRef = resp.paydunya_reference;
+            } else {
+              const resp = await client2.initiatePayout({
+                amount: r.amount,
+                currency: countryCurrency,
+                country_code: r.countryCode,
+                operator: r.operator,
+                phone: r.phone,
+                reference: txRef,
+                callback_url: callbackUrl
+              });
+              if (!resp.success) throw new Error(resp.message ?? "Babimo failed");
+              gatewayRef = resp.babimo_reference;
             }
             await db.update(transactionsTable).set({ status: "processing", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, insertedTx.id));
           } catch (e) {
@@ -279630,14 +280010,14 @@ router11.post("/qr/:reference", async (req, res) => {
   }
   const baseCallbackUrl = getWebhookBaseUrl();
   try {
-    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
-    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
+    const { aggregator, client: client2 } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
     let externalRef;
     let paymentUrl = null;
     let ussdCode = null;
     if (aggregator === "clapay") {
-      const clapayRes = await client.initiatePayin({
+      const clapayRes = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -279656,8 +280036,8 @@ router11.post("/qr/:reference", async (req, res) => {
       externalRef = clapayRes.clapay_reference;
       paymentUrl = clapayRes.payment_url ?? null;
       ussdCode = clapayRes.ussd_code ?? null;
-    } else {
-      const pdRes = await client.initiatePayin({
+    } else if (aggregator === "paydunya") {
+      const pdRes = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -279666,6 +280046,7 @@ router11.post("/qr/:reference", async (req, res) => {
         reference: txReference,
         order_id: tx.orderId,
         callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
         description: `QR payment: ${qr.name}`,
         operator_otp: operatorOtp
       });
@@ -279674,9 +280055,26 @@ router11.post("/qr/:reference", async (req, res) => {
       }
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
+    } else {
+      const babimoRes = await client2.initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference: txReference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
+        operator_otp: operatorOtp
+      });
+      if (!babimoRes.success) {
+        throw new BabimoError(babimoRes.message ?? "\xC9chec Babimo", 502, babimoRes);
+      }
+      externalRef = babimoRes.babimo_reference;
+      paymentUrl = babimoRes.payment_url ?? null;
     }
     await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
-    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+    const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
       intervalMs: 4e3,
       maxDurationMs: 2e4
     });
@@ -279715,7 +280113,7 @@ router11.post("/qr/:reference", async (req, res) => {
     });
   } catch (err) {
     const realReason = err?.message ?? String(err);
-    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "clapay";
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : "?";
     res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference: txReference });
     await settlePayinStatus({
       txId: tx.id,
@@ -279826,6 +280224,7 @@ init_drizzle_orm();
 import crypto6 from "crypto";
 init_clapay();
 init_paydunya();
+init_babimo();
 var router12 = (0, import_express12.Router)();
 var rateLimitStore = /* @__PURE__ */ new Map();
 function checkRateLimit(keyId) {
@@ -279952,6 +280351,7 @@ var initiateSchema = external_exports2.object({
   order_id: external_exports2.string().min(1).max(128),
   webhook_url: external_exports2.string().url().optional(),
   description: external_exports2.string().max(255).optional(),
+  operator_otp: external_exports2.string().max(32).optional(),
   metadata: external_exports2.record(external_exports2.string(), external_exports2.any()).optional(),
   expires_in_minutes: external_exports2.number().int().refine((v) => [2, 5, 10].includes(v), {
     message: "expires_in_minutes must be 2, 5, or 10"
@@ -279975,7 +280375,8 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     webhook_url,
     description,
     metadata,
-    expires_in_minutes
+    expires_in_minutes,
+    operator_otp
   } = parsed.data;
   if (await isMaintenanceModeOn()) {
     res.status(503).json({
@@ -280094,8 +280495,8 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     const frontendBaseUrl = getFrontendBaseUrl();
     const defaultReturnUrl = `${frontendBaseUrl}/payment/success`;
     try {
-      const { aggregator, client } = await resolveAggregator(country_code, operator);
-      const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
+      const { aggregator, client: client2 } = await resolveAggregator(country_code, operator);
+      const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
       const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
       const gatewayPayload = {
         amount,
@@ -280115,7 +280516,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       let ussdCode = null;
       if (aggregator === "clapay") {
         const { ClapayClient: ClapayClient5 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-        const clapayRes = await client.initiatePayin({
+        const clapayRes = await client2.initiatePayin({
           amount,
           currency,
           country_code,
@@ -280133,9 +280534,9 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         externalRef = clapayRes.clapay_reference;
         paymentUrl = clapayRes.payment_url ?? null;
         ussdCode = clapayRes.ussd_code ?? null;
-      } else {
+      } else if (aggregator === "paydunya") {
         const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
-        const pdRes = await client.initiatePayin({
+        const pdRes = await client2.initiatePayin({
           amount,
           currency,
           country_code,
@@ -280144,6 +280545,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
           reference,
           order_id,
           callback_url: callbackUrl,
+          return_url: defaultReturnUrl,
           description
         });
         if (!pdRes.success) {
@@ -280151,9 +280553,27 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         }
         externalRef = pdRes.paydunya_reference;
         paymentUrl = pdRes.payment_url ?? null;
+      } else {
+        const babimoRes = await client2.initiatePayin({
+          amount,
+          currency,
+          country_code,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          return_url: defaultReturnUrl,
+          description,
+          operator_otp
+        });
+        if (!babimoRes.success) {
+          throw new BabimoError(babimoRes.message ?? "\xC9chec Babimo", 502, babimoRes);
+        }
+        externalRef = babimoRes.babimo_reference;
+        paymentUrl = babimoRes.payment_url ?? null;
       }
       await db.update(transactionsTable).set({ externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
-      const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+      const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
         intervalMs: 4e3,
         maxDurationMs: 2e4
       });
@@ -280198,7 +280618,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       return;
     } catch (err) {
       const realReason = err?.message ?? String(err);
-      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : "?";
       if (err instanceof AggregatorNotConfiguredError) {
         res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message: GENERIC_ERROR_MESSAGE, reference });
       } else {
@@ -281540,21 +281960,27 @@ router13.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, r
       });
       return;
     }
-    const { aggregator, client } = await resolveAggregator(tx.countryCode, tx.operator);
+    const { aggregator, client: client2 } = await resolveAggregator(tx.countryCode, tx.operator);
     let gatewayStatus;
     let gatewayRef = queryRef;
     if (aggregator === "clapay") {
       const { ClapayClient: ClapayClient5 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-      const r = await client.getStatus(queryRef);
+      const r = await client2.getStatus(queryRef);
       gatewayStatus = r.status;
       if (r.clapay_reference) gatewayRef = r.clapay_reference;
-    } else {
+    } else if (aggregator === "paydunya") {
       const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
-      const pd = client;
+      const pd = client2;
       const r = await pd.getStatus(tx.externalRef);
       const rs = r.status;
       gatewayStatus = rs === "completed" ? "success" : rs === "failed" ? "failed" : rs === "cancelled" ? "cancelled" : rs === "expired" ? "expired" : "pending";
       if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
+    } else {
+      const { BabimoClient: BabimoClient6 } = await Promise.resolve().then(() => (init_babimo(), babimo_exports));
+      const babimo = client2;
+      const r = await babimo.getStatus(queryRef);
+      gatewayStatus = r.status;
+      if (r.babimo_reference) gatewayRef = r.babimo_reference;
     }
     const isSettled = ["success", "failed", "cancelled", "expired"].includes(gatewayStatus);
     let credited = false;
@@ -282665,19 +283091,19 @@ router14.post("/webhooks/clapay", async (req, res) => {
       console.warn("[Clapay Webhook] Clapay non configur\xE9 \u2014 webhook ignor\xE9");
       return;
     }
-    const client = getClapayClient();
+    const client2 = getClapayClient();
     const rawBody = JSON.stringify(req.body);
     const receivedSig = req.headers["x-clapay-signature"] ?? req.headers["x-signature"] ?? req.body?.signature ?? "";
     const timestamp2 = parseInt(
       req.headers["x-clapay-timestamp"] ?? req.body?.timestamp ?? "0"
     );
     if (receivedSig && process.env.CLAPAY_WEBHOOK_SECRET) {
-      if (!client.verifyWebhookSignature(rawBody, receivedSig, timestamp2)) {
+      if (!client2.verifyWebhookSignature(rawBody, receivedSig, timestamp2)) {
         console.warn("[Clapay Webhook] Signature invalide \u2014 rejet\xE9");
         return;
       }
     }
-    const event = client.parseWebhookEvent(req.body);
+    const event = client2.parseWebhookEvent(req.body);
     console.log(`[Clapay Webhook] \xC9v\xE9nement: ${event.event} | clapay_ref: ${event.clapay_reference} | our_ref: ${event.our_reference}`);
     if (!event.our_reference) {
       console.warn("[Clapay Webhook] our_reference manquant \u2014 ignor\xE9");
@@ -282846,17 +283272,17 @@ router15.post("/webhooks/paydunya", async (req, res) => {
       console.warn("[PayDunya Webhook] PayDunya non configur\xE9 \u2014 webhook ignor\xE9");
       return;
     }
-    const client = getPayDunyaClient();
+    const client2 = getPayDunyaClient();
     const rawBody = JSON.stringify(req.body);
     const receivedHash = req.headers["x-paydunya-hash"] ?? req.headers["x-hash"] ?? req.body?.data?.hash ?? req.body?.hash ?? "";
     if (process.env.PAYDUNYA_WEBHOOK_SECRET && process.env.PAYDUNYA_WEBHOOK_SECRET !== "placeholder-secret") {
-      if (!receivedHash || !client.verifyWebhookSignature(rawBody, receivedHash)) {
+      if (!receivedHash || !client2.verifyWebhookSignature(rawBody, receivedHash)) {
         console.warn("[PayDunya Webhook] Signature invalide ou absente \u2014 webhook rejet\xE9");
         res.status(401).json({ error: "Invalid webhook signature" });
         return;
       }
     }
-    const event = client.parseWebhookEvent(req.body);
+    const event = client2.parseWebhookEvent(req.body);
     console.log(`[PayDunya Webhook] \xC9v\xE9nement: ${event.event} | ref: ${event.our_reference}`);
     if (!event.our_reference) {
       console.warn("[PayDunya Webhook] our_reference manquant \u2014 ignor\xE9");
@@ -283016,13 +283442,208 @@ router15.get("/webhooks/paydunya", (_req, res) => {
 });
 var paydunya_webhook_default = router15;
 
-// src/routes/support-admin.ts
+// src/routes/babimo-webhook.ts
 var import_express16 = __toESM(require_express2(), 1);
+init_src();
+init_drizzle_orm();
+init_schema2();
+init_babimo();
+import crypto10 from "crypto";
+var router16 = (0, import_express16.Router)();
+function firstString2(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
+  }
+  return "";
+}
+function normalizeStatus(value) {
+  switch (value.toLowerCase()) {
+    case "success":
+    case "successful":
+    case "completed":
+    case "paid":
+      return "success";
+    case "failed":
+    case "error":
+    case "rejected":
+    case "declined":
+      return "failed";
+    case "cancelled":
+    case "canceled":
+      return "cancelled";
+    case "expired":
+      return "expired";
+    case "processing":
+    case "initiated":
+      return "processing";
+    default:
+      return "pending";
+  }
+}
+function signMerchantPayload3(payload, secret, timestamp2) {
+  return crypto10.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
+}
+router16.post("/webhooks/babimo", async (req, res) => {
+  res.status(200).json({ received: true });
+  try {
+    const body = req.body ?? {};
+    const data = body?.data ?? body?.result ?? body;
+    const reference = firstString2(
+      data?.merchant_transaction_id,
+      body?.merchant_transaction_id,
+      data?.refercence_cl,
+      body?.refercence_cl,
+      data?.reference,
+      body?.reference,
+      data?.order_id,
+      body?.order_id
+    );
+    const providerReference = firstString2(
+      data?.status_token,
+      body?.status_token,
+      data?.transaction_id,
+      body?.transaction_id,
+      data?.transactionId,
+      body?.transactionId,
+      data?.token,
+      body?.token
+    );
+    const statusValue = firstString2(
+      data?.status,
+      body?.status,
+      data?.transaction_status,
+      body?.transaction_status,
+      data?.payment_status,
+      body?.payment_status
+    );
+    const status = normalizeStatus(statusValue);
+    const failureReason = firstString2(
+      data?.message,
+      body?.message,
+      data?.error,
+      body?.error,
+      data?.description,
+      body?.description
+    ) || null;
+    if (!reference && !providerReference) {
+      console.warn("[Babimo Webhook] R\xE9f\xE9rence absente \u2014 notification ignor\xE9e");
+      return;
+    }
+    let [tx] = reference ? await db.select().from(transactionsTable).where(eq(transactionsTable.reference, reference)) : [void 0];
+    if (!tx && providerReference) {
+      [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.externalRef, providerReference));
+    }
+    if (!tx && providerReference) {
+      [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.gatewayReference, providerReference));
+    }
+    if (!tx) {
+      console.warn(`[Babimo Webhook] Transaction introuvable \u2014 ref: ${reference || providerReference}`);
+      return;
+    }
+    const gatewayReference = providerReference || tx.externalRef || tx.gatewayReference || void 0;
+    if (tx.type === "payin") {
+      const result = await settlePayinStatus({
+        txId: tx.id,
+        status,
+        gatewayReference,
+        failureReason: status === "failed" ? failureReason ?? "Transaction Babimo \xE9chou\xE9e." : void 0,
+        gateway: "babimo"
+      });
+      console.log(`[Babimo Webhook] Payin ${tx.reference} \u2192 ${status} (cr\xE9dit\xE9: ${result.credited})`);
+    } else if (status === "failed" || status === "cancelled" || status === "expired") {
+      const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
+      const refunded = await db.transaction(async (trx) => {
+        const [row] = await trx.update(transactionsTable).set({
+          status,
+          gatewayReference,
+          failureReason,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(and(
+          eq(transactionsTable.id, tx.id),
+          sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
+        )).returning();
+        if (!row) return false;
+        await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, tx.walletId));
+        return true;
+      });
+      if (refunded) {
+        console.log(`[Babimo Webhook] Payout ${tx.reference} \xE9chou\xE9 \u2014 wallet rembours\xE9.`);
+      }
+    } else {
+      await db.update(transactionsTable).set({ status, gatewayReference, failureReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+    }
+    if (tx.type === "payout" && tx.reference.startsWith("REV-")) {
+      const reversementStatus = status === "success" ? "completed" : status === "failed" || status === "cancelled" || status === "expired" ? "failed" : "pending";
+      await db.update(reversementsTable).set({ status: reversementStatus, ...failureReason ? { failureReason } : {} }).where(eq(reversementsTable.reference, tx.reference));
+    }
+    if (tx.webhookUrl && tx.webhookSignatureKey) {
+      const event = tx.type === "payout" ? `payout.${status}` : `payin.${status}`;
+      const payload = {
+        event,
+        reference: tx.reference,
+        order_id: tx.orderId,
+        status,
+        amount: parseFloat(tx.amount),
+        fee: parseFloat(tx.fee),
+        net_amount: parseFloat(tx.netAmount),
+        currency: tx.currency,
+        country_code: tx.countryCode,
+        operator: tx.operator,
+        phone: tx.phone,
+        mode: tx.mode,
+        failure_reason: failureReason,
+        gateway: "babimo",
+        babimo_reference: gatewayReference,
+        created_at: tx.createdAt.toISOString(),
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      const payloadBody = JSON.stringify(payload);
+      const timestamp2 = Math.floor(Date.now() / 1e3);
+      try {
+        const response = await fetch(tx.webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-DrimPay-Signature": `t=${timestamp2},v1=${signMerchantPayload3(payloadBody, tx.webhookSignatureKey, timestamp2)}`,
+            "X-DrimPay-Timestamp": String(timestamp2),
+            "X-DrimPay-Event": event
+          },
+          body: payloadBody,
+          signal: AbortSignal.timeout(1e4)
+        });
+        await db.update(transactionsTable).set({
+          webhookLastStatusCode: response.status,
+          webhookLastBody: payloadBody,
+          webhookLastSentAt: /* @__PURE__ */ new Date(),
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq(transactionsTable.id, tx.id));
+      } catch (err) {
+        console.warn(`[Babimo Webhook] \xC9chec webhook marchand: ${err?.message ?? err}`);
+      }
+    }
+  } catch (err) {
+    console.error("[Babimo Webhook] Erreur traitement:", err?.message ?? err);
+  }
+});
+router16.get("/webhooks/babimo", (_req, res) => {
+  res.json({
+    service: "DrimPay",
+    webhook: "babimo",
+    status: "ready",
+    configured: isBabimoConfigured(),
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  });
+});
+var babimo_webhook_default = router16;
+
+// src/routes/support-admin.ts
+var import_express17 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
 init_mailer();
-var router16 = (0, import_express16.Router)();
+var router17 = (0, import_express17.Router)();
 var requireSupportAuth = async (req, res, next) => {
   if (req.session.supportAdminId) {
     next();
@@ -283053,7 +283674,7 @@ var requirePasswordChanged = async (req, res, next) => {
   }
   next();
 };
-router16.post("/support-admin/login", async (req, res) => {
+router17.post("/support-admin/login", async (req, res) => {
   const schema = external_exports2.object({ email: external_exports2.string().email(), password: external_exports2.string().min(1) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -283075,10 +283696,10 @@ router16.post("/support-admin/login", async (req, res) => {
   req.session.supportAdminId = user.id;
   res.json({ id: user.id, email: user.email, name: user.name, mustChangePassword: user.mustChangePassword });
 });
-router16.post("/support-admin/logout", (req, res) => {
+router17.post("/support-admin/logout", (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
-router16.get("/support-admin/me", requireSupportAuth, async (req, res) => {
+router17.get("/support-admin/me", requireSupportAuth, async (req, res) => {
   if (!req.session.supportAdminId && req.session.userId) {
     const [u2] = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, req.session.userId));
     if (!u2) {
@@ -283095,7 +283716,7 @@ router16.get("/support-admin/me", requireSupportAuth, async (req, res) => {
   }
   res.json(u);
 });
-router16.patch("/support-admin/change-password", requireSupportAuth, async (req, res) => {
+router17.patch("/support-admin/change-password", requireSupportAuth, async (req, res) => {
   const schema = external_exports2.object({
     currentPassword: external_exports2.string().min(1),
     newPassword: external_exports2.string().min(8, "Au moins 8 caract\xE8res")
@@ -283119,7 +283740,7 @@ router16.patch("/support-admin/change-password", requireSupportAuth, async (req,
   await db.update(supportUsersTable).set({ passwordHash: hash2, mustChangePassword: false }).where(eq(supportUsersTable.id, user.id));
   res.json({ success: true });
 });
-router16.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
   const [total] = await db.select({ c: count() }).from(contactSubmissionsTable);
@@ -283150,7 +283771,7 @@ router16.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged,
     recentMessages
   });
 });
-router16.get("/support-admin/messages", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/messages", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const { status, source, search } = req.query;
   const page = Math.max(1, parseInt(req.query.page ?? "1"));
   const limit = 20;
@@ -283171,7 +283792,7 @@ router16.get("/support-admin/messages", requireSupportAuth, requirePasswordChang
   const [totalRow] = await db.select({ c: count() }).from(contactSubmissionsTable).where(conditions.length ? and(...conditions) : void 0);
   res.json({ messages, total: Number(totalRow.c), page, pages: Math.ceil(Number(totalRow.c) / limit) });
 });
-router16.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [msg] = await db.select().from(contactSubmissionsTable).where(eq(contactSubmissionsTable.id, id));
   if (!msg) {
@@ -283187,7 +283808,7 @@ router16.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordC
   }).from(supportRepliesTable).leftJoin(supportUsersTable, eq(supportRepliesTable.supportUserId, supportUsersTable.id)).where(eq(supportRepliesTable.contactId, id)).orderBy(supportRepliesTable.sentAt);
   res.json({ ...msg, replies });
 });
-router16.patch("/support-admin/messages/:id/status", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.patch("/support-admin/messages/:id/status", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ status: external_exports2.enum(["unread", "in_progress", "replied", "closed"]) });
   const parsed = schema.safeParse(req.body);
@@ -283198,7 +283819,7 @@ router16.patch("/support-admin/messages/:id/status", requireSupportAuth, require
   await db.update(contactSubmissionsTable).set({ ticketStatus: parsed.data.status }).where(eq(contactSubmissionsTable.id, id));
   res.json({ success: true });
 });
-router16.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ body: external_exports2.string().min(1, "Le message ne peut pas \xEAtre vide") });
   const parsed = schema.safeParse(req.body);
@@ -283229,7 +283850,7 @@ router16.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePa
   res.json({ success: true, reply });
 });
 var SUPPORT_SETTING_KEYS = ["support_whatsapp", "support_email_1", "support_email_2", "support_hours", "support_telegram"];
-router16.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const { status, mode, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -283249,7 +283870,7 @@ router16.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePassw
     page: pageNum
   });
 });
-router16.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
   if (!exchange) {
@@ -283262,7 +283883,7 @@ router16.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requireP
   const toWallet = exchange.toWalletId ? (await db.select().from(walletsTable2).where(eq(walletsTable2.id, exchange.toWalletId)))[0] : null;
   res.json({ exchange, merchant: merchant ?? null, fromWallet: fromWallet ?? null, toWallet: toWallet ?? null });
 });
-router16.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const actorUser = req.session.supportAdminId ? (await db.select({ name: supportUsersTable.name }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId)))[0] : null;
   const actor = actorUser?.name ?? "Support";
@@ -283273,7 +283894,7 @@ router16.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth,
   }
   res.json({ ok: true });
 });
-router16.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const { reason } = req.body;
   if (!reason?.trim()) {
@@ -283289,12 +283910,12 @@ router16.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, 
   }
   res.json({ ok: true });
 });
-router16.get("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const rows = await db.select().from(supportSettingsTable);
   const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
   res.json(map2);
 });
-router16.patch("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.patch("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const updates = req.body;
   for (const key of SUPPORT_SETTING_KEYS) {
     if (key in updates) {
@@ -283303,11 +283924,11 @@ router16.patch("/support-admin/settings", requireSupportAuth, requirePasswordCha
   }
   res.json({ success: true });
 });
-router16.get("/support-admin/socials", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.get("/support-admin/socials", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const links = await db.select().from(socialLinksTable).orderBy(socialLinksTable.sortOrder);
   res.json(links);
 });
-router16.patch("/support-admin/socials/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.patch("/support-admin/socials/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ url: external_exports2.string(), active: external_exports2.boolean().optional() });
   const parsed = schema.safeParse(req.body);
@@ -283326,11 +283947,11 @@ var bannerSchema = external_exports2.object({
   buttonLink: external_exports2.string().optional(),
   active: external_exports2.boolean().default(true)
 });
-router16.get("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (_req, res) => {
+router17.get("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (_req, res) => {
   const rows = await db.select().from(globalBannersTable).orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
-router16.post("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.post("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const parsed = bannerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides" });
@@ -283339,7 +283960,7 @@ router16.post("/support-admin/global-banners", requireSupportAuth, requirePasswo
   const [banner] = await db.insert(globalBannersTable).values(parsed.data).returning();
   res.json(banner);
 });
-router16.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -283349,7 +283970,7 @@ router16.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, r
   const [updated] = await db.update(globalBannersTable).set({ active: !existing.active, updatedAt: /* @__PURE__ */ new Date() }).where(eq(globalBannersTable.id, id)).returning();
   res.json(updated);
 });
-router16.delete("/support-admin/global-banners/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router17.delete("/support-admin/global-banners/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select({ id: globalBannersTable.id }).from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -283359,22 +283980,23 @@ router16.delete("/support-admin/global-banners/:id", requireSupportAuth, require
   await db.delete(globalBannersTable).where(eq(globalBannersTable.id, id));
   res.json({ success: true });
 });
-router16.get("/support/config", async (req, res) => {
+router17.get("/support/config", async (req, res) => {
   const rows = await db.select().from(supportSettingsTable);
   const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
   res.json(map2);
 });
-var support_admin_default = router16;
+var support_admin_default = router17;
 
 // src/routes/pay.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-import crypto10 from "crypto";
+import crypto11 from "crypto";
 init_clapay();
 init_paydunya();
-var router17 = (0, import_express17.Router)();
+init_babimo();
+var router18 = (0, import_express18.Router)();
 var CURRENCY_MAP = {
   TG: "XOF",
   BJ: "XOF",
@@ -283394,7 +284016,7 @@ var DEFAULT_OPERATORS = {
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"]
 };
 var FEE_RATE2 = 0.035;
-router17.get("/pay/status/:reference", async (req, res) => {
+router18.get("/pay/status/:reference", async (req, res) => {
   const { reference } = req.params;
   if (!reference) {
     res.status(400).json({ error: "Reference required" });
@@ -283430,7 +284052,7 @@ router17.get("/pay/status/:reference", async (req, res) => {
     failureReason: tx.failureReason ?? void 0
   });
 });
-router17.get("/pay/:token", async (req, res) => {
+router18.get("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const [link] = await db.select().from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
   if (!link) {
@@ -283484,7 +284106,7 @@ router17.get("/pay/:token", async (req, res) => {
     operatorMaintenance
   });
 });
-router17.post("/pay/:token/attempt", async (req, res) => {
+router18.post("/pay/:token/attempt", async (req, res) => {
   const { token } = req.params;
   const { phone, amount, name: name2, email: email3, countryCode, operator } = req.body;
   const [link] = await db.select({ id: paymentLinksTable.id, userId: paymentLinksTable.userId }).from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
@@ -283507,7 +284129,7 @@ router17.post("/pay/:token/attempt", async (req, res) => {
   }).returning();
   res.json({ attemptId: attempt.id });
 });
-router17.patch("/pay/:token/attempt/:id", async (req, res) => {
+router18.patch("/pay/:token/attempt/:id", async (req, res) => {
   const attemptId = parseInt(req.params.id);
   const { status, transactionReference } = req.body;
   if (isNaN(attemptId)) {
@@ -283530,7 +284152,7 @@ var paySchema = external_exports2.object({
   customerEmail: external_exports2.string().optional(),
   operatorOtp: external_exports2.string().optional()
 });
-router17.post("/pay/:token", async (req, res) => {
+router18.post("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const parsed = paySchema.safeParse(req.body);
   if (!parsed.success) {
@@ -283574,8 +284196,8 @@ router17.post("/pay/:token", async (req, res) => {
   const [merchantInfo] = await db.select({ companyName: usersTable.companyName, webhookUrl: usersTable.webhookUrl }).from(usersTable).where(eq(usersTable.id, link.userId));
   const fee = Math.round(amount * FEE_RATE2 * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
-  const reference = `PL-${countryCode}-${crypto10.randomBytes(8).toString("hex").toUpperCase()}`;
-  const signatureKey = crypto10.randomBytes(32).toString("hex");
+  const reference = `PL-${countryCode}-${crypto11.randomBytes(8).toString("hex").toUpperCase()}`;
+  const signatureKey = crypto11.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 10 * 6e4);
   let [wallet] = await db.select().from(walletsTable).where(and(eq(walletsTable.userId, link.userId), eq(walletsTable.countryCode, countryCode)));
   if (!wallet) {
@@ -283625,14 +284247,14 @@ router17.post("/pay/:token", async (req, res) => {
     return;
   }
   try {
-    const { aggregator, client } = await resolveAggregator(countryCode, operator);
-    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
+    const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
+    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
     let externalRef;
     let paymentUrl = null;
     let ussdCode = null;
     if (aggregator === "clapay") {
-      const clapayRes = await client.initiatePayin({
+      const clapayRes = await client2.initiatePayin({
         amount,
         currency,
         country_code: countryCode,
@@ -283653,8 +284275,8 @@ router17.post("/pay/:token", async (req, res) => {
       externalRef = clapayRes.clapay_reference;
       paymentUrl = clapayRes.payment_url ?? null;
       ussdCode = clapayRes.ussd_code ?? null;
-    } else {
-      const pdRes = await client.initiatePayin({
+    } else if (aggregator === "paydunya") {
+      const pdRes = await client2.initiatePayin({
         amount,
         currency,
         country_code: countryCode,
@@ -283663,6 +284285,7 @@ router17.post("/pay/:token", async (req, res) => {
         reference,
         order_id: tx.orderId,
         callback_url: callbackUrl,
+        return_url: returnUrl,
         description: link.title,
         customer_name: customerName,
         customer_email: customerEmail,
@@ -283673,9 +284296,26 @@ router17.post("/pay/:token", async (req, res) => {
       }
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
+    } else {
+      const babimoRes = await client2.initiatePayin({
+        amount,
+        currency,
+        country_code: countryCode,
+        operator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        return_url: returnUrl,
+        operator_otp: operatorOtp
+      });
+      if (!babimoRes.success) {
+        throw new BabimoError(babimoRes.message ?? "\xC9chec Babimo", 502, babimoRes);
+      }
+      externalRef = babimoRes.babimo_reference;
+      paymentUrl = babimoRes.payment_url ?? null;
     }
     await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
-    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+    const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
       intervalMs: 4e3,
       maxDurationMs: 2e4
     });
@@ -283712,7 +284352,7 @@ router17.post("/pay/:token", async (req, res) => {
     });
   } catch (err) {
     const realReason = err?.message ?? String(err);
-    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : "?";
     res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference });
     await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     try {
@@ -283735,14 +284375,14 @@ router17.post("/pay/:token", async (req, res) => {
     }
   }
 });
-var pay_default = router17;
+var pay_default = router18;
 
 // src/routes/security.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-var router18 = (0, import_express18.Router)();
+var router19 = (0, import_express19.Router)();
 var AP2 = `/${process.env["ADMIN_ROUTE_SECRET"] ?? "admin"}`;
 function requireAdmin2(req, res, next) {
   if (!req.session?.userId || req.session?.role !== "admin") {
@@ -283751,7 +284391,7 @@ function requireAdmin2(req, res, next) {
   }
   next();
 }
-router18.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
+router19.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
   const limit = Math.min(parseInt(String(req.query.limit ?? "50")), 200);
   const offset = parseInt(String(req.query.offset ?? "0"));
   const riskLevel = req.query.riskLevel;
@@ -283776,11 +284416,11 @@ router18.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
   }).from(securityEventsTable);
   res.json({ events: rows, stats });
 });
-router18.get(AP2 + "/security/blocked-ips", requireAdmin2, async (req, res) => {
+router19.get(AP2 + "/security/blocked-ips", requireAdmin2, async (req, res) => {
   const rows = await db.select().from(blockedIpsTable).orderBy(desc(blockedIpsTable.createdAt));
   res.json(rows);
 });
-router18.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
+router19.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
   const schema = external_exports2.object({
     ip: external_exports2.string().min(3).max(64),
     reason: external_exports2.string().min(1).max(500),
@@ -283809,7 +284449,7 @@ router18.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router18.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, res) => {
+router19.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     res.status(400).json({ error: "ID invalide" });
@@ -283818,29 +284458,30 @@ router18.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, re
   await db.delete(blockedIpsTable).where(eq(blockedIpsTable.id, id));
   res.json({ ok: true });
 });
-var security_default = router18;
+var security_default = router19;
 
 // src/routes/index.ts
-var router19 = (0, import_express19.Router)();
-router19.use(auth_default);
-router19.use(health_default);
-router19.use(help_default);
-router19.use(stats_default);
-router19.use(blog_default);
-router19.use(jobs_default);
-router19.use(contact_default);
-router19.use(status_default);
-router19.use(partners_default);
-router19.use(countries_default);
-router19.use(dashboard_default);
-router19.use(v2payin_default);
-router19.use(admin_default);
-router19.use(clapay_webhook_default);
-router19.use(paydunya_webhook_default);
-router19.use(support_admin_default);
-router19.use(pay_default);
-router19.use(security_default);
-var routes_default = router19;
+var router20 = (0, import_express20.Router)();
+router20.use(auth_default);
+router20.use(health_default);
+router20.use(help_default);
+router20.use(stats_default);
+router20.use(blog_default);
+router20.use(jobs_default);
+router20.use(contact_default);
+router20.use(status_default);
+router20.use(partners_default);
+router20.use(countries_default);
+router20.use(dashboard_default);
+router20.use(v2payin_default);
+router20.use(admin_default);
+router20.use(clapay_webhook_default);
+router20.use(paydunya_webhook_default);
+router20.use(babimo_webhook_default);
+router20.use(support_admin_default);
+router20.use(pay_default);
+router20.use(security_default);
+var routes_default = router20;
 
 // src/lib/logger.ts
 var import_pino = __toESM(require_pino(), 1);
@@ -283893,7 +284534,7 @@ function subdomainMiddleware(req, res, next) {
 }
 
 // src/app.ts
-var app = (0, import_express20.default)();
+var app = (0, import_express21.default)();
 var isProd = process.env["NODE_ENV"] === "production";
 if (isProd) {
   app.set("trust proxy", true);
@@ -283932,7 +284573,7 @@ app.use(
     }),
     // Fallback: aléatoire à chaque démarrage si SESSION_SECRET absent.
     // Les sessions existantes seront invalidées mais le process ne crashe pas.
-    secret: sessionSecret || crypto11.randomBytes(32).toString("hex"),
+    secret: sessionSecret || crypto12.randomBytes(32).toString("hex"),
     resave: false,
     saveUninitialized: false,
     name: "dp_sid",
@@ -283963,8 +284604,8 @@ app.use(
     }
   })
 );
-app.use(import_express20.default.json({ limit: "2mb" }));
-app.use(import_express20.default.urlencoded({ extended: true, limit: "2mb" }));
+app.use(import_express21.default.json({ limit: "2mb" }));
+app.use(import_express21.default.urlencoded({ extended: true, limit: "2mb" }));
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
@@ -283992,7 +284633,7 @@ var frontendDist = path4.resolve(__dirname3, "../../drimpay/dist/public");
 var indexHtml = path4.join(frontendDist, "index.html");
 if (existsSync2(frontendDist) && existsSync2(indexHtml)) {
   app.use(
-    import_express20.default.static(frontendDist, {
+    import_express21.default.static(frontendDist, {
       maxAge: "7d",
       etag: true,
       index: false,

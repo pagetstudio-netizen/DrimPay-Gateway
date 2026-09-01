@@ -13,6 +13,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
+import { BabimoClient, BabimoError } from "../lib/babimo";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure, buildWalletsSummary } from "../lib/telegram";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
@@ -195,6 +196,7 @@ const initiateSchema = z.object({
   order_id: z.string().min(1).max(128),
   webhook_url: z.string().url().optional(),
   description: z.string().max(255).optional(),
+  operator_otp: z.string().max(32).optional(),
   metadata: z.record(z.string(), z.any()).optional(),
   expires_in_minutes: z.number().int().refine(v => [2, 5, 10].includes(v), {
     message: "expires_in_minutes must be 2, 5, or 10",
@@ -212,7 +214,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
   const mode: string = req.resolvedMode;
   const {
     amount, currency, country_code, operator, phone,
-    order_id, webhook_url, description, metadata, expires_in_minutes,
+    order_id, webhook_url, description, metadata, expires_in_minutes, operator_otp,
   } = parsed.data;
 
   // Check if the platform is in maintenance mode (admin toggle blocks all transactions)
@@ -378,7 +380,11 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       // Resolve aggregator from operator_aggregators table (per-operator routing)
       const { aggregator, client } = await resolveAggregator(country_code, operator);
 
-      const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
+      const webhookPath = aggregator === "clapay"
+        ? "/api/webhooks/clapay"
+        : aggregator === "paydunya"
+          ? "/api/webhooks/paydunya"
+          : "/api/webhooks/babimo";
       const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
 
       const gatewayPayload = {
@@ -411,17 +417,28 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         externalRef = clapayRes.clapay_reference;
         paymentUrl = clapayRes.payment_url ?? null;
         ussdCode = clapayRes.ussd_code ?? null;
-      } else {
+      } else if (aggregator === "paydunya") {
         const { PayDunyaClient } = await import("../lib/paydunya");
         const pdRes = await (client as InstanceType<typeof PayDunyaClient>).initiatePayin({
           amount, currency, country_code, operator, phone, reference, order_id,
-          callback_url: callbackUrl, description,
+          callback_url: callbackUrl, return_url: defaultReturnUrl, description,
         });
         if (!pdRes.success) {
           throw new PayDunyaError(pdRes.message ?? "Échec PayDunya", 502, pdRes);
         }
         externalRef = pdRes.paydunya_reference;
         paymentUrl = pdRes.payment_url ?? null;
+      } else {
+        const babimoRes = await (client as BabimoClient).initiatePayin({
+          amount, currency, country_code, operator, phone, reference,
+          callback_url: callbackUrl, return_url: defaultReturnUrl, description,
+          operator_otp,
+        });
+        if (!babimoRes.success) {
+          throw new BabimoError(babimoRes.message ?? "Échec Babimo", 502, babimoRes);
+        }
+        externalRef = babimoRes.babimo_reference;
+        paymentUrl = babimoRes.payment_url ?? null;
       }
 
       // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver
@@ -474,7 +491,13 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
 
     } catch (err: any) {
       const realReason = err?.message ?? String(err);
-      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+      const gatewayName = err instanceof ClapayError
+        ? "clapay"
+        : err instanceof PayDunyaError
+          ? "paydunya"
+          : err instanceof BabimoError
+            ? "babimo"
+            : "?";
       if (err instanceof AggregatorNotConfiguredError) {
         res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message: GENERIC_ERROR_MESSAGE, reference });
       } else {

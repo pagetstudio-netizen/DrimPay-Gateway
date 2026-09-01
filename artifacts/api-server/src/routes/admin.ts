@@ -1079,7 +1079,7 @@ router.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req: any
       const r = await (client as InstanceType<typeof ClapayClient>).getStatus(queryRef);
       gatewayStatus = r.status;
       if (r.clapay_reference) gatewayRef = r.clapay_reference;
-    } else {
+    } else if (aggregator === "paydunya") {
       const { PayDunyaClient } = await import("../lib/paydunya.js");
       const pd = client as InstanceType<typeof PayDunyaClient>;
       const r = await pd.getStatus(tx.externalRef);
@@ -1090,6 +1090,12 @@ router.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req: any
         : rs === "expired"   ? "expired"
         : "pending";
       if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
+    } else {
+      const { BabimoClient } = await import("../lib/babimo.js");
+      const babimo = client as InstanceType<typeof BabimoClient>;
+      const r = await babimo.getStatus(queryRef);
+      gatewayStatus = r.status;
+      if (r.babimo_reference) gatewayRef = r.babimo_reference;
     }
 
     // Si confirmé chez la passerelle → créditer via settlePayinStatus (idempotent)

@@ -35,9 +35,10 @@ import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate, uploadPaymentLinkImage } from "../lib/storage";
 import { withRetry } from "../lib/retry";
-import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable, listActiveOperators } from "../lib/aggregator-router";
+import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable, listActiveOperators, type AggregatorCode } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
+import { BabimoClient, BabimoError } from "../lib/babimo";
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 
@@ -498,6 +499,7 @@ const payinSchema = z.object({
   phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
   description: z.string().optional(),
   externalRef: z.string().optional(),
+  operatorOtp: z.string().max(32).optional(),
 });
 
 router.post("/dashboard/payin", requireAuth, async (req, res) => {
@@ -509,7 +511,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
 
   const userId = req.session.userId!;
   const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
-  const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
+    const { amount, currency, countryCode, operator, phone, description, externalRef, operatorOtp } = parsed.data;
 
   // Check operator availability
   const opCheck = await checkOperatorAvailable(countryCode, operator, "deposits");
@@ -557,16 +559,26 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
           amount, currency, country_code: countryCode, operator, phone, reference,
           order_id: reference, callback_url: callbackUrl, description,
           return_url: `${getFrontendBaseUrl()}/dashboard`,
+          operator_otp: operatorOtp,
         });
         if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
-      } else {
+      } else if (aggregator === "paydunya") {
         const r = await (client as PayDunyaClient).initiatePayin({
           amount, currency, country_code: countryCode, operator, phone, reference,
           order_id: reference, callback_url: callbackUrl, description,
+          return_url: `${getFrontendBaseUrl()}/dashboard`,
         });
         if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
+      } else {
+        const r = await (client as BabimoClient).initiatePayin({
+          amount, currency, country_code: countryCode, operator, phone, reference,
+          callback_url: callbackUrl, return_url: `${getFrontendBaseUrl()}/dashboard`,
+          operator_otp: operatorOtp,
+        });
+        if (!r.success) throw new BabimoError(r.message ?? "Échec Babimo", 502, r);
+        gatewayRef = r.babimo_reference;
       }
 
       // Polling du statut chez le fournisseur (payin = 4s × max 20s)
@@ -612,7 +624,13 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       });
     } catch (err: any) {
       const realReason = err?.message ?? String(err);
-      const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+      const gatewayName = err instanceof ClapayError
+        ? "clapay"
+        : err instanceof PayDunyaError
+          ? "paydunya"
+          : err instanceof BabimoError
+            ? "babimo"
+            : "?";
       await db.update(transactionsTable)
         .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
         .where(eq(transactionsTable.id, tx.id));
@@ -752,8 +770,8 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
       .returning();
 
     // ── Résoudre l'agrégateur AVANT tout, pour échouer vite si mal configuré ──
-    let aggregator: "clapay" | "paydunya";
-    let client: ClapayClient | PayDunyaClient;
+    let aggregator: AggregatorCode;
+    let client: ClapayClient | PayDunyaClient | BabimoClient;
     try {
       ({ aggregator, client } = await resolveAggregator(countryCode, operator, "payout"));
     } catch (err: any) {
@@ -792,7 +810,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         console.log(`[Payout] ← Réponse Clapay: ${JSON.stringify(r)}`);
         if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
-      } else {
+      } else if (aggregator === "paydunya") {
         const r = await (client as PayDunyaClient).initiatePayout({
           amount, currency, country_code: countryCode, operator, phone,
           reference, callback_url: callbackUrl, description,
@@ -800,6 +818,14 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         console.log(`[Payout] ← Réponse PayDunya: ${JSON.stringify(r)}`);
         if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
+      } else {
+        const r = await (client as BabimoClient).initiatePayout({
+          amount, currency, country_code: countryCode, operator, phone,
+          reference, callback_url: callbackUrl,
+        });
+        console.log(`[Payout] ← Réponse Babimo: ${JSON.stringify(r)}`);
+        if (!r.success) throw new BabimoError(r.message ?? "Échec Babimo", 502, r);
+        gatewayRef = r.babimo_reference;
       }
     } catch (err: any) {
       // Rollback balance on failure — la vraie raison fournisseur va en DB + Telegram admin uniquement.
@@ -1558,7 +1584,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
   }
 
   // Résoudre l'agrégateur AVANT de débiter (fail-fast si non configuré)
-  let resolvedAggregator: "clapay" | "paydunya";
+  let resolvedAggregator: AggregatorCode;
   try {
     const { aggregator } = await resolveAggregator(countryCode, operator, "payout");
     resolvedAggregator = aggregator;
@@ -2449,16 +2475,32 @@ router.post("/pay/:token", async (req, res) => {
       });
       if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);
       gatewayRef = r.clapay_reference;
-    } else {
+    } else if (aggregator === "paydunya") {
       const r = await (client as PayDunyaClient).initiatePayin({
         amount, currency: effectiveCurrency, country_code: effectiveCountry,
         operator: effectiveOperator, phone, reference, order_id: reference,
         callback_url: callbackUrl, description: `Payment link: ${link.title}`,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
         operator_otp: operatorOtp,
       });
       if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
       gatewayRef = r.paydunya_reference;
       gatewayPaymentUrl = r.payment_url;
+    } else {
+      const r = await (client as BabimoClient).initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
+        operator_otp: operatorOtp,
+      });
+      if (!r.success) throw new BabimoError(r.message ?? "Échec Babimo", 502, r);
+      gatewayRef = r.babimo_reference;
+      gatewayPaymentUrl = r.payment_url ?? undefined;
     }
 
     await db.update(transactionsTable)
@@ -2477,7 +2519,13 @@ router.post("/pay/:token", async (req, res) => {
     });
   } catch (err: any) {
     const realReason = err?.message ?? "Erreur agrégateur";
-    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "?";
+    const gatewayName = err instanceof ClapayError
+      ? "clapay"
+      : err instanceof PayDunyaError
+        ? "paydunya"
+        : err instanceof BabimoError
+          ? "babimo"
+          : "?";
     await db.update(transactionsTable)
       .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
       .where(eq(transactionsTable.id, tx.id));
@@ -2800,7 +2848,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               });
               if (!resp.success) throw new Error(resp.message ?? "Clapay failed");
               gatewayRef = resp.clapay_reference;
-            } else {
+            } else if (aggregator === "paydunya") {
               const resp = await (client as PayDunyaClient).initiatePayout({
                 amount: r.amount, currency: countryCurrency, country_code: r.countryCode,
                 operator: r.operator, phone: r.phone, reference: txRef,
@@ -2808,6 +2856,14 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               });
               if (!resp.success) throw new Error(resp.message ?? "PayDunya failed");
               gatewayRef = resp.paydunya_reference;
+            } else {
+              const resp = await (client as BabimoClient).initiatePayout({
+                amount: r.amount, currency: countryCurrency, country_code: r.countryCode,
+                operator: r.operator, phone: r.phone, reference: txRef,
+                callback_url: callbackUrl,
+              });
+              if (!resp.success) throw new Error(resp.message ?? "Babimo failed");
+              gatewayRef = resp.babimo_reference;
             }
             await db.update(transactionsTable)
               .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
@@ -3267,7 +3323,11 @@ router.post("/qr/:reference", async (req, res) => {
 
   try {
     const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
-    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : "/api/webhooks/paydunya";
+    const webhookPath = aggregator === "clapay"
+      ? "/api/webhooks/clapay"
+      : aggregator === "paydunya"
+        ? "/api/webhooks/paydunya"
+        : "/api/webhooks/babimo";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
 
     let externalRef: string;
@@ -3289,11 +3349,12 @@ router.post("/qr/:reference", async (req, res) => {
       externalRef = clapayRes.clapay_reference;
       paymentUrl = clapayRes.payment_url ?? null;
       ussdCode = clapayRes.ussd_code ?? null;
-    } else {
+    } else if (aggregator === "paydunya") {
       const pdRes = await (client as PayDunyaClient).initiatePayin({
         amount, currency: effectiveCurrency, country_code: effectiveCountry, operator: effectiveOperator, phone,
         reference: txReference, order_id: tx.orderId!,
         callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
         description: `QR payment: ${qr.name}`,
         operator_otp: operatorOtp,
       });
@@ -3302,6 +3363,23 @@ router.post("/qr/:reference", async (req, res) => {
       }
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
+    } else {
+      const babimoRes = await (client as BabimoClient).initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference: txReference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
+        operator_otp: operatorOtp,
+      });
+      if (!babimoRes.success) {
+        throw new BabimoError(babimoRes.message ?? "Échec Babimo", 502, babimoRes);
+      }
+      externalRef = babimoRes.babimo_reference;
+      paymentUrl = babimoRes.payment_url ?? null;
     }
 
     // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver
@@ -3356,13 +3434,19 @@ router.post("/qr/:reference", async (req, res) => {
 
   } catch (err: any) {
     const realReason = err?.message ?? String(err);
-    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : "clapay";
+    const gatewayName = err instanceof ClapayError
+      ? "clapay"
+      : err instanceof PayDunyaError
+        ? "paydunya"
+        : err instanceof BabimoError
+          ? "babimo"
+          : "?";
     res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference: txReference });
     await settlePayinStatus({
       txId: tx.id,
       status: "failed",
       failureReason: realReason,
-      gateway: gatewayName as "clapay" | "paydunya",
+      gateway: gatewayName as AggregatorCode,
     }).catch(() => {});
   }
 });
