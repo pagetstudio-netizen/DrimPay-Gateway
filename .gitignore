@@ -56,6 +56,9 @@ Thumbs.db
 # Allow the example file only
 !.env.example
 
+# Runtime diagnostics — may contain provider/database error details
+/logs/
+
 # Replit
 .cache/
 .local/

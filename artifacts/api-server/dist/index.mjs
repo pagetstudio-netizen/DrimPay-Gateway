@@ -5653,106 +5653,141 @@ var require_on_finished = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/content-type@1.0.5/node_modules/content-type/index.js
-var require_content_type = __commonJS({
-  "../../node_modules/.pnpm/content-type@1.0.5/node_modules/content-type/index.js"(exports) {
+// ../../node_modules/.pnpm/content-type@2.1.0/node_modules/content-type/dist/index.js
+var require_dist = __commonJS({
+  "../../node_modules/.pnpm/content-type@2.1.0/node_modules/content-type/dist/index.js"(exports) {
     "use strict";
-    var PARAM_REGEXP = /; *([!#$%&'*+.^_`|~0-9A-Za-z-]+) *= *("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^_`|~0-9A-Za-z-]+) */g;
-    var TEXT_REGEXP = /^[\u000b\u0020-\u007e\u0080-\u00ff]+$/;
-    var TOKEN_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
-    var QESC_REGEXP = /\\([\u000b\u0020-\u00ff])/g;
-    var QUOTE_REGEXP = /([\\"])/g;
-    var TYPE_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+    Object.defineProperty(exports, "__esModule", { value: true });
     exports.format = format;
     exports.parse = parse3;
+    var TEXT_REGEXP = /^[\u0009\u0020-\u007e\u0080-\u00ff]*$/;
+    var TOKEN_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+    var QUOTE_REGEXP = /[\\"]/g;
+    var TYPE_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+    var NullObject = /* @__PURE__ */ (() => {
+      const C = function() {
+      };
+      C.prototype = /* @__PURE__ */ Object.create(null);
+      return C;
+    })();
     function format(obj) {
-      if (!obj || typeof obj !== "object") {
-        throw new TypeError("argument obj is required");
-      }
-      var parameters = obj.parameters;
-      var type = obj.type;
+      const { type, parameters } = obj;
       if (!type || !TYPE_REGEXP.test(type)) {
-        throw new TypeError("invalid type");
+        throw new TypeError(`Invalid type: ${type}`);
       }
-      var string4 = type;
-      if (parameters && typeof parameters === "object") {
-        var param2;
-        var params = Object.keys(parameters).sort();
-        for (var i = 0; i < params.length; i++) {
-          param2 = params[i];
+      let result = type;
+      if (parameters) {
+        for (const param2 of Object.keys(parameters)) {
           if (!TOKEN_REGEXP.test(param2)) {
-            throw new TypeError("invalid parameter name");
+            throw new TypeError(`Invalid parameter name: ${param2}`);
           }
-          string4 += "; " + param2 + "=" + qstring(parameters[param2]);
+          result += `; ${param2}=${qstring(parameters[param2])}`;
         }
       }
-      return string4;
+      return result;
     }
-    function parse3(string4) {
-      if (!string4) {
-        throw new TypeError("argument string is required");
+    function parse3(header, options) {
+      const stopChar = options?.comma === true ? COMMA : 65536;
+      const len = header.length;
+      let index = skipOWS(header, options?.start ?? 0, len);
+      const valueStart = index;
+      index = skipValue(header, index, len, stopChar);
+      const valueEnd = trailingOWS(header, valueStart, index);
+      const type = header.slice(valueStart, valueEnd).toLowerCase();
+      if (options?.parameters === false) {
+        return { type, index, parameters: new NullObject() };
       }
-      var header = typeof string4 === "object" ? getcontenttype(string4) : string4;
-      if (typeof header !== "string") {
-        throw new TypeError("argument string is required to be a string");
-      }
-      var index = header.indexOf(";");
-      var type = index !== -1 ? header.slice(0, index).trim() : header.trim();
-      if (!TYPE_REGEXP.test(type)) {
-        throw new TypeError("invalid media type");
-      }
-      var obj = new ContentType(type.toLowerCase());
-      if (index !== -1) {
-        var key;
-        var match;
-        var value;
-        PARAM_REGEXP.lastIndex = index;
-        while (match = PARAM_REGEXP.exec(header)) {
-          if (match.index !== index) {
-            throw new TypeError("invalid parameter format");
-          }
-          index += match[0].length;
-          key = match[1].toLowerCase();
-          value = match[2];
-          if (value.charCodeAt(0) === 34) {
-            value = value.slice(1, -1);
-            if (value.indexOf("\\") !== -1) {
-              value = value.replace(QESC_REGEXP, "$1");
+      return parseParameters(header, type, index, len, stopChar);
+    }
+    var SP = 32;
+    var HTAB = 9;
+    var SEMI = 59;
+    var EQ = 61;
+    var DQUOTE = 34;
+    var BSLASH = 92;
+    var COMMA = 44;
+    function parseParameters(header, type, index, len, stopChar) {
+      const parameters = new NullObject();
+      parameter: while (index < len) {
+        if (header.charCodeAt(index) === stopChar)
+          break;
+        index = skipOWS(header, index + 1, len);
+        const keyStart = index;
+        while (index < len) {
+          const code = header.charCodeAt(index);
+          if (code === stopChar)
+            break parameter;
+          if (code === SEMI)
+            continue parameter;
+          if (code === EQ) {
+            const keyEnd = trailingOWS(header, keyStart, index);
+            const key = header.slice(keyStart, keyEnd).toLowerCase();
+            index = skipOWS(header, index + 1, len);
+            if (index < len && header.charCodeAt(index) === DQUOTE) {
+              index++;
+              let value = "";
+              while (index < len) {
+                const code2 = header.charCodeAt(index++);
+                if (code2 === DQUOTE) {
+                  index = skipValue(header, index, len, stopChar);
+                  if (parameters[key] === void 0)
+                    parameters[key] = value;
+                  break;
+                }
+                if (code2 === BSLASH && index < len) {
+                  value += header[index++];
+                  continue;
+                }
+                value += String.fromCharCode(code2);
+              }
+              continue parameter;
             }
+            const valueStart = index;
+            index = skipValue(header, index, len, stopChar);
+            if (parameters[key] === void 0) {
+              const valueEnd = trailingOWS(header, valueStart, index);
+              parameters[key] = header.slice(valueStart, valueEnd);
+            }
+            continue parameter;
           }
-          obj.parameters[key] = value;
-        }
-        if (index !== header.length) {
-          throw new TypeError("invalid parameter format");
+          index++;
         }
       }
-      return obj;
+      return { type, index, parameters };
     }
-    function getcontenttype(obj) {
-      var header;
-      if (typeof obj.getHeader === "function") {
-        header = obj.getHeader("content-type");
-      } else if (typeof obj.headers === "object") {
-        header = obj.headers && obj.headers["content-type"];
+    function skipValue(str, index, len, stopChar) {
+      while (index < len) {
+        const code = str.charCodeAt(index);
+        if (code === SEMI || code === stopChar)
+          break;
+        index++;
       }
-      if (typeof header !== "string") {
-        throw new TypeError("content-type header is missing from object");
-      }
-      return header;
+      return index;
     }
-    function qstring(val) {
-      var str = String(val);
-      if (TOKEN_REGEXP.test(str)) {
+    function skipOWS(header, index, len) {
+      while (index < len) {
+        const char2 = header.charCodeAt(index);
+        if (char2 !== SP && char2 !== HTAB)
+          break;
+        index++;
+      }
+      return index;
+    }
+    function trailingOWS(header, start, end) {
+      while (end > start) {
+        const char2 = header.charCodeAt(end - 1);
+        if (char2 !== SP && char2 !== HTAB)
+          break;
+        end--;
+      }
+      return end;
+    }
+    function qstring(str) {
+      if (TOKEN_REGEXP.test(str))
         return str;
-      }
-      if (str.length > 0 && !TEXT_REGEXP.test(str)) {
-        throw new TypeError("invalid parameter value");
-      }
-      return '"' + str.replace(QUOTE_REGEXP, "\\$1") + '"';
-    }
-    function ContentType(type) {
-      this.parameters = /* @__PURE__ */ Object.create(null);
-      this.type = type;
+      if (TEXT_REGEXP.test(str))
+        return `"${str.replace(QUOTE_REGEXP, "\\$&")}"`;
+      throw new TypeError(`Invalid parameter value: ${str}`);
     }
   }
 });
@@ -15332,11 +15367,11 @@ var require_media_typer = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/type-is@2.0.1/node_modules/type-is/index.js
+// ../../node_modules/.pnpm/type-is@2.1.0/node_modules/type-is/index.js
 var require_type_is = __commonJS({
-  "../../node_modules/.pnpm/type-is@2.0.1/node_modules/type-is/index.js"(exports, module) {
+  "../../node_modules/.pnpm/type-is@2.1.0/node_modules/type-is/index.js"(exports, module) {
     "use strict";
-    var contentType = require_content_type();
+    var contentType = require_dist();
     var mime = require_mime_types();
     var typer = require_media_typer();
     module.exports = typeofrequest;
@@ -15345,9 +15380,12 @@ var require_type_is = __commonJS({
     module.exports.normalize = normalize;
     module.exports.match = mimeMatch;
     function typeis(value, types_) {
+      if (value && typeof value === "object") {
+        value = value.headers["content-type"];
+      }
       var i;
       var types3 = types_;
-      var val = tryNormalizeType(value);
+      var val = normalizeType(value);
       if (!val) {
         return false;
       }
@@ -15413,25 +15451,19 @@ var require_type_is = __commonJS({
       return true;
     }
     function normalizeType(value) {
-      var type = contentType.parse(value).type;
+      if (!value) return null;
+      var type = contentType.parse(value, { parameters: false }).type;
       return typer.test(type) ? type : null;
-    }
-    function tryNormalizeType(value) {
-      try {
-        return value ? normalizeType(value) : null;
-      } catch (err) {
-        return null;
-      }
     }
   }
 });
 
-// ../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/utils.js
+// ../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/utils.js
 var require_utils = __commonJS({
-  "../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/utils.js"(exports, module) {
+  "../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/utils.js"(exports, module) {
     "use strict";
     var bytes = require_bytes();
-    var contentType = require_content_type();
+    var contentType = require_dist();
     var typeis = require_type_is();
     module.exports = {
       getCharset,
@@ -15439,11 +15471,9 @@ var require_utils = __commonJS({
       passthrough
     };
     function getCharset(req) {
-      try {
-        return (contentType.parse(req).parameters.charset || "").toLowerCase();
-      } catch {
-        return void 0;
-      }
+      const header = req.headers["content-type"];
+      if (!header) return void 0;
+      return contentType.parse(header).parameters.charset?.toLowerCase();
     }
     function typeChecker(type) {
       return function checkType(req) {
@@ -15454,15 +15484,18 @@ var require_utils = __commonJS({
       if (!defaultType) {
         throw new TypeError("defaultType must be provided");
       }
-      var inflate = options?.inflate !== false;
-      var limit = typeof options?.limit !== "number" ? bytes.parse(options?.limit || "100kb") : options?.limit;
-      var type = options?.type || defaultType;
-      var verify = options?.verify || false;
-      var defaultCharset = options?.defaultCharset || "utf-8";
+      const inflate = options?.inflate !== false;
+      const limit = typeof options?.limit === "undefined" || options?.limit === null ? 102400 : bytes.parse(options.limit);
+      const type = options?.type || defaultType;
+      const verify = options?.verify || false;
+      const defaultCharset = options?.defaultCharset || "utf-8";
+      if (limit === null) {
+        throw new TypeError(`option limit "${String(options.limit)}" is invalid`);
+      }
       if (verify !== false && typeof verify !== "function") {
         throw new TypeError("option verify must be function");
       }
-      var shouldParse = typeof type !== "function" ? typeChecker(type) : type;
+      const shouldParse = typeof type !== "function" ? typeChecker(type) : type;
       return {
         inflate,
         limit,
@@ -15477,9 +15510,9 @@ var require_utils = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/read.js
+// ../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/read.js
 var require_read = __commonJS({
-  "../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/read.js"(exports, module) {
+  "../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/read.js"(exports, module) {
     "use strict";
     var createError = require_http_errors();
     var getBody = require_raw_body();
@@ -15509,7 +15542,7 @@ var require_read = __commonJS({
         next();
         return;
       }
-      var encoding = null;
+      let encoding = null;
       if (options?.skipCharset !== true) {
         encoding = getCharset(req) || options.defaultCharset;
         if (!!options?.isValidCharset && !options.isValidCharset(encoding)) {
@@ -15521,10 +15554,10 @@ var require_read = __commonJS({
           return;
         }
       }
-      var length;
-      var opts = options;
-      var stream;
-      var verify = opts.verify;
+      let length;
+      const opts = options;
+      let stream;
+      const verify = opts.verify;
       try {
         stream = contentstream(req, debug, opts.inflate);
         length = stream.length;
@@ -15543,7 +15576,7 @@ var require_read = __commonJS({
       debug("read body");
       getBody(stream, opts, function(error40, body) {
         if (error40) {
-          var _error;
+          let _error;
           if (error40.type === "encoding.unsupported") {
             _error = createError(415, 'unsupported charset "' + encoding.toUpperCase() + '"', {
               charset: encoding.toLowerCase(),
@@ -15573,7 +15606,7 @@ var require_read = __commonJS({
             return;
           }
         }
-        var str = body;
+        let str = body;
         try {
           debug("parse body");
           str = typeof body !== "string" && encoding !== null ? iconv.decode(body, encoding) : body;
@@ -15589,8 +15622,8 @@ var require_read = __commonJS({
       });
     }
     function contentstream(req, debug, inflate) {
-      var encoding = (req.headers["content-encoding"] || "identity").toLowerCase();
-      var length = req.headers["content-length"];
+      const encoding = (req.headers["content-encoding"] || "identity").toLowerCase();
+      const length = req.headers["content-length"];
       debug('content-encoding "%s"', encoding);
       if (inflate === false && encoding !== "identity") {
         throw createError(415, "content encoding unsupported", {
@@ -15602,7 +15635,7 @@ var require_read = __commonJS({
         req.length = length;
         return req;
       }
-      var stream = createDecompressionStream(encoding, debug);
+      const stream = createDecompressionStream(encoding, debug);
       req.pipe(stream);
       return stream;
     }
@@ -15635,9 +15668,9 @@ var require_read = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/types/json.js
+// ../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/types/json.js
 var require_json = __commonJS({
-  "../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/types/json.js"(exports, module) {
+  "../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/types/json.js"(exports, module) {
     "use strict";
     var debug = require_src()("body-parser:json");
     var read = require_read();
@@ -15648,18 +15681,43 @@ var require_json = __commonJS({
     var JSON_SYNTAX_REGEXP = /#+/g;
     function json3(options) {
       const normalizedOptions = normalizeOptions(options, "application/json");
-      var reviver = options?.reviver;
-      var strict = options?.strict !== false;
-      function parse3(body) {
-        if (body.length === 0) {
-          return {};
-        }
-        if (strict) {
-          var first = firstchar(body);
+      const parse3 = createJsonParser(options);
+      const readOptions = {
+        ...normalizedOptions,
+        // assert charset per RFC 7159 sec 8.1
+        isValidCharset: (charset) => charset.slice(0, 4) === "utf-"
+      };
+      return function jsonParser(req, res, next) {
+        read(req, res, next, parse3, debug, readOptions);
+      };
+    }
+    function createJsonParser(options) {
+      const reviver = options?.reviver;
+      const strict = options?.strict !== false;
+      if (strict) {
+        return function parse3(body) {
+          if (body.length === 0) {
+            return {};
+          }
+          const first = firstchar(body);
           if (first !== "{" && first !== "[") {
             debug("strict violation");
             throw createStrictSyntaxError(body, first);
           }
+          try {
+            debug("parse json");
+            return JSON.parse(body, reviver);
+          } catch (e) {
+            throw normalizeJsonSyntaxError(e, {
+              message: e.message,
+              stack: e.stack
+            });
+          }
+        };
+      }
+      return function parse3(body) {
+        if (body.length === 0) {
+          return {};
         }
         try {
           debug("parse json");
@@ -15670,19 +15728,11 @@ var require_json = __commonJS({
             stack: e.stack
           });
         }
-      }
-      const readOptions = {
-        ...normalizedOptions,
-        // assert charset per RFC 7159 sec 8.1
-        isValidCharset: (charset) => charset.slice(0, 4) === "utf-"
-      };
-      return function jsonParser(req, res, next) {
-        read(req, res, next, parse3, debug, readOptions);
       };
     }
     function createStrictSyntaxError(str, char2) {
-      var index = str.indexOf(char2);
-      var partial2 = "";
+      const index = str.indexOf(char2);
+      let partial2 = "";
       if (index !== -1) {
         partial2 = str.substring(0, index) + JSON_SYNTAX_CHAR.repeat(str.length - index);
       }
@@ -15699,13 +15749,13 @@ var require_json = __commonJS({
       }
     }
     function firstchar(str) {
-      var match = FIRST_CHAR_REGEXP.exec(str);
+      const match = FIRST_CHAR_REGEXP.exec(str);
       return match ? match[1] : void 0;
     }
     function normalizeJsonSyntaxError(error40, obj) {
-      var keys = Object.getOwnPropertyNames(error40);
-      for (var i = 0; i < keys.length; i++) {
-        var key = keys[i];
+      const keys = Object.getOwnPropertyNames(error40);
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
         if (key !== "stack" && key !== "message") {
           delete error40[key];
         }
@@ -15717,9 +15767,9 @@ var require_json = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/types/raw.js
+// ../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/types/raw.js
 var require_raw = __commonJS({
-  "../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/types/raw.js"(exports, module) {
+  "../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/types/raw.js"(exports, module) {
     "use strict";
     var debug = require_src()("body-parser:raw");
     var read = require_read();
@@ -15739,9 +15789,9 @@ var require_raw = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/types/text.js
+// ../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/types/text.js
 var require_text = __commonJS({
-  "../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/types/text.js"(exports, module) {
+  "../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/types/text.js"(exports, module) {
     "use strict";
     var debug = require_src()("body-parser:text");
     var read = require_read();
@@ -18293,9 +18343,9 @@ var require_lib2 = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/types/urlencoded.js
+// ../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/types/urlencoded.js
 var require_urlencoded = __commonJS({
-  "../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/lib/types/urlencoded.js"(exports, module) {
+  "../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/lib/types/urlencoded.js"(exports, module) {
     "use strict";
     var createError = require_http_errors();
     var debug = require_src()("body-parser:urlencoded");
@@ -18308,10 +18358,7 @@ var require_urlencoded = __commonJS({
       if (normalizedOptions.defaultCharset !== "utf-8" && normalizedOptions.defaultCharset !== "iso-8859-1") {
         throw new TypeError("option defaultCharset must be either utf-8 or iso-8859-1");
       }
-      var queryparse = createQueryParser(options);
-      function parse3(body, encoding) {
-        return body.length ? queryparse(body, encoding) : {};
-      }
+      const parse3 = createQueryParser(options);
       const readOptions = {
         ...normalizedOptions,
         // assert charset
@@ -18322,11 +18369,11 @@ var require_urlencoded = __commonJS({
       };
     }
     function createQueryParser(options) {
-      var extended = Boolean(options?.extended);
-      var parameterLimit = options?.parameterLimit !== void 0 ? options?.parameterLimit : 1e3;
-      var charsetSentinel = options?.charsetSentinel;
-      var interpretNumericEntities = options?.interpretNumericEntities;
-      var depth = extended ? options?.depth !== void 0 ? options?.depth : 32 : 0;
+      const extended = Boolean(options?.extended);
+      let parameterLimit = options?.parameterLimit !== void 0 ? options?.parameterLimit : 1e3;
+      const charsetSentinel = options?.charsetSentinel;
+      const interpretNumericEntities = options?.interpretNumericEntities;
+      const depth = extended ? options?.depth !== void 0 ? options?.depth : 32 : 0;
       if (isNaN(parameterLimit) || parameterLimit < 1) {
         throw new TypeError("option parameterLimit must be a positive number");
       }
@@ -18336,15 +18383,16 @@ var require_urlencoded = __commonJS({
       if (isFinite(parameterLimit)) {
         parameterLimit = parameterLimit | 0;
       }
-      return function queryparse(body, encoding) {
-        var paramCount = parameterCount(body, parameterLimit);
+      return function parse3(body, encoding) {
+        if (!body.length) return {};
+        const paramCount = parameterCount(body, parameterLimit);
         if (paramCount === void 0) {
           debug("too many parameters");
           throw createError(413, "too many parameters", {
             type: "parameters.too.many"
           });
         }
-        var arrayLimit = extended ? Math.max(100, paramCount) : paramCount;
+        const arrayLimit = extended ? Math.max(100, paramCount) : paramCount;
         debug("parse " + (extended ? "extended " : "") + "urlencoding");
         try {
           return qs.parse(body, {
@@ -18381,31 +18429,15 @@ var require_urlencoded = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/index.js
+// ../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/index.js
 var require_body_parser = __commonJS({
-  "../../node_modules/.pnpm/body-parser@2.2.2/node_modules/body-parser/index.js"(exports, module) {
+  "../../node_modules/.pnpm/body-parser@2.3.0/node_modules/body-parser/index.js"(exports, module) {
     "use strict";
     exports = module.exports = bodyParser;
-    Object.defineProperty(exports, "json", {
-      configurable: true,
-      enumerable: true,
-      get: () => require_json()
-    });
-    Object.defineProperty(exports, "raw", {
-      configurable: true,
-      enumerable: true,
-      get: () => require_raw()
-    });
-    Object.defineProperty(exports, "text", {
-      configurable: true,
-      enumerable: true,
-      get: () => require_text()
-    });
-    Object.defineProperty(exports, "urlencoded", {
-      configurable: true,
-      enumerable: true,
-      get: () => require_urlencoded()
-    });
+    exports.json = require_json();
+    exports.raw = require_raw();
+    exports.text = require_text();
+    exports.urlencoded = require_urlencoded();
     function bodyParser() {
       throw new Error("The bodyParser() generic has been split into individual middleware to use instead.");
     }
@@ -18798,6 +18830,110 @@ var require_view = __commonJS({
       } catch (e) {
         return void 0;
       }
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/content-type@1.0.5/node_modules/content-type/index.js
+var require_content_type = __commonJS({
+  "../../node_modules/.pnpm/content-type@1.0.5/node_modules/content-type/index.js"(exports) {
+    "use strict";
+    var PARAM_REGEXP = /; *([!#$%&'*+.^_`|~0-9A-Za-z-]+) *= *("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^_`|~0-9A-Za-z-]+) */g;
+    var TEXT_REGEXP = /^[\u000b\u0020-\u007e\u0080-\u00ff]+$/;
+    var TOKEN_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+    var QESC_REGEXP = /\\([\u000b\u0020-\u00ff])/g;
+    var QUOTE_REGEXP = /([\\"])/g;
+    var TYPE_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+    exports.format = format;
+    exports.parse = parse3;
+    function format(obj) {
+      if (!obj || typeof obj !== "object") {
+        throw new TypeError("argument obj is required");
+      }
+      var parameters = obj.parameters;
+      var type = obj.type;
+      if (!type || !TYPE_REGEXP.test(type)) {
+        throw new TypeError("invalid type");
+      }
+      var string4 = type;
+      if (parameters && typeof parameters === "object") {
+        var param2;
+        var params = Object.keys(parameters).sort();
+        for (var i = 0; i < params.length; i++) {
+          param2 = params[i];
+          if (!TOKEN_REGEXP.test(param2)) {
+            throw new TypeError("invalid parameter name");
+          }
+          string4 += "; " + param2 + "=" + qstring(parameters[param2]);
+        }
+      }
+      return string4;
+    }
+    function parse3(string4) {
+      if (!string4) {
+        throw new TypeError("argument string is required");
+      }
+      var header = typeof string4 === "object" ? getcontenttype(string4) : string4;
+      if (typeof header !== "string") {
+        throw new TypeError("argument string is required to be a string");
+      }
+      var index = header.indexOf(";");
+      var type = index !== -1 ? header.slice(0, index).trim() : header.trim();
+      if (!TYPE_REGEXP.test(type)) {
+        throw new TypeError("invalid media type");
+      }
+      var obj = new ContentType(type.toLowerCase());
+      if (index !== -1) {
+        var key;
+        var match;
+        var value;
+        PARAM_REGEXP.lastIndex = index;
+        while (match = PARAM_REGEXP.exec(header)) {
+          if (match.index !== index) {
+            throw new TypeError("invalid parameter format");
+          }
+          index += match[0].length;
+          key = match[1].toLowerCase();
+          value = match[2];
+          if (value.charCodeAt(0) === 34) {
+            value = value.slice(1, -1);
+            if (value.indexOf("\\") !== -1) {
+              value = value.replace(QESC_REGEXP, "$1");
+            }
+          }
+          obj.parameters[key] = value;
+        }
+        if (index !== header.length) {
+          throw new TypeError("invalid parameter format");
+        }
+      }
+      return obj;
+    }
+    function getcontenttype(obj) {
+      var header;
+      if (typeof obj.getHeader === "function") {
+        header = obj.getHeader("content-type");
+      } else if (typeof obj.headers === "object") {
+        header = obj.headers && obj.headers["content-type"];
+      }
+      if (typeof header !== "string") {
+        throw new TypeError("content-type header is missing from object");
+      }
+      return header;
+    }
+    function qstring(val) {
+      var str = String(val);
+      if (TOKEN_REGEXP.test(str)) {
+        return str;
+      }
+      if (str.length > 0 && !TEXT_REGEXP.test(str)) {
+        throw new TypeError("invalid parameter value");
+      }
+      return '"' + str.replace(QUOTE_REGEXP, "\\$1") + '"';
+    }
+    function ContentType(type) {
+      this.parameters = /* @__PURE__ */ Object.create(null);
+      this.type = type;
     }
   }
 });
@@ -19885,7 +20021,7 @@ var require_is_promise = __commonJS({
 });
 
 // ../../node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/dist/index.js
-var require_dist = __commonJS({
+var require_dist2 = __commonJS({
   "../../node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/dist/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -20258,7 +20394,7 @@ var require_layer = __commonJS({
   "../../node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js"(exports, module) {
     "use strict";
     var isPromise = require_is_promise();
-    var pathRegexp = require_dist();
+    var pathRegexp = require_dist2();
     var debug = require_src()("router:layer");
     var deprecate = require_depd()("router");
     var TRAILING_SLASH_REGEXP = /\/+$/;
@@ -21776,6 +21912,100 @@ var require_accepts = __commonJS({
   }
 });
 
+// ../../node_modules/.pnpm/type-is@2.0.1/node_modules/type-is/index.js
+var require_type_is2 = __commonJS({
+  "../../node_modules/.pnpm/type-is@2.0.1/node_modules/type-is/index.js"(exports, module) {
+    "use strict";
+    var contentType = require_content_type();
+    var mime = require_mime_types();
+    var typer = require_media_typer();
+    module.exports = typeofrequest;
+    module.exports.is = typeis;
+    module.exports.hasBody = hasbody;
+    module.exports.normalize = normalize;
+    module.exports.match = mimeMatch;
+    function typeis(value, types_) {
+      var i;
+      var types3 = types_;
+      var val = tryNormalizeType(value);
+      if (!val) {
+        return false;
+      }
+      if (types3 && !Array.isArray(types3)) {
+        types3 = new Array(arguments.length - 1);
+        for (i = 0; i < types3.length; i++) {
+          types3[i] = arguments[i + 1];
+        }
+      }
+      if (!types3 || !types3.length) {
+        return val;
+      }
+      var type;
+      for (i = 0; i < types3.length; i++) {
+        if (mimeMatch(normalize(type = types3[i]), val)) {
+          return type[0] === "+" || type.indexOf("*") !== -1 ? val : type;
+        }
+      }
+      return false;
+    }
+    function hasbody(req) {
+      return req.headers["transfer-encoding"] !== void 0 || !isNaN(req.headers["content-length"]);
+    }
+    function typeofrequest(req, types_) {
+      if (!hasbody(req)) return null;
+      var types3 = arguments.length > 2 ? Array.prototype.slice.call(arguments, 1) : types_;
+      var value = req.headers["content-type"];
+      return typeis(value, types3);
+    }
+    function normalize(type) {
+      if (typeof type !== "string") {
+        return false;
+      }
+      switch (type) {
+        case "urlencoded":
+          return "application/x-www-form-urlencoded";
+        case "multipart":
+          return "multipart/*";
+      }
+      if (type[0] === "+") {
+        return "*/*" + type;
+      }
+      return type.indexOf("/") === -1 ? mime.lookup(type) : type;
+    }
+    function mimeMatch(expected, actual) {
+      if (expected === false) {
+        return false;
+      }
+      var actualParts = actual.split("/");
+      var expectedParts = expected.split("/");
+      if (actualParts.length !== 2 || expectedParts.length !== 2) {
+        return false;
+      }
+      if (expectedParts[0] !== "*" && expectedParts[0] !== actualParts[0]) {
+        return false;
+      }
+      if (expectedParts[1].slice(0, 2) === "*+") {
+        return expectedParts[1].length <= actualParts[1].length + 1 && expectedParts[1].slice(1) === actualParts[1].slice(1 - expectedParts[1].length);
+      }
+      if (expectedParts[1] !== "*" && expectedParts[1] !== actualParts[1]) {
+        return false;
+      }
+      return true;
+    }
+    function normalizeType(value) {
+      var type = contentType.parse(value).type;
+      return typer.test(type) ? type : null;
+    }
+    function tryNormalizeType(value) {
+      try {
+        return value ? normalizeType(value) : null;
+      } catch (err) {
+        return null;
+      }
+    }
+  }
+});
+
 // ../../node_modules/.pnpm/fresh@2.0.0/node_modules/fresh/index.js
 var require_fresh = __commonJS({
   "../../node_modules/.pnpm/fresh@2.0.0/node_modules/fresh/index.js"(exports, module) {
@@ -21935,7 +22165,7 @@ var require_request = __commonJS({
     "use strict";
     var accepts = require_accepts();
     var isIP2 = __require("node:net").isIP;
-    var typeis = require_type_is();
+    var typeis = require_type_is2();
     var http = __require("node:http");
     var fresh = require_fresh();
     var parseRange = require_range_parser();
@@ -28288,7 +28518,7 @@ var require_parser = __commonJS({
 });
 
 // ../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/dist/index.js
-var require_dist2 = __commonJS({
+var require_dist3 = __commonJS({
   "../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/dist/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -28391,7 +28621,7 @@ var require_connection = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/connection.js"(exports, module) {
     "use strict";
     var EventEmitter = __require("events").EventEmitter;
-    var { parse: parse3, serialize } = require_dist2();
+    var { parse: parse3, serialize } = require_dist3();
     var { getStream, getSecureStream } = require_stream();
     var flushBuffer = serialize.flush();
     var syncBuffer = serialize.sync();
@@ -30319,7 +30549,7 @@ var require_lib5 = __commonJS({
     var utils = require_utils4();
     var Pool4 = require_pg_pool();
     var TypeOverrides2 = require_type_overrides();
-    var { DatabaseError: DatabaseError2 } = require_dist2();
+    var { DatabaseError: DatabaseError2 } = require_dist3();
     var { escapeIdentifier: escapeIdentifier2, escapeLiteral: escapeLiteral2 } = require_utils4();
     var poolFactory = (Client3) => {
       return class BoundPool extends Pool4 {
@@ -68132,7 +68362,7 @@ var require_sha256 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/standardwebhooks@1.0.0/node_modules/standardwebhooks/dist/index.js
-var require_dist3 = __commonJS({
+var require_dist4 = __commonJS({
   "../../node_modules/.pnpm/standardwebhooks@1.0.0/node_modules/standardwebhooks/dist/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -68244,8 +68474,8 @@ var require_webhook = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Webhook = exports.WebhookVerificationError = void 0;
-    var standardwebhooks_1 = require_dist3();
-    var standardwebhooks_2 = require_dist3();
+    var standardwebhooks_1 = require_dist4();
+    var standardwebhooks_2 = require_dist4();
     Object.defineProperty(exports, "WebhookVerificationError", { enumerable: true, get: function() {
       return standardwebhooks_2.WebhookVerificationError;
     } });
@@ -68378,7 +68608,7 @@ var require_models = __commonJS({
 });
 
 // ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/index.js
-var require_dist4 = __commonJS({
+var require_dist5 = __commonJS({
   "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/index.js"(exports) {
     "use strict";
     var __createBinding2 = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
@@ -68722,7 +68952,7 @@ var import_svix, version3, ApiKeys, AutomationRuns, Automations, Batch, Broadcas
 var init_dist = __esm({
   "../../node_modules/.pnpm/resend@6.12.3/node_modules/resend/dist/index.mjs"() {
     init_postal_mime();
-    import_svix = __toESM(require_dist4(), 1);
+    import_svix = __toESM(require_dist5(), 1);
     version3 = "6.12.3";
     ApiKeys = class {
       constructor(resend) {
@@ -70600,9 +70830,9 @@ var init_mailer = __esm({
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/address-error.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/address-error.js
 var require_address_error = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/address-error.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/address-error.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.AddressError = void 0;
@@ -70617,14 +70847,18 @@ var require_address_error = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/common.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/common.js
 var require_common2 = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/common.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/common.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.isInSubnet = isInSubnet;
+    exports.isHostInSubnet = isHostInSubnet;
+    exports.isGloballyReachable = isGloballyReachable;
+    exports.offsetBigInt = offsetBigInt;
     exports.isCorrect = isCorrect;
     exports.prefixLengthFromMask = prefixLengthFromMask;
+    exports.assertByteArray = assertByteArray;
     exports.numberToPaddedHex = numberToPaddedHex;
     exports.stringToPaddedHex = stringToPaddedHex;
     exports.testBit = testBit;
@@ -70633,13 +70867,36 @@ var require_common2 = __commonJS({
       if (this.subnetMask < address.subnetMask) {
         return false;
       }
-      if (this.mask(address.subnetMask) === address.mask()) {
-        return true;
+      return isHostInSubnet.call(this, address);
+    }
+    function isHostInSubnet(address) {
+      return this.mask(address.subnetMask) === address.mask();
+    }
+    function isGloballyReachable(entries) {
+      let best = null;
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        if (entry.reachable !== null && isHostInSubnet.call(this, entry.subnet) && (best === null || entry.subnet.subnetMask > best.subnet.subnetMask)) {
+          best = entry;
+        }
       }
-      return false;
+      return best === null ? true : best.reachable;
+    }
+    function offsetBigInt(value, n, bits, family) {
+      if (typeof n === "number" && !Number.isSafeInteger(n)) {
+        throw new address_error_1.AddressError(`${family} offset must be an integer`);
+      }
+      if (typeof n !== "number" && typeof n !== "bigint") {
+        throw new address_error_1.AddressError(`${family} offset must be an integer`);
+      }
+      const result = value + BigInt(n);
+      if (result < BigInt(0) || result > (BigInt(1) << BigInt(bits)) - BigInt(1)) {
+        throw new address_error_1.AddressError(`${family} offset leaves the address space`);
+      }
+      return result;
     }
     function isCorrect(defaultBits) {
-      return function() {
+      return function isCorrectForm() {
         if (this.addressMinusSuffix !== this.correctForm()) {
           return false;
         }
@@ -70663,6 +70920,16 @@ var require_common2 = __commonJS({
       }
       return firstZero;
     }
+    function assertByteArray(bytes, byteCount, family, minimum) {
+      if (bytes.length !== byteCount) {
+        throw new address_error_1.AddressError(`${family} addresses require exactly ${byteCount} bytes`);
+      }
+      for (let i = 0; i < bytes.length; i++) {
+        if (!Number.isInteger(bytes[i]) || bytes[i] < minimum || bytes[i] > 255) {
+          throw new address_error_1.AddressError(`All bytes must be integers between ${minimum} and 255`);
+        }
+      }
+    }
     function numberToPaddedHex(number4) {
       return number4.toString(16).padStart(2, "0");
     }
@@ -70680,22 +70947,50 @@ var require_common2 = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/v4/constants.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/v4/constants.js
 var require_constants2 = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/v4/constants.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/v4/constants.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.RE_SUBNET_STRING = exports.RE_ADDRESS = exports.GROUPS = exports.BITS = void 0;
+    exports.SPECIAL_PURPOSE = exports.RE_SUBNET_STRING = exports.RE_ADDRESS = exports.GROUPS = exports.BITS = void 0;
     exports.BITS = 32;
     exports.GROUPS = 4;
-    exports.RE_ADDRESS = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/g;
+    exports.RE_ADDRESS = /^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$/g;
     exports.RE_SUBNET_STRING = /\/\d{1,2}$/;
+    exports.SPECIAL_PURPOSE = [
+      ["0.0.0.0/8", "This network", false],
+      ["0.0.0.0/32", "This host on this network", false],
+      ["10.0.0.0/8", "Private-Use", false],
+      ["100.64.0.0/10", "Shared Address Space", false],
+      ["127.0.0.0/8", "Loopback", false],
+      ["169.254.0.0/16", "Link Local", false],
+      ["172.16.0.0/12", "Private-Use", false],
+      ["192.0.0.0/24", "IETF Protocol Assignments", false],
+      ["192.0.0.0/29", "IPv4 Service Continuity Prefix", false],
+      ["192.0.0.8/32", "IPv4 dummy address", false],
+      ["192.0.0.9/32", "Port Control Protocol Anycast", true],
+      ["192.0.0.10/32", "Traversal Using Relays around NAT Anycast", true],
+      ["192.0.0.170/32", "NAT64/DNS64 Discovery", false],
+      ["192.0.0.171/32", "NAT64/DNS64 Discovery", false],
+      ["192.0.2.0/24", "Documentation (TEST-NET-1)", false],
+      ["192.31.196.0/24", "AS112-v4", true],
+      ["192.52.193.0/24", "AMT", true],
+      ["192.88.99.0/24", "Deprecated (6to4 Relay Anycast)", null],
+      ["192.88.99.2/32", "6a44-relay anycast address", false],
+      ["192.168.0.0/16", "Private-Use", false],
+      ["192.175.48.0/24", "Direct Delegation AS112 Service", true],
+      ["198.18.0.0/15", "Benchmarking", false],
+      ["198.51.100.0/24", "Documentation (TEST-NET-2)", false],
+      ["203.0.113.0/24", "Documentation (TEST-NET-3)", false],
+      ["240.0.0.0/4", "Reserved", false],
+      ["255.255.255.255/32", "Limited Broadcast", false]
+    ];
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/ipv4.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/ipv4.js
 var require_ipv4 = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/ipv4.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/ipv4.js"(exports) {
     "use strict";
     var __createBinding2 = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
@@ -70732,6 +71027,7 @@ var require_ipv4 = __commonJS({
     var isCorrect4 = common.isCorrect(constants.BITS);
     var Address4 = class _Address4 {
       constructor(address) {
+        this.addressMinusSuffix = "";
         this.groups = constants.GROUPS;
         this.parsedAddress = [];
         this.parsedSubnet = "";
@@ -70740,6 +71036,7 @@ var require_ipv4 = __commonJS({
         this.v4 = true;
         this.isCorrect = isCorrect4;
         this.isInSubnet = common.isInSubnet;
+        this.isHostInSubnet = common.isHostInSubnet;
         this.address = address;
         const subnet = constants.RE_SUBNET_STRING.exec(address);
         if (subnet) {
@@ -70765,7 +71062,7 @@ var require_ipv4 = __commonJS({
         try {
           new _Address4(address);
           return true;
-        } catch (e) {
+        } catch {
           return false;
         }
       }
@@ -70777,6 +71074,9 @@ var require_ipv4 = __commonJS({
        */
       parse(address) {
         const groups = address.split(".");
+        if (groups.some((group) => /^0\d/.test(group))) {
+          throw new address_error_1.AddressError("IPv4 addresses can't have leading zeroes.");
+        }
         if (!address.match(constants.RE_ADDRESS)) {
           throw new address_error_1.AddressError("Invalid IPv4 address.");
         }
@@ -70956,6 +71256,33 @@ var require_ipv4 = __commonJS({
         return _Address4.fromBigInt(this._startAddress() + adjust);
       }
       /**
+       * Returns the address `n` addresses after this one (or before, when `n` is
+       * negative), keeping this address's subnet mask. Throws `AddressError` when
+       * the result would fall outside the IPv4 address space or `n` is not an
+       * integer.
+       * @param {number | bigint} n
+       * @returns {Address4}
+       * @example
+       * new Address4('10.0.0.0/24').offset(1).correctForm(); // '10.0.0.1'
+       */
+      offset(n) {
+        return _Address4.fromBigInt(common.offsetBigInt(this.bigInt(), n, constants.BITS, "IPv4")).withSubnetMask(this.subnetMask);
+      }
+      /**
+       * Returns the network that follows this address's network: the address after
+       * {@link endAddress}, with the same subnet mask. Throws `AddressError` when
+       * this network is the last one in the address space.
+       * @returns {Address4}
+       * @example
+       * new Address4('10.0.0.0/24').nextNetwork().networkForm(); // '10.0.1.0/24'
+       */
+      nextNetwork() {
+        return _Address4.fromBigInt(common.offsetBigInt(this._endAddress(), 1, constants.BITS, "IPv4")).withSubnetMask(this.subnetMask);
+      }
+      withSubnetMask(subnetMask) {
+        return new _Address4(`${this.correctForm()}/${subnetMask}`);
+      }
+      /**
        * Helper function getting end address.
        * @returns {bigint}
        */
@@ -71012,31 +71339,32 @@ var require_ipv4 = __commonJS({
        * @returns {Address4}
        */
       static fromBigInt(bigInt) {
-        if (bigInt < 0n || bigInt > 0xffffffffn) {
+        if (bigInt < BigInt(0) || bigInt > BigInt(4294967295)) {
           throw new address_error_1.AddressError("IPv4 BigInt must be in the range 0 to 2**32 - 1");
         }
         return _Address4.fromHex(bigInt.toString(16).padStart(8, "0"));
       }
       /**
-       * Convert a byte array to an Address4 object.
+       * Convert a byte array to an Address4 object. Throws `AddressError` unless
+       * given exactly 4 integers from 0 to 255. Signed bytes are rejected, so
+       * this differs from `Address6.fromByteArray`, which folds them; the two
+       * contracts converge on this stricter form in the next major version.
        *
        * To convert from a Node.js `Buffer`, spread it: `Address4.fromByteArray([...buf])`.
        * @param {Array<number>} bytes - an array of 4 bytes (0-255)
        * @returns {Address4}
        */
       static fromByteArray(bytes) {
-        if (bytes.length !== 4) {
-          throw new address_error_1.AddressError("IPv4 addresses require exactly 4 bytes");
-        }
-        for (let i = 0; i < bytes.length; i++) {
-          if (!Number.isInteger(bytes[i]) || bytes[i] < 0 || bytes[i] > 255) {
-            throw new address_error_1.AddressError("All bytes must be integers between 0 and 255");
-          }
-        }
+        common.assertByteArray(bytes, 4, "IPv4", 0);
         return this.fromUnsignedByteArray(bytes);
       }
       /**
-       * Convert an unsigned byte array to an Address4 object
+       * Convert an unsigned byte array to an Address4 object. Throws
+       * `AddressError` unless given exactly 4 bytes, and rejects values outside
+       * 0 to 255 when parsing the resulting address.
+       *
+       * To convert from a Node.js `Buffer`, spread it:
+       * `Address4.fromUnsignedByteArray([...buf])`.
        * @param {Array<number>} bytes - an array of 4 unsigned bytes (0-255)
        * @returns {Address4}
        */
@@ -71066,7 +71394,8 @@ var require_ipv4 = __commonJS({
         return this.binaryZeroPad().slice(start, end);
       }
       /**
-       * Return the reversed ip6.arpa form of the address
+       * Return the reversed in-addr.arpa form of the address, e.g.
+       * `42.2.0.192.in-addr.arpa.` for `192.0.2.42`.
        * @param {Object} options
        * @param {boolean} options.omitSuffix - omit the "in-addr.arpa" suffix
        * @returns {String}
@@ -71086,49 +71415,86 @@ var require_ipv4 = __commonJS({
        * @returns {boolean}
        */
       isMulticast() {
-        return this.isInSubnet(MULTICAST_V4);
+        return this.isHostInSubnet(MULTICAST_V4);
       }
       /**
        * Returns true if the address is in one of the [RFC 1918](https://datatracker.ietf.org/doc/html/rfc1918) private address ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
        * @returns {boolean}
        */
       isPrivate() {
-        return PRIVATE_V4.some((subnet) => this.isInSubnet(subnet));
+        return PRIVATE_V4.some((subnet) => this.isHostInSubnet(subnet));
       }
       /**
        * Returns true if the address is in the loopback range `127.0.0.0/8` ([RFC 1122](https://datatracker.ietf.org/doc/html/rfc1122)).
        * @returns {boolean}
        */
       isLoopback() {
-        return this.isInSubnet(LOOPBACK_V4);
+        return this.isHostInSubnet(LOOPBACK_V4);
       }
       /**
        * Returns true if the address is in the link-local range `169.254.0.0/16` ([RFC 3927](https://datatracker.ietf.org/doc/html/rfc3927)).
        * @returns {boolean}
        */
       isLinkLocal() {
-        return this.isInSubnet(LINK_LOCAL_V4);
+        return this.isHostInSubnet(LINK_LOCAL_V4);
       }
       /**
        * Returns true if the address is the unspecified address `0.0.0.0`.
        * @returns {boolean}
        */
       isUnspecified() {
-        return this.isInSubnet(UNSPECIFIED_V4);
+        return this.isHostInSubnet(UNSPECIFIED_V4);
       }
       /**
        * Returns true if the address is the limited broadcast address `255.255.255.255` ([RFC 919](https://datatracker.ietf.org/doc/html/rfc919)).
        * @returns {boolean}
        */
       isBroadcast() {
-        return this.isInSubnet(BROADCAST_V4);
+        return this.isHostInSubnet(BROADCAST_V4);
       }
       /**
        * Returns true if the address is in the carrier-grade NAT range `100.64.0.0/10` ([RFC 6598](https://datatracker.ietf.org/doc/html/rfc6598)).
        * @returns {boolean}
        */
       isCGNAT() {
-        return this.isInSubnet(CGNAT_V4);
+        return this.isHostInSubnet(CGNAT_V4);
+      }
+      /**
+       * Returns true if the address is in one of the documentation ranges
+       * `192.0.2.0/24`, `198.51.100.0/24`, or `203.0.113.0/24` ([RFC 5737](https://datatracker.ietf.org/doc/html/rfc5737)).
+       * @returns {boolean}
+       */
+      isDocumentation() {
+        return DOCUMENTATION_V4.some((subnet) => this.isHostInSubnet(subnet));
+      }
+      /**
+       * Returns true if the address is in the benchmarking range `198.18.0.0/15` ([RFC 2544](https://datatracker.ietf.org/doc/html/rfc2544)).
+       * @returns {boolean}
+       */
+      isBenchmarking() {
+        return this.isHostInSubnet(BENCHMARKING_V4);
+      }
+      /**
+       * Returns true if the address is in the reserved range `240.0.0.0/4` ([RFC 1112](https://datatracker.ietf.org/doc/html/rfc1112)),
+       * which includes the limited broadcast address.
+       * @returns {boolean}
+       */
+      isReserved() {
+        return this.isHostInSubnet(RESERVED_V4);
+      }
+      /**
+       * Returns true if the address is globally reachable: not multicast, and not
+       * in any block the [IANA IPv4 Special-Purpose Address Registry](https://www.iana.org/assignments/iana-ipv4-special-registry/)
+       * marks as not globally reachable. That covers everything the individual
+       * classifiers name (private, loopback, link-local, CGNAT, unspecified,
+       * broadcast, documentation, benchmarking, reserved) and the blocks they do
+       * not, such as `0.0.0.0/8` and the IETF protocol assignments in
+       * `192.0.0.0/24`. This is the single predicate to use where a request must
+       * not reach an internal or special-purpose destination; see SECURITY.md.
+       * @returns {boolean}
+       */
+      isGlobal() {
+        return !this.isMulticast() && common.isGloballyReachable.call(this, SPECIAL_PURPOSE_V4);
       }
       /**
        * Returns a zero-padded base-2 string representation of the address
@@ -71141,12 +71507,17 @@ var require_ipv4 = __commonJS({
         return this._binaryZeroPad;
       }
       /**
-       * Groups an IPv4 address for inclusion at the end of an IPv6 address
+       * Groups an IPv4 address for inclusion at the end of an IPv6 address.
+       *
+       * Returns an HTML fragment: each half of the address is wrapped in a
+       * `<span>` carrying the group classes an address-inspector UI hovers on.
+       * The address content is HTML-escaped; anything you concatenate around it
+       * is your responsibility.
        * @returns {String}
        */
       groupForV6() {
         const segments = this.parsedAddress;
-        return this.address.replace(constants.RE_ADDRESS, `<span class="hover-group group-v4 group-6">${segments.slice(0, 2).join(".")}</span>.<span class="hover-group group-v4 group-7">${segments.slice(2, 4).join(".")}</span>`);
+        return this.correctForm().replace(constants.RE_ADDRESS, `<span class="hover-group group-v4 group-6">${segments.slice(0, 2).join(".")}</span>.<span class="hover-group group-v4 group-7">${segments.slice(2, 4).join(".")}</span>`);
       }
     };
     exports.Address4 = Address4;
@@ -71161,15 +71532,26 @@ var require_ipv4 = __commonJS({
     var UNSPECIFIED_V4 = new Address4("0.0.0.0/32");
     var BROADCAST_V4 = new Address4("255.255.255.255/32");
     var CGNAT_V4 = new Address4("100.64.0.0/10");
+    var DOCUMENTATION_V4 = [
+      new Address4("192.0.2.0/24"),
+      new Address4("198.51.100.0/24"),
+      new Address4("203.0.113.0/24")
+    ];
+    var BENCHMARKING_V4 = new Address4("198.18.0.0/15");
+    var RESERVED_V4 = new Address4("240.0.0.0/4");
+    var SPECIAL_PURPOSE_V4 = constants.SPECIAL_PURPOSE.map(([cidr2, , reachable]) => ({
+      subnet: new Address4(cidr2),
+      reachable
+    }));
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/v6/constants.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/v6/constants.js
 var require_constants3 = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/v6/constants.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/v6/constants.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.RE_URL_WITH_PORT = exports.RE_URL = exports.RE_ZONE_STRING = exports.RE_SUBNET_STRING = exports.RE_BAD_ADDRESS = exports.RE_BAD_CHARACTERS = exports.TYPES = exports.SCOPES = exports.GROUPS = exports.BITS = void 0;
+    exports.SPECIAL_PURPOSE = exports.RE_URL_WITH_PORT = exports.RE_URL = exports.RE_ZONE_STRING = exports.RE_SUBNET_STRING = exports.RE_BAD_ADDRESS = exports.RE_BAD_CHARACTERS = exports.TYPES = exports.SCOPES = exports.GROUPS = exports.BITS = void 0;
     exports.BITS = 128;
     exports.GROUPS = 8;
     exports.SCOPES = {
@@ -71203,11 +71585,18 @@ var require_constants3 = __commonJS({
       "ff05::1:3/128": "Multicast (All DHCP servers in this site)",
       "::/128": "Unspecified",
       "::1/128": "Loopback",
+      "::ffff:0:0/96": "IPv4-mapped",
       "ff00::/8": "Multicast",
       "fe80::/10": "Link-local unicast",
       "fc00::/7": "Unique local",
+      "2001::/32": "Teredo",
+      "2001:2::/48": "Benchmarking",
       "2002::/16": "6to4",
       "2001:db8::/32": "Documentation",
+      "3fff::/20": "Documentation",
+      "100::/64": "Discard-only",
+      "fec0::/10": "Site-local unicast (deprecated)",
+      "::/96": "IPv4-compatible (deprecated)",
       "64:ff9b::/96": "NAT64 (well-known)",
       "64:ff9b:1::/48": "NAT64 (local-use)"
     };
@@ -71215,14 +71604,41 @@ var require_constants3 = __commonJS({
     exports.RE_BAD_ADDRESS = /([0-9a-f]{5,}|:{3,}|[^:]:$|^:[^:]|\/$)/gi;
     exports.RE_SUBNET_STRING = /\/\d{1,3}(?=%|$)/;
     exports.RE_ZONE_STRING = /%.*$/;
-    exports.RE_URL = /^\[{0,1}([0-9a-f:]+)\]{0,1}/;
-    exports.RE_URL_WITH_PORT = /\[([0-9a-f:]+)\]:([0-9]{1,5})/;
+    exports.RE_URL = /^(?:\[([0-9a-f:.]+)\]|([0-9a-f:.]+))(?:[/?#].*)?$/i;
+    exports.RE_URL_WITH_PORT = /^\[([0-9a-f:.]+)\]:([0-9]{1,5})(?:[/?#].*)?$/i;
+    exports.SPECIAL_PURPOSE = [
+      ["::1/128", "Loopback Address", false],
+      ["::/128", "Unspecified Address", false],
+      ["::ffff:0:0/96", "IPv4-mapped Address", false],
+      ["64:ff9b::/96", "IPv4-IPv6 Translat.", true],
+      ["64:ff9b:1::/48", "IPv4-IPv6 Translat.", false],
+      ["100::/64", "Discard-Only Address Block", false],
+      ["100:0:0:1::/64", "Dummy IPv6 Prefix", false],
+      ["2001::/23", "IETF Protocol Assignments", false],
+      ["2001::/32", "TEREDO", false],
+      ["2001:1::1/128", "Port Control Protocol Anycast", true],
+      ["2001:1::2/128", "Traversal Using Relays around NAT Anycast", true],
+      ["2001:1::3/128", "DNS-SD Service Registration Protocol Anycast", true],
+      ["2001:2::/48", "Benchmarking", false],
+      ["2001:3::/32", "AMT", true],
+      ["2001:4:112::/48", "AS112-v6", true],
+      ["2001:10::/28", "Deprecated (previously ORCHID)", null],
+      ["2001:20::/28", "ORCHIDv2", true],
+      ["2001:30::/28", "Drone Remote ID Protocol Entity Tags (DETs) Prefix", true],
+      ["2001:db8::/32", "Documentation", false],
+      ["2002::/16", "6to4", false],
+      ["2620:4f:8000::/48", "Direct Delegation AS112 Service", true],
+      ["3fff::/20", "Documentation", false],
+      ["5f00::/16", "Segment Routing (SRv6) SIDs", false],
+      ["fc00::/7", "Unique-Local", false],
+      ["fe80::/10", "Link-Local Unicast", false]
+    ];
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/v6/helpers.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/v6/helpers.js
 var require_helpers = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/v6/helpers.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/v6/helpers.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.escapeHtml = escapeHtml2;
@@ -71259,9 +71675,9 @@ var require_helpers = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/v6/regular-expressions.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/v6/regular-expressions.js
 var require_regular_expressions = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/v6/regular-expressions.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/v6/regular-expressions.js"(exports) {
     "use strict";
     var __createBinding2 = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
@@ -71351,9 +71767,9 @@ var require_regular_expressions = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/ipv6.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/ipv6.js
 var require_ipv6 = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/ipv6.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/ipv6.js"(exports) {
     "use strict";
     var __createBinding2 = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
@@ -71438,6 +71854,7 @@ var require_ipv6 = __commonJS({
         this.v4 = false;
         this.zone = "";
         this.isInSubnet = common.isInSubnet;
+        this.isHostInSubnet = common.isHostInSubnet;
         this.isCorrect = isCorrect6;
         if (optionalGroups === void 0) {
           this.groups = constants6.GROUPS;
@@ -71454,7 +71871,8 @@ var require_ipv6 = __commonJS({
             throw new address_error_1.AddressError("Invalid subnet mask.");
           }
           address = address.replace(constants6.RE_SUBNET_STRING, "");
-        } else if (/\//.test(address)) {
+        }
+        if (/\//.test(address)) {
           throw new address_error_1.AddressError("Invalid subnet mask.");
         }
         const zone = constants6.RE_ZONE_STRING.exec(address);
@@ -71476,7 +71894,7 @@ var require_ipv6 = __commonJS({
         try {
           new _Address6(address);
           return true;
-        } catch (e) {
+        } catch {
           return false;
         }
       }
@@ -71491,7 +71909,7 @@ var require_ipv6 = __commonJS({
        * address.correctForm(); // '::e8:d4a5:1000'
        */
       static fromBigInt(bigInt) {
-        if (bigInt < 0n || bigInt > (1n << BigInt(constants6.BITS)) - 1n) {
+        if (bigInt < BigInt(0) || bigInt > (BigInt(1) << BigInt(constants6.BITS)) - BigInt(1)) {
           throw new address_error_1.AddressError("IPv6 BigInt must be in the range 0 to 2**128 - 1");
         }
         const hex = bigInt.toString(16).padStart(32, "0");
@@ -71512,46 +71930,43 @@ var require_ipv6 = __commonJS({
        * addressAndPort.port; // 8080
        */
       static fromURL(url2) {
+        var _a;
         let host;
         let port2 = null;
         let result;
-        if (url2.indexOf("[") !== -1 && url2.indexOf("]:") !== -1) {
-          result = constants6.RE_URL_WITH_PORT.exec(url2);
+        let error40;
+        const stripped = url2.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+        if (stripped.indexOf("[") !== -1 && stripped.indexOf("]:") !== -1) {
+          error40 = "failed to parse address with port";
+          result = constants6.RE_URL_WITH_PORT.exec(stripped);
           if (result === null) {
-            return {
-              error: "failed to parse address with port",
-              address: null,
-              port: null
-            };
+            return { error: error40, address: null, port: null };
           }
           host = result[1];
           port2 = result[2];
-        } else if (url2.indexOf("/") !== -1) {
-          url2 = url2.replace(/^[a-z0-9]+:\/\//, "");
-          result = constants6.RE_URL.exec(url2);
-          if (result === null) {
-            return {
-              error: "failed to parse address from URL",
-              address: null,
-              port: null
-            };
-          }
-          host = result[1];
         } else {
-          host = url2;
+          error40 = "failed to parse address from URL";
+          result = constants6.RE_URL.exec(stripped);
+          if (result === null) {
+            return { error: error40, address: null, port: null };
+          }
+          host = (_a = result[1]) !== null && _a !== void 0 ? _a : result[2];
         }
         if (port2) {
           port2 = parseInt(port2, 10);
-          if (port2 < 0 || port2 > 65536) {
+          if (port2 < 0 || port2 > 65535) {
             port2 = null;
           }
         } else {
           port2 = null;
         }
-        return {
-          address: new _Address6(host),
-          port: port2
-        };
+        let address;
+        try {
+          address = new _Address6(host);
+        } catch {
+          return { error: error40, address: null, port: null };
+        }
+        return { address, port: port2 };
       }
       /**
        * Construct an `Address6` from an address and a hex subnet mask given as
@@ -71649,26 +72064,30 @@ var require_ipv6 = __commonJS({
         return new _Address6(`::ffff:${address4.correctForm()}/${mask6}`);
       }
       /**
-       * Return an address from ip6.arpa form
+       * Return an address from ip6.arpa form. A full 32-nibble name gives a /128
+       * address; a shorter name, as used for a delegated reverse zone, gives the
+       * network it covers, with a subnet mask of four bits per nibble, so
+       * `fromArpa(x.reverseForm())` round-trips {@link reverseForm} for any prefix.
        * @param {string} arpaFormAddress - an 'ip6.arpa' form address
        * @returns {Adress6}
        * @example
        * var address = Address6.fromArpa(e.f.f.f.3.c.2.6.f.f.f.e.6.6.8.e.1.0.6.7.9.4.e.c.0.0.0.0.1.0.0.2.ip6.arpa.)
        * address.correctForm(); // '2001:0:ce49:7601:e866:efff:62c3:fffe'
+       * Address6.fromArpa('8.b.d.0.1.0.0.2.ip6.arpa.').networkForm(); // '2001:db8::/32'
        */
       static fromArpa(arpaFormAddress) {
-        let address = arpaFormAddress.replace(/(\.ip6\.arpa)?\.$/, "");
-        const semicolonAmount = 7;
-        if (address.length !== 63) {
+        const nibbles = arpaFormAddress.replace(/(\.ip6\.arpa)?\.?$/, "");
+        if (!/^[0-9a-f](\.[0-9a-f]){0,31}$/i.test(nibbles)) {
           throw new address_error_1.AddressError("Invalid 'ip6.arpa' form.");
         }
-        const parts = address.split(".").reverse();
-        for (let i = semicolonAmount; i > 0; i--) {
-          const insertIndex = i * 4;
-          parts.splice(insertIndex, 0, ":");
+        const reversed = nibbles.split(".").reverse();
+        const subnetMask = reversed.length * 4;
+        const hex = reversed.join("").padEnd(32, "0");
+        const groups = [];
+        for (let i = 0; i < constants6.GROUPS; i++) {
+          groups.push(hex.slice(i * 4, (i + 1) * 4));
         }
-        address = parts.join("");
-        return new _Address6(address);
+        return new _Address6(`${groups.join(":")}/${subnetMask}`);
       }
       /**
        * Return the Microsoft UNC transcription of the address
@@ -71732,21 +72151,52 @@ var require_ipv6 = __commonJS({
         return BigInt(`0b${this.mask() + "1".repeat(constants6.BITS - this.subnetMask)}`);
       }
       /**
-       * The last address in the range given by this address' subnet
-       * Often referred to as the Broadcast
+       * The last address in the range given by this address's subnet. IPv6 has
+       * no broadcast address, so this is an ordinary assignable address (in a
+       * 64-bit-interface-identifier subnet it falls inside the reserved
+       * subnet-anycast block of [RFC 2526](https://datatracker.ietf.org/doc/html/rfc2526)).
        * @returns {Address6}
        */
       endAddress() {
         return _Address6.fromBigInt(this._endAddress());
       }
       /**
-       * The last host address in the range given by this address's subnet ie
-       * the last address prior to the Broadcast Address
+       * The address one before {@link endAddress}. This is the IPv6 counterpart
+       * of the IPv4 method that skips the broadcast address; IPv6 has no broadcast,
+       * so it drops exactly one address and does not model the 128 reserved
+       * subnet-anycast identifiers of [RFC 2526](https://datatracker.ietf.org/doc/html/rfc2526).
        * @returns {Address6}
        */
       endAddressExclusive() {
         const adjust = BigInt("1");
         return _Address6.fromBigInt(this._endAddress() - adjust);
+      }
+      /**
+       * Returns the address `n` addresses after this one (or before, when `n` is
+       * negative), keeping this address's subnet mask. Throws `AddressError` when
+       * the result would fall outside the IPv6 address space or `n` is not an
+       * integer.
+       * @param {number | bigint} n
+       * @returns {Address6}
+       * @example
+       * new Address6('2001:db8::/64').offset(1).correctForm(); // '2001:db8::1'
+       */
+      offset(n) {
+        return _Address6.fromBigInt(common.offsetBigInt(this.bigInt(), n, constants6.BITS, "IPv6")).withSubnetMask(this.subnetMask);
+      }
+      /**
+       * Returns the network that follows this address's network: the address after
+       * {@link endAddress}, with the same subnet mask. Throws `AddressError` when
+       * this network is the last one in the address space.
+       * @returns {Address6}
+       * @example
+       * new Address6('2001:db8::/64').nextNetwork().networkForm(); // '2001:db8:0:1::/64'
+       */
+      nextNetwork() {
+        return _Address6.fromBigInt(common.offsetBigInt(this._endAddress(), 1, constants6.BITS, "IPv6")).withSubnetMask(this.subnetMask);
+      }
+      withSubnetMask(subnetMask) {
+        return new _Address6(`${this.correctForm()}/${subnetMask}`);
       }
       /**
        * The hex form of the subnet mask, e.g. `ffff:ffff:ffff:ffff::` for a
@@ -71804,7 +72254,7 @@ var require_ipv6 = __commonJS({
       getType() {
         for (let i = 0; i < TYPE_SUBNETS.length; i++) {
           const entry = TYPE_SUBNETS[i];
-          if (this.isInSubnet(entry[0])) {
+          if (this.isHostInSubnet(entry[0])) {
             return entry[1];
           }
         }
@@ -71937,18 +72387,20 @@ var require_ipv6 = __commonJS({
         }
         const groups = address.split(":");
         const lastGroup = groups.slice(-1)[0];
+        const v4Octets = lastGroup.split(".");
+        if (v4Octets.length === constants4.GROUPS && v4Octets.every((octet) => /^\d{1,3}$/.test(octet))) {
+          if (v4Octets.some((octet) => /^0\d/.test(octet))) {
+            const highlighted = v4Octets.map(spanLeadingZeroes4).join(".");
+            const prefix = groups.slice(0, -1).map(helpers.escapeHtml).join(":");
+            const separator = groups.length > 1 ? ":" : "";
+            throw new address_error_1.AddressError("IPv4 addresses can't have leading zeroes.", `${prefix}${separator}${highlighted}`);
+          }
+        }
         const address4 = lastGroup.match(constants4.RE_ADDRESS);
         if (address4) {
           this.parsedAddress4 = address4[0];
-          this.address4 = new ipv4_1.Address4(this.parsedAddress4);
-          for (let i = 0; i < this.address4.groups; i++) {
-            if (/^0[0-9]+/.test(this.address4.parsedAddress[i])) {
-              const highlighted = this.address4.parsedAddress.map(spanLeadingZeroes4).join(".");
-              const prefix = groups.slice(0, -1).map(helpers.escapeHtml).join(":");
-              const separator = groups.length > 1 ? ":" : "";
-              throw new address_error_1.AddressError("IPv4 addresses can't have leading zeroes.", `${prefix}${separator}${highlighted}`);
-            }
-          }
+          const v4Suffix = this.subnetMask >= 96 ? `/${this.subnetMask - 96}` : "";
+          this.address4 = new ipv4_1.Address4(`${this.parsedAddress4}${v4Suffix}`);
           this.v4 = true;
           groups[groups.length - 1] = this.address4.toGroup6();
           address = groups.join(":");
@@ -72032,7 +72484,11 @@ var require_ipv6 = __commonJS({
         return BigInt(`0x${this.parsedAddress.map(paddedHex).join("")}`);
       }
       /**
-       * Return the last two groups of this address as an IPv4 address string
+       * Return the last two groups of this address as an IPv4 address string.
+       * If this address carries a CIDR prefix that covers the trailing 32 bits
+       * (i.e. `subnetMask >= 96`), the resulting `Address4` inherits the
+       * corresponding v4 prefix (`subnetMask - 96`); otherwise it defaults to
+       * `/32`.
        * @returns {Address4}
        * @example
        * var address = new Address6('2001:4860:4001::1825:bf11');
@@ -72040,7 +72496,16 @@ var require_ipv6 = __commonJS({
        */
       to4() {
         const binary = this.binaryZeroPad().split("");
-        return ipv4_1.Address4.fromHex(BigInt(`0b${binary.slice(96, 128).join("")}`).toString(16).padStart(8, "0"));
+        const hex = BigInt(`0b${binary.slice(96, 128).join("")}`).toString(16).padStart(8, "0");
+        if (this.subnetMask >= 96) {
+          const v4Mask = this.subnetMask - 96;
+          const groups = [];
+          for (let i = 0; i < 8; i += 2) {
+            groups.push(parseInt(hex.slice(i, i + 2), 16));
+          }
+          return new ipv4_1.Address4(`${groups.join(".")}/${v4Mask}`);
+        }
+        return ipv4_1.Address4.fromHex(hex);
       }
       /**
        * Return the v4-in-v6 form of the address
@@ -72054,7 +72519,7 @@ var require_ipv6 = __commonJS({
         if (!/:$/.test(correct)) {
           infix = ":";
         }
-        return correct + infix + address4.address;
+        return correct + infix + address4.correctForm();
       }
       /**
        * Decodes the Teredo tunneling fields embedded in this address. Returns the
@@ -72144,7 +72609,14 @@ var require_ipv6 = __commonJS({
           bits = prefixBits.slice(0, 96) + v4Bits;
         } else {
           const beforeU = 64 - pl;
-          bits = prefixBits.slice(0, pl) + v4Bits.slice(0, beforeU) + "00000000" + v4Bits.slice(beforeU) + "0".repeat(128 - 72 - (32 - beforeU));
+          bits = [
+            prefixBits.slice(0, pl),
+            v4Bits.slice(0, beforeU),
+            // Bits 64 to 71 are the reserved u octet and are always zero.
+            "00000000",
+            v4Bits.slice(beforeU),
+            "0".repeat(128 - 72 - (32 - beforeU))
+          ].join("");
         }
         const hex = BigInt(`0b${bits}`).toString(16).padStart(32, "0");
         const groups = [];
@@ -72167,7 +72639,7 @@ var require_ipv6 = __commonJS({
         if (pl !== 32 && pl !== 40 && pl !== 48 && pl !== 56 && pl !== 64 && pl !== 96) {
           throw new address_error_1.AddressError("NAT64 prefix length must be 32, 40, 48, 56, 64, or 96");
         }
-        if (!this.isInSubnet(prefix6)) {
+        if (!this.isHostInSubnet(prefix6)) {
           return null;
         }
         const bits = this.binaryZeroPad();
@@ -72191,9 +72663,7 @@ var require_ipv6 = __commonJS({
        * @returns {Array}
        */
       toByteArray() {
-        const valueWithoutPadding = this.bigInt().toString(16);
-        const leadingPad = "0".repeat(valueWithoutPadding.length % 2);
-        const value = `${leadingPad}${valueWithoutPadding}`;
+        const value = this.bigInt().toString(16).padStart(constants6.BITS / 4, "0");
         const bytes = [];
         for (let i = 0, length = value.length; i < length; i += 2) {
           bytes.push(parseInt(value.substring(i, i + 2), 16));
@@ -72212,19 +72682,28 @@ var require_ipv6 = __commonJS({
       /**
        * Convert a byte array to an Address6 object.
        *
+       * Accepts unsigned bytes (0 to 255) or signed bytes (-128 to 127, as an
+       * `Int8Array` or a Java `byte[]` holds them), folding signed values to their
+       * unsigned equivalent. Throws `AddressError` unless given exactly 16
+       * integers from -128 to 255.
+       *
        * To convert from a Node.js `Buffer`, spread it: `Address6.fromByteArray([...buf])`.
        * @returns {Address6}
        */
       static fromByteArray(bytes) {
+        common.assertByteArray(bytes, 16, "IPv6", -128);
         return this.fromUnsignedByteArray(bytes.map(unsignByte));
       }
       /**
        * Convert an unsigned byte array to an Address6 object.
        *
+       * Throws `AddressError` unless given exactly 16 integers from 0 to 255.
+       *
        * To convert from a Node.js `Buffer`, spread it: `Address6.fromUnsignedByteArray([...buf])`.
        * @returns {Address6}
        */
       static fromUnsignedByteArray(bytes) {
+        common.assertByteArray(bytes, 16, "IPv6", 0);
         const BYTE_MAX = BigInt("256");
         let result = BigInt("0");
         let multiplier = BigInt("1");
@@ -72242,20 +72721,28 @@ var require_ipv6 = __commonJS({
         return this.addressMinusSuffix === this.canonicalForm();
       }
       /**
-       * Returns true if the address is a link local address, false otherwise
+       * Returns true if the address is a link-local unicast address in `fe80::/10`
+       * ([RFC 4291 §2.4](https://datatracker.ietf.org/doc/html/rfc4291#section-2.4))
+       * or an IPv4-mapped / NAT64 address whose embedded IPv4 address is link-local
+       * (`169.254.0.0/16`, e.g. `::ffff:169.254.169.254`), false otherwise.
        * @returns {boolean}
        */
       isLinkLocal() {
-        if (this.getBitsBase2(0, 64) === "1111111010000000000000000000000000000000000000000000000000000000") {
-          return true;
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isLinkLocal();
         }
-        return false;
+        return this.isHostInSubnet(LINK_LOCAL_SUBNET);
       }
       /**
        * Returns true if the address is a multicast address, false otherwise
        * @returns {boolean}
        */
       isMulticast() {
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isMulticast();
+        }
         const type = this.getType();
         return type === "Multicast" || type.startsWith("Multicast ");
       }
@@ -72278,27 +72765,54 @@ var require_ipv6 = __commonJS({
        * @returns {boolean}
        */
       isMapped4() {
-        return this.isInSubnet(IPV4_MAPPED_SUBNET);
+        return this.isHostInSubnet(IPV4_MAPPED_SUBNET);
+      }
+      /**
+       * If this address embeds a routable IPv4 address — i.e. it is IPv4-mapped
+       * (`::ffff:0:0/96`) or sits in the NAT64 well-known prefix (`64:ff9b::/96`,
+       * [RFC 6052](https://datatracker.ietf.org/doc/html/rfc6052)) — return that
+       * embedded address as an {@link Address4}; otherwise return null.
+       *
+       * The special-property checks (`isLoopback`, `isLinkLocal`, `isMulticast`,
+       * `isUnspecified`, `isPrivate`, `isCGNAT`, `isBroadcast`) call this first and
+       * delegate to the embedded {@link Address4} when present, so a literal such as
+       * `::ffff:127.0.0.1` is classified by what it actually reaches (loopback)
+       * rather than by its IPv6 wrapper (which `getType()` reports as IPv4-mapped).
+       * This matters wherever the checks back a trust-boundary decision (e.g. an
+       * SSRF allow/deny filter): without normalization, `::ffff:10.0.0.1`,
+       * `::ffff:169.254.169.254`, `64:ff9b::7f00:1`, etc. would all read as
+       * non-internal.
+       * @returns {Address4 | null}
+       */
+      embeddedIPv4() {
+        if (this.isMapped4() || this.isHostInSubnet(NAT64_WELL_KNOWN_SUBNET)) {
+          return this.to4();
+        }
+        return null;
       }
       /**
        * Returns true if the address is a Teredo address, false otherwise
        * @returns {boolean}
        */
       isTeredo() {
-        return this.isInSubnet(TEREDO_SUBNET);
+        return this.isHostInSubnet(TEREDO_SUBNET);
       }
       /**
        * Returns true if the address is a 6to4 address, false otherwise
        * @returns {boolean}
        */
       is6to4() {
-        return this.isInSubnet(SIX_TO_FOUR_SUBNET);
+        return this.isHostInSubnet(SIX_TO_FOUR_SUBNET);
       }
       /**
        * Returns true if the address is a loopback address, false otherwise
        * @returns {boolean}
        */
       isLoopback() {
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isLoopback();
+        }
         return this.getType() === "Loopback";
       }
       /**
@@ -72306,13 +72820,72 @@ var require_ipv6 = __commonJS({
        * @returns {boolean}
        */
       isULA() {
-        return this.isInSubnet(ULA_SUBNET);
+        return this.isHostInSubnet(ULA_SUBNET);
+      }
+      /**
+       * Returns true if the address is private, i.e. a Unique Local Address in
+       * `fc00::/7` ([RFC 4193](https://datatracker.ietf.org/doc/html/rfc4193)), an
+       * address in the NAT64 local-use range `64:ff9b:1::/48`
+       * ([RFC 8215](https://datatracker.ietf.org/doc/html/rfc8215)), or an
+       * IPv4-mapped / NAT64 well-known address whose embedded IPv4 address is in
+       * one of the [RFC 1918](https://datatracker.ietf.org/doc/html/rfc1918)
+       * private ranges (e.g. `::ffff:10.0.0.1`). This is the IPv6 counterpart to
+       * {@link Address4.isPrivate}; use it instead of {@link isULA} when you need to
+       * catch mapped RFC 1918 addresses as well as native ULAs.
+       *
+       * The local-use NAT64 range is reported private as a whole rather than by
+       * its embedded IPv4 address: an operator may carve a prefix of any RFC 6052
+       * length out of `64:ff9b:1::/48`, so the same bits decode to different IPv4
+       * addresses under different deployments and no single decoding is correct.
+       * Use {@link toAddress4Nat64} with the deployment's prefix to decode one.
+       * @returns {boolean}
+       */
+      isPrivate() {
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isPrivate();
+        }
+        return this.isULA() || this.isHostInSubnet(NAT64_LOCAL_USE_SUBNET);
+      }
+      /**
+       * Returns true if the address is an IPv4-mapped / NAT64 address whose embedded
+       * IPv4 address is in the carrier-grade NAT range `100.64.0.0/10`
+       * ([RFC 6598](https://datatracker.ietf.org/doc/html/rfc6598)), false
+       * otherwise. There is no native IPv6 CGNAT range, so this only ever returns
+       * true for an embedded IPv4 address (e.g. `::ffff:100.64.0.1`).
+       * @returns {boolean}
+       */
+      isCGNAT() {
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isCGNAT();
+        }
+        return false;
+      }
+      /**
+       * Returns true if the address is an IPv4-mapped / NAT64 address whose embedded
+       * IPv4 address is the limited broadcast address `255.255.255.255`
+       * ([RFC 919](https://datatracker.ietf.org/doc/html/rfc919)), false otherwise.
+       * There is no IPv6 broadcast, so this only ever returns true for an embedded
+       * IPv4 address (e.g. `::ffff:255.255.255.255`).
+       * @returns {boolean}
+       */
+      isBroadcast() {
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isBroadcast();
+        }
+        return false;
       }
       /**
        * Returns true if the address is the unspecified address `::`.
        * @returns {boolean}
        */
       isUnspecified() {
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isUnspecified();
+        }
         return this.getType() === "Unspecified";
       }
       /**
@@ -72320,7 +72893,48 @@ var require_ipv6 = __commonJS({
        * @returns {boolean}
        */
       isDocumentation() {
-        return this.isInSubnet(DOCUMENTATION_SUBNET);
+        return DOCUMENTATION_SUBNETS.some((subnet) => this.isHostInSubnet(subnet));
+      }
+      /**
+       * Returns true if the address is in the benchmarking range `2001:2::/48`
+       * ([RFC 5180](https://datatracker.ietf.org/doc/html/rfc5180)) or is an
+       * IPv4-mapped / NAT64 address whose embedded IPv4 address is in
+       * `198.18.0.0/15`, false otherwise.
+       * @returns {boolean}
+       */
+      isBenchmarking() {
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isBenchmarking();
+        }
+        return this.isHostInSubnet(BENCHMARKING_SUBNET);
+      }
+      /**
+       * Returns true if the address is globally reachable: inside the global
+       * unicast allocation `2000::/3` (the only range the [IANA IPv6 Address Space
+       * Registry](https://www.iana.org/assignments/ipv6-address-space/) assigns
+       * for global unicast; everything else is reserved, ULA, link-local, or
+       * multicast) and not in any block the [IANA IPv6 Special-Purpose Address Registry](https://www.iana.org/assignments/iana-ipv6-special-registry/)
+       * marks as not globally reachable. An IPv4-mapped or NAT64 well-known
+       * address answers for its embedded IPv4 address, so `::ffff:10.0.0.1` and
+       * `64:ff9b::7f00:1` are not global. Teredo (`2001::/32`) and 6to4
+       * (`2002::/16`) are not global either: the registry lists them as N/A and a
+       * packet to one needs a relay.
+       *
+       * This covers everything the individual classifiers name and the blocks they
+       * do not: the discard-only prefix `100::/64`, the IETF protocol assignments
+       * in `2001::/23`, the deprecated site-local `fec0::/10` and IPv4-compatible
+       * `::/96` ranges, and unallocated space such as `4000::/3`. It is the single
+       * predicate to use where a request must not reach an internal or
+       * special-purpose destination; see SECURITY.md.
+       * @returns {boolean}
+       */
+      isGlobal() {
+        const embedded = this.embeddedIPv4();
+        if (embedded) {
+          return embedded.isGlobal();
+        }
+        return this.isHostInSubnet(GLOBAL_UNICAST_SUBNET) && common.isGloballyReachable.call(this, SPECIAL_PURPOSE_V6);
       }
       // #endregion
       // #region HTML
@@ -72372,7 +72986,12 @@ var require_ipv6 = __commonJS({
         return `<a href="${safeHref}">${safeForm}</a>`;
       }
       /**
-       * Groups an address
+       * Groups an address.
+       *
+       * Returns an HTML fragment: each group is wrapped in a `<span>` carrying
+       * the group classes an address-inspector UI hovers on. The address content
+       * is HTML-escaped; anything you concatenate around it is your
+       * responsibility.
        * @returns {String}
        */
       group() {
@@ -72463,14 +73082,23 @@ var require_ipv6 = __commonJS({
     var TEREDO_SUBNET = new Address62("2001::/32");
     var SIX_TO_FOUR_SUBNET = new Address62("2002::/16");
     var ULA_SUBNET = new Address62("fc00::/7");
-    var DOCUMENTATION_SUBNET = new Address62("2001:db8::/32");
+    var LINK_LOCAL_SUBNET = new Address62("fe80::/10");
+    var DOCUMENTATION_SUBNETS = [new Address62("2001:db8::/32"), new Address62("3fff::/20")];
+    var BENCHMARKING_SUBNET = new Address62("2001:2::/48");
+    var GLOBAL_UNICAST_SUBNET = new Address62("2000::/3");
+    var SPECIAL_PURPOSE_V6 = constants6.SPECIAL_PURPOSE.map(([cidr2, , reachable]) => ({
+      subnet: new Address62(cidr2),
+      reachable
+    }));
     var IPV4_MAPPED_SUBNET = new Address62("::ffff:0:0/96");
+    var NAT64_WELL_KNOWN_SUBNET = new Address62("64:ff9b::/96");
+    var NAT64_LOCAL_USE_SUBNET = new Address62("64:ff9b:1::/48");
   }
 });
 
-// ../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/ip-address.js
+// ../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/ip-address.js
 var require_ip_address = __commonJS({
-  "../../node_modules/.pnpm/ip-address@10.2.0/node_modules/ip-address/dist/ip-address.js"(exports) {
+  "../../node_modules/.pnpm/ip-address@10.7.0/node_modules/ip-address/dist/ip-address.js"(exports) {
     "use strict";
     var __createBinding2 = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
@@ -81265,7 +81893,7 @@ var require_mime_types2 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/type-is@1.6.18/node_modules/type-is/index.js
-var require_type_is2 = __commonJS({
+var require_type_is3 = __commonJS({
   "../../node_modules/.pnpm/type-is@1.6.18/node_modules/type-is/index.js"(exports, module) {
     "use strict";
     var typer = require_media_typer2();
@@ -85389,7 +86017,7 @@ var require_remove_uploaded_files = __commonJS({
 // ../../node_modules/.pnpm/multer@2.2.0/node_modules/multer/lib/make-middleware.js
 var require_make_middleware = __commonJS({
   "../../node_modules/.pnpm/multer@2.2.0/node_modules/multer/lib/make-middleware.js"(exports, module) {
-    var is2 = require_type_is2();
+    var is2 = require_type_is3();
     var Busboy = require_lib6();
     var appendField = require_append_field();
     var Counter = require_counter();
@@ -285562,10 +286190,10 @@ if (effectivePort !== port) {
 }
 logger.info({ port: effectivePort, env: process.env["NODE_ENV"] ?? "unknown" }, "Starting DrimPay API server");
 var envDiag = {
-  SESSION_SECRET: process.env["SESSION_SECRET"] ? `\u2713 (${process.env["SESSION_SECRET"].length} chars)` : "\u2717 MANQUANT",
+  SESSION_SECRET: process.env["SESSION_SECRET"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
   SUPABASE_DATABASE_URL: process.env["SUPABASE_DATABASE_URL"] ? "\u2713 d\xE9fini" : process.env["DATABASE_URL"] ? "\u2713 (DATABASE_URL fallback)" : "\u2717 MANQUANT",
   SUPABASE_URL: process.env["SUPABASE_URL"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
-  SUPABASE_SERVICE_ROLE_KEY: process.env["SUPABASE_SERVICE_ROLE_KEY"] ? `\u2713 (${process.env["SUPABASE_SERVICE_ROLE_KEY"].length} chars) \u2014 KYB uploads actifs` : "\u2717 MANQUANT \u2014 KYB uploads D\xC9SACTIV\xC9S",
+  SUPABASE_SERVICE_ROLE_KEY: process.env["SUPABASE_SERVICE_ROLE_KEY"] ? "\u2713 d\xE9fini \u2014 KYB uploads actifs" : "\u2717 MANQUANT \u2014 KYB uploads D\xC9SACTIV\xC9S",
   SUPABASE_ANON_KEY: process.env["SUPABASE_ANON_KEY"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
   RESEND_API_KEY: process.env["RESEND_API_KEY"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT \u2014 emails d\xE9sactiv\xE9s"
 };
@@ -285701,6 +286329,7 @@ on-finished/index.js:
    * MIT Licensed
    *)
 
+content-type/dist/index.js:
 content-type/index.js:
   (*!
    * content-type
@@ -285733,6 +286362,7 @@ media-typer/index.js:
    * MIT Licensed
    *)
 
+type-is/index.js:
 type-is/index.js:
 type-is/index.js:
   (*!

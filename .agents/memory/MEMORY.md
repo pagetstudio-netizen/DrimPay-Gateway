@@ -9,3 +9,4 @@
 - [DrimPay fee rate resolution](drimpay-fee-rates.md) — country/operator rules affect new transactions; merchant overrides and stored historical fees remain protected.
 - [DrimPay blog content model](drimpay-blog-content.md) — database Markdown content, semantic rendering, public assets, and sitemap slugs must stay synchronized.
 - [DrimPay Gombo Plus](drimpay-gombo-plus.md) — Gombo uses X-Public-Key/X-Private-Key, BJ is the canonical Benin code, and BF Orange is maintenance-only.
+- [DrimPay security baseline](drimpay-security.md) — scan tracked source and generated dist together; keep real credentials only in the secret manager and runtime logs value-free.

@@ -54,10 +54,10 @@ logger.info({ port: effectivePort, env: process.env["NODE_ENV"] ?? "unknown" }, 
 
 // ── Startup env-var diagnostics (visible in Plesk / any host logs) ────────────
 const envDiag = {
-  SESSION_SECRET:            process.env["SESSION_SECRET"]            ? `✓ (${process.env["SESSION_SECRET"]!.length} chars)` : "✗ MANQUANT",
+  SESSION_SECRET:            process.env["SESSION_SECRET"]            ? "✓ défini" : "✗ MANQUANT",
   SUPABASE_DATABASE_URL:     process.env["SUPABASE_DATABASE_URL"]     ? "✓ défini" : (process.env["DATABASE_URL"] ? "✓ (DATABASE_URL fallback)" : "✗ MANQUANT"),
   SUPABASE_URL:              process.env["SUPABASE_URL"]              ? "✓ défini" : "✗ MANQUANT",
-  SUPABASE_SERVICE_ROLE_KEY: process.env["SUPABASE_SERVICE_ROLE_KEY"] ? `✓ (${process.env["SUPABASE_SERVICE_ROLE_KEY"]!.length} chars) — KYB uploads actifs` : "✗ MANQUANT — KYB uploads DÉSACTIVÉS",
+  SUPABASE_SERVICE_ROLE_KEY: process.env["SUPABASE_SERVICE_ROLE_KEY"] ? "✓ défini — KYB uploads actifs" : "✗ MANQUANT — KYB uploads DÉSACTIVÉS",
   SUPABASE_ANON_KEY:         process.env["SUPABASE_ANON_KEY"]         ? "✓ défini" : "✗ MANQUANT",
   RESEND_API_KEY:            process.env["RESEND_API_KEY"]            ? "✓ défini" : "✗ MANQUANT — emails désactivés",
 };

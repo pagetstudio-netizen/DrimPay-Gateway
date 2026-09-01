@@ -65,7 +65,9 @@ overrides:
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-arm64-msvc': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-x64-msvc': '-'
   '@babel/core': ^7.29.6
-  brace-expansion@^2: ^2.0.3
+  body-parser: ^2.3.0
+  brace-expansion@^2: ^2.1.4
+  browserslist: ^4.28.7
   esbuild: ^0.28.1
   esbuild>@esbuild/aix-ppc64: '-'
   esbuild>@esbuild/android-arm: '-'
@@ -126,13 +128,16 @@ overrides:
   rollup>@rollup/rollup-win32-ia32-msvc: '-'
   rollup>@rollup/rollup-win32-x64-gnu: '-'
   rollup>@rollup/rollup-win32-x64-msvc: '-'
-  fast-uri: ^3.1.2
-  js-yaml: ^4.2.0
+  fast-uri: ^3.1.5
+  ip-address: ^10.3.1
+  js-yaml: ^4.3.1
+  linkify-it: ^5.0.2
   lodash: ^4.18.1
   markdown-it: ^14.2.0
   path-to-regexp: ^8.4.0
   'picomatch@^2': ^2.3.2
   'picomatch@^4': ^4.0.4
-  postcss: ^8.5.10
+  nanoid: ^3.3.18
+  postcss: ^8.5.23
   qs: ^6.15.2
   yaml: ^2.8.3

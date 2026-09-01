@@ -74,7 +74,7 @@ var envStatus = {};
 for (var i = 0; i < envKeys.length; i++) {
   var key = envKeys[i];
   envStatus[key] = process.env[key]
-    ? '✓ (' + process.env[key].length + ' chars)'
+    ? '✓ défini'
     : '✗ MANQUANT';
 }
 

@@ -455,10 +455,10 @@ La règle d'or : votre clé secrète (\`sk_live_...\`) ne doit jamais apparaîtr
 
 \`\`\`bash
 # Mauvais — ne faites jamais ça
-API_KEY=sk_live_xxxxxxxxxxxx
+API_KEY=<never-put-a-real-key-here>
 
 # Correct — utilisez des variables d'environnement
-export DRIMPAY_SECRET_KEY="sk_live_xxxxxxxxxxxx"
+export DRIMPAY_SECRET_KEY="<set-in-your-secret-manager>"
 \`\`\`
 
 ### Utiliser des variables d'environnement
