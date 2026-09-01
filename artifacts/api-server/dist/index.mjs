@@ -107096,6 +107096,15 @@ function normalizeCoteDIvoirePhone(phone) {
   }
   return digits.startsWith("0") ? digits : `0${digits}`;
 }
+function normalizeBabimoPhone(phone, countryCode) {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  const country = countryCode.toUpperCase().trim();
+  if (country === "BJ" && digits.startsWith("229")) {
+    return digits.slice(3);
+  }
+  if (country === "CI") return normalizeCoteDIvoirePhone(digits);
+  return digits;
+}
 function unwrap(raw) {
   return raw?.data ?? raw?.result ?? raw;
 }
@@ -107111,12 +107120,12 @@ function firstString(raw, keys) {
   return "";
 }
 function responseStatus(raw) {
-  const value = firstString(raw, ["status", "transaction_status", "payment_status", "state"]);
+  const value = firstString(raw, ["status", "statut", "transaction_status", "payment_status", "state"]);
   return value.toLowerCase();
 }
 function mapStatus(raw) {
   const status = (raw ?? "").toLowerCase();
-  if (status === "success" || status === "completed" || status === "paid") return "success";
+  if (status === "success" || status === "successfull" || status === "completed" || status === "paid") return "success";
   if (status === "failed" || status === "error" || status === "rejected" || status === "declined") return "failed";
   if (status === "cancelled" || status === "canceled") return "cancelled";
   if (status === "expired") return "expired";
@@ -107130,8 +107139,8 @@ function isRejected(raw) {
   const status = raw?.status ?? raw?.data?.status ?? raw?.result?.status;
   return status === false || raw?.success === false || raw?.data?.success === false;
 }
-function babimoPaymentMethod(operator, countryCode) {
-  return PAYMENT_METHODS[`${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`] ?? null;
+function babimoPaymentMethod(operator, countryCode, operation = "payin") {
+  return PAYMENT_METHODS[`${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`]?.[operation] ?? null;
 }
 function countryKey(countryCode) {
   return countryCode.trim().toUpperCase();
@@ -107172,17 +107181,22 @@ var init_babimo = __esm({
     "use strict";
     DEFAULT_BASE_URL = "https://v2.b-pay.co/service/api/v1";
     PAYMENT_METHODS = {
-      "mtn|CI": "MTN_CI",
-      "mtn momo|CI": "MTN_CI",
-      "mtn mobile money|CI": "MTN_CI",
-      "orange|CI": "OM_CI",
-      "orange money|CI": "OM_CI",
-      "om|CI": "OM_CI",
-      "wave|CI": "WAVE_CI",
-      "moov|CI": "MOOV_CI",
-      "moov money|CI": "MOOV_CI"
+      "mtn|CI": { payin: "MTN_CI", payout: "MTN_CI" },
+      "mtn momo|CI": { payin: "MTN_CI", payout: "MTN_CI" },
+      "mtn mobile money|CI": { payin: "MTN_CI", payout: "MTN_CI" },
+      "orange|CI": { payin: "OM_CI", payout: "OM_CI" },
+      "orange money|CI": { payin: "OM_CI", payout: "OM_CI" },
+      "om|CI": { payin: "OM_CI", payout: "OM_CI" },
+      "wave|CI": { payin: "WAVE_CI", payout: "WAVE_CI" },
+      "moov|CI": { payin: "MOOV_CI", payout: "MOOV_CI" },
+      "moov money|CI": { payin: "MOOV_CI", payout: "MOOV_CI" },
+      // The Benin Postman contract uses different methods for collection and
+      // transfer: BN_CASHIN_MTN for pay-ins and BN_PM_MTN for payouts.
+      "mtn|BJ": { payin: "BN_CASHIN_MTN", payout: "BN_PM_MTN" },
+      "mtn momo|BJ": { payin: "BN_CASHIN_MTN", payout: "BN_PM_MTN" },
+      "mtn mobile money|BJ": { payin: "BN_CASHIN_MTN", payout: "BN_PM_MTN" }
     };
-    FINAL_STATUSES = /* @__PURE__ */ new Set(["success", "completed", "paid", "failed", "cancelled", "canceled", "expired"]);
+    FINAL_STATUSES = /* @__PURE__ */ new Set(["success", "successfull", "completed", "paid", "failed", "cancelled", "canceled", "expired"]);
     BabimoError = class extends Error {
       constructor(message, statusCode, raw) {
         super(message);
@@ -107274,7 +107288,7 @@ var init_babimo = __esm({
         return raw;
       }
       async initiatePayin(params) {
-        const paymentMethod = babimoPaymentMethod(params.operator, params.country_code);
+        const paymentMethod = babimoPaymentMethod(params.operator, params.country_code, "payin");
         if (!paymentMethod) {
           return {
             success: false,
@@ -107288,7 +107302,7 @@ var init_babimo = __esm({
           payment_method: paymentMethod,
           merchant_transaction_id: params.reference,
           amount: params.amount,
-          telephone: normalizeCoteDIvoirePhone(params.phone),
+          telephone: normalizeBabimoPhone(params.phone, params.country_code),
           success_url: params.return_url ?? params.callback_url,
           failed_url: params.return_url ?? params.callback_url,
           notify_url: params.callback_url,
@@ -107299,7 +107313,15 @@ var init_babimo = __esm({
         }
         const raw = await this.request("POST", "/paiement", payload);
         const data = unwrap(raw);
-        const reference = firstString(raw, ["status_token", "statusToken", "transaction_id", "transactionId", "token"]);
+        const reference = firstString(raw, [
+          "status_token",
+          "statusToken",
+          "pay_token",
+          "partner_transaction_id",
+          "transaction_id",
+          "transactionId",
+          "token"
+        ]);
         if (!reference) {
           throw new BabimoError("Babimo n'a pas retourn\xE9 de r\xE9f\xE9rence de transaction.", 502, raw);
         }
@@ -107312,7 +107334,7 @@ var init_babimo = __esm({
         };
       }
       async initiatePayout(params) {
-        const paymentMethod = babimoPaymentMethod(params.operator, params.country_code);
+        const paymentMethod = babimoPaymentMethod(params.operator, params.country_code, "payout");
         if (!paymentMethod) {
           return {
             success: false,
@@ -107325,11 +107347,19 @@ var init_babimo = __esm({
           payment_method: paymentMethod,
           merchant_transaction_id: params.reference,
           amount: params.amount,
-          telephone: normalizeCoteDIvoirePhone(params.phone),
+          telephone: normalizeBabimoPhone(params.phone, params.country_code),
           notify_url: params.callback_url,
           refercence_cl: params.reference
         });
-        const reference = firstString(raw, ["status_token", "statusToken", "transaction_id", "transactionId", "token"]);
+        const reference = firstString(raw, [
+          "status_token",
+          "statusToken",
+          "pay_token",
+          "partner_transaction_id",
+          "transaction_id",
+          "transactionId",
+          "token"
+        ]);
         if (!reference) {
           throw new BabimoError("Babimo n'a pas retourn\xE9 de r\xE9f\xE9rence de payout.", 502, raw);
         }

@@ -1,0 +1,652 @@
+{
+  "info": {
+    "_postman_id": "2c33e212-2c4c-45e4-823d-ff9aa34d9c03",
+    "name": "Ashtech SARL API BENIN",
+    "description": "L'API de Babimo est organisée autour de REST. Notre API a des URL prévisibles orientées ressources, accepte des corps de demande JSON, renvoie des réponses encodées JSON et utilise des codes de réponse, une authentification et des verbes HTTP standard.\n\nBabimo vous fournira séparément la valeur APIBASEURL ainsi que la reference du client \"refercence_cl\".\n\nBabimo propose unn types d'API de paiement : une API de paiement avec redirection vers notre passerelle de paiement (voir API de paiement Web).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38155572"
+  },
+  "item": [
+    {
+      "name": "TOKEN",
+      "item": [
+        {
+          "name": "AccesToken",
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "content-type": true
+            }
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\":\"apashash28@gmail.com\",\n    \"password\":\"KgP2Mmtu*h!c6>n]\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://v2.b-pay.co/service/api/v1/oauth/login",
+              "protocol": "http",
+              "host": [
+                "v2",
+                "b-pay",
+                "co"
+              ],
+              "path": [
+                "service",
+                "api",
+                "v1",
+                "oauth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "AccesToken",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\":\"string\",\n    \"password\":\"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "APIBASEURL/api/v1/oauth/login",
+                  "host": [
+                    "APIBASEURL"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "oauth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Host",
+                  "value": "localhost:8000"
+                },
+                {
+                  "key": "Date",
+                  "value": "Fri, 02 Jun 2023 11:40:11 GMT"
+                },
+                {
+                  "key": "Date",
+                  "value": "Fri, 02 Jun 2023 11:40:11 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/7.4.21"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "X-RateLimit-Limit",
+                  "value": "60"
+                },
+                {
+                  "key": "X-RateLimit-Remaining",
+                  "value": "56"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"success\",\n    \"authorisation\": {\n        \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9sb2NhbGhvc3Q6ODAwMFwvYXBpXC92MVwvb2F1dGhcL2xvZ2luIiwiaWF0IjoxNjg1NzA2MDExLCJleHAiOjE2ODU3MDk2MTEsIm5iZiI6MTY4NTcwNjAxMSwianRpIjoiRFJNQXJmbEdnSEZuaE5hZSIsInN1YiI6OCwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyJ9.VaxcJ_Lgua9-R8Naiu7a7ZfYtrqDoUzZWNWG_vvTVDg\",\n        \"type\": \"bearer\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "L'API de Babimo nécessite un jeton d'accès, basé sur vos informations d'identification de développeur (email et mot de passe).  \nVous pouvez utiliser le même jeton pour plusieurs transactions, tant que le jeton n'a pas expiré, il fonctionnera."
+    },
+    {
+      "name": "PAYMENT API",
+      "item": [
+        {
+          "name": "PAYMENT STATUS",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNoZXJ1YmluMDIyNUBnbWFpbC5jb20iLCJzdWIiOjI2LCJpYXQiOjE3NTI2NjMwOTIsImV4cCI6MTc1MjY4MTA5Mn0.AAYIiScIdSddkw87YK0ZnZo1TU4sjdtK5LcuxOqjiOU",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://v2.b-pay.co/service/api/v1/check-status/UHIj1752599613",
+              "protocol": "https",
+              "host": [
+                "v2",
+                "b-pay",
+                "co"
+              ],
+              "path": [
+                "service",
+                "api",
+                "v1",
+                "check-status",
+                "UHIj1752599613"
+              ]
+            },
+            "description": "Vous pouvez utiliser le statut de transaction qui vous permet de consulter en temps réel le statut actuel d'un paiement..\n\nVous mettez le statut_token sur l'URL renvoyé après l'initialisation."
+          },
+          "response": [
+            {
+              "name": "Payment Status",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "https://b-pay.co/service/api/v1/check-status/{token}",
+                  "protocol": "https",
+                  "host": [
+                    "b-pay",
+                    "co"
+                  ],
+                  "path": [
+                    "service",
+                    "api",
+                    "v1",
+                    "check-status",
+                    "{token}"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "name": "Content-Type",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": 200,\n    \"statut\": \"SUCCESS\",\n    \"message\": \"Your transaction is SUCCESS\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "MTN",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNoZXJ1YmluMDIyNUBnbWFpbC5jb20iLCJzdWIiOjI2LCJpYXQiOjE3NTIwNTU1ODksImV4cCI6MTc1MjA3MzU4OX0.C60yPLgvRGC3EkEdPajdq7dHvH38VWQdPzFr-qRcpg0",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"payment_method\": \"BN_CASHIN_MTN\",\n    \"merchant_transaction_id\": \"PAIE-2229324474\",\n    \"amount\": 200,\n    \"telephone\": \"XXXXXXXXXXX\",\n    \"refercence_cl\":\"ik7byeb\",\n    \"currency\": \"XOF\",\n    \"success_url\": \"https://8cbbcb8d08d6.ngrok.io\",\n    \"failed_url\": \"https://8cbbcb8d08d6.ngrok.io/cancel/\",\n    \"notify_url\": \"https://8cbbcb8d08d6.ngrok.io/notification\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://v2.b-pay.co/service/api/v1/paiement",
+              "protocol": "https",
+              "host": [
+                "v2",
+                "b-pay",
+                "co"
+              ],
+              "path": [
+                "service",
+                "api",
+                "v1",
+                "paiement"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "cas d'initialisation de paiement",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"currency\": \"XOF\",  \n    \"payment_method\": \"MTN_CI\",\n    \"merchant_transaction_id\": \"PAIE-1234567890\",\n    \"amount\": 100,\n    \"telephone\": \"1234567890\",\n    \"success_url\": \"Your success_url\",\n    \"failed_url\": \"Your failed_url\",\n    \"notify_url\": \"Your notify_url\",\n    \"refercence_cl\":\"Your unique refercence_cl\"\n\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://b-pay.co/service/api/v1/paiement",
+                  "protocol": "https",
+                  "host": [
+                    "b-pay",
+                    "co"
+                  ],
+                  "path": [
+                    "service",
+                    "api",
+                    "v1",
+                    "paiement"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "name": "Content-Type",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": 201,\n    \"data\": {\n        \"payment_method\": \"MTN_CI\",\n        \"status\": \"INITIATED\",\n        \"pay_token\": \"89771141161615718121\",\n        \"amount\": 200,\n        \"payment_url\": \"\"\n    }\n}"
+            },
+            {
+              "name": "cas d'échec de paiement Copy",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"currency\": \"XOF\",  \n    \"payment_method\": \"MTN_CI\",\n    \"merchant_transaction_id\": \"PAIE-1234567890\",\n    \"amount\": 100,\n    \"telephone\": \"1234567890\",\n    \"success_url\": \"Your success_url\",\n    \"failed_url\": \"Your failed_url\",\n    \"notify_url\": \"Your notify_url\",\n    \"refercence_cl\":\"Your unique refercence_cl\"\n\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://b-pay.co/service/api/v1/paiement",
+                  "protocol": "https",
+                  "host": [
+                    "b-pay",
+                    "co"
+                  ],
+                  "path": [
+                    "service",
+                    "api",
+                    "v1",
+                    "paiement"
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "name": "Content-Type",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": 201,\n    \"data\": {\n        \"payment_method\": \"MTN_CI\",\n        \"status\": \"FAILED\",\n        \"pay_token\": \"89771141161615718121\",\n        \"amount\": 200,\n        \"payment_url\": \"\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Cette API vous permet de créer une session de paiement dans le système de Bpay. Une transaction de paiement sera créée sur la base des informations fournies dans votre demande et un jeton de paiement sera renvoyé dans la réponse de l'API."
+    },
+    {
+      "name": "TRANSFERT API",
+      "item": [
+        {
+          "name": "MTN",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNoZXJ1YmluMDIyNUBnbWFpbC5jb20iLCJzdWIiOjI2LCJpYXQiOjE3NjQyNTk2OTIsImV4cCI6MTc2NDI3NzY5Mn0.OAnsRMEacVOqtYSiSZ6-OluiN_ERgdQDWemsvn9znyQ",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"payment_method\": \"BN_PM_MTN\",\r\n    \"merchant_transaction_id\": \"RET-BNNEW\",\r\n    \"amount\": 200,\r\n    \"currency\": \"XOF\",\r\n    \"telephone\": \"XXXXXXXXXX\",\r\n    \"notify_url\": \"Https://google.com\",\r\n    \"refercence_cl\":\"ik7byeb\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://v2.b-pay.co/service/api/v1/collect/cashin",
+              "protocol": "http",
+              "host": [
+                "v2",
+                "b-pay",
+                "co"
+              ],
+              "path": [
+                "service",
+                "api",
+                "v1",
+                "collect",
+                "cashin"
+              ]
+            },
+            "description": "StartFragment\n\n## Web transfert API\n\nCette API vous permet de créer une session de transfert au sein de votre système. Une transaction de transfert sera créée sur la base des informations fournies dans votre demande et un retour sera renvoyé dans la réponse de l'API.\n\nEndFragment"
+          },
+          "response": [
+            {
+              "name": "cas de succès d'un transfert",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"payment_method\": \"MTN_CI\",\r\n    \"merchant_transaction_id\": \"RET-9000900200001\",\r\n    \"amount\": 200,\r\n    \"telephone\": \"1234567890\",\r\n    \"notify_url\": \"https://b-pay.co/api/v1/babimo/callback\",\r\n    \"refercence_cl\":\"hbbN2kb\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://b-pay.co/api/v1/collect/cashin",
+                  "protocol": "https",
+                  "host": [
+                    "b-pay",
+                    "co"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "collect",
+                    "cashin"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 11 Jul 2023 14:39:52 GMT"
+                },
+                {
+                  "key": "Server",
+                  "value": "Apache/2.4.51 (Win64) OpenSSL/1.1.1l PHP/7.4.25"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Authorization"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/7.4.25"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "X-RateLimit-Limit",
+                  "value": "60"
+                },
+                {
+                  "key": "X-RateLimit-Remaining",
+                  "value": "59"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"SUCCESSFULL\",\n    \"status\": \"SUCCESSFULL\",\n    \"partner_transaction_id\": \"RET-9000903311119\"\n}"
+            },
+            {
+              "name": "cas du montant insuffisant",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"payment_method\": \"MTN_CI\",\r\n    \"merchant_transaction_id\": \"RET-9000900200001\",\r\n    \"amount\": 200,\r\n    \"telephone\": \"1234567890\",\r\n    \"notify_url\": \"https://b-pay.co/api/v1/babimo/callback\",\r\n    \"refercence_cl\":\"hbbN2kb\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://b-pay.co/api/v1/collect/cashin",
+                  "protocol": "https",
+                  "host": [
+                    "b-pay",
+                    "co"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "collect",
+                    "cashin"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 11 Jul 2023 14:39:52 GMT"
+                },
+                {
+                  "key": "Server",
+                  "value": "Apache/2.4.51 (Win64) OpenSSL/1.1.1l PHP/7.4.25"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Authorization"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/7.4.25"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "X-RateLimit-Limit",
+                  "value": "60"
+                },
+                {
+                  "key": "X-RateLimit-Remaining",
+                  "value": "59"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"You are not authorized to perform this operation\",\n    \"status\": \"FAILED\",\n    \"partner_transaction_id\": \"RET-9000903311119\"\n}"
+            },
+            {
+              "name": "cas ou le numero n'est pas correct",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"payment_method\": \"MTN_CI\",\r\n    \"merchant_transaction_id\": \"RET-9000900200001\",\r\n    \"amount\": 200,\r\n    \"telephone\": \"1234567890\",\r\n    \"notify_url\": \"https://b-pay.co/api/v1/babimo/callback\",\r\n    \"refercence_cl\":\"hbbN2kb\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://b-pay.co/api/v1/collect/cashin",
+                  "protocol": "https",
+                  "host": [
+                    "b-pay",
+                    "co"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "collect",
+                    "cashin"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 11 Jul 2023 14:39:52 GMT"
+                },
+                {
+                  "key": "Server",
+                  "value": "Apache/2.4.51 (Win64) OpenSSL/1.1.1l PHP/7.4.25"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Authorization"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/7.4.25"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "X-RateLimit-Limit",
+                  "value": "60"
+                },
+                {
+                  "key": "X-RateLimit-Remaining",
+                  "value": "59"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Error: Please check the phone number.\",\n    \"status\": \"FAILED\",\n    \"partner_transaction_id\": \"RET-9000903311119\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Cette API vous permet de créer une session de transfert dans le système de Bpay. Une transaction de transfert d'argent sera créée sur la base des informations fournies dans votre demande, et des informations détaillées sur la transaction seront renvoyées dans la réponse de l'API de transfert."
+    }
+  ]
+}
