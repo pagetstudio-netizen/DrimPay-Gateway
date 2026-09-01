@@ -7,11 +7,12 @@
  *   POST /collect/cashin
  *   GET  /check-status/{status_token}
  *
- * The API credentials are kept in Replit Secrets:
- *   BABIMO_EMAIL
- *   BABIMO_PASSWORD
- * Optional:
- *   BABIMO_BASE_URL (defaults to the documented v2.b-pay.co API)
+ * The API credentials are kept in Replit Secrets per country:
+ *   BABIMO_CI_EMAIL / BABIMO_CI_PASSWORD
+ *   BABIMO_BJ_EMAIL / BABIMO_BJ_PASSWORD
+ *   BABIMO_BF_EMAIL / BABIMO_BF_PASSWORD
+ * Optional per-country base URLs:
+ *   BABIMO_CI_BASE_URL, BABIMO_BJ_BASE_URL, BABIMO_BF_BASE_URL
  */
 
 const DEFAULT_BASE_URL = "https://v2.b-pay.co/service/api/v1";
@@ -168,7 +169,10 @@ export class BabimoClient {
       throw new BabimoError(errorMessage(raw, `Babimo login HTTP ${response.status}`), response.status, raw);
     }
 
-    const token = firstString(raw, ["token", "access_token", "accessToken"]);
+    const token =
+      firstString(raw, ["token", "access_token", "accessToken"]) ||
+      firstString(raw?.authorisation, ["token", "access_token", "accessToken"]) ||
+      firstString(raw?.authorization, ["token", "access_token", "accessToken"]);
     if (!token) {
       throw new BabimoError("Babimo n'a pas retourné de token d'accès.", 502, raw);
     }
@@ -325,24 +329,44 @@ export class BabimoClient {
   }
 }
 
-let client: BabimoClient | null = null;
+const clients = new Map<string, BabimoClient>();
 
-export function isBabimoConfigured(): boolean {
-  return Boolean(process.env.BABIMO_EMAIL && process.env.BABIMO_PASSWORD);
+function countryKey(countryCode: string): string {
+  return countryCode.trim().toUpperCase();
 }
 
-export function getBabimoClient(): BabimoClient {
-  if (!client) {
-    const email = process.env.BABIMO_EMAIL;
-    const password = process.env.BABIMO_PASSWORD;
-    if (!email || !password) {
-      throw new Error("Babimo non configuré. Définissez BABIMO_EMAIL et BABIMO_PASSWORD dans les Secrets Replit.");
-    }
-    client = new BabimoClient({
-      baseUrl: process.env.BABIMO_BASE_URL ?? DEFAULT_BASE_URL,
-      email,
-      password,
-    });
+function babimoSecretName(countryCode: string, suffix: "EMAIL" | "PASSWORD" | "BASE_URL"): string {
+  return `BABIMO_${countryKey(countryCode)}_${suffix}`;
+}
+
+export function isBabimoConfigured(countryCode: string): boolean {
+  const email = process.env[babimoSecretName(countryCode, "EMAIL")];
+  const password = process.env[babimoSecretName(countryCode, "PASSWORD")];
+  return Boolean(email && password);
+}
+
+export function isAnyBabimoConfigured(): boolean {
+  return ["CI", "BJ", "BF"].some(isBabimoConfigured);
+}
+
+export function getBabimoClient(countryCode: string): BabimoClient {
+  const key = countryKey(countryCode);
+  const existing = clients.get(key);
+  if (existing) return existing;
+
+  const email = process.env[babimoSecretName(key, "EMAIL")];
+  const password = process.env[babimoSecretName(key, "PASSWORD")];
+  if (!email || !password) {
+    throw new Error(
+      `Babimo ${key} non configuré. Définissez ${babimoSecretName(key, "EMAIL")} et ${babimoSecretName(key, "PASSWORD")} dans les Secrets Replit.`,
+    );
   }
-  return client;
+
+  const newClient = new BabimoClient({
+    baseUrl: process.env[babimoSecretName(key, "BASE_URL")] ?? DEFAULT_BASE_URL,
+    email,
+    password,
+  });
+  clients.set(key, newClient);
+  return newClient;
 }

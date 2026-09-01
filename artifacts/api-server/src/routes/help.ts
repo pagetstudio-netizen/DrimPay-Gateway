@@ -48,9 +48,15 @@ router.get("/help", async (req: any, res) => {
     "CLAPAY_API_TOKEN",
     "CLAPAY_BASE_URL",
     "CLAPAY_WEBHOOK_SECRET",
-    "BABIMO_EMAIL",
-    "BABIMO_PASSWORD",
-    "BABIMO_BASE_URL",
+    "BABIMO_CI_EMAIL",
+    "BABIMO_CI_PASSWORD",
+    "BABIMO_CI_BASE_URL",
+    "BABIMO_BJ_EMAIL",
+    "BABIMO_BJ_PASSWORD",
+    "BABIMO_BJ_BASE_URL",
+    "BABIMO_BF_EMAIL",
+    "BABIMO_BF_PASSWORD",
+    "BABIMO_BF_BASE_URL",
     "RESEND_API_KEY",
     "NODE_ENV",
     "PORT",
@@ -112,9 +118,23 @@ router.get("/help", async (req: any, res) => {
   };
 
   checks.babimo = {
-    baseUrl: process.env["BABIMO_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
-    email: process.env["BABIMO_EMAIL"] ? "✓ défini" : "✗ MANQUANT",
-    password: process.env["BABIMO_PASSWORD"] ? "✓ défini" : "✗ MANQUANT",
+    countries: {
+      CI: {
+        baseUrl: process.env["BABIMO_CI_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
+        email: process.env["BABIMO_CI_EMAIL"] ? "✓ défini" : "✗ MANQUANT",
+        password: process.env["BABIMO_CI_PASSWORD"] ? "✓ défini" : "✗ MANQUANT",
+      },
+      BJ: {
+        baseUrl: process.env["BABIMO_BJ_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
+        email: process.env["BABIMO_BJ_EMAIL"] ? "✓ défini" : "✗ MANQUANT",
+        password: process.env["BABIMO_BJ_PASSWORD"] ? "✓ défini" : "✗ MANQUANT",
+      },
+      BF: {
+        baseUrl: process.env["BABIMO_BF_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
+        email: process.env["BABIMO_BF_EMAIL"] ? "✓ défini" : "✗ MANQUANT",
+        password: process.env["BABIMO_BF_PASSWORD"] ? "✓ défini" : "✗ MANQUANT",
+      },
+    },
     aggregator: "babimo",
   };
 

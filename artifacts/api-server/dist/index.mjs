@@ -29314,8 +29314,8 @@ var require_client = __commonJS({
         }
         return data;
       }
-      cancel(client2, query) {
-        if (client2.activeQuery === query) {
+      cancel(client, query) {
+        if (client.activeQuery === query) {
           const con = this.connection;
           if (this.host && this.host.indexOf("/") === 0) {
             con.connect(this.host + "/.s.PGSQL." + this.port);
@@ -29323,10 +29323,10 @@ var require_client = __commonJS({
             con.connect(this.port, this.host);
           }
           con.on("connect", function() {
-            con.cancel(client2.processID, client2.secretKey);
+            con.cancel(client.processID, client.secretKey);
           });
-        } else if (client2._queryQueue.indexOf(query) !== -1) {
-          client2._queryQueue.splice(client2._queryQueue.indexOf(query), 1);
+        } else if (client._queryQueue.indexOf(query) !== -1) {
+          client._queryQueue.splice(client._queryQueue.indexOf(query), 1);
         }
       }
       setTypeParser(oid, format, parseFn) {
@@ -29492,8 +29492,8 @@ var require_pg_pool = __commonJS({
       return i === -1 ? void 0 : list.splice(i, 1)[0];
     };
     var IdleItem = class {
-      constructor(client2, idleListener, timeoutId) {
-        this.client = client2;
+      constructor(client, idleListener, timeoutId) {
+        this.client = client;
         this.idleListener = idleListener;
         this.timeoutId = timeoutId;
       }
@@ -29512,8 +29512,8 @@ var require_pg_pool = __commonJS({
       }
       let rej;
       let res;
-      const cb = function(err, client2) {
-        err ? rej(err) : res(client2);
+      const cb = function(err, client) {
+        err ? rej(err) : res(client);
       };
       const result = new Promise2(function(resolve, reject) {
         res = resolve;
@@ -29524,15 +29524,15 @@ var require_pg_pool = __commonJS({
       });
       return { callback: cb, result };
     }
-    function makeIdleListener(pool2, client2) {
+    function makeIdleListener(pool2, client) {
       return function idleListener(err) {
-        err.client = client2;
-        client2.removeListener("error", idleListener);
-        client2.on("error", () => {
+        err.client = client;
+        client.removeListener("error", idleListener);
+        client.on("error", () => {
           pool2.log("additional client error after disconnection due to error", err);
         });
-        pool2._remove(client2);
-        pool2.emit("error", err, client2);
+        pool2._remove(client);
+        pool2.emit("error", err, client);
       };
     }
     var Pool4 = class extends EventEmitter {
@@ -29615,25 +29615,25 @@ var require_pg_pool = __commonJS({
         if (this._idle.length) {
           const idleItem = this._idle.pop();
           clearTimeout(idleItem.timeoutId);
-          const client2 = idleItem.client;
-          client2.ref && client2.ref();
+          const client = idleItem.client;
+          client.ref && client.ref();
           const idleListener = idleItem.idleListener;
-          return this._acquireClient(client2, pendingItem, idleListener, false);
+          return this._acquireClient(client, pendingItem, idleListener, false);
         }
         if (!this._isFull()) {
           return this.newClient(pendingItem);
         }
         throw new Error("unexpected condition");
       }
-      _remove(client2, callback) {
-        const removed = removeWhere(this._idle, (item) => item.client === client2);
+      _remove(client, callback) {
+        const removed = removeWhere(this._idle, (item) => item.client === client);
         if (removed !== void 0) {
           clearTimeout(removed.timeoutId);
         }
-        this._clients = this._clients.filter((c) => c !== client2);
+        this._clients = this._clients.filter((c) => c !== client);
         const context = this;
-        client2.end(() => {
-          context.emit("remove", client2);
+        client.end(() => {
+          context.emit("remove", client);
           if (typeof callback === "function") {
             callback();
           }
@@ -29674,34 +29674,34 @@ var require_pg_pool = __commonJS({
         return result;
       }
       newClient(pendingItem) {
-        const client2 = new this.Client(this.options);
-        this._clients.push(client2);
-        const idleListener = makeIdleListener(this, client2);
+        const client = new this.Client(this.options);
+        this._clients.push(client);
+        const idleListener = makeIdleListener(this, client);
         this.log("checking client timeout");
         let tid;
         let timeoutHit = false;
         if (this.options.connectionTimeoutMillis) {
           tid = setTimeout(() => {
-            if (client2.connection) {
+            if (client.connection) {
               this.log("ending client due to timeout");
               timeoutHit = true;
-              client2.connection.stream.destroy();
-            } else if (!client2.isConnected()) {
+              client.connection.stream.destroy();
+            } else if (!client.isConnected()) {
               this.log("ending client due to timeout");
               timeoutHit = true;
-              client2.end();
+              client.end();
             }
           }, this.options.connectionTimeoutMillis);
         }
         this.log("connecting new client");
-        client2.connect((err) => {
+        client.connect((err) => {
           if (tid) {
             clearTimeout(tid);
           }
-          client2.on("error", idleListener);
+          client.on("error", idleListener);
           if (err) {
             this.log("client failed to connect", err);
-            this._clients = this._clients.filter((c) => c !== client2);
+            this._clients = this._clients.filter((c) => c !== client);
             if (timeoutHit) {
               err = new Error("Connection terminated due to connection timeout", { cause: err });
             }
@@ -29712,13 +29712,13 @@ var require_pg_pool = __commonJS({
           } else {
             this.log("new client connected");
             if (this.options.onConnect) {
-              this._promiseTry(() => this.options.onConnect(client2)).then(
+              this._promiseTry(() => this.options.onConnect(client)).then(
                 () => {
-                  this._afterConnect(client2, pendingItem, idleListener);
+                  this._afterConnect(client, pendingItem, idleListener);
                 },
                 (hookErr) => {
-                  this._clients = this._clients.filter((c) => c !== client2);
-                  client2.end(() => {
+                  this._clients = this._clients.filter((c) => c !== client);
+                  client.end(() => {
                     this._pulseQueue();
                     if (!pendingItem.timedOut) {
                       pendingItem.callback(hookErr, void 0, NOOP);
@@ -29728,93 +29728,93 @@ var require_pg_pool = __commonJS({
               );
               return;
             }
-            return this._afterConnect(client2, pendingItem, idleListener);
+            return this._afterConnect(client, pendingItem, idleListener);
           }
         });
       }
-      _afterConnect(client2, pendingItem, idleListener) {
+      _afterConnect(client, pendingItem, idleListener) {
         if (this.options.maxLifetimeSeconds !== 0) {
           const maxLifetimeTimeout = setTimeout(() => {
             this.log("ending client due to expired lifetime");
-            this._expired.add(client2);
-            const idleIndex = this._idle.findIndex((idleItem) => idleItem.client === client2);
+            this._expired.add(client);
+            const idleIndex = this._idle.findIndex((idleItem) => idleItem.client === client);
             if (idleIndex !== -1) {
               this._acquireClient(
-                client2,
-                new PendingItem((err, client3, clientRelease) => clientRelease()),
+                client,
+                new PendingItem((err, client2, clientRelease) => clientRelease()),
                 idleListener,
                 false
               );
             }
           }, this.options.maxLifetimeSeconds * 1e3);
           maxLifetimeTimeout.unref();
-          client2.once("end", () => clearTimeout(maxLifetimeTimeout));
+          client.once("end", () => clearTimeout(maxLifetimeTimeout));
         }
-        return this._acquireClient(client2, pendingItem, idleListener, true);
+        return this._acquireClient(client, pendingItem, idleListener, true);
       }
       // acquire a client for a pending work item
-      _acquireClient(client2, pendingItem, idleListener, isNew) {
+      _acquireClient(client, pendingItem, idleListener, isNew) {
         if (isNew) {
-          this.emit("connect", client2);
+          this.emit("connect", client);
         }
-        this.emit("acquire", client2);
-        client2.release = this._releaseOnce(client2, idleListener);
-        client2.removeListener("error", idleListener);
+        this.emit("acquire", client);
+        client.release = this._releaseOnce(client, idleListener);
+        client.removeListener("error", idleListener);
         if (!pendingItem.timedOut) {
           if (isNew && this.options.verify) {
-            this.options.verify(client2, (err) => {
+            this.options.verify(client, (err) => {
               if (err) {
-                client2.release(err);
+                client.release(err);
                 return pendingItem.callback(err, void 0, NOOP);
               }
-              pendingItem.callback(void 0, client2, client2.release);
+              pendingItem.callback(void 0, client, client.release);
             });
           } else {
-            pendingItem.callback(void 0, client2, client2.release);
+            pendingItem.callback(void 0, client, client.release);
           }
         } else {
           if (isNew && this.options.verify) {
-            this.options.verify(client2, client2.release);
+            this.options.verify(client, client.release);
           } else {
-            client2.release();
+            client.release();
           }
         }
       }
       // returns a function that wraps _release and throws if called more than once
-      _releaseOnce(client2, idleListener) {
+      _releaseOnce(client, idleListener) {
         let released = false;
         return (err) => {
           if (released) {
             throwOnDoubleRelease();
           }
           released = true;
-          this._release(client2, idleListener, err);
+          this._release(client, idleListener, err);
         };
       }
       // release a client back to the poll, include an error
       // to remove it from the pool
-      _release(client2, idleListener, err) {
-        client2.on("error", idleListener);
-        client2._poolUseCount = (client2._poolUseCount || 0) + 1;
-        this.emit("release", err, client2);
-        if (err || this.ending || !client2._queryable || client2._ending || client2._poolUseCount >= this.options.maxUses) {
-          if (client2._poolUseCount >= this.options.maxUses) {
+      _release(client, idleListener, err) {
+        client.on("error", idleListener);
+        client._poolUseCount = (client._poolUseCount || 0) + 1;
+        this.emit("release", err, client);
+        if (err || this.ending || !client._queryable || client._ending || client._poolUseCount >= this.options.maxUses) {
+          if (client._poolUseCount >= this.options.maxUses) {
             this.log("remove expended client");
           }
-          return this._remove(client2, this._pulseQueue.bind(this));
+          return this._remove(client, this._pulseQueue.bind(this));
         }
-        const isExpired = this._expired.has(client2);
+        const isExpired = this._expired.has(client);
         if (isExpired) {
           this.log("remove expired client");
-          this._expired.delete(client2);
-          return this._remove(client2, this._pulseQueue.bind(this));
+          this._expired.delete(client);
+          return this._remove(client, this._pulseQueue.bind(this));
         }
         let tid;
         if (this.options.idleTimeoutMillis && this._isAboveMin()) {
           tid = setTimeout(() => {
             if (this._isAboveMin()) {
               this.log("remove idle client");
-              this._remove(client2, this._pulseQueue.bind(this));
+              this._remove(client, this._pulseQueue.bind(this));
             }
           }, this.options.idleTimeoutMillis);
           if (this.options.allowExitOnIdle) {
@@ -29822,9 +29822,9 @@ var require_pg_pool = __commonJS({
           }
         }
         if (this.options.allowExitOnIdle) {
-          client2.unref();
+          client.unref();
         }
-        this._idle.push(new IdleItem(client2, idleListener, tid));
+        this._idle.push(new IdleItem(client, idleListener, tid));
         this._pulseQueue();
       }
       query(text2, values, cb) {
@@ -29841,7 +29841,7 @@ var require_pg_pool = __commonJS({
         }
         const response = promisify(this.Promise, cb);
         cb = response.callback;
-        this.connect((err, client2) => {
+        this.connect((err, client) => {
           if (err) {
             return cb(err);
           }
@@ -29851,27 +29851,27 @@ var require_pg_pool = __commonJS({
               return;
             }
             clientReleased = true;
-            client2.release(err2);
+            client.release(err2);
             cb(err2);
           };
-          client2.once("error", onError);
+          client.once("error", onError);
           this.log("dispatching query");
           try {
-            client2.query(text2, values, (err2, res) => {
+            client.query(text2, values, (err2, res) => {
               this.log("query dispatched");
-              client2.removeListener("error", onError);
+              client.removeListener("error", onError);
               if (clientReleased) {
                 return;
               }
               clientReleased = true;
-              client2.release(err2);
+              client.release(err2);
               if (err2) {
                 return cb(err2);
               }
               return cb(void 0, res);
             });
           } catch (err2) {
-            client2.release(err2);
+            client.release(err2);
             return cb(err2);
           }
         });
@@ -29896,7 +29896,7 @@ var require_pg_pool = __commonJS({
         return this._idle.length;
       }
       get expiredCount() {
-        return this._clients.reduce((acc, client2) => acc + (this._expired.has(client2) ? 1 : 0), 0);
+        return this._clients.reduce((acc, client) => acc + (this._expired.has(client) ? 1 : 0), 0);
       }
       get totalCount() {
         return this._clients.length;
@@ -29977,13 +29977,13 @@ var require_query2 = __commonJS({
       );
       return this._promise;
     };
-    NativeQuery.prototype.submit = function(client2) {
+    NativeQuery.prototype.submit = function(client) {
       this.state = "running";
       const self2 = this;
-      this.native = client2.native;
-      client2.native.arrayMode = this._arrayMode;
+      this.native = client.native;
+      client.native.arrayMode = this._arrayMode;
       let after = function(err, rows, results) {
-        client2.native.arrayMode = false;
+        client.native.arrayMode = false;
         setImmediate(function() {
           self2.emit("_done");
         });
@@ -30019,16 +30019,16 @@ var require_query2 = __commonJS({
           console.error("This can cause conflicts and silent errors executing queries");
         }
         const values = (this.values || []).map(utils.prepareValue);
-        if (client2.namedQueries[this.name]) {
-          if (this.text && client2.namedQueries[this.name] !== this.text) {
+        if (client.namedQueries[this.name]) {
+          if (this.text && client.namedQueries[this.name] !== this.text) {
             const err = new Error(`Prepared statements must be unique - '${this.name}' was used for a different statement`);
             return after(err);
           }
-          return client2.native.execute(this.name, values, after);
+          return client.native.execute(this.name, values, after);
         }
-        return client2.native.prepare(this.name, this.text, values.length, function(err) {
+        return client.native.prepare(this.name, this.text, values.length, function(err) {
           if (err) return after(err);
-          client2.namedQueries[self2.name] = self2.text;
+          client.namedQueries[self2.name] = self2.text;
           return self2.native.execute(self2.name, values, after);
         });
       } else if (this.values) {
@@ -30037,11 +30037,11 @@ var require_query2 = __commonJS({
           return after(err);
         }
         const vals = this.values.map(utils.prepareValue);
-        client2.native.query(this.text, vals, after);
+        client.native.query(this.text, vals, after);
       } else if (this.queryMode === "extended") {
-        client2.native.query(this.text, [], after);
+        client.native.query(this.text, [], after);
       } else {
-        client2.native.query(this.text, after);
+        client.native.query(this.text, after);
       }
     };
   }
@@ -43485,9 +43485,9 @@ var init_session2 = __esm({
     init_utils();
     ({ Pool: Pool2, types: types2 } = esm_default);
     NodePgPreparedQuery = class extends PgPreparedQuery {
-      constructor(client2, queryString, params, logger2, cache, queryMetadata, cacheConfig, fields, name2, _isResponseInArrayMode, customResultMapper) {
+      constructor(client, queryString, params, logger2, cache, queryMetadata, cacheConfig, fields, name2, _isResponseInArrayMode, customResultMapper) {
         super({ sql: queryString, params }, cache, queryMetadata, cacheConfig);
-        this.client = client2;
+        this.client = client;
         this.queryString = queryString;
         this.params = params;
         this.logger = logger2;
@@ -43577,7 +43577,7 @@ var init_session2 = __esm({
         return tracer.startActiveSpan("drizzle.execute", async () => {
           const params = fillPlaceholders(this.params, placeholderValues);
           this.logger.logQuery(this.rawQueryConfig.text, params);
-          const { fields, rawQueryConfig: rawQuery, client: client2, queryConfig: query, joinsNotNullableMap, customResultMapper } = this;
+          const { fields, rawQueryConfig: rawQuery, client, queryConfig: query, joinsNotNullableMap, customResultMapper } = this;
           if (!fields && !customResultMapper) {
             return tracer.startActiveSpan("drizzle.driver.execute", async (span) => {
               span?.setAttributes({
@@ -43586,7 +43586,7 @@ var init_session2 = __esm({
                 "drizzle.query.params": JSON.stringify(params)
               });
               return this.queryWithCache(rawQuery.text, params, async () => {
-                return await client2.query(rawQuery, params);
+                return await client.query(rawQuery, params);
               });
             });
           }
@@ -43597,7 +43597,7 @@ var init_session2 = __esm({
               "drizzle.query.params": JSON.stringify(params)
             });
             return this.queryWithCache(query.text, params, async () => {
-              return await client2.query(query, params);
+              return await client.query(query, params);
             });
           });
           return tracer.startActiveSpan("drizzle.mapResponse", () => {
@@ -43627,9 +43627,9 @@ var init_session2 = __esm({
       }
     };
     NodePgSession = class _NodePgSession extends PgSession {
-      constructor(client2, dialect, schema, options = {}) {
+      constructor(client, dialect, schema, options = {}) {
         super(dialect);
-        this.client = client2;
+        this.client = client;
         this.schema = schema;
         this.options = options;
         this.logger = options.logger ?? new NoopLogger();
@@ -43701,7 +43701,7 @@ var init_session2 = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0/node_modules/drizzle-orm/node-postgres/driver.js
-function construct(client2, config2 = {}) {
+function construct(client, config2 = {}) {
   const dialect = new PgDialect({ casing: config2.casing });
   let logger2;
   if (config2.logger === true) {
@@ -43721,10 +43721,10 @@ function construct(client2, config2 = {}) {
       tableNamesMap: tablesConfig.tableNamesMap
     };
   }
-  const driver = new NodePgDriver(client2, dialect, { logger: logger2, cache: config2.cache });
+  const driver = new NodePgDriver(client, dialect, { logger: logger2, cache: config2.cache });
   const session2 = driver.createSession(schema);
   const db2 = new NodePgDatabase(dialect, session2, schema);
-  db2.$client = client2;
+  db2.$client = client;
   db2.$cache = config2.cache;
   if (db2.$cache) {
     db2.$cache["invalidate"] = config2.cache?.onMutate;
@@ -43739,8 +43739,8 @@ function drizzle(...params) {
     return construct(instance, params[1]);
   }
   if (isConfig(params[0])) {
-    const { connection, client: client2, ...drizzleConfig } = params[0];
-    if (client2) return construct(client2, drizzleConfig);
+    const { connection, client, ...drizzleConfig } = params[0];
+    if (client) return construct(client, drizzleConfig);
     const instance = typeof connection === "string" ? new esm_default.Pool({
       connectionString: connection
     }) : new esm_default.Pool(connection);
@@ -43760,8 +43760,8 @@ var init_driver = __esm({
     init_utils();
     init_session2();
     NodePgDriver = class {
-      constructor(client2, dialect, options = {}) {
-        this.client = client2;
+      constructor(client, dialect, options = {}) {
+        this.client = client;
         this.dialect = dialect;
         this.options = options;
       }
@@ -95766,7 +95766,7 @@ var require_GoTrueAdminApi = __commonJS({
           });
           if (response.error)
             throw response.error;
-          const clients = await response.json();
+          const clients2 = await response.json();
           const total = (_e = response.headers.get("x-total-count")) !== null && _e !== void 0 ? _e : 0;
           const links = (_g = (_f = response.headers.get("link")) === null || _f === void 0 ? void 0 : _f.split(",")) !== null && _g !== void 0 ? _g : [];
           if (links.length > 0) {
@@ -95777,7 +95777,7 @@ var require_GoTrueAdminApi = __commonJS({
             });
             pagination.total = parseInt(total);
           }
-          return { data: Object.assign(Object.assign({}, clients), pagination), error: null };
+          return { data: Object.assign(Object.assign({}, clients2), pagination), error: null };
         } catch (error40) {
           if ((0, errors_1.isAuthError)(error40)) {
             return { data: { clients: [] }, error: error40 };
@@ -95796,8 +95796,8 @@ var require_GoTrueAdminApi = __commonJS({
           return await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/admin/oauth/clients`, {
             body: params,
             headers: this.headers,
-            xform: (client2) => {
-              return { data: client2, error: null };
+            xform: (client) => {
+              return { data: client, error: null };
             }
           });
         } catch (error40) {
@@ -95817,8 +95817,8 @@ var require_GoTrueAdminApi = __commonJS({
         try {
           return await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/admin/oauth/clients/${clientId}`, {
             headers: this.headers,
-            xform: (client2) => {
-              return { data: client2, error: null };
+            xform: (client) => {
+              return { data: client, error: null };
             }
           });
         } catch (error40) {
@@ -95839,8 +95839,8 @@ var require_GoTrueAdminApi = __commonJS({
           return await (0, fetch_1._request)(this.fetch, "PUT", `${this.url}/admin/oauth/clients/${clientId}`, {
             body: params,
             headers: this.headers,
-            xform: (client2) => {
-              return { data: client2, error: null };
+            xform: (client) => {
+              return { data: client, error: null };
             }
           });
         } catch (error40) {
@@ -95880,8 +95880,8 @@ var require_GoTrueAdminApi = __commonJS({
         try {
           return await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/admin/oauth/clients/${clientId}/regenerate_secret`, {
             headers: this.headers,
-            xform: (client2) => {
-              return { data: client2, error: null };
+            xform: (client) => {
+              return { data: client, error: null };
             }
           });
         } catch (error40) {
@@ -96843,8 +96843,8 @@ var require_webauthn = __commonJS({
       return deepMerge(exports.DEFAULT_REQUEST_OPTIONS, baseOptions, overrides || {});
     }
     var WebAuthnApi = class {
-      constructor(client2) {
-        this.client = client2;
+      constructor(client) {
+        this.client = client;
         this.enroll = this._enroll.bind(this);
         this.challenge = this._challenge.bind(this);
         this.verify = this._verify.bind(this);
@@ -107085,6 +107085,7 @@ __export(babimo_exports, {
   BabimoError: () => BabimoError,
   babimoPaymentMethod: () => babimoPaymentMethod,
   getBabimoClient: () => getBabimoClient,
+  isAnyBabimoConfigured: () => isAnyBabimoConfigured,
   isBabimoConfigured: () => isBabimoConfigured
 });
 function normalizeCoteDIvoirePhone(phone) {
@@ -107132,25 +107133,40 @@ function isRejected(raw) {
 function babimoPaymentMethod(operator, countryCode) {
   return PAYMENT_METHODS[`${operator.toLowerCase().trim()}|${countryCode.toUpperCase().trim()}`] ?? null;
 }
-function isBabimoConfigured() {
-  return Boolean(process.env.BABIMO_EMAIL && process.env.BABIMO_PASSWORD);
+function countryKey(countryCode) {
+  return countryCode.trim().toUpperCase();
 }
-function getBabimoClient() {
-  if (!client) {
-    const email3 = process.env.BABIMO_EMAIL;
-    const password = process.env.BABIMO_PASSWORD;
-    if (!email3 || !password) {
-      throw new Error("Babimo non configur\xE9. D\xE9finissez BABIMO_EMAIL et BABIMO_PASSWORD dans les Secrets Replit.");
-    }
-    client = new BabimoClient({
-      baseUrl: process.env.BABIMO_BASE_URL ?? DEFAULT_BASE_URL,
-      email: email3,
-      password
-    });
+function babimoSecretName(countryCode, suffix) {
+  return `BABIMO_${countryKey(countryCode)}_${suffix}`;
+}
+function isBabimoConfigured(countryCode) {
+  const email3 = process.env[babimoSecretName(countryCode, "EMAIL")];
+  const password = process.env[babimoSecretName(countryCode, "PASSWORD")];
+  return Boolean(email3 && password);
+}
+function isAnyBabimoConfigured() {
+  return ["CI", "BJ", "BF"].some(isBabimoConfigured);
+}
+function getBabimoClient(countryCode) {
+  const key = countryKey(countryCode);
+  const existing = clients.get(key);
+  if (existing) return existing;
+  const email3 = process.env[babimoSecretName(key, "EMAIL")];
+  const password = process.env[babimoSecretName(key, "PASSWORD")];
+  if (!email3 || !password) {
+    throw new Error(
+      `Babimo ${key} non configur\xE9. D\xE9finissez ${babimoSecretName(key, "EMAIL")} et ${babimoSecretName(key, "PASSWORD")} dans les Secrets Replit.`
+    );
   }
-  return client;
+  const newClient = new BabimoClient({
+    baseUrl: process.env[babimoSecretName(key, "BASE_URL")] ?? DEFAULT_BASE_URL,
+    email: email3,
+    password
+  });
+  clients.set(key, newClient);
+  return newClient;
 }
-var DEFAULT_BASE_URL, PAYMENT_METHODS, FINAL_STATUSES, BabimoError, BabimoClient, client;
+var DEFAULT_BASE_URL, PAYMENT_METHODS, FINAL_STATUSES, BabimoError, BabimoClient, clients;
 var init_babimo = __esm({
   "src/lib/babimo.ts"() {
     "use strict";
@@ -107202,7 +107218,7 @@ var init_babimo = __esm({
         if (!response.ok) {
           throw new BabimoError(errorMessage(raw, `Babimo login HTTP ${response.status}`), response.status, raw);
         }
-        const token = firstString(raw, ["token", "access_token", "accessToken"]);
+        const token = firstString(raw, ["token", "access_token", "accessToken"]) || firstString(raw?.authorisation, ["token", "access_token", "accessToken"]) || firstString(raw?.authorization, ["token", "access_token", "accessToken"]);
         if (!token) {
           throw new BabimoError("Babimo n'a pas retourn\xE9 de token d'acc\xE8s.", 502, raw);
         }
@@ -107340,7 +107356,7 @@ var init_babimo = __esm({
         return FINAL_STATUSES.has((status ?? "").toLowerCase());
       }
     };
-    client = null;
+    clients = /* @__PURE__ */ new Map();
   }
 });
 
@@ -258386,9 +258402,9 @@ var router = (0, import_express.Router)();
 router.get("/healthz", async (_req, res) => {
   const start = Date.now();
   try {
-    const client2 = await pool.connect();
-    await client2.query("SELECT 1");
-    client2.release();
+    const client = await pool.connect();
+    await client.query("SELECT 1");
+    client.release();
     res.json({
       status: "ok",
       db: "ok",
@@ -258449,9 +258465,15 @@ router2.get("/help", async (req, res) => {
     "CLAPAY_API_TOKEN",
     "CLAPAY_BASE_URL",
     "CLAPAY_WEBHOOK_SECRET",
-    "BABIMO_EMAIL",
-    "BABIMO_PASSWORD",
-    "BABIMO_BASE_URL",
+    "BABIMO_CI_EMAIL",
+    "BABIMO_CI_PASSWORD",
+    "BABIMO_CI_BASE_URL",
+    "BABIMO_BJ_EMAIL",
+    "BABIMO_BJ_PASSWORD",
+    "BABIMO_BJ_BASE_URL",
+    "BABIMO_BF_EMAIL",
+    "BABIMO_BF_PASSWORD",
+    "BABIMO_BF_BASE_URL",
     "RESEND_API_KEY",
     "NODE_ENV",
     "PORT",
@@ -258464,11 +258486,11 @@ router2.get("/help", async (req, res) => {
   checks.env = envChecks;
   const dbStart = Date.now();
   try {
-    const client2 = await pool.connect();
-    const result = await client2.query(
+    const client = await pool.connect();
+    const result = await client.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
     );
-    client2.release();
+    client.release();
     checks.database = {
       status: "\u2713 connect\xE9",
       latencyMs: Date.now() - dbStart,
@@ -258502,9 +258524,23 @@ router2.get("/help", async (req, res) => {
     aggregator: process.env["ACTIVE_AGGREGATOR"] ?? "(non d\xE9fini)"
   };
   checks.babimo = {
-    baseUrl: process.env["BABIMO_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
-    email: process.env["BABIMO_EMAIL"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
-    password: process.env["BABIMO_PASSWORD"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+    countries: {
+      CI: {
+        baseUrl: process.env["BABIMO_CI_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
+        email: process.env["BABIMO_CI_EMAIL"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+        password: process.env["BABIMO_CI_PASSWORD"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT"
+      },
+      BJ: {
+        baseUrl: process.env["BABIMO_BJ_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
+        email: process.env["BABIMO_BJ_EMAIL"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+        password: process.env["BABIMO_BJ_PASSWORD"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT"
+      },
+      BF: {
+        baseUrl: process.env["BABIMO_BF_BASE_URL"] ?? "https://v2.b-pay.co/service/api/v1",
+        email: process.env["BABIMO_BF_EMAIL"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+        password: process.env["BABIMO_BF_PASSWORD"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT"
+      }
+    },
     aggregator: "babimo"
   };
   checks.storage = {
@@ -266151,13 +266187,13 @@ var MemoryStore = class {
    * @public
    */
   async increment(key) {
-    const client2 = this.getClient(key);
+    const client = this.getClient(key);
     const now = Date.now();
-    if (client2.resetTime.getTime() <= now) {
-      this.resetClient(client2, now);
+    if (client.resetTime.getTime() <= now) {
+      this.resetClient(client, now);
     }
-    client2.totalHits++;
-    return client2;
+    client.totalHits++;
+    return client;
   }
   /**
    * Method to decrement a client's hit counter.
@@ -266167,8 +266203,8 @@ var MemoryStore = class {
    * @public
    */
   async decrement(key) {
-    const client2 = this.getClient(key);
-    if (client2.totalHits > 0) client2.totalHits--;
+    const client = this.getClient(key);
+    if (client.totalHits > 0) client.totalHits--;
   }
   /**
    * Method to reset a client's hit counter.
@@ -266212,10 +266248,10 @@ var MemoryStore = class {
    *
    * @return {Client} - The modified client that was passed in, to allow for chaining.
    */
-  resetClient(client2, now = Date.now()) {
-    client2.totalHits = 0;
-    client2.resetTime.setTime(now + this.windowMs);
-    return client2;
+  resetClient(client, now = Date.now()) {
+    client.totalHits = 0;
+    client.resetTime.setTime(now + this.windowMs);
+    return client;
   }
   /**
    * Retrieves or creates a client, given a key. Also ensures that the client being
@@ -266227,16 +266263,16 @@ var MemoryStore = class {
    */
   getClient(key) {
     if (this.current.has(key)) return this.current.get(key);
-    let client2;
+    let client;
     if (this.previous.has(key)) {
-      client2 = this.previous.get(key);
+      client = this.previous.get(key);
       this.previous.delete(key);
     } else {
-      client2 = { totalHits: 0, resetTime: /* @__PURE__ */ new Date() };
-      this.resetClient(client2);
+      client = { totalHits: 0, resetTime: /* @__PURE__ */ new Date() };
+      this.resetClient(client);
     }
-    this.current.set(key, client2);
-    return client2;
+    this.current.set(key, client);
+    return client;
   }
   /**
    * Move current clients to previous, create a new map for current.
@@ -272984,8 +273020,8 @@ function namespaceToPath(namespace) {
   return namespace.join("");
 }
 var NamespaceOperations = class {
-  constructor(client2, prefix = "") {
-    this.client = client2;
+  constructor(client, prefix = "") {
+    this.client = client;
     this.prefix = prefix;
   }
   async listNamespaces(parent) {
@@ -273053,8 +273089,8 @@ function namespaceToPath2(namespace) {
   return namespace.join("");
 }
 var TableOperations = class {
-  constructor(client2, prefix = "", accessDelegation) {
-    this.client = client2;
+  constructor(client, prefix = "", accessDelegation) {
+    this.client = client;
     this.prefix = prefix;
     this.accessDelegation = accessDelegation;
   }
@@ -276970,22 +277006,22 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
       );
       return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
     }
-    if (!explicitMapping && isBabimoConfigured()) {
+    if (!explicitMapping && isBabimoConfigured(countryCode)) {
       console.warn(
         `[AggregatorRouter] Clapay non configur\xE9 \u2014 bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`
       );
-      return { aggregator: "babimo", client: getBabimoClient(), opAgg: null };
+      return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: null };
     }
     throw new AggregatorNotConfiguredError("clapay");
   } else if (aggregatorCode === "paydunya") {
     if (isPayDunyaConfigured()) {
       return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
     }
-    if (!explicitMapping && isBabimoConfigured()) {
+    if (!explicitMapping && isBabimoConfigured(countryCode)) {
       console.warn(
         `[AggregatorRouter] PayDunya non configur\xE9 \u2014 bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`
       );
-      return { aggregator: "babimo", client: getBabimoClient(), opAgg: null };
+      return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: null };
     }
     if (!explicitMapping && isClapayConfigured()) {
       console.warn(
@@ -276995,8 +277031,8 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
     }
     throw new AggregatorNotConfiguredError("paydunya");
   } else {
-    if (isBabimoConfigured()) {
-      return { aggregator: "babimo", client: getBabimoClient(), opAgg: opAgg ?? null };
+    if (isBabimoConfigured(countryCode)) {
+      return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: opAgg ?? null };
     }
     if (!explicitMapping && isPayDunyaConfigured()) {
       console.warn(
@@ -277026,16 +277062,16 @@ function mapPayDunyaStatus(s) {
   if (u === "processing" || u === "initiated") return "processing";
   return "pending";
 }
-async function fetchStatus(aggregator, client2, gatewayRef, operation = "payin") {
+async function fetchStatus(aggregator, client, gatewayRef, operation = "payin") {
   if (aggregator === "clapay") {
-    const r = await client2.getStatus(gatewayRef);
+    const r = await client.getStatus(gatewayRef);
     return {
       status: r.status,
       gatewayReference: r.clapay_reference || gatewayRef,
       failureReason: r.failure_reason
     };
   } else if (aggregator === "paydunya") {
-    const pd = client2;
+    const pd = client;
     const r = operation === "payout" ? await pd.getPayoutStatus(gatewayRef) : await pd.getStatus(gatewayRef);
     return {
       status: mapPayDunyaStatus(r.status),
@@ -277043,7 +277079,7 @@ async function fetchStatus(aggregator, client2, gatewayRef, operation = "payin")
       failureReason: r.failure_reason
     };
   } else {
-    const r = await client2.getStatus(gatewayRef);
+    const r = await client.getStatus(gatewayRef);
     return {
       status: r.status,
       gatewayReference: r.babimo_reference || gatewayRef,
@@ -277051,7 +277087,7 @@ async function fetchStatus(aggregator, client2, gatewayRef, operation = "payin")
     };
   }
 }
-async function pollUntilSettled(aggregator, client2, gatewayRef, options) {
+async function pollUntilSettled(aggregator, client, gatewayRef, options) {
   if (!gatewayRef) return null;
   const intervalMs = options?.intervalMs ?? 3e3;
   const maxDurationMs = options?.maxDurationMs ?? 25e3;
@@ -277063,7 +277099,7 @@ async function pollUntilSettled(aggregator, client2, gatewayRef, options) {
   while (Date.now() < deadline) {
     attempt++;
     try {
-      const result = await fetchStatus(aggregator, client2, gatewayRef, operation);
+      const result = await fetchStatus(aggregator, client, gatewayRef, operation);
       lastResult = result;
       console.info(
         `[Poll#${attempt}] ${aggregator}/${gatewayRef} \u2192 ${result.status} (+${Date.now() - (deadline - maxDurationMs)}ms)`
@@ -277139,9 +277175,9 @@ async function listActiveOperators(countryCode) {
   }).map((op) => op.name);
 }
 async function routePayout(params) {
-  const { aggregator, client: client2 } = await resolveAggregator(params.country_code, params.operator, "payout");
+  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
   if (aggregator === "clapay") {
-    const c = client2;
+    const c = client;
     const res = await c.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "\xC9chec Clapay payout");
     return {
@@ -277150,7 +277186,7 @@ async function routePayout(params) {
       message: "Payout envoy\xE9 via Clapay"
     };
   } else if (aggregator === "paydunya") {
-    const p = client2;
+    const p = client;
     const res = await p.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "\xC9chec PayDunya payout");
     return {
@@ -277159,7 +277195,7 @@ async function routePayout(params) {
       message: "Payout envoy\xE9 via PayDunya"
     };
   } else {
-    const b = client2;
+    const b = client;
     const res = await b.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "\xC9chec Babimo payout");
     return {
@@ -277625,12 +277661,12 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
       mode: currentMode
     }).returning();
     try {
-      const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
+      const { aggregator, client } = await resolveAggregator(countryCode, operator);
       const baseUrl2 = getWebhookBaseUrl();
       const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
       let gatewayRef;
       if (aggregator === "clapay") {
-        const r = await client2.initiatePayin({
+        const r = await client.initiatePayin({
           amount,
           currency,
           country_code: countryCode,
@@ -277646,7 +277682,7 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
         if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
       } else if (aggregator === "paydunya") {
-        const r = await client2.initiatePayin({
+        const r = await client.initiatePayin({
           amount,
           currency,
           country_code: countryCode,
@@ -277661,7 +277697,7 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
         if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
       } else {
-        const r = await client2.initiatePayin({
+        const r = await client.initiatePayin({
           amount,
           currency,
           country_code: countryCode,
@@ -277675,7 +277711,7 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
         if (!r.success) throw new BabimoError(r.message ?? "\xC9chec Babimo", 502, r);
         gatewayRef = r.babimo_reference;
       }
-      const statusCheck = await pollUntilSettled(aggregator, client2, gatewayRef, {
+      const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
         intervalMs: 4e3,
         maxDurationMs: 2e4
       });
@@ -277844,9 +277880,9 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       mode: currentMode
     }).returning();
     let aggregator;
-    let client2;
+    let client;
     try {
-      ({ aggregator, client: client2 } = await resolveAggregator(countryCode, operator, "payout"));
+      ({ aggregator, client } = await resolveAggregator(countryCode, operator, "payout"));
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
       const realReason = err?.message ?? String(err);
@@ -277880,7 +277916,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     try {
       console.log(`[Payout] \u2192 Initiation ${aggregator} | ref: ${reference} | ${amount} ${currency} | ${operator} (${countryCode}) \u2192 ${phone}`);
       if (aggregator === "clapay") {
-        const r = await client2.initiatePayout({
+        const r = await client.initiatePayout({
           amount,
           currency,
           country_code: countryCode,
@@ -277894,7 +277930,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
         if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
       } else if (aggregator === "paydunya") {
-        const r = await client2.initiatePayout({
+        const r = await client.initiatePayout({
           amount,
           currency,
           country_code: countryCode,
@@ -277908,7 +277944,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
         if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
       } else {
-        const r = await client2.initiatePayout({
+        const r = await client.initiatePayout({
           amount,
           currency,
           country_code: countryCode,
@@ -277972,7 +278008,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     });
     (async () => {
       try {
-        const statusCheck = await pollUntilSettled(aggregator, client2, gatewayRef, {
+        const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
           intervalMs: 3e3,
           maxDurationMs: 3e4,
           operation: "payout"
@@ -278642,8 +278678,8 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     await db.update(transactionsTable).set({ status: "processing", externalRef: result.externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     (async () => {
       try {
-        const { client: client2 } = await resolveAggregator(countryCode, operator, "payout");
-        const statusCheck = await pollUntilSettled(resolvedAggregator, client2, result.externalRef, {
+        const { client } = await resolveAggregator(countryCode, operator, "payout");
+        const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
           intervalMs: 3e3,
           maxDurationMs: 3e4,
           operation: "payout"
@@ -279307,13 +279343,13 @@ router11.post("/pay/:token", async (req, res) => {
     return;
   }
   try {
-    const { aggregator, client: client2 } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
     const baseUrl2 = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
     let gatewayRef;
     let gatewayPaymentUrl;
     if (aggregator === "clapay") {
-      const r = await client2.initiatePayin({
+      const r = await client.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -279328,7 +279364,7 @@ router11.post("/pay/:token", async (req, res) => {
       if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
       gatewayRef = r.clapay_reference;
     } else if (aggregator === "paydunya") {
-      const r = await client2.initiatePayin({
+      const r = await client.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -279345,7 +279381,7 @@ router11.post("/pay/:token", async (req, res) => {
       gatewayRef = r.paydunya_reference;
       gatewayPaymentUrl = r.payment_url;
     } else {
-      const r = await client2.initiatePayin({
+      const r = await client.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -279621,11 +279657,11 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
         ;
         (async () => {
           try {
-            const { aggregator, client: client2 } = await resolveAggregator(r.countryCode, r.operator, "payout");
+            const { aggregator, client } = await resolveAggregator(r.countryCode, r.operator, "payout");
             const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
             let gatewayRef;
             if (aggregator === "clapay") {
-              const resp = await client2.initiatePayout({
+              const resp = await client.initiatePayout({
                 amount: r.amount,
                 currency: countryCurrency,
                 country_code: r.countryCode,
@@ -279638,7 +279674,7 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               if (!resp.success) throw new Error(resp.message ?? "Clapay failed");
               gatewayRef = resp.clapay_reference;
             } else if (aggregator === "paydunya") {
-              const resp = await client2.initiatePayout({
+              const resp = await client.initiatePayout({
                 amount: r.amount,
                 currency: countryCurrency,
                 country_code: r.countryCode,
@@ -279651,7 +279687,7 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               if (!resp.success) throw new Error(resp.message ?? "PayDunya failed");
               gatewayRef = resp.paydunya_reference;
             } else {
-              const resp = await client2.initiatePayout({
+              const resp = await client.initiatePayout({
                 amount: r.amount,
                 currency: countryCurrency,
                 country_code: r.countryCode,
@@ -280010,14 +280046,14 @@ router11.post("/qr/:reference", async (req, res) => {
   }
   const baseCallbackUrl = getWebhookBaseUrl();
   try {
-    const { aggregator, client: client2 } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
     const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
     let externalRef;
     let paymentUrl = null;
     let ussdCode = null;
     if (aggregator === "clapay") {
-      const clapayRes = await client2.initiatePayin({
+      const clapayRes = await client.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -280037,7 +280073,7 @@ router11.post("/qr/:reference", async (req, res) => {
       paymentUrl = clapayRes.payment_url ?? null;
       ussdCode = clapayRes.ussd_code ?? null;
     } else if (aggregator === "paydunya") {
-      const pdRes = await client2.initiatePayin({
+      const pdRes = await client.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -280056,7 +280092,7 @@ router11.post("/qr/:reference", async (req, res) => {
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
     } else {
-      const babimoRes = await client2.initiatePayin({
+      const babimoRes = await client.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -280074,7 +280110,7 @@ router11.post("/qr/:reference", async (req, res) => {
       paymentUrl = babimoRes.payment_url ?? null;
     }
     await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
-    const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
+    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
       intervalMs: 4e3,
       maxDurationMs: 2e4
     });
@@ -280495,7 +280531,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     const frontendBaseUrl = getFrontendBaseUrl();
     const defaultReturnUrl = `${frontendBaseUrl}/payment/success`;
     try {
-      const { aggregator, client: client2 } = await resolveAggregator(country_code, operator);
+      const { aggregator, client } = await resolveAggregator(country_code, operator);
       const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
       const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
       const gatewayPayload = {
@@ -280516,7 +280552,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       let ussdCode = null;
       if (aggregator === "clapay") {
         const { ClapayClient: ClapayClient5 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-        const clapayRes = await client2.initiatePayin({
+        const clapayRes = await client.initiatePayin({
           amount,
           currency,
           country_code,
@@ -280536,7 +280572,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         ussdCode = clapayRes.ussd_code ?? null;
       } else if (aggregator === "paydunya") {
         const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
-        const pdRes = await client2.initiatePayin({
+        const pdRes = await client.initiatePayin({
           amount,
           currency,
           country_code,
@@ -280554,7 +280590,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         externalRef = pdRes.paydunya_reference;
         paymentUrl = pdRes.payment_url ?? null;
       } else {
-        const babimoRes = await client2.initiatePayin({
+        const babimoRes = await client.initiatePayin({
           amount,
           currency,
           country_code,
@@ -280573,7 +280609,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         paymentUrl = babimoRes.payment_url ?? null;
       }
       await db.update(transactionsTable).set({ externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
-      const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
+      const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
         intervalMs: 4e3,
         maxDurationMs: 2e4
       });
@@ -281960,24 +281996,24 @@ router13.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, r
       });
       return;
     }
-    const { aggregator, client: client2 } = await resolveAggregator(tx.countryCode, tx.operator);
+    const { aggregator, client } = await resolveAggregator(tx.countryCode, tx.operator);
     let gatewayStatus;
     let gatewayRef = queryRef;
     if (aggregator === "clapay") {
       const { ClapayClient: ClapayClient5 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-      const r = await client2.getStatus(queryRef);
+      const r = await client.getStatus(queryRef);
       gatewayStatus = r.status;
       if (r.clapay_reference) gatewayRef = r.clapay_reference;
     } else if (aggregator === "paydunya") {
       const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
-      const pd = client2;
+      const pd = client;
       const r = await pd.getStatus(tx.externalRef);
       const rs = r.status;
       gatewayStatus = rs === "completed" ? "success" : rs === "failed" ? "failed" : rs === "cancelled" ? "cancelled" : rs === "expired" ? "expired" : "pending";
       if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
     } else {
       const { BabimoClient: BabimoClient6 } = await Promise.resolve().then(() => (init_babimo(), babimo_exports));
-      const babimo = client2;
+      const babimo = client;
       const r = await babimo.getStatus(queryRef);
       gatewayStatus = r.status;
       if (r.babimo_reference) gatewayRef = r.babimo_reference;
@@ -283091,19 +283127,19 @@ router14.post("/webhooks/clapay", async (req, res) => {
       console.warn("[Clapay Webhook] Clapay non configur\xE9 \u2014 webhook ignor\xE9");
       return;
     }
-    const client2 = getClapayClient();
+    const client = getClapayClient();
     const rawBody = JSON.stringify(req.body);
     const receivedSig = req.headers["x-clapay-signature"] ?? req.headers["x-signature"] ?? req.body?.signature ?? "";
     const timestamp2 = parseInt(
       req.headers["x-clapay-timestamp"] ?? req.body?.timestamp ?? "0"
     );
     if (receivedSig && process.env.CLAPAY_WEBHOOK_SECRET) {
-      if (!client2.verifyWebhookSignature(rawBody, receivedSig, timestamp2)) {
+      if (!client.verifyWebhookSignature(rawBody, receivedSig, timestamp2)) {
         console.warn("[Clapay Webhook] Signature invalide \u2014 rejet\xE9");
         return;
       }
     }
-    const event = client2.parseWebhookEvent(req.body);
+    const event = client.parseWebhookEvent(req.body);
     console.log(`[Clapay Webhook] \xC9v\xE9nement: ${event.event} | clapay_ref: ${event.clapay_reference} | our_ref: ${event.our_reference}`);
     if (!event.our_reference) {
       console.warn("[Clapay Webhook] our_reference manquant \u2014 ignor\xE9");
@@ -283272,17 +283308,17 @@ router15.post("/webhooks/paydunya", async (req, res) => {
       console.warn("[PayDunya Webhook] PayDunya non configur\xE9 \u2014 webhook ignor\xE9");
       return;
     }
-    const client2 = getPayDunyaClient();
+    const client = getPayDunyaClient();
     const rawBody = JSON.stringify(req.body);
     const receivedHash = req.headers["x-paydunya-hash"] ?? req.headers["x-hash"] ?? req.body?.data?.hash ?? req.body?.hash ?? "";
     if (process.env.PAYDUNYA_WEBHOOK_SECRET && process.env.PAYDUNYA_WEBHOOK_SECRET !== "placeholder-secret") {
-      if (!receivedHash || !client2.verifyWebhookSignature(rawBody, receivedHash)) {
+      if (!receivedHash || !client.verifyWebhookSignature(rawBody, receivedHash)) {
         console.warn("[PayDunya Webhook] Signature invalide ou absente \u2014 webhook rejet\xE9");
         res.status(401).json({ error: "Invalid webhook signature" });
         return;
       }
     }
-    const event = client2.parseWebhookEvent(req.body);
+    const event = client.parseWebhookEvent(req.body);
     console.log(`[PayDunya Webhook] \xC9v\xE9nement: ${event.event} | ref: ${event.our_reference}`);
     if (!event.our_reference) {
       console.warn("[PayDunya Webhook] our_reference manquant \u2014 ignor\xE9");
@@ -283631,7 +283667,7 @@ router16.get("/webhooks/babimo", (_req, res) => {
     service: "DrimPay",
     webhook: "babimo",
     status: "ready",
-    configured: isBabimoConfigured(),
+    configured: isAnyBabimoConfigured(),
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
@@ -284247,14 +284283,14 @@ router18.post("/pay/:token", async (req, res) => {
     return;
   }
   try {
-    const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
+    const { aggregator, client } = await resolveAggregator(countryCode, operator);
     const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
     let externalRef;
     let paymentUrl = null;
     let ussdCode = null;
     if (aggregator === "clapay") {
-      const clapayRes = await client2.initiatePayin({
+      const clapayRes = await client.initiatePayin({
         amount,
         currency,
         country_code: countryCode,
@@ -284276,7 +284312,7 @@ router18.post("/pay/:token", async (req, res) => {
       paymentUrl = clapayRes.payment_url ?? null;
       ussdCode = clapayRes.ussd_code ?? null;
     } else if (aggregator === "paydunya") {
-      const pdRes = await client2.initiatePayin({
+      const pdRes = await client.initiatePayin({
         amount,
         currency,
         country_code: countryCode,
@@ -284297,7 +284333,7 @@ router18.post("/pay/:token", async (req, res) => {
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
     } else {
-      const babimoRes = await client2.initiatePayin({
+      const babimoRes = await client.initiatePayin({
         amount,
         currency,
         country_code: countryCode,
@@ -284315,7 +284351,7 @@ router18.post("/pay/:token", async (req, res) => {
       paymentUrl = babimoRes.payment_url ?? null;
     }
     await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
-    const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
+    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
       intervalMs: 4e3,
       maxDurationMs: 2e4
     });

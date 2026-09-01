@@ -11,7 +11,7 @@ import { db } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { transactionsTable, walletsTable, usersTable, reversementsTable } from "@workspace/db/schema";
-import { isBabimoConfigured } from "../lib/babimo";
+import { isAnyBabimoConfigured } from "../lib/babimo";
 import { settlePayinStatus } from "../lib/payin-settlement";
 
 const router = Router();
@@ -223,7 +223,7 @@ router.get("/webhooks/babimo", (_req: any, res: any) => {
     service: "DrimPay",
     webhook: "babimo",
     status: "ready",
-    configured: isBabimoConfigured(),
+    configured: isAnyBabimoConfigured(),
     timestamp: new Date().toISOString(),
   });
 });

@@ -144,11 +144,11 @@ export async function resolveAggregator(
       );
       return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
     }
-    if (!explicitMapping && isBabimoConfigured()) {
+    if (!explicitMapping && isBabimoConfigured(countryCode)) {
       console.warn(
         `[AggregatorRouter] Clapay non configuré — bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`,
       );
-      return { aggregator: "babimo", client: getBabimoClient(), opAgg: null };
+      return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: null };
     }
     throw new AggregatorNotConfiguredError("clapay");
   } else if (aggregatorCode === "paydunya") {
@@ -156,11 +156,11 @@ export async function resolveAggregator(
       return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: opAgg ?? null };
     }
     // PayDunya non configuré — fallback automatique sur Babimo puis Clapay si pas de mapping explicite
-    if (!explicitMapping && isBabimoConfigured()) {
+    if (!explicitMapping && isBabimoConfigured(countryCode)) {
       console.warn(
         `[AggregatorRouter] PayDunya non configuré — bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`,
       );
-      return { aggregator: "babimo", client: getBabimoClient(), opAgg: null };
+      return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: null };
     }
     if (!explicitMapping && isClapayConfigured()) {
       console.warn(
@@ -171,8 +171,8 @@ export async function resolveAggregator(
     }
     throw new AggregatorNotConfiguredError("paydunya");
   } else {
-    if (isBabimoConfigured()) {
-      return { aggregator: "babimo", client: getBabimoClient(), opAgg: opAgg ?? null };
+    if (isBabimoConfigured(countryCode)) {
+      return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: opAgg ?? null };
     }
     if (!explicitMapping && isPayDunyaConfigured()) {
       console.warn(
