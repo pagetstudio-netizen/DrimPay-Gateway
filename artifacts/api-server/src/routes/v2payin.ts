@@ -17,7 +17,7 @@ import { BabimoClient, BabimoError } from "../lib/babimo";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure, buildWalletsSummary } from "../lib/telegram";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
-import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
+import { GENERIC_ERROR_MESSAGE, MERCHANT_FAILURE_LABEL, merchantFailureLabel } from "../lib/merchant-error";
 import { isMaintenanceModeOn } from "../lib/admin-settings";
 
 const router = Router();
@@ -482,7 +482,6 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         payment_url: paymentUrl,
         ussd_code: ussdCode,
         message: "Prompt de paiement envoyé au téléphone du client",
-        gateway: aggregator,
         gateway_reference: externalRef,
         verified_status: verifiedStatus,
         created_at: tx.createdAt.toISOString(),
@@ -648,7 +647,7 @@ router.get("/v2/payin/transactions", resolveUser, async (req: any, res: any) => 
       operator: t.operator,
       phone: t.phone,
       mode: t.mode,
-      failure_reason: t.failureReason ?? null,
+       failure_reason: merchantFailureLabel(t.status, t.failureReason) ?? null,
       expires_at: t.expiresAt?.toISOString() ?? null,
       webhook_url: t.webhookUrl ?? null,
       webhook_status_code: t.webhookLastStatusCode ?? null,
@@ -703,7 +702,7 @@ router.get("/v2/payin/:reference", resolveUser, async (req: any, res: any) => {
     phone: tx.phone,
     mode: tx.mode,
     description: tx.description ?? null,
-    failure_reason: tx.failureReason ?? null,
+    failure_reason: merchantFailureLabel(tx.status, tx.failureReason) ?? null,
     expires_at: tx.expiresAt?.toISOString() ?? null,
     webhook_url: tx.webhookUrl ?? null,
     webhook_status_code: tx.webhookLastStatusCode ?? null,
@@ -747,7 +746,7 @@ router.post("/v2/payin/:reference/resend-webhook", resolveUser, async (req: any,
     operator: tx.operator,
     phone: tx.phone,
     mode: tx.mode,
-    failure_reason: tx.failureReason ?? null,
+    failure_reason: merchantFailureLabel(tx.status, tx.failureReason) ?? null,
     created_at: tx.createdAt.toISOString(),
     resent_at: new Date().toISOString(),
   };

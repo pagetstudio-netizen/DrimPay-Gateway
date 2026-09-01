@@ -147,7 +147,7 @@ function PendingMonitor({ reference, onDone }: { reference: string; onDone: (tx:
           {status === "pending" && "Confirmez sur votre téléphone"}
           {status === "processing" && "Paiement en cours…"}
           {status === "success" && "Paiement confirmé ✓"}
-          {status === "failed" && `Paiement échoué${tx?.failure_reason ? ` — ${tx.failure_reason}` : ""}`}
+          {status === "failed" && "Paiement échoué"}
           {status === "expired" && "Paiement expiré — délai dépassé"}
           {status === "cancelled" && "Paiement annulé"}
           {status === "reversed" && "Paiement reversé"}

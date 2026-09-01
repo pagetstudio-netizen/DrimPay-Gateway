@@ -26,7 +26,7 @@ type Tx = {
   reference: string;
   orderId?: string;
   type: "payin" | "payout";
-  status: "pending" | "success" | "failed" | "processing";
+  status: "pending" | "success" | "failed" | "processing" | "cancelled" | "expired";
   amount: string;
   fee: string;
   netAmount: string;
@@ -51,11 +51,13 @@ const STATUS_MAP = {
   success:    { label: "Success",    icon: CheckCircle2,  cls: "bg-green-500/15 text-green-400 border-green-500/20" },
   pending:    { label: "Pending",    icon: Clock,          cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20" },
   processing: { label: "Processing", icon: AlertCircle,    cls: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
-  failed:     { label: "Failed",     icon: XCircle,        cls: "bg-red-500/15 text-red-400 border-red-500/20" },
+  failed:     { label: "Échoué",     icon: XCircle,        cls: "bg-red-500/15 text-red-400 border-red-500/20" },
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_MAP[status as keyof typeof STATUS_MAP] ?? STATUS_MAP.pending;
+  const s = status === "cancelled" || status === "expired"
+    ? STATUS_MAP.failed
+    : STATUS_MAP[status as keyof typeof STATUS_MAP] ?? STATUS_MAP.pending;
   return (
     <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border", s.cls)}>
       <s.icon className="w-3 h-3" /> {s.label}
@@ -215,10 +217,10 @@ function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
             <p className="text-sm">{new Date(tx.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</p>
           </div>
 
-          {tx.failureReason && (
+          {(tx.status === "failed" || tx.status === "cancelled" || tx.status === "expired") && (
             <div className="py-3 border-b border-border/50">
-              <p className="text-xs text-muted-foreground mb-1">Failure Reason</p>
-              <p className="text-sm text-red-400">{tx.failureReason}</p>
+              <p className="text-xs text-muted-foreground mb-1">Statut</p>
+              <p className="text-sm text-red-400">Échoué</p>
             </div>
           )}
 

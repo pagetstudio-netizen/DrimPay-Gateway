@@ -12,6 +12,7 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
+import { MERCHANT_FAILURE_LABEL } from "../lib/merchant-error";
 import { transactionsTable, walletsTable, usersTable, reversementsTable } from "@workspace/db/schema";
 import { eq, sql, and } from "drizzle-orm";
 import crypto from "crypto";
@@ -215,8 +216,7 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
         operator: tx.operator,
         phone: tx.phone,
         mode: tx.mode,
-        failure_reason: event.failure_reason ?? null,
-        gateway: "clapay",
+        failure_reason: ["failed", "cancelled", "expired"].includes(newStatus) ? MERCHANT_FAILURE_LABEL : null,
         clapay_reference: event.clapay_reference,
         created_at: tx.createdAt.toISOString(),
         updated_at: new Date().toISOString(),

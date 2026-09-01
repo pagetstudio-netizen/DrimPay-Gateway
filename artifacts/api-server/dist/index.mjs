@@ -267940,6 +267940,15 @@ var import_multer = __toESM(require_multer(), 1);
 
 // src/lib/merchant-error.ts
 var GENERIC_ERROR_MESSAGE = "Une erreur s'est produite. Veuillez r\xE9essayer plus tard.";
+var MERCHANT_FAILURE_LABEL = "\xC9chou\xE9";
+var FAILURE_STATUSES = /* @__PURE__ */ new Set(["failed", "cancelled", "expired"]);
+function sanitizeMerchantTransaction(transaction) {
+  const { failureReason: _failureReason, ...safeTransaction } = transaction;
+  return safeTransaction;
+}
+function merchantFailureLabel(status, failureReason) {
+  return FAILURE_STATUSES.has(status) || Boolean(failureReason) ? MERCHANT_FAILURE_LABEL : void 0;
+}
 
 // src/routes/dashboard.ts
 init_mailer();
@@ -277583,7 +277592,12 @@ router11.get("/dashboard/transactions", requireAuth, async (req, res) => {
   const offset = (parseInt(page) - 1) * parseInt(limit);
   const txs = await db.select().from(transactionsTable).where(and(...conditions)).orderBy(desc(transactionsTable.createdAt)).limit(parseInt(limit)).offset(offset);
   const [{ total }] = await db.select({ total: count() }).from(transactionsTable).where(and(...conditions));
-  res.json({ transactions: txs, total, page: parseInt(page), limit: parseInt(limit) });
+  res.json({
+    transactions: txs.map((tx) => sanitizeMerchantTransaction(tx)),
+    total,
+    page: parseInt(page),
+    limit: parseInt(limit)
+  });
 });
 router11.get("/dashboard/payments", requireAuth, async (req, res) => {
   const userId = req.session.userId;
@@ -277603,7 +277617,12 @@ router11.get("/dashboard/payments", requireAuth, async (req, res) => {
     );
   }
   const [{ total }] = await db.select({ total: count() }).from(transactionsTable).where(and(...conditions));
-  res.json({ transactions: txs, total, page: pageNum, limit: limitNum });
+  res.json({
+    transactions: txs.map((tx) => sanitizeMerchantTransaction(tx)),
+    total,
+    page: pageNum,
+    limit: limitNum
+  });
 });
 router11.post("/dashboard/transactions/:id/resend-webhook", requireAuth, async (req, res) => {
   const userId = req.session.userId;
@@ -277774,15 +277793,14 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
         return;
       }
       res.status(201).json({
-        transaction: { ...tx2, status: verifiedStatus },
+        transaction: sanitizeMerchantTransaction({ ...tx2, status: verifiedStatus }),
         fee,
         netAmount,
         feeRate: `${feeRate * 100}%`,
         walletId: wallet.id,
-        gateway: aggregator,
         gateway_reference: gatewayRef,
         verified_status: verifiedStatus,
-        message: verifiedStatus === "success" ? "Paiement confirm\xE9 par le fournisseur. Le wallet a \xE9t\xE9 cr\xE9dit\xE9." : "Prompt envoy\xE9 au t\xE9l\xE9phone du client \u2014 statut final via webhook."
+        message: verifiedStatus === "success" ? "Paiement confirm\xE9. Le wallet a \xE9t\xE9 cr\xE9dit\xE9." : "Prompt envoy\xE9 au t\xE9l\xE9phone du client \u2014 statut final via webhook."
       });
     } catch (err) {
       const realReason = err?.message ?? String(err);
@@ -278032,19 +278050,18 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       "info",
       "transaction",
       `Pay-out en cours \u2014 ${amount.toLocaleString("fr-FR")} ${currency}`,
-      `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. R\xE9f : ${reference}.`,
+      `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours. R\xE9f : ${reference}.`,
       "/dashboard/payments"
     ).catch(() => {
     });
     res.status(201).json({
-      transaction: { ...tx2, status: "processing" },
+      transaction: sanitizeMerchantTransaction({ ...tx2, status: "processing" }),
       fee,
       totalDebit,
       feeRate: `${payoutFeeRate * 100}%`,
-      gateway: aggregator,
       gateway_reference: gatewayRef,
       verified_status: "processing",
-      message: "Payout accept\xE9 par le fournisseur \u2014 traitement en cours. Le statut sera confirm\xE9 via webhook."
+      message: "Payout accept\xE9 \u2014 traitement en cours. Le statut sera confirm\xE9 via webhook."
     });
     (async () => {
       try {
@@ -279445,7 +279462,6 @@ router11.post("/pay/:token", async (req, res) => {
       netAmount,
       currency: effectiveCurrency,
       status: "processing",
-      gateway: aggregator,
       payment_url: gatewayPaymentUrl,
       message: "Prompt de paiement envoy\xE9. Confirmez sur votre t\xE9l\xE9phone."
     });
@@ -280184,7 +280200,6 @@ router11.post("/qr/:reference", async (req, res) => {
       payment_url: paymentUrl,
       ussd_code: ussdCode,
       message: "Prompt de paiement envoy\xE9 au t\xE9l\xE9phone du client",
-      gateway: aggregator,
       _sandbox: false
     });
   } catch (err) {
@@ -280686,7 +280701,6 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         payment_url: paymentUrl,
         ussd_code: ussdCode,
         message: "Prompt de paiement envoy\xE9 au t\xE9l\xE9phone du client",
-        gateway: aggregator,
         gateway_reference: externalRef,
         verified_status: verifiedStatus,
         created_at: tx.createdAt.toISOString()
@@ -280819,7 +280833,7 @@ router12.get("/v2/payin/transactions", resolveUser, async (req, res) => {
       operator: t.operator,
       phone: t.phone,
       mode: t.mode,
-      failure_reason: t.failureReason ?? null,
+      failure_reason: merchantFailureLabel(t.status, t.failureReason) ?? null,
       expires_at: t.expiresAt?.toISOString() ?? null,
       webhook_url: t.webhookUrl ?? null,
       webhook_status_code: t.webhookLastStatusCode ?? null,
@@ -280861,7 +280875,7 @@ router12.get("/v2/payin/:reference", resolveUser, async (req, res) => {
     phone: tx.phone,
     mode: tx.mode,
     description: tx.description ?? null,
-    failure_reason: tx.failureReason ?? null,
+    failure_reason: merchantFailureLabel(tx.status, tx.failureReason) ?? null,
     expires_at: tx.expiresAt?.toISOString() ?? null,
     webhook_url: tx.webhookUrl ?? null,
     webhook_status_code: tx.webhookLastStatusCode ?? null,
@@ -280896,7 +280910,7 @@ router12.post("/v2/payin/:reference/resend-webhook", resolveUser, async (req, re
     operator: tx.operator,
     phone: tx.phone,
     mode: tx.mode,
-    failure_reason: tx.failureReason ?? null,
+    failure_reason: merchantFailureLabel(tx.status, tx.failureReason) ?? null,
     created_at: tx.createdAt.toISOString(),
     resent_at: (/* @__PURE__ */ new Date()).toISOString()
   };
@@ -283282,8 +283296,7 @@ router14.post("/webhooks/clapay", async (req, res) => {
         operator: tx.operator,
         phone: tx.phone,
         mode: tx.mode,
-        failure_reason: event.failure_reason ?? null,
-        gateway: "clapay",
+        failure_reason: ["failed", "cancelled", "expired"].includes(newStatus) ? MERCHANT_FAILURE_LABEL : null,
         clapay_reference: event.clapay_reference,
         created_at: tx.createdAt.toISOString(),
         updated_at: (/* @__PURE__ */ new Date()).toISOString()
@@ -283470,8 +283483,7 @@ router15.post("/webhooks/paydunya", async (req, res) => {
         operator: tx.operator,
         phone: tx.phone,
         mode: tx.mode,
-        failure_reason: event.failure_reason ?? null,
-        gateway: "paydunya",
+        failure_reason: ["failed", "cancelled", "expired"].includes(newStatus) ? MERCHANT_FAILURE_LABEL : null,
         paydunya_reference: event.paydunya_reference,
         created_at: tx.createdAt.toISOString(),
         updated_at: (/* @__PURE__ */ new Date()).toISOString()
@@ -283668,8 +283680,7 @@ router16.post("/webhooks/babimo", async (req, res) => {
         operator: tx.operator,
         phone: tx.phone,
         mode: tx.mode,
-        failure_reason: failureReason,
-        gateway: "babimo",
+        failure_reason: ["failed", "cancelled", "expired"].includes(status) ? MERCHANT_FAILURE_LABEL : null,
         babimo_reference: gatewayReference,
         created_at: tx.createdAt.toISOString(),
         updated_at: (/* @__PURE__ */ new Date()).toISOString()
@@ -284125,7 +284136,7 @@ router18.get("/pay/status/:reference", async (req, res) => {
     status: normalizedStatus,
     amount: tx.amount,
     currency: tx.currency,
-    failureReason: tx.failureReason ?? void 0
+    failureReason: merchantFailureLabel(tx.status, tx.failureReason)
   });
 });
 router18.get("/pay/:token", async (req, res) => {
@@ -284423,7 +284434,6 @@ router18.post("/pay/:token", async (req, res) => {
       payment_url: paymentUrl,
       ussd_code: ussdCode,
       message: "Prompt de paiement envoy\xE9 au t\xE9l\xE9phone du client",
-      gateway: aggregator,
       verified_status: verifiedStatus
     });
   } catch (err) {

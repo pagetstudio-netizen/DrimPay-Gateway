@@ -8,6 +8,7 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
+import { MERCHANT_FAILURE_LABEL } from "../lib/merchant-error";
 import { and, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { transactionsTable, walletsTable, usersTable, reversementsTable } from "@workspace/db/schema";
@@ -181,8 +182,7 @@ router.post("/webhooks/babimo", async (req: any, res: any) => {
         operator: tx.operator,
         phone: tx.phone,
         mode: tx.mode,
-        failure_reason: failureReason,
-        gateway: "babimo",
+        failure_reason: ["failed", "cancelled", "expired"].includes(status) ? MERCHANT_FAILURE_LABEL : null,
         babimo_reference: gatewayReference,
         created_at: tx.createdAt.toISOString(),
         updated_at: new Date().toISOString(),

@@ -29,7 +29,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange, notifyCriticalError, buildWalletsSummary } from "../lib/telegram";
-import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
+import { GENERIC_ERROR_MESSAGE, sanitizeMerchantTransaction } from "../lib/merchant-error";
 import { isMaintenanceModeOn } from "../lib/admin-settings";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
@@ -392,7 +392,12 @@ router.get("/dashboard/transactions", requireAuth, async (req, res) => {
     .from(transactionsTable)
     .where(and(...conditions));
 
-  res.json({ transactions: txs, total, page: parseInt(page), limit: parseInt(limit) });
+  res.json({
+    transactions: txs.map((tx) => sanitizeMerchantTransaction(tx)),
+    total,
+    page: parseInt(page),
+    limit: parseInt(limit),
+  });
 });
 
 router.get("/dashboard/payments", requireAuth, async (req, res) => {
@@ -430,7 +435,12 @@ router.get("/dashboard/payments", requireAuth, async (req, res) => {
     .from(transactionsTable)
     .where(and(...conditions));
 
-  res.json({ transactions: txs, total, page: pageNum, limit: limitNum });
+  res.json({
+    transactions: txs.map((tx) => sanitizeMerchantTransaction(tx)),
+    total,
+    page: pageNum,
+    limit: limitNum,
+  });
 });
 
 router.post("/dashboard/transactions/:id/resend-webhook", requireAuth, async (req, res) => {
@@ -613,13 +623,13 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       }
 
       res.status(201).json({
-        transaction: { ...tx, status: verifiedStatus },
+        transaction: sanitizeMerchantTransaction({ ...tx, status: verifiedStatus }),
         fee, netAmount, feeRate: `${feeRate * 100}%`,
         walletId: wallet.id,
-        gateway: aggregator, gateway_reference: gatewayRef,
+        gateway_reference: gatewayRef,
         verified_status: verifiedStatus,
         message: verifiedStatus === "success"
-          ? "Paiement confirmé par le fournisseur. Le wallet a été crédité."
+          ? "Paiement confirmé. Le wallet a été crédité."
           : "Prompt envoyé au téléphone du client — statut final via webhook.",
       });
     } catch (err: any) {
@@ -865,16 +875,16 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
     createNotification(
       userId, "info", "transaction",
       `Pay-out en cours — ${amount.toLocaleString("fr-FR")} ${currency}`,
-      `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours via ${aggregator}. Réf : ${reference}.`,
+      `Virement de ${amount.toLocaleString("fr-FR")} ${currency} vers ${phone} (${operator}, ${countryCode}) en cours. Réf : ${reference}.`,
       "/dashboard/payments",
     ).catch(() => {});
 
     res.status(201).json({
-      transaction: { ...tx, status: "processing" },
+      transaction: sanitizeMerchantTransaction({ ...tx, status: "processing" }),
       fee, totalDebit, feeRate: `${payoutFeeRate * 100}%`,
-      gateway: aggregator, gateway_reference: gatewayRef,
+      gateway_reference: gatewayRef,
       verified_status: "processing",
-      message: "Payout accepté par le fournisseur — traitement en cours. Le statut sera confirmé via webhook.",
+      message: "Payout accepté — traitement en cours. Le statut sera confirmé via webhook.",
     });
 
     // ── Vérification de statut en tâche de fond (ne bloque pas la réponse HTTP) ──
@@ -2513,7 +2523,7 @@ router.post("/pay/:token", async (req, res) => {
 
     res.status(201).json({
       reference, amount, fee, netAmount, currency: effectiveCurrency,
-      status: "processing", gateway: aggregator,
+      status: "processing",
       payment_url: gatewayPaymentUrl,
       message: "Prompt de paiement envoyé. Confirmez sur votre téléphone.",
     });
@@ -3428,7 +3438,6 @@ router.post("/qr/:reference", async (req, res) => {
       payment_url: paymentUrl,
       ussd_code: ussdCode,
       message: "Prompt de paiement envoyé au téléphone du client",
-      gateway: aggregator,
       _sandbox: false,
     });
 

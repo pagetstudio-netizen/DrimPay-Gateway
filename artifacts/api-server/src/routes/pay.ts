@@ -28,7 +28,7 @@ import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { BabimoClient, BabimoError } from "../lib/babimo";
 import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
-import { GENERIC_ERROR_MESSAGE } from "../lib/merchant-error";
+import { GENERIC_ERROR_MESSAGE, merchantFailureLabel } from "../lib/merchant-error";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 
 const router = Router();
@@ -106,7 +106,7 @@ router.get("/pay/status/:reference", async (req: any, res: any) => {
     status: normalizedStatus,
     amount: tx.amount,
     currency: tx.currency,
-    failureReason: tx.failureReason ?? undefined,
+    failureReason: merchantFailureLabel(tx.status, tx.failureReason),
   });
 });
 
@@ -504,7 +504,6 @@ router.post("/pay/:token", async (req: any, res: any) => {
       payment_url: paymentUrl,
       ussd_code: ussdCode,
       message: "Prompt de paiement envoyé au téléphone du client",
-      gateway: aggregator,
       verified_status: verifiedStatus,
     });
 
