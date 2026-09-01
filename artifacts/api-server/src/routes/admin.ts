@@ -1088,7 +1088,7 @@ router.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req: any
     } else if (aggregator === "paydunya") {
       const { PayDunyaClient } = await import("../lib/paydunya.js");
       const pd = client as InstanceType<typeof PayDunyaClient>;
-      const r = await pd.getStatus(tx.externalRef);
+      const r = await pd.getStatus(queryRef);
       const rs = r.status as string;
       gatewayStatus = rs === "completed" ? "success"
         : rs === "failed"    ? "failed"
@@ -1096,12 +1096,18 @@ router.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req: any
         : rs === "expired"   ? "expired"
         : "pending";
       if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
-    } else {
+    } else if (aggregator === "babimo") {
       const { BabimoClient } = await import("../lib/babimo.js");
       const babimo = client as InstanceType<typeof BabimoClient>;
       const r = await babimo.getStatus(queryRef);
       gatewayStatus = r.status;
       if (r.babimo_reference) gatewayRef = r.babimo_reference;
+    } else {
+      const { GomboPlusClient } = await import("../lib/gombo-plus.js");
+      const gombo = client as InstanceType<typeof GomboPlusClient>;
+      const r = await gombo.getStatus(queryRef);
+      gatewayStatus = r.status;
+      if (r.gomboplus_reference) gatewayRef = r.gomboplus_reference;
     }
 
     // Si confirmé chez la passerelle → créditer via settlePayinStatus (idempotent)

@@ -24,7 +24,7 @@ export interface SettlePayinParams {
   status: SettledStatus;
   gatewayReference?: string;
   failureReason?: string;
-  gateway: "clapay" | "paydunya" | "babimo";
+  gateway: "clapay" | "paydunya" | "babimo" | "gomboplus";
 }
 
 /**

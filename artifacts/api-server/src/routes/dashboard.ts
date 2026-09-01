@@ -39,6 +39,7 @@ import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntil
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { BabimoClient, BabimoError, isBabimoPayoutSupported } from "../lib/babimo";
+import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { ensureLatestMerchantWebhookSecret, ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
@@ -550,7 +551,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
         });
         if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
-      } else {
+      } else if (aggregator === "babimo") {
         const r = await (client as BabimoClient).initiatePayin({
           amount, currency, country_code: countryCode, operator, phone, reference,
           callback_url: callbackUrl, return_url: `${getFrontendBaseUrl()}/dashboard`,
@@ -558,6 +559,13 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
         });
         if (!r.success) throw new BabimoError(r.message ?? "Échec Babimo", 502, r);
         gatewayRef = r.babimo_reference;
+      } else {
+        const r = await (client as GomboPlusClient).initiatePayin({
+          amount, currency, country_code: countryCode, operator, phone, reference,
+          callback_url: callbackUrl, return_url: `${getFrontendBaseUrl()}/dashboard`, description,
+        });
+        if (!r.success) throw new GomboPlusError(r.message ?? "Échec Gombo Plus", 502, r);
+        gatewayRef = r.gomboplus_reference;
       }
 
       // Polling du statut chez le fournisseur (payin = 4s × max 20s)
@@ -750,7 +758,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
 
     // ── Résoudre l'agrégateur AVANT tout, pour échouer vite si mal configuré ──
     let aggregator: AggregatorCode;
-    let client: ClapayClient | PayDunyaClient | BabimoClient;
+    let client: ClapayClient | PayDunyaClient | BabimoClient | GomboPlusClient;
     try {
       ({ aggregator, client } = await resolveAggregator(countryCode, operator, "payout"));
     } catch (err: any) {
@@ -797,7 +805,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         console.log(`[Payout] ← Réponse PayDunya: ${JSON.stringify(r)}`);
         if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
-      } else {
+      } else if (aggregator === "babimo") {
         const r = await (client as BabimoClient).initiatePayout({
           amount, currency, country_code: countryCode, operator, phone,
           reference, callback_url: callbackUrl,
@@ -805,6 +813,14 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         console.log(`[Payout] ← Réponse Babimo: ${JSON.stringify(r)}`);
         if (!r.success) throw new BabimoError(r.message ?? "Échec Babimo", 502, r);
         gatewayRef = r.babimo_reference;
+      } else {
+        const r = await (client as GomboPlusClient).initiatePayout({
+          amount, currency, country_code: countryCode, operator, phone,
+          reference, callback_url: callbackUrl, description,
+        });
+        console.log(`[Payout] ← Réponse Gombo Plus: ${JSON.stringify(r)}`);
+        if (!r.success) throw new GomboPlusError(r.message ?? "Échec Gombo Plus", 502, r);
+        gatewayRef = r.gomboplus_reference;
       }
     } catch (err: any) {
       // Rollback balance on failure — la vraie raison fournisseur va en DB + Telegram admin uniquement.
@@ -2504,7 +2520,7 @@ router.post("/pay/:token", async (req, res) => {
       if (!r.success) throw new PayDunyaError(r.message ?? "Échec PayDunya", 502, r);
       gatewayRef = r.paydunya_reference;
       gatewayPaymentUrl = r.payment_url;
-    } else {
+    } else if (aggregator === "babimo") {
       const r = await (client as BabimoClient).initiatePayin({
         amount,
         currency: effectiveCurrency,
@@ -2519,6 +2535,20 @@ router.post("/pay/:token", async (req, res) => {
       if (!r.success) throw new BabimoError(r.message ?? "Échec Babimo", 502, r);
       gatewayRef = r.babimo_reference;
       gatewayPaymentUrl = r.payment_url ?? undefined;
+    } else {
+      const r = await (client as GomboPlusClient).initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
+        description: `Payment link: ${link.title}`,
+      });
+      if (!r.success) throw new GomboPlusError(r.message ?? "Échec Gombo Plus", 502, r);
+      gatewayRef = r.gomboplus_reference;
     }
 
     await db.update(transactionsTable)
@@ -2543,7 +2573,9 @@ router.post("/pay/:token", async (req, res) => {
         ? "paydunya"
         : err instanceof BabimoError
           ? "babimo"
-          : "?";
+          : err instanceof GomboPlusError
+            ? "gomboplus"
+            : "?";
     await db.update(transactionsTable)
       .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
       .where(eq(transactionsTable.id, tx.id));
@@ -2899,7 +2931,7 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               });
               if (!resp.success) throw new Error(resp.message ?? "PayDunya failed");
               gatewayRef = resp.paydunya_reference;
-            } else {
+            } else if (aggregator === "babimo") {
               const resp = await (client as BabimoClient).initiatePayout({
                 amount: r.amount, currency: countryCurrency, country_code: r.countryCode,
                 operator: r.operator, phone: r.phone, reference: txRef,
@@ -2907,6 +2939,14 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               });
               if (!resp.success) throw new Error(resp.message ?? "Babimo failed");
               gatewayRef = resp.babimo_reference;
+            } else {
+              const resp = await (client as GomboPlusClient).initiatePayout({
+                amount: r.amount, currency: countryCurrency, country_code: r.countryCode,
+                operator: r.operator, phone: r.phone, reference: txRef,
+                callback_url: callbackUrl, description: r.note ?? description ?? `Mass payout: ${reference}`,
+              });
+              if (!resp.success) throw new Error(resp.message ?? "Gombo Plus failed");
+              gatewayRef = resp.gomboplus_reference;
             }
             await db.update(transactionsTable)
               .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
@@ -3371,7 +3411,9 @@ router.post("/qr/:reference", async (req, res) => {
       ? "/api/webhooks/clapay"
       : aggregator === "paydunya"
         ? "/api/webhooks/paydunya"
-        : "/api/webhooks/babimo";
+        : aggregator === "babimo"
+          ? "/api/webhooks/babimo"
+          : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
 
     let externalRef: string;
@@ -3407,7 +3449,7 @@ router.post("/qr/:reference", async (req, res) => {
       }
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
-    } else {
+    } else if (aggregator === "babimo") {
       const babimoRes = await (client as BabimoClient).initiatePayin({
         amount,
         currency: effectiveCurrency,
@@ -3424,6 +3466,23 @@ router.post("/qr/:reference", async (req, res) => {
       }
       externalRef = babimoRes.babimo_reference;
       paymentUrl = babimoRes.payment_url ?? null;
+    } else {
+      const gomboRes = await (client as GomboPlusClient).initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference: txReference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
+        description: `QR payment: ${qr.name}`,
+      });
+      if (!gomboRes.success) {
+        throw new GomboPlusError(gomboRes.message ?? "Échec Gombo Plus", 502, gomboRes);
+      }
+      externalRef = gomboRes.gomboplus_reference;
+      paymentUrl = gomboRes.payment_url ?? null;
     }
 
     // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver

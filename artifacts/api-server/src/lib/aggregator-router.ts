@@ -1,7 +1,7 @@
 /**
  * ─── Aggregator Router ────────────────────────────────────────────────────────
  *
- * Fonction centrale qui détermine quel agrégateur (Clapay, PayDunya ou Babimo) doit
+ * Fonction centrale qui détermine quel agrégateur (Clapay, PayDunya, Babimo ou Gombo Plus) doit
  * traiter un paiement en consultant la table operator_aggregators.
  *
  * Logique :
@@ -17,8 +17,9 @@ import { and, eq } from "drizzle-orm";
 import { getClapayClient, isClapayConfigured, ClapayClient } from "./clapay";
 import { getPayDunyaClient, isPayDunyaConfigured, PayDunyaClient } from "./paydunya";
 import { getBabimoClient, isBabimoConfigured, BabimoClient } from "./babimo";
+import { getGomboPlusClient, isGomboPlusConfigured, GomboPlusClient } from "./gombo-plus";
 
-export type AggregatorCode = "clapay" | "paydunya" | "babimo";
+export type AggregatorCode = "clapay" | "paydunya" | "babimo" | "gomboplus";
 
 /**
  * Normalise un nom d'opérateur en "slug" comparable, pour faire correspondre
@@ -70,7 +71,7 @@ async function findOperatorAggregatorByCanonicalName(countryCode: string, canoni
 
 export interface RouteResult {
   aggregator: AggregatorCode;
-  client: ClapayClient | PayDunyaClient | BabimoClient;
+  client: ClapayClient | PayDunyaClient | BabimoClient | GomboPlusClient;
   opAgg: { aggregatorCode: string; active: boolean; maintenanceMode: boolean } | null;
 }
 
@@ -108,7 +109,7 @@ export async function resolveAggregator(
 
   if (opAgg) {
     const code = opAgg.aggregatorCode.toLowerCase();
-    if (code !== "clapay" && code !== "paydunya" && code !== "babimo") {
+    if (code !== "clapay" && code !== "paydunya" && code !== "babimo" && code !== "gomboplus") {
       throw new AggregatorUnavailableError(
         code as AggregatorCode,
         `Code agrégateur inconnu: "${opAgg.aggregatorCode}"`,
@@ -117,7 +118,7 @@ export async function resolveAggregator(
     aggregatorCode = code;
   } else {
     const preferred = (process.env.ACTIVE_AGGREGATOR ?? "paydunya").toLowerCase();
-    if (preferred !== "clapay" && preferred !== "paydunya" && preferred !== "babimo") {
+    if (preferred !== "clapay" && preferred !== "paydunya" && preferred !== "babimo" && preferred !== "gomboplus") {
       throw new AggregatorUnavailableError(
         "paydunya",
         `ACTIVE_AGGREGATOR invalide: "${preferred}"`,
@@ -170,7 +171,7 @@ export async function resolveAggregator(
       return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
     }
     throw new AggregatorNotConfiguredError("paydunya");
-  } else {
+  } else if (aggregatorCode === "babimo") {
     if (isBabimoConfigured(countryCode)) {
       return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: opAgg ?? null };
     }
@@ -187,6 +188,29 @@ export async function resolveAggregator(
       return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
     }
     throw new AggregatorNotConfiguredError("babimo");
+  } else {
+    if (isGomboPlusConfigured()) {
+      return { aggregator: "gomboplus", client: getGomboPlusClient(), opAgg: opAgg ?? null };
+    }
+    if (!explicitMapping && isPayDunyaConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Gombo Plus non configuré — bascule automatique sur PayDunya pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
+    }
+    if (!explicitMapping && isBabimoConfigured(countryCode)) {
+      console.warn(
+        `[AggregatorRouter] Gombo Plus non configuré — bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: null };
+    }
+    if (!explicitMapping && isClapayConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Gombo Plus non configuré — bascule automatique sur Clapay pour ${operatorName} (${countryCode}).`,
+      );
+      return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
+    }
+    throw new AggregatorNotConfiguredError("gomboplus");
   }
 }
 
@@ -260,7 +284,7 @@ function mapPayDunyaStatus(s: string): StatusCheckResult["status"] {
  */
 async function fetchStatus(
   aggregator: AggregatorCode,
-  client: ClapayClient | PayDunyaClient | BabimoClient,
+  client: ClapayClient | PayDunyaClient | BabimoClient | GomboPlusClient,
   gatewayRef: string,
   operation: "payin" | "payout" = "payin",
 ): Promise<StatusCheckResult> {
@@ -283,11 +307,18 @@ async function fetchStatus(
       gatewayReference: r.paydunya_reference || gatewayRef,
       failureReason: r.failure_reason,
     };
-  } else {
+  } else if (aggregator === "babimo") {
     const r = await (client as BabimoClient).getStatus(gatewayRef);
     return {
       status: r.status,
       gatewayReference: r.babimo_reference || gatewayRef,
+      failureReason: r.failure_reason,
+    };
+  } else {
+    const r = await (client as GomboPlusClient).getStatus(gatewayRef);
+    return {
+      status: r.status,
+      gatewayReference: r.gomboplus_reference || gatewayRef,
       failureReason: r.failure_reason,
     };
   }
@@ -305,7 +336,7 @@ async function fetchStatus(
  */
 export async function pollUntilSettled(
   aggregator: AggregatorCode,
-  client: ClapayClient | PayDunyaClient | BabimoClient,
+  client: ClapayClient | PayDunyaClient | BabimoClient | GomboPlusClient,
   gatewayRef: string,
   options?: {
     intervalMs?: number;
@@ -363,7 +394,7 @@ export async function pollUntilSettled(
  */
 export async function checkStatusAfterInit(
   aggregator: AggregatorCode,
-  client: ClapayClient | PayDunyaClient | BabimoClient,
+  client: ClapayClient | PayDunyaClient | BabimoClient | GomboPlusClient,
   gatewayRef: string,
 ): Promise<StatusCheckResult | null> {
   if (!gatewayRef) return null;
@@ -497,7 +528,7 @@ export async function routePayin(params: PayinParams): Promise<NormalizedPayinRe
       ussdCode: null,
       message: "Prompt de paiement envoyé via PayDunya",
     };
-  } else {
+  } else if (aggregator === "babimo") {
     const b = client as BabimoClient;
     const res = await b.initiatePayin(params);
     if (!res.success) throw new Error(res.message ?? "Échec Babimo payin");
@@ -507,6 +538,17 @@ export async function routePayin(params: PayinParams): Promise<NormalizedPayinRe
       paymentUrl: res.payment_url ?? null,
       ussdCode: null,
       message: "Paiement initié via Babimo",
+    };
+  } else {
+    const g = client as GomboPlusClient;
+    const res = await g.initiatePayin(params);
+    if (!res.success) throw new Error(res.message ?? "Échec Gombo Plus payin");
+    return {
+      aggregator,
+      externalRef: res.gomboplus_reference,
+      paymentUrl: res.payment_url ?? null,
+      ussdCode: null,
+      message: "Paiement initié via Gombo Plus",
     };
   }
 }
@@ -532,7 +574,7 @@ export async function routePayout(params: PayoutParams): Promise<NormalizedPayou
       externalRef: res.paydunya_reference,
       message: "Payout envoyé via PayDunya",
     };
-  } else {
+  } else if (aggregator === "babimo") {
     const b = client as BabimoClient;
     const res = await b.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "Échec Babimo payout");
@@ -540,6 +582,15 @@ export async function routePayout(params: PayoutParams): Promise<NormalizedPayou
       aggregator,
       externalRef: res.babimo_reference,
       message: "Payout envoyé via Babimo",
+    };
+  } else {
+    const g = client as GomboPlusClient;
+    const res = await g.initiatePayout(params);
+    if (!res.success) throw new Error(res.message ?? "Échec Gombo Plus payout");
+    return {
+      aggregator,
+      externalRef: res.gomboplus_reference,
+      message: "Payout envoyé via Gombo Plus",
     };
   }
 }

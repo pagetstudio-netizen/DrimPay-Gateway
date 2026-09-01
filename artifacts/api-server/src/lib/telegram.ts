@@ -38,7 +38,7 @@ export async function buildWalletsSummary(userId: number, mode: string): Promise
         balance: walletsTable.balance,
       })
       .from(walletsTable)
-      .where(and(eq(walletsTable.userId, userId), eq(walletsTable.mode, mode)));
+      .where(and(eq(walletsTable.userId, userId), eq(walletsTable.mode, mode as "sandbox" | "live")));
 
     if (!wallets.length) return "";
 

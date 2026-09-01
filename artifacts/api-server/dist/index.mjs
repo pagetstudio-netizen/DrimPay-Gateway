@@ -18807,14 +18807,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto14 = __require("crypto");
+    var crypto15 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash2 = crypto14.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto15.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash2 + '"';
     }
@@ -20537,27 +20537,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router21;
+    module.exports = Router22;
     module.exports.Route = Route;
-    function Router21(options) {
-      if (!(this instanceof Router21)) {
-        return new Router21(options);
+    function Router22(options) {
+      if (!(this instanceof Router22)) {
+        return new Router22(options);
       }
       const opts = options || {};
-      function router21(req, res, next) {
-        router21.handle(req, res, next);
+      function router22(req, res, next) {
+        router22.handle(req, res, next);
       }
-      Object.setPrototypeOf(router21, this);
-      router21.caseSensitive = opts.caseSensitive;
-      router21.mergeParams = opts.mergeParams;
-      router21.params = {};
-      router21.strict = opts.strict;
-      router21.stack = [];
-      return router21;
+      Object.setPrototypeOf(router22, this);
+      router22.caseSensitive = opts.caseSensitive;
+      router22.mergeParams = opts.mergeParams;
+      router22.params = {};
+      router22.strict = opts.strict;
+      router22.stack = [];
+      return router22;
     }
-    Router21.prototype = function() {
+    Router22.prototype = function() {
     };
-    Router21.prototype.param = function param2(name2, fn) {
+    Router22.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20577,7 +20577,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router21.prototype.handle = function handle(req, res, callback) {
+    Router22.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20704,7 +20704,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router21.prototype.use = function use(handler) {
+    Router22.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20737,7 +20737,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router21.prototype.route = function route(path5) {
+    Router22.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20752,7 +20752,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router21.prototype[method] = function(path5) {
+      Router22.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20935,13 +20935,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router21 = require_router();
+    var Router22 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router21 = null;
+      var router22 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20950,13 +20950,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router21 === null) {
-            router21 = new Router21({
+          if (router22 === null) {
+            router22 = new Router22({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router21;
+          return router22;
         }
       });
     };
@@ -21027,15 +21027,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router21 = this.router;
+      var router22 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router21.use(path5, fn2);
+          return router22.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router21.use(path5, function mounted_app(req, res, next) {
+        router22.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -22243,17 +22243,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
-    var crypto14 = __require("crypto");
+    var crypto15 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto14.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto15.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto14.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto15.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -23562,7 +23562,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router21 = require_router();
+    var Router22 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23584,8 +23584,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router21.Route;
-    exports.Router = Router21;
+    exports.Route = Router22.Route;
+    exports.Router = Router22;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -24463,11 +24463,11 @@ var require_on_headers = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.0.7/node_modules/cookie-signature/index.js
 var require_cookie_signature2 = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.0.7/node_modules/cookie-signature/index.js"(exports) {
-    var crypto14 = __require("crypto");
+    var crypto15 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto14.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto15.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -24476,7 +24476,7 @@ var require_cookie_signature2 = __commonJS({
       return sha1(mac) == sha1(val) ? str : false;
     };
     function sha1(str) {
-      return crypto14.createHash("sha1").update(str).digest("hex");
+      return crypto15.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -24485,8 +24485,8 @@ var require_cookie_signature2 = __commonJS({
 var require_random_bytes = __commonJS({
   "../../node_modules/.pnpm/random-bytes@1.0.0/node_modules/random-bytes/index.js"(exports, module) {
     "use strict";
-    var crypto14 = __require("crypto");
-    var generateAttempts = crypto14.randomBytes === crypto14.pseudoRandomBytes ? 1 : 3;
+    var crypto15 = __require("crypto");
+    var generateAttempts = crypto15.randomBytes === crypto15.pseudoRandomBytes ? 1 : 3;
     module.exports = randomBytes2;
     module.exports.sync = randomBytesSync;
     function randomBytes2(size, callback) {
@@ -24510,7 +24510,7 @@ var require_random_bytes = __commonJS({
       var err = null;
       for (var i = 0; i < generateAttempts; i++) {
         try {
-          return crypto14.randomBytes(size);
+          return crypto15.randomBytes(size);
         } catch (e) {
           err = e;
         }
@@ -24518,7 +24518,7 @@ var require_random_bytes = __commonJS({
       throw err;
     }
     function generateRandomBytes(size, attempts, callback) {
-      crypto14.randomBytes(size, function onRandomBytes(err, buf) {
+      crypto15.randomBytes(size, function onRandomBytes(err, buf) {
         if (!err) return callback(null, buf);
         if (!--attempts) return callback(err);
         setTimeout(generateRandomBytes.bind(null, size, attempts, callback), 10);
@@ -24860,7 +24860,7 @@ var require_express_session = __commonJS({
     "use strict";
     var Buffer3 = require_safe_buffer().Buffer;
     var cookie = require_cookie();
-    var crypto14 = __require("crypto");
+    var crypto15 = __require("crypto");
     var debug = require_src2()("express-session");
     var deprecate = require_depd()("express-session");
     var onHeaders = require_on_headers();
@@ -25233,7 +25233,7 @@ var require_express_session = __commonJS({
         }
         return val;
       });
-      return crypto14.createHash("sha1").update(str, "utf8").digest("hex");
+      return crypto15.createHash("sha1").update(str, "utf8").digest("hex");
     }
     function issecure(req, trustProxy) {
       if (req.connection && req.connection.encrypted) {
@@ -26646,7 +26646,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto14 = require_utils5();
+    var crypto15 = require_utils5();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function startSession(mechanisms, stream) {
       const candidates = ["SCRAM-SHA-256"];
@@ -26658,7 +26658,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto14.randomBytes(18).toString("base64");
+      const clientNonce = crypto15.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -26693,20 +26693,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto14.hashByName(hashName, peerCert);
+        const certHash = await crypto15.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto14.deriveKey(password, saltBytes, sv.iteration);
-      const clientKey = await crypto14.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto14.sha256(clientKey);
-      const clientSignature = await crypto14.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto15.deriveKey(password, saltBytes, sv.iteration);
+      const clientKey = await crypto15.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto15.sha256(clientKey);
+      const clientSignature = await crypto15.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto14.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto14.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto15.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto15.hmacSha256(serverKey, authMessage);
       session2.message = "SASLResponse";
       session2.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session2.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -28874,7 +28874,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto14 = require_utils5();
+    var crypto15 = require_utils5();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -29109,7 +29109,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto14.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto15.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -29314,8 +29314,8 @@ var require_client = __commonJS({
         }
         return data;
       }
-      cancel(client, query) {
-        if (client.activeQuery === query) {
+      cancel(client2, query) {
+        if (client2.activeQuery === query) {
           const con = this.connection;
           if (this.host && this.host.indexOf("/") === 0) {
             con.connect(this.host + "/.s.PGSQL." + this.port);
@@ -29323,10 +29323,10 @@ var require_client = __commonJS({
             con.connect(this.port, this.host);
           }
           con.on("connect", function() {
-            con.cancel(client.processID, client.secretKey);
+            con.cancel(client2.processID, client2.secretKey);
           });
-        } else if (client._queryQueue.indexOf(query) !== -1) {
-          client._queryQueue.splice(client._queryQueue.indexOf(query), 1);
+        } else if (client2._queryQueue.indexOf(query) !== -1) {
+          client2._queryQueue.splice(client2._queryQueue.indexOf(query), 1);
         }
       }
       setTypeParser(oid, format, parseFn) {
@@ -29492,8 +29492,8 @@ var require_pg_pool = __commonJS({
       return i === -1 ? void 0 : list.splice(i, 1)[0];
     };
     var IdleItem = class {
-      constructor(client, idleListener, timeoutId) {
-        this.client = client;
+      constructor(client2, idleListener, timeoutId) {
+        this.client = client2;
         this.idleListener = idleListener;
         this.timeoutId = timeoutId;
       }
@@ -29512,8 +29512,8 @@ var require_pg_pool = __commonJS({
       }
       let rej;
       let res;
-      const cb = function(err, client) {
-        err ? rej(err) : res(client);
+      const cb = function(err, client2) {
+        err ? rej(err) : res(client2);
       };
       const result = new Promise2(function(resolve, reject) {
         res = resolve;
@@ -29524,15 +29524,15 @@ var require_pg_pool = __commonJS({
       });
       return { callback: cb, result };
     }
-    function makeIdleListener(pool2, client) {
+    function makeIdleListener(pool2, client2) {
       return function idleListener(err) {
-        err.client = client;
-        client.removeListener("error", idleListener);
-        client.on("error", () => {
+        err.client = client2;
+        client2.removeListener("error", idleListener);
+        client2.on("error", () => {
           pool2.log("additional client error after disconnection due to error", err);
         });
-        pool2._remove(client);
-        pool2.emit("error", err, client);
+        pool2._remove(client2);
+        pool2.emit("error", err, client2);
       };
     }
     var Pool4 = class extends EventEmitter {
@@ -29615,25 +29615,25 @@ var require_pg_pool = __commonJS({
         if (this._idle.length) {
           const idleItem = this._idle.pop();
           clearTimeout(idleItem.timeoutId);
-          const client = idleItem.client;
-          client.ref && client.ref();
+          const client2 = idleItem.client;
+          client2.ref && client2.ref();
           const idleListener = idleItem.idleListener;
-          return this._acquireClient(client, pendingItem, idleListener, false);
+          return this._acquireClient(client2, pendingItem, idleListener, false);
         }
         if (!this._isFull()) {
           return this.newClient(pendingItem);
         }
         throw new Error("unexpected condition");
       }
-      _remove(client, callback) {
-        const removed = removeWhere(this._idle, (item) => item.client === client);
+      _remove(client2, callback) {
+        const removed = removeWhere(this._idle, (item) => item.client === client2);
         if (removed !== void 0) {
           clearTimeout(removed.timeoutId);
         }
-        this._clients = this._clients.filter((c) => c !== client);
+        this._clients = this._clients.filter((c) => c !== client2);
         const context = this;
-        client.end(() => {
-          context.emit("remove", client);
+        client2.end(() => {
+          context.emit("remove", client2);
           if (typeof callback === "function") {
             callback();
           }
@@ -29674,34 +29674,34 @@ var require_pg_pool = __commonJS({
         return result;
       }
       newClient(pendingItem) {
-        const client = new this.Client(this.options);
-        this._clients.push(client);
-        const idleListener = makeIdleListener(this, client);
+        const client2 = new this.Client(this.options);
+        this._clients.push(client2);
+        const idleListener = makeIdleListener(this, client2);
         this.log("checking client timeout");
         let tid;
         let timeoutHit = false;
         if (this.options.connectionTimeoutMillis) {
           tid = setTimeout(() => {
-            if (client.connection) {
+            if (client2.connection) {
               this.log("ending client due to timeout");
               timeoutHit = true;
-              client.connection.stream.destroy();
-            } else if (!client.isConnected()) {
+              client2.connection.stream.destroy();
+            } else if (!client2.isConnected()) {
               this.log("ending client due to timeout");
               timeoutHit = true;
-              client.end();
+              client2.end();
             }
           }, this.options.connectionTimeoutMillis);
         }
         this.log("connecting new client");
-        client.connect((err) => {
+        client2.connect((err) => {
           if (tid) {
             clearTimeout(tid);
           }
-          client.on("error", idleListener);
+          client2.on("error", idleListener);
           if (err) {
             this.log("client failed to connect", err);
-            this._clients = this._clients.filter((c) => c !== client);
+            this._clients = this._clients.filter((c) => c !== client2);
             if (timeoutHit) {
               err = new Error("Connection terminated due to connection timeout", { cause: err });
             }
@@ -29712,13 +29712,13 @@ var require_pg_pool = __commonJS({
           } else {
             this.log("new client connected");
             if (this.options.onConnect) {
-              this._promiseTry(() => this.options.onConnect(client)).then(
+              this._promiseTry(() => this.options.onConnect(client2)).then(
                 () => {
-                  this._afterConnect(client, pendingItem, idleListener);
+                  this._afterConnect(client2, pendingItem, idleListener);
                 },
                 (hookErr) => {
-                  this._clients = this._clients.filter((c) => c !== client);
-                  client.end(() => {
+                  this._clients = this._clients.filter((c) => c !== client2);
+                  client2.end(() => {
                     this._pulseQueue();
                     if (!pendingItem.timedOut) {
                       pendingItem.callback(hookErr, void 0, NOOP);
@@ -29728,93 +29728,93 @@ var require_pg_pool = __commonJS({
               );
               return;
             }
-            return this._afterConnect(client, pendingItem, idleListener);
+            return this._afterConnect(client2, pendingItem, idleListener);
           }
         });
       }
-      _afterConnect(client, pendingItem, idleListener) {
+      _afterConnect(client2, pendingItem, idleListener) {
         if (this.options.maxLifetimeSeconds !== 0) {
           const maxLifetimeTimeout = setTimeout(() => {
             this.log("ending client due to expired lifetime");
-            this._expired.add(client);
-            const idleIndex = this._idle.findIndex((idleItem) => idleItem.client === client);
+            this._expired.add(client2);
+            const idleIndex = this._idle.findIndex((idleItem) => idleItem.client === client2);
             if (idleIndex !== -1) {
               this._acquireClient(
-                client,
-                new PendingItem((err, client2, clientRelease) => clientRelease()),
+                client2,
+                new PendingItem((err, client3, clientRelease) => clientRelease()),
                 idleListener,
                 false
               );
             }
           }, this.options.maxLifetimeSeconds * 1e3);
           maxLifetimeTimeout.unref();
-          client.once("end", () => clearTimeout(maxLifetimeTimeout));
+          client2.once("end", () => clearTimeout(maxLifetimeTimeout));
         }
-        return this._acquireClient(client, pendingItem, idleListener, true);
+        return this._acquireClient(client2, pendingItem, idleListener, true);
       }
       // acquire a client for a pending work item
-      _acquireClient(client, pendingItem, idleListener, isNew) {
+      _acquireClient(client2, pendingItem, idleListener, isNew) {
         if (isNew) {
-          this.emit("connect", client);
+          this.emit("connect", client2);
         }
-        this.emit("acquire", client);
-        client.release = this._releaseOnce(client, idleListener);
-        client.removeListener("error", idleListener);
+        this.emit("acquire", client2);
+        client2.release = this._releaseOnce(client2, idleListener);
+        client2.removeListener("error", idleListener);
         if (!pendingItem.timedOut) {
           if (isNew && this.options.verify) {
-            this.options.verify(client, (err) => {
+            this.options.verify(client2, (err) => {
               if (err) {
-                client.release(err);
+                client2.release(err);
                 return pendingItem.callback(err, void 0, NOOP);
               }
-              pendingItem.callback(void 0, client, client.release);
+              pendingItem.callback(void 0, client2, client2.release);
             });
           } else {
-            pendingItem.callback(void 0, client, client.release);
+            pendingItem.callback(void 0, client2, client2.release);
           }
         } else {
           if (isNew && this.options.verify) {
-            this.options.verify(client, client.release);
+            this.options.verify(client2, client2.release);
           } else {
-            client.release();
+            client2.release();
           }
         }
       }
       // returns a function that wraps _release and throws if called more than once
-      _releaseOnce(client, idleListener) {
+      _releaseOnce(client2, idleListener) {
         let released = false;
         return (err) => {
           if (released) {
             throwOnDoubleRelease();
           }
           released = true;
-          this._release(client, idleListener, err);
+          this._release(client2, idleListener, err);
         };
       }
       // release a client back to the poll, include an error
       // to remove it from the pool
-      _release(client, idleListener, err) {
-        client.on("error", idleListener);
-        client._poolUseCount = (client._poolUseCount || 0) + 1;
-        this.emit("release", err, client);
-        if (err || this.ending || !client._queryable || client._ending || client._poolUseCount >= this.options.maxUses) {
-          if (client._poolUseCount >= this.options.maxUses) {
+      _release(client2, idleListener, err) {
+        client2.on("error", idleListener);
+        client2._poolUseCount = (client2._poolUseCount || 0) + 1;
+        this.emit("release", err, client2);
+        if (err || this.ending || !client2._queryable || client2._ending || client2._poolUseCount >= this.options.maxUses) {
+          if (client2._poolUseCount >= this.options.maxUses) {
             this.log("remove expended client");
           }
-          return this._remove(client, this._pulseQueue.bind(this));
+          return this._remove(client2, this._pulseQueue.bind(this));
         }
-        const isExpired = this._expired.has(client);
+        const isExpired = this._expired.has(client2);
         if (isExpired) {
           this.log("remove expired client");
-          this._expired.delete(client);
-          return this._remove(client, this._pulseQueue.bind(this));
+          this._expired.delete(client2);
+          return this._remove(client2, this._pulseQueue.bind(this));
         }
         let tid;
         if (this.options.idleTimeoutMillis && this._isAboveMin()) {
           tid = setTimeout(() => {
             if (this._isAboveMin()) {
               this.log("remove idle client");
-              this._remove(client, this._pulseQueue.bind(this));
+              this._remove(client2, this._pulseQueue.bind(this));
             }
           }, this.options.idleTimeoutMillis);
           if (this.options.allowExitOnIdle) {
@@ -29822,9 +29822,9 @@ var require_pg_pool = __commonJS({
           }
         }
         if (this.options.allowExitOnIdle) {
-          client.unref();
+          client2.unref();
         }
-        this._idle.push(new IdleItem(client, idleListener, tid));
+        this._idle.push(new IdleItem(client2, idleListener, tid));
         this._pulseQueue();
       }
       query(text2, values, cb) {
@@ -29841,7 +29841,7 @@ var require_pg_pool = __commonJS({
         }
         const response = promisify(this.Promise, cb);
         cb = response.callback;
-        this.connect((err, client) => {
+        this.connect((err, client2) => {
           if (err) {
             return cb(err);
           }
@@ -29851,27 +29851,27 @@ var require_pg_pool = __commonJS({
               return;
             }
             clientReleased = true;
-            client.release(err2);
+            client2.release(err2);
             cb(err2);
           };
-          client.once("error", onError);
+          client2.once("error", onError);
           this.log("dispatching query");
           try {
-            client.query(text2, values, (err2, res) => {
+            client2.query(text2, values, (err2, res) => {
               this.log("query dispatched");
-              client.removeListener("error", onError);
+              client2.removeListener("error", onError);
               if (clientReleased) {
                 return;
               }
               clientReleased = true;
-              client.release(err2);
+              client2.release(err2);
               if (err2) {
                 return cb(err2);
               }
               return cb(void 0, res);
             });
           } catch (err2) {
-            client.release(err2);
+            client2.release(err2);
             return cb(err2);
           }
         });
@@ -29896,7 +29896,7 @@ var require_pg_pool = __commonJS({
         return this._idle.length;
       }
       get expiredCount() {
-        return this._clients.reduce((acc, client) => acc + (this._expired.has(client) ? 1 : 0), 0);
+        return this._clients.reduce((acc, client2) => acc + (this._expired.has(client2) ? 1 : 0), 0);
       }
       get totalCount() {
         return this._clients.length;
@@ -29977,13 +29977,13 @@ var require_query2 = __commonJS({
       );
       return this._promise;
     };
-    NativeQuery.prototype.submit = function(client) {
+    NativeQuery.prototype.submit = function(client2) {
       this.state = "running";
       const self2 = this;
-      this.native = client.native;
-      client.native.arrayMode = this._arrayMode;
+      this.native = client2.native;
+      client2.native.arrayMode = this._arrayMode;
       let after = function(err, rows, results) {
-        client.native.arrayMode = false;
+        client2.native.arrayMode = false;
         setImmediate(function() {
           self2.emit("_done");
         });
@@ -30019,16 +30019,16 @@ var require_query2 = __commonJS({
           console.error("This can cause conflicts and silent errors executing queries");
         }
         const values = (this.values || []).map(utils.prepareValue);
-        if (client.namedQueries[this.name]) {
-          if (this.text && client.namedQueries[this.name] !== this.text) {
+        if (client2.namedQueries[this.name]) {
+          if (this.text && client2.namedQueries[this.name] !== this.text) {
             const err = new Error(`Prepared statements must be unique - '${this.name}' was used for a different statement`);
             return after(err);
           }
-          return client.native.execute(this.name, values, after);
+          return client2.native.execute(this.name, values, after);
         }
-        return client.native.prepare(this.name, this.text, values.length, function(err) {
+        return client2.native.prepare(this.name, this.text, values.length, function(err) {
           if (err) return after(err);
-          client.namedQueries[self2.name] = self2.text;
+          client2.namedQueries[self2.name] = self2.text;
           return self2.native.execute(self2.name, values, after);
         });
       } else if (this.values) {
@@ -30037,11 +30037,11 @@ var require_query2 = __commonJS({
           return after(err);
         }
         const vals = this.values.map(utils.prepareValue);
-        client.native.query(this.text, vals, after);
+        client2.native.query(this.text, vals, after);
       } else if (this.queryMode === "extended") {
-        client.native.query(this.text, [], after);
+        client2.native.query(this.text, [], after);
       } else {
-        client.native.query(this.text, after);
+        client2.native.query(this.text, after);
       }
     };
   }
@@ -43485,9 +43485,9 @@ var init_session2 = __esm({
     init_utils();
     ({ Pool: Pool2, types: types2 } = esm_default);
     NodePgPreparedQuery = class extends PgPreparedQuery {
-      constructor(client, queryString, params, logger2, cache, queryMetadata, cacheConfig, fields, name2, _isResponseInArrayMode, customResultMapper) {
+      constructor(client2, queryString, params, logger2, cache, queryMetadata, cacheConfig, fields, name2, _isResponseInArrayMode, customResultMapper) {
         super({ sql: queryString, params }, cache, queryMetadata, cacheConfig);
-        this.client = client;
+        this.client = client2;
         this.queryString = queryString;
         this.params = params;
         this.logger = logger2;
@@ -43577,7 +43577,7 @@ var init_session2 = __esm({
         return tracer.startActiveSpan("drizzle.execute", async () => {
           const params = fillPlaceholders(this.params, placeholderValues);
           this.logger.logQuery(this.rawQueryConfig.text, params);
-          const { fields, rawQueryConfig: rawQuery, client, queryConfig: query, joinsNotNullableMap, customResultMapper } = this;
+          const { fields, rawQueryConfig: rawQuery, client: client2, queryConfig: query, joinsNotNullableMap, customResultMapper } = this;
           if (!fields && !customResultMapper) {
             return tracer.startActiveSpan("drizzle.driver.execute", async (span) => {
               span?.setAttributes({
@@ -43586,7 +43586,7 @@ var init_session2 = __esm({
                 "drizzle.query.params": JSON.stringify(params)
               });
               return this.queryWithCache(rawQuery.text, params, async () => {
-                return await client.query(rawQuery, params);
+                return await client2.query(rawQuery, params);
               });
             });
           }
@@ -43597,7 +43597,7 @@ var init_session2 = __esm({
               "drizzle.query.params": JSON.stringify(params)
             });
             return this.queryWithCache(query.text, params, async () => {
-              return await client.query(query, params);
+              return await client2.query(query, params);
             });
           });
           return tracer.startActiveSpan("drizzle.mapResponse", () => {
@@ -43627,9 +43627,9 @@ var init_session2 = __esm({
       }
     };
     NodePgSession = class _NodePgSession extends PgSession {
-      constructor(client, dialect, schema, options = {}) {
+      constructor(client2, dialect, schema, options = {}) {
         super(dialect);
-        this.client = client;
+        this.client = client2;
         this.schema = schema;
         this.options = options;
         this.logger = options.logger ?? new NoopLogger();
@@ -43701,7 +43701,7 @@ var init_session2 = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0/node_modules/drizzle-orm/node-postgres/driver.js
-function construct(client, config2 = {}) {
+function construct(client2, config2 = {}) {
   const dialect = new PgDialect({ casing: config2.casing });
   let logger2;
   if (config2.logger === true) {
@@ -43721,10 +43721,10 @@ function construct(client, config2 = {}) {
       tableNamesMap: tablesConfig.tableNamesMap
     };
   }
-  const driver = new NodePgDriver(client, dialect, { logger: logger2, cache: config2.cache });
+  const driver = new NodePgDriver(client2, dialect, { logger: logger2, cache: config2.cache });
   const session2 = driver.createSession(schema);
   const db2 = new NodePgDatabase(dialect, session2, schema);
-  db2.$client = client;
+  db2.$client = client2;
   db2.$cache = config2.cache;
   if (db2.$cache) {
     db2.$cache["invalidate"] = config2.cache?.onMutate;
@@ -43739,8 +43739,8 @@ function drizzle(...params) {
     return construct(instance, params[1]);
   }
   if (isConfig(params[0])) {
-    const { connection, client, ...drizzleConfig } = params[0];
-    if (client) return construct(client, drizzleConfig);
+    const { connection, client: client2, ...drizzleConfig } = params[0];
+    if (client2) return construct(client2, drizzleConfig);
     const instance = typeof connection === "string" ? new esm_default.Pool({
       connectionString: connection
     }) : new esm_default.Pool(connection);
@@ -43760,8 +43760,8 @@ var init_driver = __esm({
     init_utils();
     init_session2();
     NodePgDriver = class {
-      constructor(client, dialect, options = {}) {
-        this.client = client;
+      constructor(client2, dialect, options = {}) {
+        this.client = client2;
         this.dialect = dialect;
         this.options = options;
       }
@@ -85614,9 +85614,9 @@ var require_disk = __commonJS({
     var fs3 = __require("fs");
     var os = __require("os");
     var path5 = __require("path");
-    var crypto14 = __require("crypto");
+    var crypto15 = __require("crypto");
     function getFilename(req, file2, cb) {
-      crypto14.randomBytes(16, function(err, raw) {
+      crypto15.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -95800,8 +95800,8 @@ var require_GoTrueAdminApi = __commonJS({
           return await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/admin/oauth/clients`, {
             body: params,
             headers: this.headers,
-            xform: (client) => {
-              return { data: client, error: null };
+            xform: (client2) => {
+              return { data: client2, error: null };
             }
           });
         } catch (error40) {
@@ -95821,8 +95821,8 @@ var require_GoTrueAdminApi = __commonJS({
         try {
           return await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/admin/oauth/clients/${clientId}`, {
             headers: this.headers,
-            xform: (client) => {
-              return { data: client, error: null };
+            xform: (client2) => {
+              return { data: client2, error: null };
             }
           });
         } catch (error40) {
@@ -95843,8 +95843,8 @@ var require_GoTrueAdminApi = __commonJS({
           return await (0, fetch_1._request)(this.fetch, "PUT", `${this.url}/admin/oauth/clients/${clientId}`, {
             body: params,
             headers: this.headers,
-            xform: (client) => {
-              return { data: client, error: null };
+            xform: (client2) => {
+              return { data: client2, error: null };
             }
           });
         } catch (error40) {
@@ -95884,8 +95884,8 @@ var require_GoTrueAdminApi = __commonJS({
         try {
           return await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/admin/oauth/clients/${clientId}/regenerate_secret`, {
             headers: this.headers,
-            xform: (client) => {
-              return { data: client, error: null };
+            xform: (client2) => {
+              return { data: client2, error: null };
             }
           });
         } catch (error40) {
@@ -96847,8 +96847,8 @@ var require_webauthn = __commonJS({
       return deepMerge(exports.DEFAULT_REQUEST_OPTIONS, baseOptions, overrides || {});
     }
     var WebAuthnApi = class {
-      constructor(client) {
-        this.client = client;
+      constructor(client2) {
+        this.client = client2;
         this.enroll = this._enroll.bind(this);
         this.challenge = this._challenge.bind(this);
         this.verify = this._verify.bind(this);
@@ -107408,6 +107408,265 @@ var init_babimo = __esm({
   }
 });
 
+// src/lib/gombo-plus.ts
+var gombo_plus_exports = {};
+__export(gombo_plus_exports, {
+  GomboPlusClient: () => GomboPlusClient,
+  GomboPlusError: () => GomboPlusError,
+  getGomboPlusClient: () => getGomboPlusClient,
+  gomboPlusOperatorCode: () => gomboPlusOperatorCode,
+  isAnyGomboPlusConfigured: () => isAnyGomboPlusConfigured,
+  isGomboPlusConfigured: () => isGomboPlusConfigured,
+  isGomboPlusSupported: () => isGomboPlusSupported
+});
+function countryKey2(countryCode) {
+  return String(countryCode ?? "").trim().toUpperCase();
+}
+function operatorKey(operator, countryCode) {
+  return `${String(operator ?? "").trim().toLowerCase()}|${countryKey2(countryCode)}`;
+}
+function normalizeRecipientNumber(phone, countryCode) {
+  const country = countryKey2(countryCode);
+  const dialingCodes = { TG: "228", BJ: "229", BF: "226" };
+  let digits = String(phone ?? "").replace(/\D/g, "");
+  const dialingCode = dialingCodes[country];
+  if (dialingCode && digits.startsWith(dialingCode)) digits = digits.slice(dialingCode.length);
+  return digits.replace(/^0+/, "");
+}
+function unwrap2(raw) {
+  return raw?.content ?? raw?.data ?? raw?.result ?? raw;
+}
+function firstValue(raw, keys) {
+  const candidates = [raw, raw?.content, raw?.data, raw?.result, raw?.content?.data, raw?.data?.data];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object") continue;
+    for (const key of keys) {
+      const value = candidate[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number") return value;
+    }
+  }
+  return void 0;
+}
+function stringValue(raw, keys) {
+  const value = firstValue(raw, keys);
+  return value === void 0 ? "" : String(value);
+}
+function mapStatus2(value) {
+  const status = String(value ?? "").toLowerCase().trim();
+  if (status.includes("success") || status.includes("completed") || status.includes("paid") || status === "succes") return "success";
+  if (status.includes("fail") || status.includes("error") || status.includes("reject") || status.includes("declin")) return "failed";
+  if (status.includes("cancel")) return "cancelled";
+  if (status.includes("expir")) return "expired";
+  if (status.includes("process") || status.includes("initi") || status.includes("pending") || status.includes("progress")) return "processing";
+  return "pending";
+}
+function responseMessage(raw, fallback) {
+  return stringValue(raw, ["message", "status_message", "error", "detail", "description"]) || fallback;
+}
+function gomboPlusOperatorCode(operator, countryCode) {
+  return OPERATOR_CODES[operatorKey(operator, countryCode)] ?? null;
+}
+function isGomboPlusSupported(operator, countryCode, operation) {
+  const country = countryKey2(countryCode);
+  const code = gomboPlusOperatorCode(operator, country);
+  if (!GOMBO_COUNTRIES.has(country) || !code) return false;
+  if (operation === "payout" && operatorKey(operator, country) === MAINTENANCE_OPERATOR) return false;
+  return true;
+}
+function isRejected2(raw) {
+  return raw?.status === "failed" || raw?.status === false || raw?.success === false;
+}
+function isGomboPlusConfigured() {
+  return Boolean(process.env.GOMBOPLUS_PUBLIC_KEY && process.env.GOMBOPLUS_PRIVATE_KEY);
+}
+function getGomboPlusClient() {
+  if (client) return client;
+  const publicKey = process.env.GOMBOPLUS_PUBLIC_KEY;
+  const privateKey = process.env.GOMBOPLUS_PRIVATE_KEY;
+  if (!publicKey || !privateKey) {
+    throw new GomboPlusError(
+      "Gombo Plus non configur\xE9. D\xE9finissez GOMBOPLUS_PUBLIC_KEY et GOMBOPLUS_PRIVATE_KEY dans les Secrets Replit.",
+      503,
+      {}
+    );
+  }
+  client = new GomboPlusClient({
+    baseUrl: process.env.GOMBOPLUS_BASE_URL ?? DEFAULT_BASE_URL2,
+    publicKey,
+    privateKey
+  });
+  return client;
+}
+function isAnyGomboPlusConfigured() {
+  return isGomboPlusConfigured();
+}
+var DEFAULT_BASE_URL2, OPERATOR_CODES, GOMBO_COUNTRIES, MAINTENANCE_OPERATOR, GomboPlusError, GomboPlusClient, client;
+var init_gombo_plus = __esm({
+  "src/lib/gombo-plus.ts"() {
+    "use strict";
+    DEFAULT_BASE_URL2 = "https://api.gomboplus.com";
+    OPERATOR_CODES = {
+      "yas|TG": "yas",
+      "tmoney|TG": "yas",
+      "togo telecom|TG": "yas",
+      "moov|TG": "moov",
+      "moov money|TG": "moov",
+      "mtn|BJ": "mtn",
+      "mtn mobile money|BJ": "mtn",
+      "mtn momo|BJ": "mtn",
+      "moov|BJ": "moov",
+      "moov money|BJ": "moov",
+      // Gombo's documentation lists Orange Burkina as temporarily under
+      // maintenance. Keep the code known, but refuse it explicitly below so it
+      // cannot be mistaken for an active route.
+      "orange|BF": "om",
+      "orange money|BF": "om",
+      "om|BF": "om",
+      "moov|BF": "moov",
+      "moov money|BF": "moov"
+    };
+    GOMBO_COUNTRIES = /* @__PURE__ */ new Set(["TG", "BJ", "BF"]);
+    MAINTENANCE_OPERATOR = "om|BF";
+    GomboPlusError = class extends Error {
+      constructor(message, statusCode, raw) {
+        super(message);
+        this.statusCode = statusCode;
+        this.raw = raw;
+        this.name = "GomboPlusError";
+      }
+      statusCode;
+      raw;
+    };
+    GomboPlusClient = class {
+      baseUrl;
+      publicKey;
+      privateKey;
+      constructor(config2) {
+        this.baseUrl = config2.baseUrl.replace(/\/+$/, "");
+        this.publicKey = config2.publicKey;
+        this.privateKey = config2.privateKey;
+      }
+      async readResponse(response) {
+        const text2 = await response.text();
+        if (!text2) return {};
+        try {
+          return JSON.parse(text2);
+        } catch {
+          throw new GomboPlusError(
+            `R\xE9ponse Gombo Plus invalide (HTTP ${response.status})`,
+            response.status,
+            { bodyPreview: text2.slice(0, 500) }
+          );
+        }
+      }
+      async request(method, path5, body, query) {
+        let url2 = `${this.baseUrl}${path5}`;
+        if (query) url2 += `?${new URLSearchParams(query).toString()}`;
+        let response;
+        try {
+          response = await fetch(url2, {
+            method,
+            headers: {
+              "X-Public-Key": this.publicKey,
+              "X-Private-Key": this.privateKey,
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            },
+            body: body ? JSON.stringify(body) : void 0,
+            signal: AbortSignal.timeout(3e4)
+          });
+        } catch (err) {
+          throw new GomboPlusError(`Erreur r\xE9seau Gombo Plus : ${err?.message ?? err}`, 503, { retryable: true });
+        }
+        const raw = await this.readResponse(response);
+        if (!response.ok || isRejected2(raw)) {
+          throw new GomboPlusError(responseMessage(raw, `Gombo Plus API HTTP ${response.status}`), response.status, raw);
+        }
+        return raw;
+      }
+      buildOperationBody(params) {
+        const country = countryKey2(params.country_code);
+        const operator = gomboPlusOperatorCode(params.operator, country);
+        if (!GOMBO_COUNTRIES.has(country) || !operator) {
+          throw new GomboPlusError(`Op\xE9rateur "${params.operator}" (${country}) non support\xE9 par Gombo Plus.`, 422, {});
+        }
+        if (operator === "om" && country === "BF") {
+          throw new GomboPlusError("Orange Money Burkina Faso est temporairement en maintenance chez Gombo Plus.", 503, {});
+        }
+        const recipient_number = normalizeRecipientNumber(params.phone, country);
+        if (!recipient_number || recipient_number.length < 8) {
+          throw new GomboPlusError("Num\xE9ro de t\xE9l\xE9phone invalide pour Gombo Plus.", 422, {});
+        }
+        return {
+          amount: params.amount,
+          recipient_number,
+          country,
+          operator,
+          callback_url: params.callback_url
+        };
+      }
+      async initiatePayin(params) {
+        const response = await this.request("POST", "/api/mobile-services/mobile-deposit/", this.buildOperationBody(params));
+        const content = unwrap2(response);
+        const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
+        if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourn\xE9 de r\xE9f\xE9rence de transaction.", 502, response);
+        return {
+          success: true,
+          gomboplus_reference: reference,
+          status: mapStatus2(firstValue(response, ["status", "transaction_status", "payment_status"])),
+          payment_url: stringValue(response, ["payment_url", "paymentUrl", "checkout_url", "url"]) || (typeof content === "string" ? content : null),
+          message: responseMessage(response, "Paiement Gombo Plus initi\xE9.")
+        };
+      }
+      async initiatePayout(params) {
+        const response = await this.request("POST", "/api/mobile-services/mobile-withdrawal/", this.buildOperationBody(params));
+        const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
+        if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourn\xE9 de r\xE9f\xE9rence de retrait.", 502, response);
+        return {
+          success: true,
+          gomboplus_reference: reference,
+          status: mapStatus2(firstValue(response, ["status", "transaction_status", "payment_status"])),
+          message: responseMessage(response, "Retrait Gombo Plus initi\xE9.")
+        };
+      }
+      async getStatus(reference) {
+        const response = await this.request("POST", "/api/mobile-services/check-transaction-status/", {
+          transaction_reference: reference
+        });
+        const content = unwrap2(response);
+        const statusValue = firstValue(response, ["status", "transaction_status", "payment_status", "status_message"]);
+        const status = mapStatus2(statusValue);
+        return {
+          gomboplus_reference: stringValue(response, ["reference", "transaction_reference", "transactionReference"]) || reference,
+          status,
+          amount: Number(firstValue(response, ["amount", "total_amount"]) ?? content?.amount ?? 0),
+          currency: stringValue(response, ["currency"]) || "XOF",
+          failure_reason: status === "failed" ? responseMessage(response, "Transaction Gombo Plus \xE9chou\xE9e.") : void 0
+        };
+      }
+      async getBalance(countryCode, operator) {
+        const country = countryKey2(countryCode);
+        const operatorCode = gomboPlusOperatorCode(operator, country);
+        if (!operatorCode) throw new GomboPlusError(`Op\xE9rateur "${operator}" (${country}) non support\xE9 par Gombo Plus.`, 422, {});
+        const response = await this.request("GET", "/api/wallets/get-balance/", void 0, {
+          country_code: country,
+          operator_code: operatorCode
+        });
+        const content = unwrap2(response);
+        return {
+          balance: Number(content?.balance ?? firstValue(response, ["balance"]) ?? 0),
+          currency: String(content?.currency ?? firstValue(response, ["currency"]) ?? "XOF"),
+          country_code: String(content?.country_code ?? country),
+          operator_code: String(content?.operator_code ?? operatorCode),
+          is_active: Boolean(content?.is_active ?? true)
+        };
+      }
+    };
+    client = null;
+  }
+});
+
 // ../../node_modules/.pnpm/@noble+hashes@1.8.0/node_modules/@noble/hashes/cryptoNode.js
 var require_cryptoNode = __commonJS({
   "../../node_modules/.pnpm/@noble+hashes@1.8.0/node_modules/@noble/hashes/cryptoNode.js"(exports) {
@@ -107745,7 +108004,7 @@ var require_md5 = __commonJS({
         return method;
       };
       var nodeWrap = function(method) {
-        var crypto14 = __require("crypto");
+        var crypto15 = __require("crypto");
         var Buffer3 = __require("buffer").Buffer;
         var bufferFrom;
         if (Buffer3.from && !root.JS_MD5_NO_BUFFER_FROM) {
@@ -107757,7 +108016,7 @@ var require_md5 = __commonJS({
         }
         var nodeMethod = function(message) {
           if (typeof message === "string") {
-            return crypto14.createHash("md5").update(message, "utf8").digest("hex");
+            return crypto15.createHash("md5").update(message, "utf8").digest("hex");
           } else {
             if (message === null || message === void 0) {
               throw new Error(INPUT_ERROR);
@@ -107766,7 +108025,7 @@ var require_md5 = __commonJS({
             }
           }
           if (isArray(message) || isView2(message) || message.constructor === Buffer3) {
-            return crypto14.createHash("md5").update(bufferFrom(message)).digest("hex");
+            return crypto15.createHash("md5").update(bufferFrom(message)).digest("hex");
           } else {
             return method(message);
           }
@@ -258429,19 +258688,19 @@ import { join as join2, dirname as dirname2 } from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // src/app.ts
-var import_express21 = __toESM(require_express2(), 1);
+var import_express22 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_express_session = __toESM(require_express_session(), 1);
 var import_connect_pg_simple = __toESM(require_connect_pg_simple(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 init_src();
-import crypto13 from "node:crypto";
+import crypto14 from "node:crypto";
 import path4 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { existsSync as existsSync2 } from "node:fs";
 
 // src/routes/index.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express21 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -258450,9 +258709,9 @@ var router = (0, import_express.Router)();
 router.get("/healthz", async (_req, res) => {
   const start = Date.now();
   try {
-    const client = await pool.connect();
-    await client.query("SELECT 1");
-    client.release();
+    const client2 = await pool.connect();
+    await client2.query("SELECT 1");
+    client2.release();
     res.json({
       status: "ok",
       db: "ok",
@@ -258522,6 +258781,10 @@ router2.get("/help", async (req, res) => {
     "BABIMO_BF_EMAIL",
     "BABIMO_BF_PASSWORD",
     "BABIMO_BF_BASE_URL",
+    "GOMBOPLUS_PUBLIC_KEY",
+    "GOMBOPLUS_PRIVATE_KEY",
+    "GOMBOPLUS_BASE_URL",
+    "GOMBOPLUS_WEBHOOK_SECRET",
     "RESEND_API_KEY",
     "NODE_ENV",
     "PORT",
@@ -258534,11 +258797,11 @@ router2.get("/help", async (req, res) => {
   checks.env = envChecks;
   const dbStart = Date.now();
   try {
-    const client = await pool.connect();
-    const result = await client.query(
+    const client2 = await pool.connect();
+    const result = await client2.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
     );
-    client.release();
+    client2.release();
     checks.database = {
       status: "\u2713 connect\xE9",
       latencyMs: Date.now() - dbStart,
@@ -258590,6 +258853,12 @@ router2.get("/help", async (req, res) => {
       }
     },
     aggregator: "babimo"
+  };
+  checks.gomboplus = {
+    baseUrl: process.env["GOMBOPLUS_BASE_URL"] ?? "https://api.gomboplus.com",
+    publicKey: process.env["GOMBOPLUS_PUBLIC_KEY"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+    privateKey: process.env["GOMBOPLUS_PRIVATE_KEY"] ? "\u2713 d\xE9fini" : "\u2717 MANQUANT",
+    webhookSecret: process.env["GOMBOPLUS_WEBHOOK_SECRET"] ? "\u2713 d\xE9fini" : "optionnel"
   };
   checks.storage = {
     supabaseUrl: process.env["SUPABASE_URL"] ? "\u2713 d\xE9fini" : "\u2717 non d\xE9fini",
@@ -266235,13 +266504,13 @@ var MemoryStore = class {
    * @public
    */
   async increment(key) {
-    const client = this.getClient(key);
+    const client2 = this.getClient(key);
     const now = Date.now();
-    if (client.resetTime.getTime() <= now) {
-      this.resetClient(client, now);
+    if (client2.resetTime.getTime() <= now) {
+      this.resetClient(client2, now);
     }
-    client.totalHits++;
-    return client;
+    client2.totalHits++;
+    return client2;
   }
   /**
    * Method to decrement a client's hit counter.
@@ -266251,8 +266520,8 @@ var MemoryStore = class {
    * @public
    */
   async decrement(key) {
-    const client = this.getClient(key);
-    if (client.totalHits > 0) client.totalHits--;
+    const client2 = this.getClient(key);
+    if (client2.totalHits > 0) client2.totalHits--;
   }
   /**
    * Method to reset a client's hit counter.
@@ -266296,10 +266565,10 @@ var MemoryStore = class {
    *
    * @return {Client} - The modified client that was passed in, to allow for chaining.
    */
-  resetClient(client, now = Date.now()) {
-    client.totalHits = 0;
-    client.resetTime.setTime(now + this.windowMs);
-    return client;
+  resetClient(client2, now = Date.now()) {
+    client2.totalHits = 0;
+    client2.resetTime.setTime(now + this.windowMs);
+    return client2;
   }
   /**
    * Retrieves or creates a client, given a key. Also ensures that the client being
@@ -266311,16 +266580,16 @@ var MemoryStore = class {
    */
   getClient(key) {
     if (this.current.has(key)) return this.current.get(key);
-    let client;
+    let client2;
     if (this.previous.has(key)) {
-      client = this.previous.get(key);
+      client2 = this.previous.get(key);
       this.previous.delete(key);
     } else {
-      client = { totalHits: 0, resetTime: /* @__PURE__ */ new Date() };
-      this.resetClient(client);
+      client2 = { totalHits: 0, resetTime: /* @__PURE__ */ new Date() };
+      this.resetClient(client2);
     }
-    this.current.set(key, client);
-    return client;
+    this.current.set(key, client2);
+    return client2;
   }
   /**
    * Move current clients to previous, create a new map for current.
@@ -273085,8 +273354,8 @@ function namespaceToPath(namespace) {
   return namespace.join("");
 }
 var NamespaceOperations = class {
-  constructor(client, prefix = "") {
-    this.client = client;
+  constructor(client2, prefix = "") {
+    this.client = client2;
     this.prefix = prefix;
   }
   async listNamespaces(parent) {
@@ -273154,8 +273423,8 @@ function namespaceToPath2(namespace) {
   return namespace.join("");
 }
 var TableOperations = class {
-  constructor(client, prefix = "", accessDelegation) {
-    this.client = client;
+  constructor(client2, prefix = "", accessDelegation) {
+    this.client = client2;
     this.prefix = prefix;
     this.accessDelegation = accessDelegation;
   }
@@ -277006,6 +277275,7 @@ init_drizzle_orm();
 init_clapay();
 init_paydunya();
 init_babimo();
+init_gombo_plus();
 function operatorSlug(name2) {
   return name2.toLowerCase().replace(/mobile\s*money/g, "").replace(/momo/g, "").replace(/money/g, "").replace(/[^a-z0-9]/g, "").trim();
 }
@@ -277044,7 +277314,7 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
   const explicitMapping = !!opAgg;
   if (opAgg) {
     const code = opAgg.aggregatorCode.toLowerCase();
-    if (code !== "clapay" && code !== "paydunya" && code !== "babimo") {
+    if (code !== "clapay" && code !== "paydunya" && code !== "babimo" && code !== "gomboplus") {
       throw new AggregatorUnavailableError(
         code,
         `Code agr\xE9gateur inconnu: "${opAgg.aggregatorCode}"`
@@ -277053,7 +277323,7 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
     aggregatorCode = code;
   } else {
     const preferred = (process.env.ACTIVE_AGGREGATOR ?? "paydunya").toLowerCase();
-    if (preferred !== "clapay" && preferred !== "paydunya" && preferred !== "babimo") {
+    if (preferred !== "clapay" && preferred !== "paydunya" && preferred !== "babimo" && preferred !== "gomboplus") {
       throw new AggregatorUnavailableError(
         "paydunya",
         `ACTIVE_AGGREGATOR invalide: "${preferred}"`
@@ -277095,7 +277365,7 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
       return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
     }
     throw new AggregatorNotConfiguredError("paydunya");
-  } else {
+  } else if (aggregatorCode === "babimo") {
     if (isBabimoConfigured(countryCode)) {
       return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: opAgg ?? null };
     }
@@ -277112,6 +277382,29 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
       return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
     }
     throw new AggregatorNotConfiguredError("babimo");
+  } else {
+    if (isGomboPlusConfigured()) {
+      return { aggregator: "gomboplus", client: getGomboPlusClient(), opAgg: opAgg ?? null };
+    }
+    if (!explicitMapping && isPayDunyaConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Gombo Plus non configur\xE9 \u2014 bascule automatique sur PayDunya pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "paydunya", client: getPayDunyaClient(), opAgg: null };
+    }
+    if (!explicitMapping && isBabimoConfigured(countryCode)) {
+      console.warn(
+        `[AggregatorRouter] Gombo Plus non configur\xE9 \u2014 bascule automatique sur Babimo pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "babimo", client: getBabimoClient(countryCode), opAgg: null };
+    }
+    if (!explicitMapping && isClapayConfigured()) {
+      console.warn(
+        `[AggregatorRouter] Gombo Plus non configur\xE9 \u2014 bascule automatique sur Clapay pour ${operatorName} (${countryCode}).`
+      );
+      return { aggregator: "clapay", client: getClapayClient(), opAgg: null };
+    }
+    throw new AggregatorNotConfiguredError("gomboplus");
   }
 }
 var SETTLED_STATUSES = /* @__PURE__ */ new Set(["success", "failed", "cancelled", "expired"]);
@@ -277127,32 +277420,39 @@ function mapPayDunyaStatus(s) {
   if (u === "processing" || u === "initiated") return "processing";
   return "pending";
 }
-async function fetchStatus(aggregator, client, gatewayRef, operation = "payin") {
+async function fetchStatus(aggregator, client2, gatewayRef, operation = "payin") {
   if (aggregator === "clapay") {
-    const r = await client.getStatus(gatewayRef);
+    const r = await client2.getStatus(gatewayRef);
     return {
       status: r.status,
       gatewayReference: r.clapay_reference || gatewayRef,
       failureReason: r.failure_reason
     };
   } else if (aggregator === "paydunya") {
-    const pd = client;
+    const pd = client2;
     const r = operation === "payout" ? await pd.getPayoutStatus(gatewayRef) : await pd.getStatus(gatewayRef);
     return {
       status: mapPayDunyaStatus(r.status),
       gatewayReference: r.paydunya_reference || gatewayRef,
       failureReason: r.failure_reason
     };
-  } else {
-    const r = await client.getStatus(gatewayRef);
+  } else if (aggregator === "babimo") {
+    const r = await client2.getStatus(gatewayRef);
     return {
       status: r.status,
       gatewayReference: r.babimo_reference || gatewayRef,
       failureReason: r.failure_reason
     };
+  } else {
+    const r = await client2.getStatus(gatewayRef);
+    return {
+      status: r.status,
+      gatewayReference: r.gomboplus_reference || gatewayRef,
+      failureReason: r.failure_reason
+    };
   }
 }
-async function pollUntilSettled(aggregator, client, gatewayRef, options) {
+async function pollUntilSettled(aggregator, client2, gatewayRef, options) {
   if (!gatewayRef) return null;
   const intervalMs = options?.intervalMs ?? 3e3;
   const maxDurationMs = options?.maxDurationMs ?? 25e3;
@@ -277164,7 +277464,7 @@ async function pollUntilSettled(aggregator, client, gatewayRef, options) {
   while (Date.now() < deadline) {
     attempt++;
     try {
-      const result = await fetchStatus(aggregator, client, gatewayRef, operation);
+      const result = await fetchStatus(aggregator, client2, gatewayRef, operation);
       lastResult = result;
       console.info(
         `[Poll#${attempt}] ${aggregator}/${gatewayRef} \u2192 ${result.status} (+${Date.now() - (deadline - maxDurationMs)}ms)`
@@ -277240,9 +277540,9 @@ async function listActiveOperators(countryCode) {
   }).map((op) => op.name);
 }
 async function routePayout(params) {
-  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
+  const { aggregator, client: client2 } = await resolveAggregator(params.country_code, params.operator, "payout");
   if (aggregator === "clapay") {
-    const c = client;
+    const c = client2;
     const res = await c.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "\xC9chec Clapay payout");
     return {
@@ -277251,7 +277551,7 @@ async function routePayout(params) {
       message: "Payout envoy\xE9 via Clapay"
     };
   } else if (aggregator === "paydunya") {
-    const p = client;
+    const p = client2;
     const res = await p.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "\xC9chec PayDunya payout");
     return {
@@ -277259,14 +277559,23 @@ async function routePayout(params) {
       externalRef: res.paydunya_reference,
       message: "Payout envoy\xE9 via PayDunya"
     };
-  } else {
-    const b = client;
+  } else if (aggregator === "babimo") {
+    const b = client2;
     const res = await b.initiatePayout(params);
     if (!res.success) throw new Error(res.message ?? "\xC9chec Babimo payout");
     return {
       aggregator,
       externalRef: res.babimo_reference,
       message: "Payout envoy\xE9 via Babimo"
+    };
+  } else {
+    const g = client2;
+    const res = await g.initiatePayout(params);
+    if (!res.success) throw new Error(res.message ?? "\xC9chec Gombo Plus payout");
+    return {
+      aggregator,
+      externalRef: res.gomboplus_reference,
+      message: "Payout envoy\xE9 via Gombo Plus"
     };
   }
 }
@@ -277275,6 +277584,7 @@ async function routePayout(params) {
 init_clapay();
 init_paydunya();
 init_babimo();
+init_gombo_plus();
 
 // src/lib/payin-settlement.ts
 init_src();
@@ -277806,12 +278116,12 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
       mode: currentMode
     }).returning();
     try {
-      const { aggregator, client } = await resolveAggregator(countryCode, operator);
+      const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
       const baseUrl2 = getWebhookBaseUrl();
       const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
       let gatewayRef;
       if (aggregator === "clapay") {
-        const r = await client.initiatePayin({
+        const r = await client2.initiatePayin({
           amount,
           currency,
           country_code: countryCode,
@@ -277827,7 +278137,7 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
         if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
       } else if (aggregator === "paydunya") {
-        const r = await client.initiatePayin({
+        const r = await client2.initiatePayin({
           amount,
           currency,
           country_code: countryCode,
@@ -277841,8 +278151,8 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
         });
         if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
-      } else {
-        const r = await client.initiatePayin({
+      } else if (aggregator === "babimo") {
+        const r = await client2.initiatePayin({
           amount,
           currency,
           country_code: countryCode,
@@ -277855,8 +278165,22 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
         });
         if (!r.success) throw new BabimoError(r.message ?? "\xC9chec Babimo", 502, r);
         gatewayRef = r.babimo_reference;
+      } else {
+        const r = await client2.initiatePayin({
+          amount,
+          currency,
+          country_code: countryCode,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          return_url: `${getFrontendBaseUrl()}/dashboard`,
+          description
+        });
+        if (!r.success) throw new GomboPlusError(r.message ?? "\xC9chec Gombo Plus", 502, r);
+        gatewayRef = r.gomboplus_reference;
       }
-      const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
+      const statusCheck = await pollUntilSettled(aggregator, client2, gatewayRef, {
         intervalMs: 4e3,
         maxDurationMs: 2e4
       });
@@ -278024,9 +278348,9 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       mode: currentMode
     }).returning();
     let aggregator;
-    let client;
+    let client2;
     try {
-      ({ aggregator, client } = await resolveAggregator(countryCode, operator, "payout"));
+      ({ aggregator, client: client2 } = await resolveAggregator(countryCode, operator, "payout"));
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
       const realReason = err?.message ?? String(err);
@@ -278060,7 +278384,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     try {
       console.log(`[Payout] \u2192 Initiation ${aggregator} | ref: ${reference} | ${amount} ${currency} | ${operator} (${countryCode}) \u2192 ${phone}`);
       if (aggregator === "clapay") {
-        const r = await client.initiatePayout({
+        const r = await client2.initiatePayout({
           amount,
           currency,
           country_code: countryCode,
@@ -278074,7 +278398,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
         if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
         gatewayRef = r.clapay_reference;
       } else if (aggregator === "paydunya") {
-        const r = await client.initiatePayout({
+        const r = await client2.initiatePayout({
           amount,
           currency,
           country_code: countryCode,
@@ -278087,8 +278411,8 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
         console.log(`[Payout] \u2190 R\xE9ponse PayDunya: ${JSON.stringify(r)}`);
         if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
         gatewayRef = r.paydunya_reference;
-      } else {
-        const r = await client.initiatePayout({
+      } else if (aggregator === "babimo") {
+        const r = await client2.initiatePayout({
           amount,
           currency,
           country_code: countryCode,
@@ -278100,6 +278424,20 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
         console.log(`[Payout] \u2190 R\xE9ponse Babimo: ${JSON.stringify(r)}`);
         if (!r.success) throw new BabimoError(r.message ?? "\xC9chec Babimo", 502, r);
         gatewayRef = r.babimo_reference;
+      } else {
+        const r = await client2.initiatePayout({
+          amount,
+          currency,
+          country_code: countryCode,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          description
+        });
+        console.log(`[Payout] \u2190 R\xE9ponse Gombo Plus: ${JSON.stringify(r)}`);
+        if (!r.success) throw new GomboPlusError(r.message ?? "\xC9chec Gombo Plus", 502, r);
+        gatewayRef = r.gomboplus_reference;
       }
     } catch (err) {
       await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
@@ -278151,7 +278489,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     });
     (async () => {
       try {
-        const statusCheck = await pollUntilSettled(aggregator, client, gatewayRef, {
+        const statusCheck = await pollUntilSettled(aggregator, client2, gatewayRef, {
           intervalMs: 3e3,
           maxDurationMs: 3e4,
           operation: "payout"
@@ -278854,8 +279192,8 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     await db.update(transactionsTable).set({ status: "processing", externalRef: result.externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     (async () => {
       try {
-        const { client } = await resolveAggregator(countryCode, operator, "payout");
-        const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
+        const { client: client2 } = await resolveAggregator(countryCode, operator, "payout");
+        const statusCheck = await pollUntilSettled(resolvedAggregator, client2, result.externalRef, {
           intervalMs: 3e3,
           maxDurationMs: 3e4,
           operation: "payout"
@@ -279520,13 +279858,13 @@ router11.post("/pay/:token", async (req, res) => {
     return;
   }
   try {
-    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const { aggregator, client: client2 } = await resolveAggregator(effectiveCountry, effectiveOperator);
     const baseUrl2 = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
     let gatewayRef;
     let gatewayPaymentUrl;
     if (aggregator === "clapay") {
-      const r = await client.initiatePayin({
+      const r = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -279541,7 +279879,7 @@ router11.post("/pay/:token", async (req, res) => {
       if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);
       gatewayRef = r.clapay_reference;
     } else if (aggregator === "paydunya") {
-      const r = await client.initiatePayin({
+      const r = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -279557,8 +279895,8 @@ router11.post("/pay/:token", async (req, res) => {
       if (!r.success) throw new PayDunyaError(r.message ?? "\xC9chec PayDunya", 502, r);
       gatewayRef = r.paydunya_reference;
       gatewayPaymentUrl = r.payment_url;
-    } else {
-      const r = await client.initiatePayin({
+    } else if (aggregator === "babimo") {
+      const r = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -279572,6 +279910,20 @@ router11.post("/pay/:token", async (req, res) => {
       if (!r.success) throw new BabimoError(r.message ?? "\xC9chec Babimo", 502, r);
       gatewayRef = r.babimo_reference;
       gatewayPaymentUrl = r.payment_url ?? void 0;
+    } else {
+      const r = await client2.initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
+        description: `Payment link: ${link.title}`
+      });
+      if (!r.success) throw new GomboPlusError(r.message ?? "\xC9chec Gombo Plus", 502, r);
+      gatewayRef = r.gomboplus_reference;
     }
     await db.update(transactionsTable).set({ status: "processing", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     await db.update(paymentLinksTable).set({ uses: sql`${paymentLinksTable.uses} + 1` }).where(eq(paymentLinksTable.id, link.id));
@@ -279587,7 +279939,7 @@ router11.post("/pay/:token", async (req, res) => {
     });
   } catch (err) {
     const realReason = err?.message ?? "Erreur agr\xE9gateur";
-    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : "?";
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : err instanceof GomboPlusError ? "gomboplus" : "?";
     await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     const statusCode = err instanceof AggregatorNotConfiguredError ? 503 : 502;
     res.status(statusCode).json({ error: GENERIC_ERROR_MESSAGE, reference });
@@ -279852,11 +280204,11 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
         ;
         (async () => {
           try {
-            const { aggregator, client } = await resolveAggregator(r.countryCode, r.operator, "payout");
+            const { aggregator, client: client2 } = await resolveAggregator(r.countryCode, r.operator, "payout");
             const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
             let gatewayRef;
             if (aggregator === "clapay") {
-              const resp = await client.initiatePayout({
+              const resp = await client2.initiatePayout({
                 amount: r.amount,
                 currency: countryCurrency,
                 country_code: r.countryCode,
@@ -279869,7 +280221,7 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               if (!resp.success) throw new Error(resp.message ?? "Clapay failed");
               gatewayRef = resp.clapay_reference;
             } else if (aggregator === "paydunya") {
-              const resp = await client.initiatePayout({
+              const resp = await client2.initiatePayout({
                 amount: r.amount,
                 currency: countryCurrency,
                 country_code: r.countryCode,
@@ -279881,8 +280233,8 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               });
               if (!resp.success) throw new Error(resp.message ?? "PayDunya failed");
               gatewayRef = resp.paydunya_reference;
-            } else {
-              const resp = await client.initiatePayout({
+            } else if (aggregator === "babimo") {
+              const resp = await client2.initiatePayout({
                 amount: r.amount,
                 currency: countryCurrency,
                 country_code: r.countryCode,
@@ -279893,6 +280245,19 @@ router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
               });
               if (!resp.success) throw new Error(resp.message ?? "Babimo failed");
               gatewayRef = resp.babimo_reference;
+            } else {
+              const resp = await client2.initiatePayout({
+                amount: r.amount,
+                currency: countryCurrency,
+                country_code: r.countryCode,
+                operator: r.operator,
+                phone: r.phone,
+                reference: txRef,
+                callback_url: callbackUrl,
+                description: r.note ?? description ?? `Mass payout: ${reference}`
+              });
+              if (!resp.success) throw new Error(resp.message ?? "Gombo Plus failed");
+              gatewayRef = resp.gomboplus_reference;
             }
             await db.update(transactionsTable).set({ status: "processing", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, insertedTx.id));
           } catch (e) {
@@ -280242,14 +280607,14 @@ router11.post("/qr/:reference", async (req, res) => {
   }
   const baseCallbackUrl = getWebhookBaseUrl();
   try {
-    const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
-    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
+    const { aggregator, client: client2 } = await resolveAggregator(effectiveCountry, effectiveOperator);
+    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : aggregator === "babimo" ? "/api/webhooks/babimo" : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
     let externalRef;
     let paymentUrl = null;
     let ussdCode = null;
     if (aggregator === "clapay") {
-      const clapayRes = await client.initiatePayin({
+      const clapayRes = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -280269,7 +280634,7 @@ router11.post("/qr/:reference", async (req, res) => {
       paymentUrl = clapayRes.payment_url ?? null;
       ussdCode = clapayRes.ussd_code ?? null;
     } else if (aggregator === "paydunya") {
-      const pdRes = await client.initiatePayin({
+      const pdRes = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -280287,8 +280652,8 @@ router11.post("/qr/:reference", async (req, res) => {
       }
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
-    } else {
-      const babimoRes = await client.initiatePayin({
+    } else if (aggregator === "babimo") {
+      const babimoRes = await client2.initiatePayin({
         amount,
         currency: effectiveCurrency,
         country_code: effectiveCountry,
@@ -280304,9 +280669,26 @@ router11.post("/qr/:reference", async (req, res) => {
       }
       externalRef = babimoRes.babimo_reference;
       paymentUrl = babimoRes.payment_url ?? null;
+    } else {
+      const gomboRes = await client2.initiatePayin({
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference: txReference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
+        description: `QR payment: ${qr.name}`
+      });
+      if (!gomboRes.success) {
+        throw new GomboPlusError(gomboRes.message ?? "\xC9chec Gombo Plus", 502, gomboRes);
+      }
+      externalRef = gomboRes.gomboplus_reference;
+      paymentUrl = gomboRes.payment_url ?? null;
     }
     await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
-    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+    const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
       intervalMs: 4e3,
       maxDurationMs: 2e4
     });
@@ -280456,6 +280838,7 @@ import crypto7 from "crypto";
 init_clapay();
 init_paydunya();
 init_babimo();
+init_gombo_plus();
 var router12 = (0, import_express12.Router)();
 var rateLimitStore = /* @__PURE__ */ new Map();
 function checkRateLimit(keyId) {
@@ -280729,8 +281112,8 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     const frontendBaseUrl = getFrontendBaseUrl();
     const defaultReturnUrl = `${frontendBaseUrl}/payment/success`;
     try {
-      const { aggregator, client } = await resolveAggregator(country_code, operator);
-      const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
+      const { aggregator, client: client2 } = await resolveAggregator(country_code, operator);
+      const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : aggregator === "babimo" ? "/api/webhooks/babimo" : "/api/webhooks/gomboplus";
       const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
       const gatewayPayload = {
         amount,
@@ -280750,7 +281133,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       let ussdCode = null;
       if (aggregator === "clapay") {
         const { ClapayClient: ClapayClient5 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-        const clapayRes = await client.initiatePayin({
+        const clapayRes = await client2.initiatePayin({
           amount,
           currency,
           country_code,
@@ -280770,7 +281153,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         ussdCode = clapayRes.ussd_code ?? null;
       } else if (aggregator === "paydunya") {
         const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
-        const pdRes = await client.initiatePayin({
+        const pdRes = await client2.initiatePayin({
           amount,
           currency,
           country_code,
@@ -280787,8 +281170,8 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         }
         externalRef = pdRes.paydunya_reference;
         paymentUrl = pdRes.payment_url ?? null;
-      } else {
-        const babimoRes = await client.initiatePayin({
+      } else if (aggregator === "babimo") {
+        const babimoRes = await client2.initiatePayin({
           amount,
           currency,
           country_code,
@@ -280805,9 +281188,26 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         }
         externalRef = babimoRes.babimo_reference;
         paymentUrl = babimoRes.payment_url ?? null;
+      } else {
+        const gomboRes = await client2.initiatePayin({
+          amount,
+          currency,
+          country_code,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          return_url: defaultReturnUrl,
+          description
+        });
+        if (!gomboRes.success) {
+          throw new GomboPlusError(gomboRes.message ?? "\xC9chec Gombo Plus", 502, gomboRes);
+        }
+        externalRef = gomboRes.gomboplus_reference;
+        paymentUrl = gomboRes.payment_url ?? null;
       }
       await db.update(transactionsTable).set({ externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
-      const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+      const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
         intervalMs: 4e3,
         maxDurationMs: 2e4
       });
@@ -282193,27 +282593,33 @@ router13.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, r
       });
       return;
     }
-    const { aggregator, client } = await resolveAggregator(tx.countryCode, tx.operator);
+    const { aggregator, client: client2 } = await resolveAggregator(tx.countryCode, tx.operator);
     let gatewayStatus;
     let gatewayRef = queryRef;
     if (aggregator === "clapay") {
       const { ClapayClient: ClapayClient5 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-      const r = await client.getStatus(queryRef);
+      const r = await client2.getStatus(queryRef);
       gatewayStatus = r.status;
       if (r.clapay_reference) gatewayRef = r.clapay_reference;
     } else if (aggregator === "paydunya") {
       const { PayDunyaClient: PayDunyaClient5 } = await Promise.resolve().then(() => (init_paydunya(), paydunya_exports));
-      const pd = client;
-      const r = await pd.getStatus(tx.externalRef);
+      const pd = client2;
+      const r = await pd.getStatus(queryRef);
       const rs = r.status;
       gatewayStatus = rs === "completed" ? "success" : rs === "failed" ? "failed" : rs === "cancelled" ? "cancelled" : rs === "expired" ? "expired" : "pending";
       if (r.paydunya_reference) gatewayRef = r.paydunya_reference;
-    } else {
+    } else if (aggregator === "babimo") {
       const { BabimoClient: BabimoClient6 } = await Promise.resolve().then(() => (init_babimo(), babimo_exports));
-      const babimo = client;
+      const babimo = client2;
       const r = await babimo.getStatus(queryRef);
       gatewayStatus = r.status;
       if (r.babimo_reference) gatewayRef = r.babimo_reference;
+    } else {
+      const { GomboPlusClient: GomboPlusClient6 } = await Promise.resolve().then(() => (init_gombo_plus(), gombo_plus_exports));
+      const gombo = client2;
+      const r = await gombo.getStatus(queryRef);
+      gatewayStatus = r.status;
+      if (r.gomboplus_reference) gatewayRef = r.gomboplus_reference;
     }
     const isSettled = ["success", "failed", "cancelled", "expired"].includes(gatewayStatus);
     let credited = false;
@@ -283374,19 +283780,19 @@ router14.post("/webhooks/clapay", async (req, res) => {
       console.warn("[Clapay Webhook] Clapay non configur\xE9 \u2014 webhook ignor\xE9");
       return;
     }
-    const client = getClapayClient();
+    const client2 = getClapayClient();
     const rawBody = JSON.stringify(req.body);
     const receivedSig = req.headers["x-clapay-signature"] ?? req.headers["x-signature"] ?? req.body?.signature ?? "";
     const timestamp2 = parseInt(
       req.headers["x-clapay-timestamp"] ?? req.body?.timestamp ?? "0"
     );
     if (receivedSig && process.env.CLAPAY_WEBHOOK_SECRET) {
-      if (!client.verifyWebhookSignature(rawBody, receivedSig, timestamp2)) {
+      if (!client2.verifyWebhookSignature(rawBody, receivedSig, timestamp2)) {
         console.warn("[Clapay Webhook] Signature invalide \u2014 rejet\xE9");
         return;
       }
     }
-    const event = client.parseWebhookEvent(req.body);
+    const event = client2.parseWebhookEvent(req.body);
     console.log(`[Clapay Webhook] \xC9v\xE9nement: ${event.event} | clapay_ref: ${event.clapay_reference} | our_ref: ${event.our_reference}`);
     if (!event.our_reference) {
       console.warn("[Clapay Webhook] our_reference manquant \u2014 ignor\xE9");
@@ -283554,17 +283960,17 @@ router15.post("/webhooks/paydunya", async (req, res) => {
       console.warn("[PayDunya Webhook] PayDunya non configur\xE9 \u2014 webhook ignor\xE9");
       return;
     }
-    const client = getPayDunyaClient();
+    const client2 = getPayDunyaClient();
     const rawBody = JSON.stringify(req.body);
     const receivedHash = req.headers["x-paydunya-hash"] ?? req.headers["x-hash"] ?? req.body?.data?.hash ?? req.body?.hash ?? "";
     if (process.env.PAYDUNYA_WEBHOOK_SECRET && process.env.PAYDUNYA_WEBHOOK_SECRET !== "placeholder-secret") {
-      if (!receivedHash || !client.verifyWebhookSignature(rawBody, receivedHash)) {
+      if (!receivedHash || !client2.verifyWebhookSignature(rawBody, receivedHash)) {
         console.warn("[PayDunya Webhook] Signature invalide ou absente \u2014 webhook rejet\xE9");
         res.status(401).json({ error: "Invalid webhook signature" });
         return;
       }
     }
-    const event = client.parseWebhookEvent(req.body);
+    const event = client2.parseWebhookEvent(req.body);
     console.log(`[PayDunya Webhook] \xC9v\xE9nement: ${event.event} | ref: ${event.our_reference}`);
     if (!event.our_reference) {
       console.warn("[PayDunya Webhook] our_reference manquant \u2014 ignor\xE9");
@@ -283917,13 +284323,171 @@ router16.get("/webhooks/babimo", (_req, res) => {
 });
 var babimo_webhook_default = router16;
 
-// src/routes/support-admin.ts
+// src/routes/gombo-plus-webhook.ts
 var import_express17 = __toESM(require_express2(), 1);
+init_drizzle_orm();
+init_src();
+init_schema2();
+init_gombo_plus();
+import crypto12 from "crypto";
+var router17 = (0, import_express17.Router)();
+function firstString3(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
+  }
+  return "";
+}
+function normalizeStatus2(value) {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("success") || normalized.includes("completed") || normalized.includes("paid") || normalized === "succes") return "success";
+  if (normalized.includes("fail") || normalized.includes("error") || normalized.includes("reject") || normalized.includes("declin")) return "failed";
+  if (normalized.includes("cancel")) return "cancelled";
+  if (normalized.includes("expir")) return "expired";
+  if (normalized.includes("process") || normalized.includes("initi") || normalized.includes("pending")) return "processing";
+  return "pending";
+}
+function signMerchantPayload4(payload, secret, timestamp2) {
+  return crypto12.createHmac("sha256", secret).update(`${timestamp2}.${payload}`).digest("hex");
+}
+router17.post("/webhooks/gomboplus", async (req, res) => {
+  res.status(200).json({ received: true });
+  try {
+    const body = req.body ?? {};
+    const reference = firstString3(
+      body.transaction_reference,
+      body.reference,
+      body.content?.transaction_reference,
+      body.content?.reference
+    );
+    if (!reference) {
+      console.warn("[Gombo Plus Webhook] R\xE9f\xE9rence absente \u2014 notification ignor\xE9e");
+      return;
+    }
+    let [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.externalRef, reference));
+    if (!tx) {
+      [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.gatewayReference, reference));
+    }
+    if (!tx) {
+      const merchantReference = firstString3(body.merchant_transaction_id, body.order_id, body.content?.merchant_transaction_id);
+      if (merchantReference) {
+        [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.reference, merchantReference));
+      }
+    }
+    if (!tx) {
+      console.warn(`[Gombo Plus Webhook] Transaction introuvable \u2014 ref: ${reference}`);
+      return;
+    }
+    const statusValue = firstString3(
+      body.status,
+      body.status_message,
+      body.transaction_status,
+      body.content?.status,
+      body.content?.status_message
+    );
+    const status = normalizeStatus2(statusValue);
+    const failureReason = firstString3(body.status_message, body.message, body.error, body.content?.status_message, body.content?.message) || null;
+    if (tx.type === "payin") {
+      const result = await settlePayinStatus({
+        txId: tx.id,
+        status,
+        gatewayReference: reference,
+        failureReason: status === "failed" ? failureReason ?? "Transaction Gombo Plus \xE9chou\xE9e." : void 0,
+        gateway: "gomboplus"
+      });
+      console.log(`[Gombo Plus Webhook] Payin ${tx.reference} \u2192 ${status} (cr\xE9dit\xE9: ${result.credited})`);
+    } else if (status === "failed" || status === "cancelled" || status === "expired") {
+      const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
+      const refunded = await db.transaction(async (trx) => {
+        const [row] = await trx.update(transactionsTable).set({
+          status,
+          gatewayReference: reference,
+          failureReason,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(and(
+          eq(transactionsTable.id, tx.id),
+          sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
+        )).returning();
+        if (!row) return false;
+        await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, tx.walletId));
+        return true;
+      });
+      if (refunded) console.log(`[Gombo Plus Webhook] Payout ${tx.reference} \xE9chou\xE9 \u2014 wallet rembours\xE9.`);
+    } else {
+      await db.update(transactionsTable).set({ status, gatewayReference: reference, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+    }
+    if (tx.type === "payout" && tx.reference.startsWith("REV-")) {
+      await db.update(reversementsTable).set({
+        status: status === "success" ? "completed" : ["failed", "cancelled", "expired"].includes(status) ? "failed" : "pending",
+        ...failureReason ? { failureReason } : {}
+      }).where(eq(reversementsTable.reference, tx.reference));
+    }
+    if (tx.webhookUrl && tx.webhookSignatureKey) {
+      const event = tx.type === "payout" ? `payout.${status}` : `payin.${status}`;
+      const payload = {
+        event,
+        reference: tx.reference,
+        order_id: tx.orderId,
+        status,
+        amount: parseFloat(tx.amount),
+        fee: parseFloat(tx.fee),
+        net_amount: parseFloat(tx.netAmount),
+        currency: tx.currency,
+        country_code: tx.countryCode,
+        operator: tx.operator,
+        phone: tx.phone,
+        mode: tx.mode,
+        failure_reason: ["failed", "cancelled", "expired"].includes(status) ? MERCHANT_FAILURE_LABEL : null,
+        gomboplus_reference: reference,
+        created_at: tx.createdAt.toISOString(),
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      const payloadBody = JSON.stringify(payload);
+      const timestamp2 = Math.floor(Date.now() / 1e3);
+      try {
+        const response = await fetch(tx.webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-DrimPay-Signature": `t=${timestamp2},v1=${signMerchantPayload4(payloadBody, tx.webhookSignatureKey, timestamp2)}`,
+            "X-DrimPay-Timestamp": String(timestamp2),
+            "X-DrimPay-Event": event
+          },
+          body: payloadBody,
+          signal: AbortSignal.timeout(1e4)
+        });
+        await db.update(transactionsTable).set({
+          webhookLastStatusCode: response.status,
+          webhookLastBody: payloadBody,
+          webhookLastSentAt: /* @__PURE__ */ new Date(),
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq(transactionsTable.id, tx.id));
+      } catch (err) {
+        console.warn(`[Gombo Plus Webhook] \xC9chec webhook marchand: ${err?.message ?? err}`);
+      }
+    }
+  } catch (err) {
+    console.error("[Gombo Plus Webhook] Erreur traitement:", err?.message ?? err);
+  }
+});
+router17.get("/webhooks/gomboplus", (_req, res) => {
+  res.json({
+    service: "DrimPay",
+    webhook: "gomboplus",
+    status: "ready",
+    configured: isAnyGomboPlusConfigured(),
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  });
+});
+var gombo_plus_webhook_default = router17;
+
+// src/routes/support-admin.ts
+var import_express18 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
 init_mailer();
-var router17 = (0, import_express17.Router)();
+var router18 = (0, import_express18.Router)();
 var requireSupportAuth = async (req, res, next) => {
   if (req.session.supportAdminId) {
     next();
@@ -283954,7 +284518,7 @@ var requirePasswordChanged = async (req, res, next) => {
   }
   next();
 };
-router17.post("/support-admin/login", async (req, res) => {
+router18.post("/support-admin/login", async (req, res) => {
   const schema = external_exports2.object({ email: external_exports2.string().email(), password: external_exports2.string().min(1) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -283976,10 +284540,10 @@ router17.post("/support-admin/login", async (req, res) => {
   req.session.supportAdminId = user.id;
   res.json({ id: user.id, email: user.email, name: user.name, mustChangePassword: user.mustChangePassword });
 });
-router17.post("/support-admin/logout", (req, res) => {
+router18.post("/support-admin/logout", (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
-router17.get("/support-admin/me", requireSupportAuth, async (req, res) => {
+router18.get("/support-admin/me", requireSupportAuth, async (req, res) => {
   if (!req.session.supportAdminId && req.session.userId) {
     const [u2] = await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, req.session.userId));
     if (!u2) {
@@ -283996,7 +284560,7 @@ router17.get("/support-admin/me", requireSupportAuth, async (req, res) => {
   }
   res.json(u);
 });
-router17.patch("/support-admin/change-password", requireSupportAuth, async (req, res) => {
+router18.patch("/support-admin/change-password", requireSupportAuth, async (req, res) => {
   const schema = external_exports2.object({
     currentPassword: external_exports2.string().min(1),
     newPassword: external_exports2.string().min(8, "Au moins 8 caract\xE8res")
@@ -284020,7 +284584,7 @@ router17.patch("/support-admin/change-password", requireSupportAuth, async (req,
   await db.update(supportUsersTable).set({ passwordHash: hash2, mustChangePassword: false }).where(eq(supportUsersTable.id, user.id));
   res.json({ success: true });
 });
-router17.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
   const [total] = await db.select({ c: count() }).from(contactSubmissionsTable);
@@ -284051,7 +284615,7 @@ router17.get("/support-admin/stats", requireSupportAuth, requirePasswordChanged,
     recentMessages
   });
 });
-router17.get("/support-admin/messages", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.get("/support-admin/messages", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const { status, source, search } = req.query;
   const page = Math.max(1, parseInt(req.query.page ?? "1"));
   const limit = 20;
@@ -284072,7 +284636,7 @@ router17.get("/support-admin/messages", requireSupportAuth, requirePasswordChang
   const [totalRow] = await db.select({ c: count() }).from(contactSubmissionsTable).where(conditions.length ? and(...conditions) : void 0);
   res.json({ messages, total: Number(totalRow.c), page, pages: Math.ceil(Number(totalRow.c) / limit) });
 });
-router17.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [msg] = await db.select().from(contactSubmissionsTable).where(eq(contactSubmissionsTable.id, id));
   if (!msg) {
@@ -284088,7 +284652,7 @@ router17.get("/support-admin/messages/:id", requireSupportAuth, requirePasswordC
   }).from(supportRepliesTable).leftJoin(supportUsersTable, eq(supportRepliesTable.supportUserId, supportUsersTable.id)).where(eq(supportRepliesTable.contactId, id)).orderBy(supportRepliesTable.sentAt);
   res.json({ ...msg, replies });
 });
-router17.patch("/support-admin/messages/:id/status", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.patch("/support-admin/messages/:id/status", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ status: external_exports2.enum(["unread", "in_progress", "replied", "closed"]) });
   const parsed = schema.safeParse(req.body);
@@ -284099,7 +284663,7 @@ router17.patch("/support-admin/messages/:id/status", requireSupportAuth, require
   await db.update(contactSubmissionsTable).set({ ticketStatus: parsed.data.status }).where(eq(contactSubmissionsTable.id, id));
   res.json({ success: true });
 });
-router17.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ body: external_exports2.string().min(1, "Le message ne peut pas \xEAtre vide") });
   const parsed = schema.safeParse(req.body);
@@ -284130,7 +284694,7 @@ router17.post("/support-admin/messages/:id/reply", requireSupportAuth, requirePa
   res.json({ success: true, reply });
 });
 var SUPPORT_SETTING_KEYS = ["support_whatsapp", "support_email_1", "support_email_2", "support_hours", "support_telegram"];
-router17.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const { status, mode, page = "1", limit = "20" } = req.query;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -284150,7 +284714,7 @@ router17.get("/support-admin/wallet-exchanges", requireSupportAuth, requirePassw
     page: pageNum
   });
 });
-router17.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [exchange] = await db.select().from(walletExchangesTable).where(eq(walletExchangesTable.id, id));
   if (!exchange) {
@@ -284163,7 +284727,7 @@ router17.get("/support-admin/wallet-exchanges/:id", requireSupportAuth, requireP
   const toWallet = exchange.toWalletId ? (await db.select().from(walletsTable2).where(eq(walletsTable2.id, exchange.toWalletId)))[0] : null;
   res.json({ exchange, merchant: merchant ?? null, fromWallet: fromWallet ?? null, toWallet: toWallet ?? null });
 });
-router17.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const actorUser = req.session.supportAdminId ? (await db.select({ name: supportUsersTable.name }).from(supportUsersTable).where(eq(supportUsersTable.id, req.session.supportAdminId)))[0] : null;
   const actor = actorUser?.name ?? "Support";
@@ -284174,7 +284738,7 @@ router17.post("/support-admin/wallet-exchanges/:id/approve", requireSupportAuth,
   }
   res.json({ ok: true });
 });
-router17.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const { reason } = req.body;
   if (!reason?.trim()) {
@@ -284190,12 +284754,12 @@ router17.post("/support-admin/wallet-exchanges/:id/reject", requireSupportAuth, 
   }
   res.json({ ok: true });
 });
-router17.get("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.get("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const rows = await db.select().from(supportSettingsTable);
   const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
   res.json(map2);
 });
-router17.patch("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.patch("/support-admin/settings", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const updates = req.body;
   for (const key of SUPPORT_SETTING_KEYS) {
     if (key in updates) {
@@ -284204,11 +284768,11 @@ router17.patch("/support-admin/settings", requireSupportAuth, requirePasswordCha
   }
   res.json({ success: true });
 });
-router17.get("/support-admin/socials", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.get("/support-admin/socials", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const links = await db.select().from(socialLinksTable).orderBy(socialLinksTable.sortOrder);
   res.json(links);
 });
-router17.patch("/support-admin/socials/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.patch("/support-admin/socials/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const schema = external_exports2.object({ url: external_exports2.string(), active: external_exports2.boolean().optional() });
   const parsed = schema.safeParse(req.body);
@@ -284227,11 +284791,11 @@ var bannerSchema = external_exports2.object({
   buttonLink: external_exports2.string().optional(),
   active: external_exports2.boolean().default(true)
 });
-router17.get("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (_req, res) => {
+router18.get("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (_req, res) => {
   const rows = await db.select().from(globalBannersTable).orderBy(desc(globalBannersTable.createdAt));
   res.json(rows);
 });
-router17.post("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.post("/support-admin/global-banners", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const parsed = bannerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Donn\xE9es invalides" });
@@ -284240,7 +284804,7 @@ router17.post("/support-admin/global-banners", requireSupportAuth, requirePasswo
   const [banner] = await db.insert(globalBannersTable).values(parsed.data).returning();
   res.json(banner);
 });
-router17.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select().from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -284250,7 +284814,7 @@ router17.patch("/support-admin/global-banners/:id/toggle", requireSupportAuth, r
   const [updated] = await db.update(globalBannersTable).set({ active: !existing.active, updatedAt: /* @__PURE__ */ new Date() }).where(eq(globalBannersTable.id, id)).returning();
   res.json(updated);
 });
-router17.delete("/support-admin/global-banners/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
+router18.delete("/support-admin/global-banners/:id", requireSupportAuth, requirePasswordChanged, async (req, res) => {
   const id = parseInt(req.params.id);
   const [existing] = await db.select({ id: globalBannersTable.id }).from(globalBannersTable).where(eq(globalBannersTable.id, id));
   if (!existing) {
@@ -284260,23 +284824,24 @@ router17.delete("/support-admin/global-banners/:id", requireSupportAuth, require
   await db.delete(globalBannersTable).where(eq(globalBannersTable.id, id));
   res.json({ success: true });
 });
-router17.get("/support/config", async (req, res) => {
+router18.get("/support/config", async (req, res) => {
   const rows = await db.select().from(supportSettingsTable);
   const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
   res.json(map2);
 });
-var support_admin_default = router17;
+var support_admin_default = router18;
 
 // src/routes/pay.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-import crypto12 from "crypto";
+import crypto13 from "crypto";
 init_clapay();
 init_paydunya();
 init_babimo();
-var router18 = (0, import_express18.Router)();
+init_gombo_plus();
+var router19 = (0, import_express19.Router)();
 var CURRENCY_MAP = {
   TG: "XOF",
   BJ: "XOF",
@@ -284295,7 +284860,7 @@ var DEFAULT_OPERATORS = {
   SN: ["Orange Money", "Wave"],
   CI: ["MTN", "Orange Money", "Wave", "Moov Money"]
 };
-router18.get("/pay/status/:reference", async (req, res) => {
+router19.get("/pay/status/:reference", async (req, res) => {
   const { reference } = req.params;
   if (!reference) {
     res.status(400).json({ error: "Reference required" });
@@ -284331,7 +284896,7 @@ router18.get("/pay/status/:reference", async (req, res) => {
     failureReason: merchantFailureLabel(tx.status, tx.failureReason)
   });
 });
-router18.get("/pay/:token", async (req, res) => {
+router19.get("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const [link] = await db.select().from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
   if (!link) {
@@ -284385,7 +284950,7 @@ router18.get("/pay/:token", async (req, res) => {
     operatorMaintenance
   });
 });
-router18.post("/pay/:token/attempt", async (req, res) => {
+router19.post("/pay/:token/attempt", async (req, res) => {
   const { token } = req.params;
   const { phone, amount, name: name2, email: email3, countryCode, operator } = req.body;
   const [link] = await db.select({ id: paymentLinksTable.id, userId: paymentLinksTable.userId }).from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
@@ -284408,7 +284973,7 @@ router18.post("/pay/:token/attempt", async (req, res) => {
   }).returning();
   res.json({ attemptId: attempt.id });
 });
-router18.patch("/pay/:token/attempt/:id", async (req, res) => {
+router19.patch("/pay/:token/attempt/:id", async (req, res) => {
   const attemptId = parseInt(req.params.id);
   const { status, transactionReference } = req.body;
   if (isNaN(attemptId)) {
@@ -284431,7 +284996,7 @@ var paySchema = external_exports2.object({
   customerEmail: external_exports2.string().optional(),
   operatorOtp: external_exports2.string().optional()
 });
-router18.post("/pay/:token", async (req, res) => {
+router19.post("/pay/:token", async (req, res) => {
   const { token } = req.params;
   const parsed = paySchema.safeParse(req.body);
   if (!parsed.success) {
@@ -284477,8 +285042,8 @@ router18.post("/pay/:token", async (req, res) => {
   const feeRate = await getFeeRate(link.userId, "payin", countryCode, operator);
   const fee = Math.round(amount * feeRate * 100) / 100;
   const netAmount = Math.round((amount - fee) * 100) / 100;
-  const reference = `PL-${countryCode}-${crypto12.randomBytes(8).toString("hex").toUpperCase()}`;
-  const signatureKey = crypto12.randomBytes(32).toString("hex");
+  const reference = `PL-${countryCode}-${crypto13.randomBytes(8).toString("hex").toUpperCase()}`;
+  const signatureKey = crypto13.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 10 * 6e4);
   let [wallet] = await db.select().from(walletsTable).where(and(eq(walletsTable.userId, link.userId), eq(walletsTable.countryCode, countryCode)));
   if (!wallet) {
@@ -284528,14 +285093,14 @@ router18.post("/pay/:token", async (req, res) => {
     return;
   }
   try {
-    const { aggregator, client } = await resolveAggregator(countryCode, operator);
-    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : "/api/webhooks/babimo";
+    const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
+    const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : aggregator === "babimo" ? "/api/webhooks/babimo" : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
     let externalRef;
     let paymentUrl = null;
     let ussdCode = null;
     if (aggregator === "clapay") {
-      const clapayRes = await client.initiatePayin({
+      const clapayRes = await client2.initiatePayin({
         amount,
         currency,
         country_code: countryCode,
@@ -284557,7 +285122,7 @@ router18.post("/pay/:token", async (req, res) => {
       paymentUrl = clapayRes.payment_url ?? null;
       ussdCode = clapayRes.ussd_code ?? null;
     } else if (aggregator === "paydunya") {
-      const pdRes = await client.initiatePayin({
+      const pdRes = await client2.initiatePayin({
         amount,
         currency,
         country_code: countryCode,
@@ -284577,8 +285142,8 @@ router18.post("/pay/:token", async (req, res) => {
       }
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
-    } else {
-      const babimoRes = await client.initiatePayin({
+    } else if (aggregator === "babimo") {
+      const babimoRes = await client2.initiatePayin({
         amount,
         currency,
         country_code: countryCode,
@@ -284594,9 +285159,26 @@ router18.post("/pay/:token", async (req, res) => {
       }
       externalRef = babimoRes.babimo_reference;
       paymentUrl = babimoRes.payment_url ?? null;
+    } else {
+      const gomboRes = await client2.initiatePayin({
+        amount,
+        currency,
+        country_code: countryCode,
+        operator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        return_url: returnUrl,
+        description: link.title
+      });
+      if (!gomboRes.success) {
+        throw new GomboPlusError(gomboRes.message ?? "\xC9chec Gombo Plus", 502, gomboRes);
+      }
+      externalRef = gomboRes.gomboplus_reference;
+      paymentUrl = gomboRes.payment_url ?? null;
     }
     await db.update(transactionsTable).set({ externalRef }).where(eq(transactionsTable.id, tx.id));
-    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+    const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
       intervalMs: 4e3,
       maxDurationMs: 2e4
     });
@@ -284632,7 +285214,7 @@ router18.post("/pay/:token", async (req, res) => {
     });
   } catch (err) {
     const realReason = err?.message ?? String(err);
-    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : "?";
+    const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : err instanceof GomboPlusError ? "gomboplus" : "?";
     res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference });
     await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     try {
@@ -284655,14 +285237,14 @@ router18.post("/pay/:token", async (req, res) => {
     }
   }
 });
-var pay_default = router18;
+var pay_default = router19;
 
 // src/routes/security.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
-var router19 = (0, import_express19.Router)();
+var router20 = (0, import_express20.Router)();
 var AP2 = `/${process.env["ADMIN_ROUTE_SECRET"] ?? "admin"}`;
 function requireAdmin2(req, res, next) {
   if (!req.session?.userId || req.session?.role !== "admin") {
@@ -284671,7 +285253,7 @@ function requireAdmin2(req, res, next) {
   }
   next();
 }
-router19.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
+router20.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
   const limit = Math.min(parseInt(String(req.query.limit ?? "50")), 200);
   const offset = parseInt(String(req.query.offset ?? "0"));
   const riskLevel = req.query.riskLevel;
@@ -284696,11 +285278,11 @@ router19.get(AP2 + "/security/events", requireAdmin2, async (req, res) => {
   }).from(securityEventsTable);
   res.json({ events: rows, stats });
 });
-router19.get(AP2 + "/security/blocked-ips", requireAdmin2, async (req, res) => {
+router20.get(AP2 + "/security/blocked-ips", requireAdmin2, async (req, res) => {
   const rows = await db.select().from(blockedIpsTable).orderBy(desc(blockedIpsTable.createdAt));
   res.json(rows);
 });
-router19.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
+router20.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
   const schema = external_exports2.object({
     ip: external_exports2.string().min(3).max(64),
     reason: external_exports2.string().min(1).max(500),
@@ -284729,7 +285311,7 @@ router19.post(AP2 + "/security/block-ip", requireAdmin2, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router19.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, res) => {
+router20.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     res.status(400).json({ error: "ID invalide" });
@@ -284738,30 +285320,31 @@ router19.delete(AP2 + "/security/blocked-ips/:id", requireAdmin2, async (req, re
   await db.delete(blockedIpsTable).where(eq(blockedIpsTable.id, id));
   res.json({ ok: true });
 });
-var security_default = router19;
+var security_default = router20;
 
 // src/routes/index.ts
-var router20 = (0, import_express20.Router)();
-router20.use(auth_default);
-router20.use(health_default);
-router20.use(help_default);
-router20.use(stats_default);
-router20.use(blog_default);
-router20.use(jobs_default);
-router20.use(contact_default);
-router20.use(status_default);
-router20.use(partners_default);
-router20.use(countries_default);
-router20.use(dashboard_default);
-router20.use(v2payin_default);
-router20.use(admin_default);
-router20.use(clapay_webhook_default);
-router20.use(paydunya_webhook_default);
-router20.use(babimo_webhook_default);
-router20.use(support_admin_default);
-router20.use(pay_default);
-router20.use(security_default);
-var routes_default = router20;
+var router21 = (0, import_express21.Router)();
+router21.use(auth_default);
+router21.use(health_default);
+router21.use(help_default);
+router21.use(stats_default);
+router21.use(blog_default);
+router21.use(jobs_default);
+router21.use(contact_default);
+router21.use(status_default);
+router21.use(partners_default);
+router21.use(countries_default);
+router21.use(dashboard_default);
+router21.use(v2payin_default);
+router21.use(admin_default);
+router21.use(clapay_webhook_default);
+router21.use(paydunya_webhook_default);
+router21.use(babimo_webhook_default);
+router21.use(gombo_plus_webhook_default);
+router21.use(support_admin_default);
+router21.use(pay_default);
+router21.use(security_default);
+var routes_default = router21;
 
 // src/lib/logger.ts
 var import_pino = __toESM(require_pino(), 1);
@@ -284814,7 +285397,7 @@ function subdomainMiddleware(req, res, next) {
 }
 
 // src/app.ts
-var app = (0, import_express21.default)();
+var app = (0, import_express22.default)();
 var isProd = process.env["NODE_ENV"] === "production";
 if (isProd) {
   app.set("trust proxy", true);
@@ -284853,7 +285436,7 @@ app.use(
     }),
     // Fallback: aléatoire à chaque démarrage si SESSION_SECRET absent.
     // Les sessions existantes seront invalidées mais le process ne crashe pas.
-    secret: sessionSecret || crypto13.randomBytes(32).toString("hex"),
+    secret: sessionSecret || crypto14.randomBytes(32).toString("hex"),
     resave: false,
     saveUninitialized: false,
     name: "dp_sid",
@@ -284884,8 +285467,8 @@ app.use(
     }
   })
 );
-app.use(import_express21.default.json({ limit: "2mb" }));
-app.use(import_express21.default.urlencoded({ extended: true, limit: "2mb" }));
+app.use(import_express22.default.json({ limit: "2mb" }));
+app.use(import_express22.default.urlencoded({ extended: true, limit: "2mb" }));
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
@@ -284913,7 +285496,7 @@ var frontendDist = path4.resolve(__dirname3, "../../drimpay/dist/public");
 var indexHtml = path4.join(frontendDist, "index.html");
 if (existsSync2(frontendDist) && existsSync2(indexHtml)) {
   app.use(
-    import_express21.default.static(frontendDist, {
+    import_express22.default.static(frontendDist, {
       maxAge: "7d",
       etag: true,
       index: false,

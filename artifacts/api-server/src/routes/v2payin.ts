@@ -14,6 +14,7 @@ import bcrypt from "bcryptjs";
 import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
 import { BabimoClient, BabimoError } from "../lib/babimo";
+import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure, buildWalletsSummary } from "../lib/telegram";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
@@ -390,7 +391,9 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         ? "/api/webhooks/clapay"
         : aggregator === "paydunya"
           ? "/api/webhooks/paydunya"
-          : "/api/webhooks/babimo";
+          : aggregator === "babimo"
+            ? "/api/webhooks/babimo"
+            : "/api/webhooks/gomboplus";
       const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
 
       const gatewayPayload = {
@@ -434,7 +437,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         }
         externalRef = pdRes.paydunya_reference;
         paymentUrl = pdRes.payment_url ?? null;
-      } else {
+      } else if (aggregator === "babimo") {
         const babimoRes = await (client as BabimoClient).initiatePayin({
           amount, currency, country_code, operator, phone, reference,
           callback_url: callbackUrl, return_url: defaultReturnUrl, description,
@@ -445,6 +448,16 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         }
         externalRef = babimoRes.babimo_reference;
         paymentUrl = babimoRes.payment_url ?? null;
+      } else {
+        const gomboRes = await (client as GomboPlusClient).initiatePayin({
+          amount, currency, country_code, operator, phone, reference,
+          callback_url: callbackUrl, return_url: defaultReturnUrl, description,
+        });
+        if (!gomboRes.success) {
+          throw new GomboPlusError(gomboRes.message ?? "Échec Gombo Plus", 502, gomboRes);
+        }
+        externalRef = gomboRes.gomboplus_reference;
+        paymentUrl = gomboRes.payment_url ?? null;
       }
 
       // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver

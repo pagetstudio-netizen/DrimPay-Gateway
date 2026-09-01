@@ -57,6 +57,10 @@ router.get("/help", async (req: any, res) => {
     "BABIMO_BF_EMAIL",
     "BABIMO_BF_PASSWORD",
     "BABIMO_BF_BASE_URL",
+    "GOMBOPLUS_PUBLIC_KEY",
+    "GOMBOPLUS_PRIVATE_KEY",
+    "GOMBOPLUS_BASE_URL",
+    "GOMBOPLUS_WEBHOOK_SECRET",
     "RESEND_API_KEY",
     "NODE_ENV",
     "PORT",
@@ -136,6 +140,12 @@ router.get("/help", async (req: any, res) => {
       },
     },
     aggregator: "babimo",
+  };
+  checks.gomboplus = {
+    baseUrl: process.env["GOMBOPLUS_BASE_URL"] ?? "https://api.gomboplus.com",
+    publicKey: process.env["GOMBOPLUS_PUBLIC_KEY"] ? "✓ défini" : "✗ MANQUANT",
+    privateKey: process.env["GOMBOPLUS_PRIVATE_KEY"] ? "✓ défini" : "✗ MANQUANT",
+    webhookSecret: process.env["GOMBOPLUS_WEBHOOK_SECRET"] ? "✓ défini" : "optionnel",
   };
 
   // ── Supabase Storage ─────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import { ADMIN_BASE } from "@/lib/admin-api";
 const DEFAULT_AGGREGATORS = [
   { name: "Clapay", code: "clapay", description: "Agrégateur mobile money Afrique de l'Ouest & Centre" },
   { name: "PayDunya", code: "paydunya", description: "Solution de paiement mobile money multidevise" },
+  { name: "Gombo Plus", code: "gomboplus", description: "Pay-in, liens QR et mass payout pour le Togo, le Bénin et le Burkina Faso" },
 ];
 
 const COUNTRIES = [
@@ -72,7 +73,7 @@ function OperatorAggRow({ oa, aggregators, onUpdate, onDelete }: { oa: any; aggr
           </select>
         ) : (
           <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wide",
-            form.aggregatorCode === "clapay" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700")}>
+            form.aggregatorCode === "clapay" ? "bg-blue-100 text-blue-700" : form.aggregatorCode === "gomboplus" ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700")}>
             {form.aggregatorCode}
           </span>
         )}
@@ -177,10 +178,13 @@ export default function AdminAggregators() {
     setLoading(true);
     const r = await fetch(`${ADMIN_BASE}/aggregators`, { credentials: "include" });
     let d = await r.json();
-    if (!d.aggregators?.length) {
-      for (const agg of DEFAULT_AGGREGATORS) {
+    const configuredCodes = new Set((d.aggregators ?? []).map((agg: any) => agg.code));
+    for (const agg of DEFAULT_AGGREGATORS) {
+      if (!configuredCodes.has(agg.code)) {
         await fetch(`${ADMIN_BASE}/aggregators`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(agg) }).catch(() => {});
       }
+    }
+    if (DEFAULT_AGGREGATORS.some(agg => !configuredCodes.has(agg.code))) {
       const r2 = await fetch(`${ADMIN_BASE}/aggregators`, { credentials: "include" });
       d = await r2.json();
     }
@@ -214,7 +218,7 @@ export default function AdminAggregators() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Agrégateurs</h1>
-            <p className="text-sm text-gray-500">Gestion du routage Clapay / PayDunya par opérateur</p>
+            <p className="text-sm text-gray-500">Gestion du routage Clapay / PayDunya / Babimo / Gombo Plus par opérateur</p>
           </div>
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-sm">
             <Plus className="w-4 h-4" /> Ajouter opérateur

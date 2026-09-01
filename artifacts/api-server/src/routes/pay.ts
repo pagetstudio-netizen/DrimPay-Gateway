@@ -27,6 +27,7 @@ import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, chec
 import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { BabimoClient, BabimoError } from "../lib/babimo";
+import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
 import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { GENERIC_ERROR_MESSAGE, merchantFailureLabel } from "../lib/merchant-error";
@@ -405,7 +406,9 @@ router.post("/pay/:token", async (req: any, res: any) => {
       ? "/api/webhooks/clapay"
       : aggregator === "paydunya"
         ? "/api/webhooks/paydunya"
-        : "/api/webhooks/babimo";
+        : aggregator === "babimo"
+          ? "/api/webhooks/babimo"
+          : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
 
     let externalRef: string;
@@ -445,7 +448,7 @@ router.post("/pay/:token", async (req: any, res: any) => {
       }
       externalRef = pdRes.paydunya_reference;
       paymentUrl = pdRes.payment_url ?? null;
-    } else {
+    } else if (aggregator === "babimo") {
       const babimoRes = await (client as BabimoClient).initiatePayin({
         amount,
         currency,
@@ -462,6 +465,17 @@ router.post("/pay/:token", async (req: any, res: any) => {
       }
       externalRef = babimoRes.babimo_reference;
       paymentUrl = babimoRes.payment_url ?? null;
+    } else {
+      const gomboRes = await (client as GomboPlusClient).initiatePayin({
+        amount, currency, country_code: countryCode, operator, phone,
+        reference, callback_url: callbackUrl, return_url: returnUrl,
+        description: link.title,
+      });
+      if (!gomboRes.success) {
+        throw new GomboPlusError(gomboRes.message ?? "Échec Gombo Plus", 502, gomboRes);
+      }
+      externalRef = gomboRes.gomboplus_reference;
+      paymentUrl = gomboRes.payment_url ?? null;
     }
 
     // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver
@@ -518,7 +532,9 @@ router.post("/pay/:token", async (req: any, res: any) => {
         ? "paydunya"
         : err instanceof BabimoError
           ? "babimo"
-          : "?";
+            : err instanceof GomboPlusError
+              ? "gomboplus"
+              : "?";
     res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference });
     await db.update(transactionsTable)
       .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
