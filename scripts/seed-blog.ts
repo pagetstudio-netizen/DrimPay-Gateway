@@ -597,6 +597,363 @@ Si vous découvrez une vulnérabilité dans l'infrastructure DrimPay, contactez-
     imageUrl: "/blog/securiser-integrations-paiement.png",
     tags: ["Sécurité", "API", "Webhooks", "Bonnes pratiques"],
   },
+  {
+    slug: "activer-compte-production-apres-kyb-drimpay",
+    title: "Comment passer en production avec DrimPay après la validation KYB",
+    excerpt: "Votre entreprise vient d'être validée ? Découvrez les étapes concrètes pour activer votre compte production, créer vos clés Live et lancer vos premiers paiements en toute sécurité.",
+    content: `## La validation KYB, le début de votre lancement
+
+La validation KYB (Know Your Business) confirme que votre entreprise est bien identifiée et qu'elle peut utiliser une infrastructure de paiement dans un cadre conforme. C'est une étape importante, mais elle ne signifie pas que vos paiements réels sont déjà configurés.
+
+Après l'approbation de votre dossier, vous devez encore préparer votre environnement de production, vos clés API et votre chaîne de notification. Cette préparation évite les erreurs lors du premier paiement client.
+
+## 1. Vérifier que votre compte est bien activé
+
+Connectez-vous à votre tableau de bord DrimPay et ouvrez la section **Vérification KYB**. Le statut attendu est **Approuvé — compte production activé**. Vérifiez également les éléments suivants :
+
+- le nom de votre entreprise correspond à vos documents officiels ;
+- le pays de l'entreprise et la devise utilisée sont corrects ;
+- les wallets de production apparaissent dans votre tableau de bord ;
+- vos coordonnées de contact sont à jour ;
+- votre URL de webhook est renseignée et accessible en HTTPS.
+
+Si le statut reste en attente, ne tentez pas d'utiliser une clé Live. Les transactions resteront bloquées tant que la vérification n'est pas terminée.
+
+## 2. Créer une clé API Live
+
+Dans **Clés API**, créez une clé destinée à votre environnement de production. Donnez-lui un nom explicite, par exemple **Backend production — boutique principale**. Un nom clair facilite la rotation et l'audit des accès.
+
+Conservez la clé dans le gestionnaire de secrets de votre serveur. Elle ne doit jamais être placée dans une application mobile, dans le navigateur, dans un dépôt Git ou dans une capture d'écran.
+
+Une bonne séparation ressemble à ceci :
+
+| Environnement | Identifiant | Utilisation |
+|---|---|---|
+| Développement | Clé Sandbox | Tests et intégration |
+| Préproduction | Clé Sandbox dédiée | Recette avec des données de test |
+| Production | Clé Live | Paiements réels |
+
+## 3. Configurer les webhooks
+
+Un paiement ne doit pas être considéré comme confirmé uniquement parce que la requête d'initiation a réussi. Le statut final est transmis à votre serveur par webhook.
+
+Votre endpoint doit :
+
+1. accepter les requêtes POST en HTTPS ;
+2. lire le corps brut de la requête avant tout parsing ;
+3. vérifier la signature HMAC avec le secret webhook de la clé concernée ;
+4. répondre rapidement avec un code HTTP 200 ;
+5. traiter chaque événement de manière idempotente.
+
+L'idempotence est essentielle : si DrimPay renvoie une notification après un timeout réseau, votre système ne doit pas expédier deux commandes ni créditer deux fois un compte.
+
+## 4. Faire un test de bout en bout
+
+Avant d'annoncer votre lancement, réalisez un test contrôlé avec un petit montant. Vérifiez la chaîne complète :
+
+- l'API accepte la demande ;
+- le client reçoit la demande de paiement ;
+- le statut passe de pending à success ou failed ;
+- le webhook arrive sur votre serveur ;
+- la signature est validée ;
+- la commande est mise à jour une seule fois ;
+- le montant net et les frais sont correctement enregistrés.
+
+Testez également un paiement refusé et un paiement expiré. Un système fiable ne gère pas uniquement le scénario de réussite.
+
+## 5. Préparer votre équipe
+
+Définissez qui peut consulter les clés, qui reçoit les alertes et qui répond aux incidents. Activez des journaux techniques sans y enregistrer les clés, les secrets webhook ou les données sensibles des clients.
+
+Prévoyez aussi une procédure de rotation : créer une nouvelle clé, la déployer, vérifier les paiements, puis désactiver l'ancienne. Cette méthode évite une interruption de service.
+
+## Checklist de lancement
+
+- [ ] KYB approuvé et compte production visible
+- [ ] Clé Live stockée dans un gestionnaire de secrets
+- [ ] Webhook HTTPS configuré
+- [ ] Signature et idempotence testées
+- [ ] Paiement réussi, refusé et expiré testés
+- [ ] Alertes et responsables définis
+- [ ] Procédure de rotation documentée
+
+## Conclusion
+
+Passer en production avec DrimPay est une transition progressive : validation de l'entreprise, configuration des accès, vérification des webhooks, puis test réel contrôlé. En suivant cette méthode, vous pouvez ouvrir les paiements à vos clients avec une base technique claire et une meilleure visibilité sur chaque transaction.`,
+    category: "Guide pratique",
+    author: "Équipe DrimPay",
+    authorTitle: "Onboarding & Operations",
+    publishedAt: new Date("2026-09-01"),
+    readingTimeMinutes: 8,
+    imageUrl: "/blog/activer-compte-production-kyb.jpg",
+    tags: ["KYB", "Production", "Clé API", "Webhook", "Onboarding"],
+  },
+  {
+    slug: "compte-drimpay-entreprise-ou-personnel",
+    title: "Compte DrimPay Entreprise ou Personnel : lequel choisir ?",
+    excerpt: "Entreprise, startup, freelance ou e-commerce : comparez les comptes DrimPay et choisissez le cadre adapté à votre activité, vos paiements et vos besoins API.",
+    content: `## Deux comptes, deux usages différents
+
+Lors de votre inscription sur DrimPay, vous pouvez choisir un **compte Entreprise** ou un **compte Personnel**. Les deux permettent d'accéder aux fonctionnalités de paiement, mais ils ne répondent pas au même niveau de responsabilité, de conformité et d'organisation.
+
+Le bon choix dépend moins de la taille actuelle de votre activité que de la manière dont vous encaissez et envoyez de l'argent.
+
+## Le compte Entreprise
+
+Le compte Entreprise est conçu pour une société, une startup, une marketplace, une association structurée ou toute organisation qui encaisse au nom d'une activité commerciale.
+
+Il est particulièrement adapté si vous :
+
+- vendez des produits ou services en ligne ;
+- avez plusieurs collaborateurs ;
+- développez une application ou une plateforme ;
+- devez recevoir des paiements de clients ;
+- avez besoin de clés API et de webhooks pour votre backend ;
+- souhaitez séparer les flux de l'entreprise et vos finances personnelles.
+
+La vérification KYB permet d'associer le compte aux informations légales de la structure : raison sociale, registre, numéro fiscal, représentant légal et documents justificatifs. Cette transparence facilite le suivi des fonds et la préparation de la mise en production.
+
+## Le compte Personnel
+
+Le compte Personnel convient à un particulier, un freelance, un créateur indépendant ou une personne qui teste un projet sans structure commerciale constituée.
+
+Il peut être utile pour :
+
+- découvrir l'environnement sandbox ;
+- recevoir des paiements liés à une activité indépendante ;
+- tester une idée avant la création d'une société ;
+- gérer des paiements personnels autorisés par les règles du service.
+
+Un compte Personnel ne doit pas être utilisé pour masquer une activité commerciale structurée, encaisser pour plusieurs vendeurs ou mélanger les fonds de clients avec des dépenses privées. Lorsque votre projet grandit, le compte Entreprise offre un cadre plus lisible.
+
+## Comparaison rapide
+
+| Besoin | Compte Entreprise | Compte Personnel |
+|---|---|---|
+| Société ou startup | Recommandé | Non adapté |
+| Freelance ou indépendant | Possible | Adapté au démarrage |
+| Intégration API | Oui | Selon le parcours d'accès |
+| KYB entreprise | Requis | Non concerné |
+| Plusieurs utilisateurs | Adapté | Usage individuel |
+| Paiements e-commerce | Recommandé | À éviter pour une activité structurée |
+| Séparation comptable | Claire | Plus limitée |
+
+## Pourquoi les développeurs choisissent souvent Entreprise
+
+Une intégration de paiement ne se limite pas à afficher un bouton. Une application doit identifier les transactions, recevoir les webhooks, gérer les remboursements ou les échecs, contrôler les accès et parfois distribuer des paiements.
+
+Le compte Entreprise apporte un cadre cohérent pour ces besoins. Vous pouvez organiser vos clés par environnement, documenter les rôles et rattacher les flux à l'activité qui les génère.
+
+Cela ne signifie pas qu'un particulier ne peut pas développer. Cela signifie que le type de compte doit refléter le propriétaire réel des fonds et le responsable de l'activité.
+
+## Quand changer de compte ?
+
+Pensez à passer vers un compte Entreprise lorsque :
+
+1. vous créez une société ou une marque ;
+2. vos volumes deviennent réguliers ;
+3. plusieurs personnes doivent accéder au tableau de bord ;
+4. vous collectez pour des clients ou des vendeurs ;
+5. vous avez besoin d'un environnement production documenté ;
+6. votre comptabilité doit distinguer les revenus, les frais et les reversements.
+
+Ne créez pas plusieurs comptes pour contourner une limite ou fragmenter artificiellement votre activité. Il est préférable de contacter le support et de clarifier la structure adaptée.
+
+## Notre conseil
+
+Si vous développez un site e-commerce, une application mobile, une marketplace ou une solution SaaS, choisissez généralement **Entreprise** dès le départ. Si vous explorez encore une idée à titre individuel, commencez avec **Personnel**, puis réévaluez le choix avant le passage en production.
+
+## Conclusion
+
+Le compte Entreprise offre une base plus solide pour les paiements professionnels, les clés API, les webhooks et la gestion en équipe. Le compte Personnel reste pertinent pour un usage individuel ou une phase d'exploration. Le critère essentiel est de choisir le compte qui correspond réellement à votre activité et au propriétaire des fonds.`,
+    category: "Guide pratique",
+    author: "Équipe DrimPay",
+    authorTitle: "Customer Success",
+    publishedAt: new Date("2026-09-01"),
+    readingTimeMinutes: 7,
+    imageUrl: "/blog/compte-drimpay-entreprise-personnel.jpg",
+    tags: ["Compte Entreprise", "Compte Personnel", "KYB", "E-commerce", "API"],
+  },
+  {
+    slug: "drimpay-paiement-afrique-google",
+    title: "DrimPay sur Google : comment trouver la bonne infrastructure de paiement",
+    excerpt: "Quand on recherche une solution de paiement en Afrique, il faut identifier le bon site, comprendre les services proposés et vérifier les informations avant de commencer une intégration.",
+    content: `## Rechercher une solution de paiement ne suffit pas
+
+Les entreprises commencent souvent leur projet avec une recherche comme **API Mobile Money Afrique**, **paiement QR code**, **agrégateur de paiement XOF** ou **solution de paiement au Togo**. Les résultats sont nombreux et les offres ne se valent pas toutes.
+
+Avant de créer un compte, prenez le temps de vérifier l'identité du service, les pays couverts, les opérateurs disponibles et la documentation technique. Une bonne visibilité sur Google doit surtout aider les développeurs et les marchands à trouver des informations fiables.
+
+## Comment reconnaître DrimPay
+
+Lorsque vous cherchez DrimPay, vérifiez les éléments suivants :
+
+- le domaine officiel est **drimpay.com** ;
+- le site présente clairement les produits Pay-in, Pay-out, QR code et liens de paiement ;
+- la documentation explique les environnements Sandbox et Live ;
+- les pages indiquent les pays et opérateurs réellement disponibles ;
+- les conditions de sécurité et de vérification sont accessibles ;
+- les liens utilisent HTTPS.
+
+Ne transmettez jamais une clé API, un mot de passe ou un secret webhook à une personne qui vous contacte en dehors des canaux officiels.
+
+## Les recherches utiles pour votre projet
+
+Le vocabulaire utilisé dans votre recherche dépend de votre besoin :
+
+| Votre besoin | Requête utile |
+|---|---|
+| Encaisser un client | API Pay-in Mobile Money Afrique |
+| Envoyer plusieurs paiements | Mass payout Afrique |
+| Vendre en boutique | Paiement QR code Afrique |
+| Partager une page de paiement | Lien de paiement Mobile Money |
+| Connecter un backend | API paiement XOF XAF |
+| Protéger les notifications | Signature HMAC webhook paiement |
+
+Ces recherches décrivent des problèmes réels. Elles permettent ensuite de comparer les solutions sur la documentation, la couverture et la qualité de l'accompagnement plutôt que sur un simple slogan.
+
+## Une visibilité utile pour les marchands
+
+Un marchand ne cherche pas uniquement le nom d'un fournisseur. Il veut savoir si ses clients pourront payer avec Orange Money, Wave, MTN MoMo, Moov ou TMoney, et dans quel pays la collecte est disponible.
+
+Il veut aussi comprendre les frais, les délais de confirmation, les remboursements, les notifications et les conditions de passage en production. Un blog bien documenté répond à ces questions avec des exemples concrets et des limites clairement expliquées.
+
+## Une visibilité utile pour les développeurs
+
+Pour un développeur, les pages les plus utiles sont celles qui expliquent :
+
+1. comment obtenir une clé Sandbox ;
+2. comment initier un paiement ;
+3. comment vérifier un statut ;
+4. comment valider un webhook ;
+5. comment gérer les doublons ;
+6. comment passer de Sandbox à Live.
+
+Chaque article doit aussi utiliser des titres précis, des URLs lisibles et un contenu accessible directement. C'est meilleur pour le lecteur et pour les moteurs de recherche.
+
+## Attention aux promesses de référencement
+
+Être présent dans les résultats Google ne garantit pas une première position ni une conversion automatique. Le référencement se construit dans le temps avec des pages originales, des informations exactes, des liens internes, des titres descriptifs et une expérience rapide sur mobile.
+
+DrimPay peut publier des guides sur les paiements QR, le Mobile Money, les API, les webhooks et les reversements. Ces sujets répondent aux questions des entreprises africaines et permettent aux lecteurs de revenir vers une documentation claire.
+
+## La méthode de vérification en cinq minutes
+
+Avant de connecter votre activité :
+
+- ouvrez le domaine officiel directement ;
+- consultez la page produit correspondant à votre besoin ;
+- lisez la documentation du flux concerné ;
+- testez d'abord avec une clé Sandbox ;
+- contactez le support si une information importante manque.
+
+## Conclusion
+
+Rechercher DrimPay sur Google doit conduire à des contenus utiles : guides de paiement Mobile Money, intégration API, QR code, liens de paiement et sécurité des webhooks. Une présence en ligne durable repose sur la clarté et la confiance, pas sur des promesses impossibles à vérifier.`,
+    category: "Ressources",
+    author: "Équipe DrimPay",
+    authorTitle: "Content & Developer Relations",
+    publishedAt: new Date("2026-09-01"),
+    readingTimeMinutes: 6,
+    imageUrl: "/blog/drimpay-sur-google.jpg",
+    tags: ["DrimPay", "Google", "API Mobile Money", "Paiement Afrique", "Référencement"],
+  },
+  {
+    slug: "paiement-qr-code-afrique-guide-commercants",
+    title: "Paiement par QR code en Afrique : le guide complet pour les commerçants",
+    excerpt: "Du petit commerce au restaurant, le QR code simplifie l'encaissement Mobile Money. Découvrez comment choisir votre flux, afficher votre code et suivre chaque paiement.",
+    content: `## Le QR code transforme l'encaissement en point de vente
+
+Un QR code de paiement permet à un client de scanner une image avec son téléphone pour démarrer un paiement. Le commerçant n'a plus besoin de dicter un numéro, de manipuler un terminal ou de recopier une longue référence.
+
+Dans les marchés où le téléphone est le premier outil financier, ce parcours est particulièrement pratique pour les restaurants, boutiques, écoles, événements et services de proximité.
+
+## QR code statique ou dynamique ?
+
+Il existe deux grands modèles :
+
+### Le QR code statique
+
+Le même code est affiché en permanence. Le client saisit le montant après le scan. Cette solution est simple pour un comptoir, une affiche ou une facture imprimée.
+
+Elle demande toutefois une vérification attentive du montant et de la référence par le commerçant.
+
+### Le QR code dynamique
+
+Un nouveau code est généré pour chaque commande avec son montant et sa référence. Le client scanne le code, vérifie les informations et confirme dans son application de paiement.
+
+Ce modèle réduit les erreurs de saisie et facilite le rapprochement automatique entre la commande et la transaction.
+
+## Le parcours côté client
+
+Un bon paiement QR suit généralement ces étapes :
+
+1. le commerçant crée une demande avec le montant et la référence ;
+2. DrimPay génère ou affiche le QR code ;
+3. le client scanne le code avec son téléphone ;
+4. il choisit son opérateur disponible ;
+5. il confirme avec son application ou son code requis ;
+6. le commerçant reçoit la confirmation du paiement.
+
+Le commerçant doit attendre le statut confirmé ou le webhook avant de remettre un produit. Le simple fait qu'un client ait scanné le code ne prouve pas que le paiement est réussi.
+
+## Les informations à afficher
+
+Sur une page ou une affiche de paiement, prévoyez :
+
+- le logo et le nom du commerçant ;
+- le montant ou la mention « montant à saisir » ;
+- le QR code avec une taille suffisante ;
+- une courte instruction de scan ;
+- une référence de commande ;
+- un moyen de contacter le support en cas de problème.
+
+Évitez de placer le QR code sur une image trop chargée. Il doit rester contrasté, net et lisible par une caméra de téléphone, même dans une boutique peu éclairée.
+
+## Sécurité et rapprochement
+
+Chaque paiement doit être lié à une référence unique. Votre serveur doit enregistrer :
+
+| Donnée | Pourquoi elle compte |
+|---|---|
+| Référence de commande | Relier le paiement à la vente |
+| Montant attendu | Détecter un montant différent |
+| Statut final | Autoriser ou refuser la livraison |
+| Date et heure | Faciliter le support |
+| Opérateur et pays | Suivre les flux locaux |
+
+Ne validez jamais un paiement à partir d'une capture d'écran envoyée par le client. Vérifiez le statut dans votre backend ou à partir du webhook signé.
+
+## QR code pour restaurant et commerce
+
+Dans un restaurant, un QR code peut être posé sur la table, imprimé sur l'addition ou affiché à la caisse. Dans une boutique, il peut être placé près du vendeur ou sur une facture. Pour un événement, un code dynamique par commande accélère le passage et limite les erreurs.
+
+Le design doit rester simple : une zone blanche autour du code, un format suffisamment grand et des instructions en français facilement compréhensibles.
+
+## Que faire en cas d'échec ?
+
+Un paiement peut rester en attente, être refusé ou expirer. Préparez un message clair pour chaque cas :
+
+- **En attente** : demandez au client de vérifier son téléphone sans relancer immédiatement ;
+- **Refusé** : proposez un autre opérateur ou un nouveau QR code ;
+- **Expiré** : créez une nouvelle demande avec une référence différente ;
+- **Confirmé mais commande non mise à jour** : vérifiez le webhook et l'idempotence.
+
+## Pourquoi utiliser DrimPay ?
+
+DrimPay centralise la création de la demande, le choix du pays et de l'opérateur, le suivi du statut et les notifications. Votre équipe peut ainsi proposer un parcours QR code sans développer une intégration séparée pour chaque opérateur Mobile Money.
+
+## Conclusion
+
+Le paiement par QR code est simple pour le client, mais sa fiabilité dépend de la référence, du statut final et de la confirmation serveur. Avec un QR code bien présenté et un suivi structuré, les commerçants peuvent accélérer l'encaissement tout en gardant une trace claire de chaque vente.`,
+    category: "Paiement QR",
+    author: "Équipe DrimPay",
+    authorTitle: "Payments Product",
+    publishedAt: new Date("2026-09-01"),
+    readingTimeMinutes: 7,
+    imageUrl: "/blog-qr-restaurant.png",
+    tags: ["QR code", "Paiement en magasin", "Mobile Money", "Commerce", "Restaurant"],
+  },
 ];
 
 async function seed() {

@@ -7,3 +7,4 @@
 - [DrimPay Babimo routing](drimpay-babimo.md) — Babimo CI is an admin-selectable aggregator; do not hardcode operator routing or expose credentials.
 - [DrimPay merchant webhook secrets](drimpay-webhook-secrets.md) — stable HMAC secret is paired with each API key; avoid destructive schema pushes when legacy tables are detected.
 - [DrimPay fee rate resolution](drimpay-fee-rates.md) — country/operator rules affect new transactions; merchant overrides and stored historical fees remain protected.
+- [DrimPay blog content model](drimpay-blog-content.md) — database Markdown content, semantic rendering, public assets, and sitemap slugs must stay synchronized.

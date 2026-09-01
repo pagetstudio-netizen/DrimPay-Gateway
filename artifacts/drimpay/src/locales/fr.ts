@@ -5,6 +5,7 @@ export const fr = {
     pricing: "Tarifs",
     developers: "Développeurs",
     businesses: "Entreprises",
+    blog: "Blog",
     signin: "Connexion",
     getApiKey: "Obtenir une clé API",
   },

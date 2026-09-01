@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { blogArticlesTable } from "@workspace/db";
-import { eq, sql, ilike } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -36,8 +36,8 @@ router.get("/blog/articles", async (req, res) => {
     let countQuery = db.select({ count: sql<number>`count(*)::int` }).from(blogArticlesTable);
 
     const articles = category
-      ? await db.select().from(blogArticlesTable).where(eq(blogArticlesTable.category, category)).limit(limit).offset(offset)
-      : await db.select().from(blogArticlesTable).limit(limit).offset(offset);
+      ? await db.select().from(blogArticlesTable).where(eq(blogArticlesTable.category, category)).orderBy(desc(blogArticlesTable.publishedAt), desc(blogArticlesTable.id)).limit(limit).offset(offset)
+      : await db.select().from(blogArticlesTable).orderBy(desc(blogArticlesTable.publishedAt), desc(blogArticlesTable.id)).limit(limit).offset(offset);
 
     const [{ count }] = category
       ? await db.select({ count: sql<number>`count(*)::int` }).from(blogArticlesTable).where(eq(blogArticlesTable.category, category))

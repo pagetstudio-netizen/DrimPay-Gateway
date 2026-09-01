@@ -70,12 +70,12 @@ export default function Blog() {
             <>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
                 {(data?.articles ?? []).map((article, i) => (
-                  <motion.div key={article.id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: i * 0.06 }}
+                  <motion.article key={article.id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: i * 0.06 }}
                     className="group rounded-2xl border border-[#E5E3DC] bg-white hover:border-[#B5F03C]/50 hover:shadow-md transition-all overflow-hidden flex flex-col"
                     data-testid={`article-card-${article.id}`}>
                     <div className="h-48 bg-[#F5F0E8] border-b border-[#E5E3DC] overflow-hidden">
                       {article.imageUrl ? (
-                        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={article.imageUrl} alt={article.title} width="1024" height="576" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <div className="text-4xl font-extrabold text-[#B5F03C]/50">{article.category[0]}</div>
@@ -101,7 +101,7 @@ export default function Blog() {
                         </Link>
                       </div>
                     </div>
-                  </motion.div>
+                  </motion.article>
                 ))}
               </div>
 

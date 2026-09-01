@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT, useLang } from "@/lib/i18n";
 import { useSEO, webPageSchema, SITE_URL } from "@/lib/seo";
+import { BlogMarkdown } from "@/components/blog-markdown";
 
 export default function BlogPost({ params }: { params: { slug: string } }) {
   const { data: article, isLoading } = useGetBlogArticle(params.slug, {
@@ -41,6 +42,10 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
         publisher: { "@id": `${SITE_URL}/#organization` },
         url: `${SITE_URL}/${lang}/blog/${params.slug}`,
         inLanguage: lang === "fr" ? "fr-FR" : "en-US",
+        image: article.imageUrl ? `${SITE_URL}${article.imageUrl}` : undefined,
+        articleSection: article.category,
+        keywords: article.tags?.join(", "),
+        mainEntityOfPage: `${SITE_URL}/${lang}/blog/${params.slug}`,
         ...(article.publishedAt ? { datePublished: article.publishedAt } : {}),
       },
     ] : undefined,
@@ -70,24 +75,24 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
   }
 
   return (
-    <div className="pt-24 pb-20">
-      <div className="container mx-auto px-4 md:px-8 max-w-3xl">
+    <article className="bg-[#F8F6F1] pt-24 pb-20">
+      <div className="container mx-auto max-w-4xl px-4 md:px-8">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <Link href="/blog">
-            <Button variant="ghost" className="mb-8 text-muted-foreground -ml-3" data-testid="back-to-blog">
+            <Button variant="ghost" className="mb-8 text-muted-foreground" data-testid="back-to-blog">
               <ArrowLeft className="mr-2 w-4 h-4" /> {t.blog.backToBlog}
             </Button>
           </Link>
 
-          <div className="flex items-center gap-3 mb-6">
+          <div className="mx-auto mb-6 flex max-w-3xl items-center justify-center gap-3">
             <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-primary/10 text-primary">{article.category}</span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />{article.readingTimeMinutes} {t.blog.minRead}</span>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-6 leading-tight">{article.title}</h1>
+          <h1 className="mx-auto max-w-3xl text-center text-3xl font-bold leading-tight tracking-tight md:text-5xl">{article.title}</h1>
 
-          <div className="flex items-center gap-4 mb-12 pb-8 border-b border-border">
-            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+          <div className="mx-auto mb-10 flex max-w-3xl items-center justify-center gap-4 border-b border-border pb-8 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
               <User className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
@@ -96,23 +101,34 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
             </div>
           </div>
 
-          <div className="prose prose-invert prose-lg max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
-            {article.content}
+          {article.imageUrl && (
+            <img
+              src={article.imageUrl}
+              alt={article.title}
+              width="1024"
+              height="576"
+              loading="eager"
+              className="mx-auto mb-12 max-h-[520px] w-full max-w-4xl rounded-3xl object-cover shadow-lg"
+            />
+          )}
+
+          <div className="mx-auto max-w-3xl">
+            <BlogMarkdown content={article.content} />
           </div>
 
           {article.tags && article.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-12 pt-8 border-t border-border">
+            <div className="mx-auto mt-12 flex max-w-3xl flex-wrap justify-center gap-2 border-t border-border pt-8">
               {article.tags.map((tag) => (
-                <span key={tag} className="text-xs px-3 py-1.5 rounded-full bg-secondary text-muted-foreground">#{tag}</span>
+                <span key={tag} className="rounded-full bg-secondary px-3 py-1.5 text-xs text-muted-foreground">{tag}</span>
               ))}
             </div>
           )}
 
-          <div className="mt-12 pt-8 border-t border-border">
+          <div className="mx-auto mt-12 max-w-3xl border-t border-border pt-8 text-center">
             <Link href="/blog"><Button variant="outline">{t.blog.moreArticles} <ArrowLeft className="ml-2 w-4 h-4 rotate-180" /></Button></Link>
           </div>
         </motion.div>
       </div>
-    </div>
+    </article>
   );
 }

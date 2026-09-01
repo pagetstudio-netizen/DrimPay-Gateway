@@ -258670,7 +258670,7 @@ router4.get("/blog/articles", async (req, res) => {
     const offset = (page - 1) * limit;
     let query = db.select().from(blogArticlesTable);
     let countQuery = db.select({ count: sql`count(*)::int` }).from(blogArticlesTable);
-    const articles = category ? await db.select().from(blogArticlesTable).where(eq(blogArticlesTable.category, category)).limit(limit).offset(offset) : await db.select().from(blogArticlesTable).limit(limit).offset(offset);
+    const articles = category ? await db.select().from(blogArticlesTable).where(eq(blogArticlesTable.category, category)).orderBy(desc(blogArticlesTable.publishedAt), desc(blogArticlesTable.id)).limit(limit).offset(offset) : await db.select().from(blogArticlesTable).orderBy(desc(blogArticlesTable.publishedAt), desc(blogArticlesTable.id)).limit(limit).offset(offset);
     const [{ count: count2 }] = category ? await db.select({ count: sql`count(*)::int` }).from(blogArticlesTable).where(eq(blogArticlesTable.category, category)) : await countQuery;
     res.json({
       articles: articles.map(articleToResponse),
