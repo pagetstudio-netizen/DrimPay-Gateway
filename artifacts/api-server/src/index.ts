@@ -34,6 +34,7 @@ process.on("unhandledRejection", (reason) => {
 import app from "./app";
 import { logger } from "./lib/logger";
 import { notifyStartup, startDailyReport, startPolling } from "./lib/telegram";
+import { startBabimoReconciliation } from "./lib/babimo-reconciliation";
 import { ensureKybBucket, ensureContractTemplate } from "./lib/storage";
 import { logClapayConfig } from "./lib/clapay";
 import { pool } from "@workspace/db";
@@ -83,6 +84,7 @@ const server = app.listen(effectivePort, "0.0.0.0", () => {
     notifyStartup().catch(() => {});
     startPolling();
     startDailyReport();
+    startBabimoReconciliation();
   }, 3_000);
 });
 

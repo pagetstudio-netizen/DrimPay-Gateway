@@ -25,25 +25,86 @@ function firstString(...values: unknown[]): string {
   return "";
 }
 
+const MAX_SCAN_DEPTH = 6;
+
+function findDeepValue(root: unknown, keys: Set<string>, depth = 0): string {
+  if (depth > MAX_SCAN_DEPTH || root === null || root === undefined) return "";
+  if (Array.isArray(root)) {
+    for (const value of root) {
+      const found = findDeepValue(value, keys, depth + 1);
+      if (found) return found;
+    }
+    return "";
+  }
+  if (typeof root !== "object") return "";
+
+  for (const [key, value] of Object.entries(root as Record<string, unknown>)) {
+    if (keys.has(key.toLowerCase())) {
+      const found = firstString(value);
+      if (found) return found;
+    }
+  }
+  for (const value of Object.values(root as Record<string, unknown>)) {
+    const found = findDeepValue(value, keys, depth + 1);
+    if (found) return found;
+  }
+  return "";
+}
+
+function hasDeepKey(root: unknown, keys: Set<string>, depth = 0): boolean {
+  if (depth > MAX_SCAN_DEPTH || root === null || root === undefined) return false;
+  if (Array.isArray(root)) return root.some(value => hasDeepKey(value, keys, depth + 1));
+  if (typeof root !== "object") return false;
+  return Object.entries(root as Record<string, unknown>).some(([key, value]) =>
+    keys.has(key.toLowerCase()) || hasDeepKey(value, keys, depth + 1),
+  );
+}
+
+function maskIdentifier(value: string): string {
+  if (!value) return "absent";
+  if (value.length <= 4) return "****";
+  return `${"*".repeat(Math.min(value.length - 4, 12))}${value.slice(-4)}`;
+}
+
+function webhookShape(root: unknown, depth = 0): string[] {
+  if (depth > 3 || root === null || typeof root !== "object") return [];
+  if (Array.isArray(root)) return root.flatMap(value => webhookShape(value, depth + 1)).slice(0, 30);
+  const entries = Object.entries(root as Record<string, unknown>);
+  const keys = entries.map(([key, value]) => {
+    if (value && typeof value === "object") return `${key}{${webhookShape(value, depth + 1).join(",")}}`;
+    return key;
+  });
+  return keys.slice(0, 30);
+}
+
 function normalizeStatus(value: string): "pending" | "processing" | "success" | "failed" | "cancelled" | "expired" {
-  switch (value.toLowerCase()) {
+  switch (value.toLowerCase().trim().replace(/[\s-]+/g, "_")) {
     case "success":
     case "successful":
+    case "successfull":
     case "completed":
     case "paid":
+    case "approved":
+    case "done":
       return "success";
     case "failed":
     case "error":
     case "rejected":
     case "declined":
+    case "refused":
       return "failed";
     case "cancelled":
     case "canceled":
+    case "cancel":
       return "cancelled";
     case "expired":
       return "expired";
     case "processing":
     case "initiated":
+    case "in_progress":
+    case "inprogress":
+    case "waiting":
+    case "created":
       return "processing";
     default:
       return "pending";
@@ -59,47 +120,69 @@ router.post("/webhooks/babimo", async (req: any, res: any) => {
 
   try {
     const body = req.body ?? {};
-    const data = body?.data ?? body?.result ?? body;
+    const merchantReferenceKeys = new Set([
+      "merchant_transaction_id",
+      "merchant_reference",
+      "merchanttransactionid",
+      "order_id",
+      "orderid",
+      "drimpay_reference",
+    ]);
+    const genericReferenceKeys = new Set(["reference", "transaction_reference"]);
+    const providerReferenceKeys = new Set([
+      "status_token",
+      "statustoken",
+      "pay_token",
+      "paytoken",
+      "partner_transaction_id",
+      "partnertransactionid",
+      "babimo_reference",
+      "transaction_id",
+      "transactionid",
+      "token",
+    ]);
+    const statusKeys = new Set([
+      "status",
+      "statut",
+      "state",
+      "transaction_status",
+      "transactionstatus",
+      "payment_status",
+      "paymentstatus",
+    ]);
+
+    // `refercence_cl` is the stable Babimo account reference, not the
+    // merchant transaction reference. It is intentionally only diagnosed,
+    // never used to correlate a transaction.
     const reference = firstString(
-      data?.merchant_transaction_id,
-      body?.merchant_transaction_id,
-      data?.refercence_cl,
-      body?.refercence_cl,
-      data?.reference,
-      body?.reference,
-      data?.order_id,
-      body?.order_id,
+      findDeepValue(body, merchantReferenceKeys),
+      findDeepValue(body, genericReferenceKeys),
     );
-    const providerReference = firstString(
-      data?.status_token,
-      body?.status_token,
-      data?.transaction_id,
-      body?.transaction_id,
-      data?.transactionId,
-      body?.transactionId,
-      data?.token,
-      body?.token,
-    );
-    const statusValue = firstString(
-      data?.status,
-      body?.status,
-      data?.transaction_status,
-      body?.transaction_status,
-      data?.payment_status,
-      body?.payment_status,
-    );
+    const providerReference = findDeepValue(body, providerReferenceKeys);
+    const statusValue = findDeepValue(body, statusKeys);
+    const clientReferencePresent = hasDeepKey(body, new Set(["refercence_cl"]));
+
+    console.info("[Babimo Webhook] Notification reçue", {
+      method: req.method,
+      contentType: req.get("content-type") ?? null,
+      userAgent: req.get("user-agent") ?? null,
+      forwardedFor: req.get("x-forwarded-for") ?? null,
+      bodyType: Array.isArray(body) ? "array" : typeof body,
+      bodyKeys: webhookShape(body),
+      merchantReference: maskIdentifier(reference),
+      providerReference: maskIdentifier(providerReference),
+      clientReferencePresent,
+      status: statusValue || "absent",
+    });
     const status = normalizeStatus(statusValue);
     const failureReason = firstString(
-      data?.message,
-      body?.message,
-      data?.error,
-      body?.error,
-      data?.description,
-      body?.description,
+      findDeepValue(body, new Set(["message", "error", "description", "response_text"])),
     ) || null;
 
     if (!reference && !providerReference) {
-      console.warn("[Babimo Webhook] Référence absente — notification ignorée");
+      console.warn("[Babimo Webhook] Référence de transaction/token absente — notification ignorée", {
+        clientReferencePresent,
+      });
       return;
     }
 
@@ -113,7 +196,10 @@ router.post("/webhooks/babimo", async (req: any, res: any) => {
       [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.gatewayReference, providerReference));
     }
     if (!tx) {
-      console.warn(`[Babimo Webhook] Transaction introuvable — ref: ${reference || providerReference}`);
+      console.warn("[Babimo Webhook] Transaction introuvable", {
+        merchantReference: maskIdentifier(reference),
+        providerReference: maskIdentifier(providerReference),
+      });
       return;
     }
 
@@ -126,7 +212,7 @@ router.post("/webhooks/babimo", async (req: any, res: any) => {
         failureReason: status === "failed" ? failureReason ?? "Transaction Babimo échouée." : undefined,
         gateway: "babimo",
       });
-      console.log(`[Babimo Webhook] Payin ${tx.reference} → ${status} (crédité: ${result.credited})`);
+      console.log(`[Babimo Webhook] Payin ${maskIdentifier(tx.reference)} → ${status} (crédité: ${result.credited})`);
     } else if (status === "failed" || status === "cancelled" || status === "expired") {
       const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
       const refunded = await db.transaction(async (trx) => {

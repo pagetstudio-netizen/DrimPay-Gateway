@@ -268084,12 +268084,12 @@ async function resolveGeoInfo(ip) {
   }
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4e3);
+    const timer2 = setTimeout(() => ctrl.abort(), 4e3);
     const resp = await fetch(
       `http://ip-api.com/json/${ip}?fields=status,countryCode,proxy,hosting,org`,
       { signal: ctrl.signal }
     );
-    clearTimeout(timer);
+    clearTimeout(timer2);
     if (!resp.ok) return { country: null, isVpn: false, isHosting: false, org: "" };
     const data = await resp.json();
     if (data.status !== "success" || !data.countryCode) return { country: null, isVpn: false, isHosting: false, org: "" };
@@ -282062,11 +282062,13 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       });
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
-      await db.update(transactionsTable).set({
+      await settlePayinStatus({
+        txId: tx.id,
         status: verifiedStatus,
-        ...verifiedFailureReason ? { failureReason: verifiedFailureReason } : {},
-        updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq(transactionsTable.id, tx.id));
+        gatewayReference: externalRef,
+        failureReason: verifiedFailureReason,
+        gateway: aggregator
+      });
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         res.status(502).json({
           error: "PAYMENT_REJECTED",
@@ -284993,25 +284995,80 @@ function firstString2(...values) {
   }
   return "";
 }
+var MAX_SCAN_DEPTH = 6;
+function findDeepValue(root, keys, depth = 0) {
+  if (depth > MAX_SCAN_DEPTH || root === null || root === void 0) return "";
+  if (Array.isArray(root)) {
+    for (const value of root) {
+      const found = findDeepValue(value, keys, depth + 1);
+      if (found) return found;
+    }
+    return "";
+  }
+  if (typeof root !== "object") return "";
+  for (const [key, value] of Object.entries(root)) {
+    if (keys.has(key.toLowerCase())) {
+      const found = firstString2(value);
+      if (found) return found;
+    }
+  }
+  for (const value of Object.values(root)) {
+    const found = findDeepValue(value, keys, depth + 1);
+    if (found) return found;
+  }
+  return "";
+}
+function hasDeepKey(root, keys, depth = 0) {
+  if (depth > MAX_SCAN_DEPTH || root === null || root === void 0) return false;
+  if (Array.isArray(root)) return root.some((value) => hasDeepKey(value, keys, depth + 1));
+  if (typeof root !== "object") return false;
+  return Object.entries(root).some(
+    ([key, value]) => keys.has(key.toLowerCase()) || hasDeepKey(value, keys, depth + 1)
+  );
+}
+function maskIdentifier(value) {
+  if (!value) return "absent";
+  if (value.length <= 4) return "****";
+  return `${"*".repeat(Math.min(value.length - 4, 12))}${value.slice(-4)}`;
+}
+function webhookShape(root, depth = 0) {
+  if (depth > 3 || root === null || typeof root !== "object") return [];
+  if (Array.isArray(root)) return root.flatMap((value) => webhookShape(value, depth + 1)).slice(0, 30);
+  const entries = Object.entries(root);
+  const keys = entries.map(([key, value]) => {
+    if (value && typeof value === "object") return `${key}{${webhookShape(value, depth + 1).join(",")}}`;
+    return key;
+  });
+  return keys.slice(0, 30);
+}
 function normalizeStatus(value) {
-  switch (value.toLowerCase()) {
+  switch (value.toLowerCase().trim().replace(/[\s-]+/g, "_")) {
     case "success":
     case "successful":
+    case "successfull":
     case "completed":
     case "paid":
+    case "approved":
+    case "done":
       return "success";
     case "failed":
     case "error":
     case "rejected":
     case "declined":
+    case "refused":
       return "failed";
     case "cancelled":
     case "canceled":
+    case "cancel":
       return "cancelled";
     case "expired":
       return "expired";
     case "processing":
     case "initiated":
+    case "in_progress":
+    case "inprogress":
+    case "waiting":
+    case "created":
       return "processing";
     default:
       return "pending";
@@ -285024,46 +285081,63 @@ router16.post("/webhooks/babimo", async (req, res) => {
   res.status(200).json({ received: true });
   try {
     const body = req.body ?? {};
-    const data = body?.data ?? body?.result ?? body;
+    const merchantReferenceKeys = /* @__PURE__ */ new Set([
+      "merchant_transaction_id",
+      "merchant_reference",
+      "merchanttransactionid",
+      "order_id",
+      "orderid",
+      "drimpay_reference"
+    ]);
+    const genericReferenceKeys = /* @__PURE__ */ new Set(["reference", "transaction_reference"]);
+    const providerReferenceKeys = /* @__PURE__ */ new Set([
+      "status_token",
+      "statustoken",
+      "pay_token",
+      "paytoken",
+      "partner_transaction_id",
+      "partnertransactionid",
+      "babimo_reference",
+      "transaction_id",
+      "transactionid",
+      "token"
+    ]);
+    const statusKeys = /* @__PURE__ */ new Set([
+      "status",
+      "statut",
+      "state",
+      "transaction_status",
+      "transactionstatus",
+      "payment_status",
+      "paymentstatus"
+    ]);
     const reference = firstString2(
-      data?.merchant_transaction_id,
-      body?.merchant_transaction_id,
-      data?.refercence_cl,
-      body?.refercence_cl,
-      data?.reference,
-      body?.reference,
-      data?.order_id,
-      body?.order_id
+      findDeepValue(body, merchantReferenceKeys),
+      findDeepValue(body, genericReferenceKeys)
     );
-    const providerReference = firstString2(
-      data?.status_token,
-      body?.status_token,
-      data?.transaction_id,
-      body?.transaction_id,
-      data?.transactionId,
-      body?.transactionId,
-      data?.token,
-      body?.token
-    );
-    const statusValue = firstString2(
-      data?.status,
-      body?.status,
-      data?.transaction_status,
-      body?.transaction_status,
-      data?.payment_status,
-      body?.payment_status
-    );
+    const providerReference = findDeepValue(body, providerReferenceKeys);
+    const statusValue = findDeepValue(body, statusKeys);
+    const clientReferencePresent = hasDeepKey(body, /* @__PURE__ */ new Set(["refercence_cl"]));
+    console.info("[Babimo Webhook] Notification re\xE7ue", {
+      method: req.method,
+      contentType: req.get("content-type") ?? null,
+      userAgent: req.get("user-agent") ?? null,
+      forwardedFor: req.get("x-forwarded-for") ?? null,
+      bodyType: Array.isArray(body) ? "array" : typeof body,
+      bodyKeys: webhookShape(body),
+      merchantReference: maskIdentifier(reference),
+      providerReference: maskIdentifier(providerReference),
+      clientReferencePresent,
+      status: statusValue || "absent"
+    });
     const status = normalizeStatus(statusValue);
     const failureReason = firstString2(
-      data?.message,
-      body?.message,
-      data?.error,
-      body?.error,
-      data?.description,
-      body?.description
+      findDeepValue(body, /* @__PURE__ */ new Set(["message", "error", "description", "response_text"]))
     ) || null;
     if (!reference && !providerReference) {
-      console.warn("[Babimo Webhook] R\xE9f\xE9rence absente \u2014 notification ignor\xE9e");
+      console.warn("[Babimo Webhook] R\xE9f\xE9rence de transaction/token absente \u2014 notification ignor\xE9e", {
+        clientReferencePresent
+      });
       return;
     }
     let [tx] = reference ? await db.select().from(transactionsTable).where(eq(transactionsTable.reference, reference)) : [void 0];
@@ -285074,7 +285148,10 @@ router16.post("/webhooks/babimo", async (req, res) => {
       [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.gatewayReference, providerReference));
     }
     if (!tx) {
-      console.warn(`[Babimo Webhook] Transaction introuvable \u2014 ref: ${reference || providerReference}`);
+      console.warn("[Babimo Webhook] Transaction introuvable", {
+        merchantReference: maskIdentifier(reference),
+        providerReference: maskIdentifier(providerReference)
+      });
       return;
     }
     const gatewayReference = providerReference || tx.externalRef || tx.gatewayReference || void 0;
@@ -285086,7 +285163,7 @@ router16.post("/webhooks/babimo", async (req, res) => {
         failureReason: status === "failed" ? failureReason ?? "Transaction Babimo \xE9chou\xE9e." : void 0,
         gateway: "babimo"
       });
-      console.log(`[Babimo Webhook] Payin ${tx.reference} \u2192 ${status} (cr\xE9dit\xE9: ${result.credited})`);
+      console.log(`[Babimo Webhook] Payin ${maskIdentifier(tx.reference)} \u2192 ${status} (cr\xE9dit\xE9: ${result.credited})`);
     } else if (status === "failed" || status === "cancelled" || status === "expired") {
       const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
       const refunded = await db.transaction(async (trx) => {
@@ -286397,6 +286474,79 @@ app.use((err, _req, res, _next) => {
 });
 var app_default = app;
 
+// src/lib/babimo-reconciliation.ts
+init_src();
+init_schema2();
+init_drizzle_orm();
+init_babimo();
+var RECONCILIATION_INTERVAL_MS = 3e4;
+var MAX_TRANSACTIONS_PER_RUN = 50;
+var running = false;
+var timer = null;
+function isBabimoSnapshot(snapshot) {
+  if (!snapshot) return false;
+  try {
+    const parsed = JSON.parse(snapshot);
+    return parsed.gateway === "babimo";
+  } catch {
+    return snapshot.includes('"gateway":"babimo"') || snapshot.includes('"gateway": "babimo"');
+  }
+}
+async function reconcileOnce() {
+  if (running) return;
+  running = true;
+  try {
+    const candidates = await db.select().from(transactionsTable).where(and(
+      eq(transactionsTable.type, "payin"),
+      inArray(transactionsTable.status, ["queued", "pending", "processing"]),
+      isNotNull(transactionsTable.externalRef),
+      like(transactionsTable.gatewayPayload, '%"gateway"%babimo%')
+    )).orderBy(desc(transactionsTable.updatedAt)).limit(MAX_TRANSACTIONS_PER_RUN);
+    const babimoTransactions = candidates.filter((tx) => isBabimoSnapshot(tx.gatewayPayload));
+    if (babimoTransactions.length > 0) {
+      console.info(`[Babimo Reconciliation] ${babimoTransactions.length} transaction(s) \xE0 v\xE9rifier`);
+    }
+    for (const tx of babimoTransactions) {
+      if (!tx.externalRef) continue;
+      try {
+        const client2 = getBabimoClient(tx.countryCode);
+        const result = await client2.getStatus(tx.externalRef);
+        const settled = await settlePayinStatus({
+          txId: tx.id,
+          status: result.status,
+          gatewayReference: result.babimo_reference || tx.externalRef,
+          failureReason: result.failure_reason,
+          gateway: "babimo"
+        });
+        console.info(
+          `[Babimo Reconciliation] ${tx.reference} \u2192 ${result.status} (cr\xE9dit\xE9: ${settled.credited})`
+        );
+      } catch (err) {
+        console.warn(
+          `[Babimo Reconciliation] V\xE9rification \xE9chou\xE9e pour ${tx.reference}: ${err?.message ?? err}`
+        );
+      }
+    }
+  } catch (err) {
+    console.warn(`[Babimo Reconciliation] Lecture DB \xE9chou\xE9e: ${err?.message ?? err}`);
+  } finally {
+    running = false;
+  }
+}
+function startBabimoReconciliation() {
+  if (timer) return;
+  const run = async () => {
+    await reconcileOnce();
+    timer = setTimeout(run, RECONCILIATION_INTERVAL_MS);
+    timer.unref?.();
+  };
+  timer = setTimeout(run, 5e3);
+  timer.unref?.();
+  console.info(
+    `[Babimo Reconciliation] Worker d\xE9marr\xE9 (intervalle ${RECONCILIATION_INTERVAL_MS / 1e3}s, lot ${MAX_TRANSACTIONS_PER_RUN})`
+  );
+}
+
 // src/index.ts
 init_clapay();
 init_src();
@@ -286450,6 +286600,7 @@ var server = app_default.listen(effectivePort, "0.0.0.0", () => {
     });
     startPolling();
     startDailyReport();
+    startBabimoReconciliation();
   }, 3e3);
 });
 var eaddrinuseRetries = 0;

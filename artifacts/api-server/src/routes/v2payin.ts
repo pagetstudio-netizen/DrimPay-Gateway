@@ -24,6 +24,7 @@ import { isMaintenanceModeOn } from "../lib/admin-settings";
 import { ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
 import { getFeeRate } from "../lib/fee-rates";
 import { buildMerchantPayloadSnapshot } from "../lib/merchant-payload";
+import { settlePayinStatus } from "../lib/payin-settlement";
 
 const router = Router();
 
@@ -486,13 +487,16 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       const verifiedStatus = statusCheck?.status ?? "processing";
       const verifiedFailureReason = statusCheck?.failureReason;
 
-      await db.update(transactionsTable)
-        .set({
-          status: verifiedStatus as any,
-          ...(verifiedFailureReason ? { failureReason: verifiedFailureReason } : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(transactionsTable.id, tx.id));
+      // Use the same atomic settlement path as the webhook and payment-link
+      // flow. In particular, a late polling result must never overwrite a
+      // successful webhook or credit the wallet twice.
+      await settlePayinStatus({
+        txId: tx.id,
+        status: verifiedStatus as any,
+        gatewayReference: externalRef,
+        failureReason: verifiedFailureReason,
+        gateway: aggregator,
+      });
 
       if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
         res.status(502).json({
