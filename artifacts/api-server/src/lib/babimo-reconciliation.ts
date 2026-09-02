@@ -11,7 +11,7 @@
 import { db } from "@workspace/db";
 import { transactionsTable } from "@workspace/db/schema";
 import { and, desc, eq, inArray, isNotNull, like } from "drizzle-orm";
-import { getBabimoClient } from "./babimo";
+import { getBabimoClient, isBabimoConfigured } from "./babimo";
 import { settlePayinStatus } from "./payin-settlement";
 
 const RECONCILIATION_INTERVAL_MS = 30_000;
@@ -51,9 +51,14 @@ async function reconcileOnce(): Promise<void> {
       console.info(`[Babimo Reconciliation] ${babimoTransactions.length} transaction(s) à vérifier`);
     }
 
+    const missingConfigCountries = new Set<string>();
     for (const tx of babimoTransactions) {
       if (!tx.externalRef) continue;
       try {
+        if (!isBabimoConfigured(tx.countryCode)) {
+          missingConfigCountries.add(tx.countryCode);
+          continue;
+        }
         const client = getBabimoClient(tx.countryCode);
         const result = await client.getStatus(tx.externalRef);
         const settled = await settlePayinStatus({
@@ -72,6 +77,12 @@ async function reconcileOnce(): Promise<void> {
           `[Babimo Reconciliation] Vérification échouée pour ${tx.reference}: ${err?.message ?? err}`,
         );
       }
+    }
+    for (const countryCode of missingConfigCountries) {
+      console.warn(
+        `[Babimo Reconciliation] Babimo ${countryCode} non configuré — ` +
+        `les transactions restent en attente jusqu'à la configuration des identifiants.`,
+      );
     }
   } catch (err: any) {
     console.warn(`[Babimo Reconciliation] Lecture DB échouée: ${err?.message ?? err}`);

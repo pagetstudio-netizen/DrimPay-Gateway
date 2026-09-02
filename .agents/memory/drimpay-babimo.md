@@ -14,3 +14,9 @@ Babimo requires `refercence_cl` in payment requests as the provider-assigned cli
 **Why:** Babimo's team rejected generated references for the account and supplied a fixed client reference to use in the payment body; provider identifiers should not be committed.
 
 **How to apply:** Keep the provider's exact spelling, read `BABIMO_<COUNTRY>_CLIENT_REFERENCE` from the runtime secret store, and never substitute a payment-link URL or an empty placeholder.
+
+Provider callbacks are not sufficient as the only settlement mechanism: pending Babimo pay-ins need periodic status reconciliation through the stored provider reference, using the same idempotent settlement path as webhook notifications.
+
+**Why:** Mobile-money approval can happen after the short HTTP polling window, and a missing or unrecognized `notify_url` payload otherwise leaves a successful payment pending indefinitely.
+
+**How to apply:** Keep reconciliation scoped to transactions explicitly recorded as routed to Babimo; transient provider errors must leave the transaction pending rather than manufacturing a failure.

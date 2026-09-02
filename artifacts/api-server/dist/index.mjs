@@ -286506,9 +286506,14 @@ async function reconcileOnce() {
     if (babimoTransactions.length > 0) {
       console.info(`[Babimo Reconciliation] ${babimoTransactions.length} transaction(s) \xE0 v\xE9rifier`);
     }
+    const missingConfigCountries = /* @__PURE__ */ new Set();
     for (const tx of babimoTransactions) {
       if (!tx.externalRef) continue;
       try {
+        if (!isBabimoConfigured(tx.countryCode)) {
+          missingConfigCountries.add(tx.countryCode);
+          continue;
+        }
         const client2 = getBabimoClient(tx.countryCode);
         const result = await client2.getStatus(tx.externalRef);
         const settled = await settlePayinStatus({
@@ -286526,6 +286531,11 @@ async function reconcileOnce() {
           `[Babimo Reconciliation] V\xE9rification \xE9chou\xE9e pour ${tx.reference}: ${err?.message ?? err}`
         );
       }
+    }
+    for (const countryCode of missingConfigCountries) {
+      console.warn(
+        `[Babimo Reconciliation] Babimo ${countryCode} non configur\xE9 \u2014 les transactions restent en attente jusqu'\xE0 la configuration des identifiants.`
+      );
     }
   } catch (err) {
     console.warn(`[Babimo Reconciliation] Lecture DB \xE9chou\xE9e: ${err?.message ?? err}`);
