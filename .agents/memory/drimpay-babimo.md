@@ -8,3 +8,9 @@ Babimo's API uses a login token from `authorisation.token`, Bearer requests, `/p
 **Why:** The provider collection is the reliable contract source, while routing must remain selectable by the administrator rather than forcing all operators to Babimo.
 
 **How to apply:** Keep `BABIMO_<COUNTRY>_EMAIL` and `BABIMO_<COUNTRY>_PASSWORD` in Replit Secrets, with an optional country-specific base URL. Add Babimo as an aggregator definition and let admin operator mappings choose it; initially preserve existing CI PayDunya mappings until an administrator changes them.
+
+Babimo requires `refercence_cl` in payment requests as a client reference separate from `merchant_transaction_id`; use a unique, directly correlated value such as `CL-<merchant_transaction_id>`.
+
+**Why:** Babimo's request example uses different values for the two fields and explicitly warns that `refercence_cl` must not be omitted.
+
+**How to apply:** Keep the provider's exact spelling, populate it automatically for every Babimo pay-in and payout, and never substitute a payment-link URL or an empty placeholder.

@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 /**
  * Babimo / B-Pay API client.
  *
@@ -71,6 +73,12 @@ function normalizeBabimoPhone(phone: string, countryCode: string): string {
   return digits;
 }
 
+function buildBabimoClientReference(reference: string): string {
+  const normalized = String(reference ?? "").trim();
+  if (normalized) return `CL-${normalized}`;
+  return `CL-${randomBytes(8).toString("hex").toUpperCase()}`;
+}
+
 function unwrap(raw: any): any {
   return raw?.data ?? raw?.result ?? raw;
 }
@@ -124,6 +132,7 @@ export interface BabimoPayinRequest {
   operator: string;
   phone: string;
   reference: string;
+  client_reference?: string;
   callback_url: string;
   return_url?: string;
   operator_otp?: string;
@@ -287,6 +296,7 @@ export class BabimoClient {
       };
     }
 
+    const clientReference = params.client_reference?.trim() || buildBabimoClientReference(params.reference);
     const payload: Record<string, unknown> = {
       currency: params.currency || "XOF",
       payment_method: paymentMethod,
@@ -296,7 +306,9 @@ export class BabimoClient {
       success_url: params.return_url ?? params.callback_url,
       failed_url: params.return_url ?? params.callback_url,
       notify_url: params.callback_url,
-      refercence_cl: params.reference,
+      // Babimo requires this misspelled field. Keep it distinct from the
+      // merchant transaction id while retaining a direct correlation.
+      refercence_cl: clientReference,
     };
     if (paymentMethod === "OM_CI" && params.operator_otp) {
       payload.otp_code = params.operator_otp;
@@ -332,13 +344,14 @@ export class BabimoClient {
       };
     }
 
+    const clientReference = buildBabimoClientReference(params.reference);
     const raw = await this.request<any>("POST", "/collect/cashin", {
       payment_method: paymentMethod,
       merchant_transaction_id: params.reference,
       amount: params.amount,
       telephone: normalizeBabimoPhone(params.phone, params.country_code),
       notify_url: params.callback_url,
-      refercence_cl: params.reference,
+      refercence_cl: clientReference,
     });
     const reference = firstString(raw, [
       "status_token", "statusToken", "pay_token", "partner_transaction_id",

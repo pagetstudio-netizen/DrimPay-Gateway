@@ -24717,9 +24717,9 @@ var require_random_bytes = __commonJS({
     "use strict";
     var crypto15 = __require("crypto");
     var generateAttempts = crypto15.randomBytes === crypto15.pseudoRandomBytes ? 1 : 3;
-    module.exports = randomBytes2;
+    module.exports = randomBytes3;
     module.exports.sync = randomBytesSync;
-    function randomBytes2(size, callback) {
+    function randomBytes3(size, callback) {
       if (callback !== void 0 && typeof callback !== "function") {
         throw new TypeError("argument callback must be a function");
       }
@@ -24761,7 +24761,7 @@ var require_random_bytes = __commonJS({
 var require_uid_safe = __commonJS({
   "../../node_modules/.pnpm/uid-safe@2.1.5/node_modules/uid-safe/index.js"(exports, module) {
     "use strict";
-    var randomBytes2 = require_random_bytes();
+    var randomBytes3 = require_random_bytes();
     var EQUAL_END_REGEXP = /=+$/;
     var PLUS_GLOBAL_REGEXP = /\+/g;
     var SLASH_GLOBAL_REGEXP = /\//g;
@@ -24785,10 +24785,10 @@ var require_uid_safe = __commonJS({
       });
     }
     function uidSync(length) {
-      return toString(randomBytes2.sync(length));
+      return toString(randomBytes3.sync(length));
     }
     function generateUid(length, callback) {
-      randomBytes2(length, function(err, buf) {
+      randomBytes3(length, function(err, buf) {
         if (err) return callback(err);
         callback(null, toString(buf));
       });
@@ -26701,7 +26701,7 @@ var require_utils_webcrypto = __commonJS({
     var nodeCrypto2 = __require("crypto");
     module.exports = {
       postgresMd5PasswordHash,
-      randomBytes: randomBytes2,
+      randomBytes: randomBytes3,
       deriveKey,
       sha256,
       hashByName,
@@ -26711,7 +26711,7 @@ var require_utils_webcrypto = __commonJS({
     var webCrypto = nodeCrypto2.webcrypto || globalThis.crypto;
     var subtleCrypto = webCrypto.subtle;
     var textEncoder2 = new TextEncoder();
-    function randomBytes2(length) {
+    function randomBytes3(length) {
       return webCrypto.getRandomValues(Buffer.alloc(length));
     }
     async function md5(string4) {
@@ -105235,7 +105235,7 @@ var require_websocket = __commonJS({
     var http = __require("http");
     var net = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes2, createHash: createHash2 } = __require("crypto");
+    var { randomBytes: randomBytes3, createHash: createHash2 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -105773,7 +105773,7 @@ var require_websocket = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes2(16).toString("base64");
+      const key = randomBytes3(16).toString("base64");
       const request = isSecure ? https.request : http.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
@@ -107997,6 +107997,7 @@ __export(babimo_exports, {
   isBabimoConfigured: () => isBabimoConfigured,
   isBabimoPayoutSupported: () => isBabimoPayoutSupported
 });
+import { randomBytes as randomBytes2 } from "node:crypto";
 function normalizeCoteDIvoirePhone(phone) {
   const digits = String(phone ?? "").replace(/\D/g, "");
   if (digits.startsWith("225")) {
@@ -108016,6 +108017,11 @@ function normalizeBabimoPhone(phone, countryCode) {
   }
   if (country === "CI") return normalizeCoteDIvoirePhone(digits);
   return digits;
+}
+function buildBabimoClientReference(reference) {
+  const normalized = String(reference ?? "").trim();
+  if (normalized) return `CL-${normalized}`;
+  return `CL-${randomBytes2(8).toString("hex").toUpperCase()}`;
 }
 function unwrap2(raw) {
   return raw?.data ?? raw?.result ?? raw;
@@ -108219,6 +108225,7 @@ var init_babimo = __esm({
             message: `Op\xE9rateur "${params.operator}" (${params.country_code}) non support\xE9 par Babimo.`
           };
         }
+        const clientReference = params.client_reference?.trim() || buildBabimoClientReference(params.reference);
         const payload = {
           currency: params.currency || "XOF",
           payment_method: paymentMethod,
@@ -108228,7 +108235,9 @@ var init_babimo = __esm({
           success_url: params.return_url ?? params.callback_url,
           failed_url: params.return_url ?? params.callback_url,
           notify_url: params.callback_url,
-          refercence_cl: params.reference
+          // Babimo requires this misspelled field. Keep it distinct from the
+          // merchant transaction id while retaining a direct correlation.
+          refercence_cl: clientReference
         };
         if (paymentMethod === "OM_CI" && params.operator_otp) {
           payload.otp_code = params.operator_otp;
@@ -108265,13 +108274,14 @@ var init_babimo = __esm({
             message: `Op\xE9rateur "${params.operator}" (${params.country_code}) non support\xE9 par Babimo pour les payouts.`
           };
         }
+        const clientReference = buildBabimoClientReference(params.reference);
         const raw = await this.request("POST", "/collect/cashin", {
           payment_method: paymentMethod,
           merchant_transaction_id: params.reference,
           amount: params.amount,
           telephone: normalizeBabimoPhone(params.phone, params.country_code),
           notify_url: params.callback_url,
-          refercence_cl: params.reference
+          refercence_cl: clientReference
         });
         const reference = firstString(raw, [
           "status_token",
@@ -108355,7 +108365,7 @@ var require_utils7 = __commonJS({
     exports.createHasher = createHasher;
     exports.createOptHasher = createOptHasher;
     exports.createXOFer = createXOFer;
-    exports.randomBytes = randomBytes2;
+    exports.randomBytes = randomBytes3;
     var crypto_1 = require_cryptoNode();
     function isBytes(a) {
       return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
@@ -108553,7 +108563,7 @@ var require_utils7 = __commonJS({
     exports.wrapConstructor = createHasher;
     exports.wrapConstructorWithOpts = createOptHasher;
     exports.wrapXOFConstructorWithOpts = createXOFer;
-    function randomBytes2(bytesLength = 32) {
+    function randomBytes3(bytesLength = 32) {
       if (crypto_1.crypto && typeof crypto_1.crypto.getRandomValues === "function") {
         return crypto_1.crypto.getRandomValues(new Uint8Array(bytesLength));
       }
@@ -253597,7 +253607,7 @@ var require_pdfkit = __commonJS({
       }
       return output;
     }
-    function randomBytes2(length) {
+    function randomBytes3(length) {
       const bytes = new Uint8Array(length);
       if (globalThis.crypto?.getRandomValues) {
         globalThis.crypto.getRandomValues(bytes);
@@ -253706,7 +253716,7 @@ var require_pdfkit = __commonJS({
         return Buffer.from(md5Hash(infoStr));
       }
       static generateRandomWordArray(bytes) {
-        return randomBytes2(bytes);
+        return randomBytes3(bytes);
       }
       static create(document2, options = {}) {
         if (!options.ownerPassword && !options.userPassword) {
