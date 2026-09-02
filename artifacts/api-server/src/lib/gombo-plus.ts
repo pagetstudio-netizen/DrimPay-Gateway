@@ -11,10 +11,17 @@
  *   POST /api/mobile-services/check-transaction-status/
  *   GET  /api/wallets/get-balance/
  *
- * Credentials are read from Replit Secrets:
+ * Credentials are read from the secure runtime environment (Replit Secrets
+ * or Plesk application environment variables):
  *   GOMBOPLUS_BASE_URL
  *   GOMBOPLUS_PUBLIC_KEY
  *   GOMBOPLUS_PRIVATE_KEY
+ *
+ * Plesk panels that limit one environment value to 255 characters can use
+ * numbered chunks instead:
+ *   GOMBOPLUS_PUBLIC_KEY_1, GOMBOPLUS_PUBLIC_KEY_2, ...
+ *   GOMBOPLUS_PRIVATE_KEY_1, GOMBOPLUS_PRIVATE_KEY_2, ...
+ * The chunks are joined in numeric order at runtime.
  *   GOMBOPLUS_WEBHOOK_SECRET (optional; reserved for provider rollout)
  */
 
@@ -307,19 +314,51 @@ export class GomboPlusClient {
   }
 }
 
+type GomboCredentialName = "GOMBOPLUS_PUBLIC_KEY" | "GOMBOPLUS_PRIVATE_KEY";
+
+/**
+ * Read a credential directly, or rebuild it from numbered Plesk chunks.
+ * The direct value always wins so existing Replit configuration is unchanged.
+ * Missing or non-contiguous chunks are treated as an unconfigured credential.
+ */
+function readGomboCredential(name: GomboCredentialName): string | undefined {
+  const direct = process.env[name]?.trim();
+  if (direct) return direct;
+
+  const prefix = `${name}_`;
+  const indexes = Object.keys(process.env)
+    .filter((key) => key.startsWith(prefix) && /^\d+$/.test(key.slice(prefix.length)))
+    .map((key) => Number(key.slice(prefix.length)))
+    .filter((index) => Number.isInteger(index) && index > 0)
+    .sort((a, b) => a - b);
+
+  if (indexes.length === 0 || indexes[0] !== 1) return undefined;
+
+  const chunks: string[] = [];
+  for (let index = 1; index <= indexes[indexes.length - 1]!; index += 1) {
+    const chunk = process.env[`${prefix}${index}`]?.trim();
+    if (!chunk) return undefined;
+    chunks.push(chunk);
+  }
+  return chunks.join("");
+}
+
 let client: GomboPlusClient | null = null;
 
 export function isGomboPlusConfigured(): boolean {
-  return Boolean(process.env.GOMBOPLUS_PUBLIC_KEY && process.env.GOMBOPLUS_PRIVATE_KEY);
+  return Boolean(
+    readGomboCredential("GOMBOPLUS_PUBLIC_KEY") &&
+    readGomboCredential("GOMBOPLUS_PRIVATE_KEY"),
+  );
 }
 
 export function getGomboPlusClient(): GomboPlusClient {
   if (client) return client;
-  const publicKey = process.env.GOMBOPLUS_PUBLIC_KEY;
-  const privateKey = process.env.GOMBOPLUS_PRIVATE_KEY;
+  const publicKey = readGomboCredential("GOMBOPLUS_PUBLIC_KEY");
+  const privateKey = readGomboCredential("GOMBOPLUS_PRIVATE_KEY");
   if (!publicKey || !privateKey) {
     throw new GomboPlusError(
-      "Gombo Plus non configuré. Définissez GOMBOPLUS_PUBLIC_KEY et GOMBOPLUS_PRIVATE_KEY dans les Secrets Replit.",
+      "Gombo Plus non configuré. Définissez les clés dans l'environnement sécurisé. Sur Plesk, utilisez GOMBOPLUS_PUBLIC_KEY_1, GOMBOPLUS_PUBLIC_KEY_2, etc. et l'équivalent PRIVATE_KEY si la limite de 255 caractères s'applique.",
       503,
       {},
     );

@@ -56694,6 +56694,282 @@ var init_src = __esm({
   }
 });
 
+// src/lib/gombo-plus.ts
+var gombo_plus_exports = {};
+__export(gombo_plus_exports, {
+  GomboPlusClient: () => GomboPlusClient,
+  GomboPlusError: () => GomboPlusError,
+  getGomboPlusClient: () => getGomboPlusClient,
+  gomboPlusOperatorCode: () => gomboPlusOperatorCode,
+  isAnyGomboPlusConfigured: () => isAnyGomboPlusConfigured,
+  isGomboPlusConfigured: () => isGomboPlusConfigured,
+  isGomboPlusSupported: () => isGomboPlusSupported
+});
+function countryKey(countryCode) {
+  const normalized = String(countryCode ?? "").trim().toUpperCase();
+  return normalized === "BN" ? "BJ" : normalized;
+}
+function operatorKey(operator, countryCode) {
+  return `${String(operator ?? "").trim().toLowerCase()}|${countryKey(countryCode)}`;
+}
+function normalizeRecipientNumber(phone, countryCode) {
+  const country = countryKey(countryCode);
+  const dialingCodes = { TG: "228", BJ: "229", BF: "226" };
+  let digits = String(phone ?? "").replace(/\D/g, "");
+  const dialingCode = dialingCodes[country];
+  if (dialingCode && digits.startsWith(dialingCode)) digits = digits.slice(dialingCode.length);
+  return digits.replace(/^0+/, "");
+}
+function unwrap(raw) {
+  return raw?.content ?? raw?.data ?? raw?.result ?? raw;
+}
+function firstValue(raw, keys) {
+  const candidates = [raw, raw?.content, raw?.data, raw?.result, raw?.content?.data, raw?.data?.data];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object") continue;
+    for (const key of keys) {
+      const value = candidate[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number") return value;
+    }
+  }
+  return void 0;
+}
+function stringValue(raw, keys) {
+  const value = firstValue(raw, keys);
+  return value === void 0 ? "" : String(value);
+}
+function mapStatus(value) {
+  const status = String(value ?? "").toLowerCase().trim();
+  if (status.includes("success") || status.includes("completed") || status.includes("paid") || status === "succes") return "success";
+  if (status.includes("fail") || status.includes("error") || status.includes("reject") || status.includes("declin")) return "failed";
+  if (status.includes("cancel")) return "cancelled";
+  if (status.includes("expir")) return "expired";
+  if (status.includes("process") || status.includes("initi") || status.includes("pending") || status.includes("progress")) return "processing";
+  return "pending";
+}
+function responseMessage(raw, fallback) {
+  return stringValue(raw, ["message", "status_message", "error", "detail", "description"]) || fallback;
+}
+function gomboPlusOperatorCode(operator, countryCode) {
+  return OPERATOR_CODES[operatorKey(operator, countryCode)] ?? null;
+}
+function isGomboPlusSupported(operator, countryCode, operation) {
+  const country = countryKey(countryCode);
+  const code = gomboPlusOperatorCode(operator, country);
+  if (!GOMBO_COUNTRIES.has(country) || !code) return false;
+  if (operation === "payout" && operatorKey(operator, country) === MAINTENANCE_OPERATOR) return false;
+  return true;
+}
+function isRejected(raw) {
+  return raw?.status === "failed" || raw?.status === false || raw?.success === false;
+}
+function readGomboCredential(name2) {
+  const direct = process.env[name2]?.trim();
+  if (direct) return direct;
+  const prefix = `${name2}_`;
+  const indexes = Object.keys(process.env).filter((key) => key.startsWith(prefix) && /^\d+$/.test(key.slice(prefix.length))).map((key) => Number(key.slice(prefix.length))).filter((index) => Number.isInteger(index) && index > 0).sort((a, b) => a - b);
+  if (indexes.length === 0 || indexes[0] !== 1) return void 0;
+  const chunks = [];
+  for (let index = 1; index <= indexes[indexes.length - 1]; index += 1) {
+    const chunk = process.env[`${prefix}${index}`]?.trim();
+    if (!chunk) return void 0;
+    chunks.push(chunk);
+  }
+  return chunks.join("");
+}
+function isGomboPlusConfigured() {
+  return Boolean(
+    readGomboCredential("GOMBOPLUS_PUBLIC_KEY") && readGomboCredential("GOMBOPLUS_PRIVATE_KEY")
+  );
+}
+function getGomboPlusClient() {
+  if (client) return client;
+  const publicKey = readGomboCredential("GOMBOPLUS_PUBLIC_KEY");
+  const privateKey = readGomboCredential("GOMBOPLUS_PRIVATE_KEY");
+  if (!publicKey || !privateKey) {
+    throw new GomboPlusError(
+      "Gombo Plus non configur\xE9. D\xE9finissez les cl\xE9s dans l'environnement s\xE9curis\xE9. Sur Plesk, utilisez GOMBOPLUS_PUBLIC_KEY_1, GOMBOPLUS_PUBLIC_KEY_2, etc. et l'\xE9quivalent PRIVATE_KEY si la limite de 255 caract\xE8res s'applique.",
+      503,
+      {}
+    );
+  }
+  client = new GomboPlusClient({
+    baseUrl: process.env.GOMBOPLUS_BASE_URL ?? DEFAULT_BASE_URL,
+    publicKey,
+    privateKey
+  });
+  return client;
+}
+function isAnyGomboPlusConfigured() {
+  return isGomboPlusConfigured();
+}
+var DEFAULT_BASE_URL, OPERATOR_CODES, GOMBO_COUNTRIES, MAINTENANCE_OPERATOR, GomboPlusError, GomboPlusClient, client;
+var init_gombo_plus = __esm({
+  "src/lib/gombo-plus.ts"() {
+    "use strict";
+    DEFAULT_BASE_URL = "https://api.gomboplus.com";
+    OPERATOR_CODES = {
+      "yas|TG": "yas",
+      "tmoney|TG": "yas",
+      "togo telecom|TG": "yas",
+      "moov|TG": "moov",
+      "moov money|TG": "moov",
+      "mtn|BJ": "mtn",
+      "mtn mobile money|BJ": "mtn",
+      "mtn momo|BJ": "mtn",
+      "moov|BJ": "moov",
+      "moov money|BJ": "moov",
+      // Gombo's documentation lists Orange Burkina as temporarily under
+      // maintenance. Keep the code known, but refuse it explicitly below so it
+      // cannot be mistaken for an active route.
+      "orange|BF": "om",
+      "orange money|BF": "om",
+      "om|BF": "om",
+      "moov|BF": "moov",
+      "moov money|BF": "moov"
+    };
+    GOMBO_COUNTRIES = /* @__PURE__ */ new Set(["TG", "BJ", "BF"]);
+    MAINTENANCE_OPERATOR = "om|BF";
+    GomboPlusError = class extends Error {
+      constructor(message, statusCode, raw) {
+        super(message);
+        this.statusCode = statusCode;
+        this.raw = raw;
+        this.name = "GomboPlusError";
+      }
+      statusCode;
+      raw;
+    };
+    GomboPlusClient = class {
+      baseUrl;
+      publicKey;
+      privateKey;
+      constructor(config2) {
+        this.baseUrl = config2.baseUrl.replace(/\/+$/, "");
+        this.publicKey = config2.publicKey;
+        this.privateKey = config2.privateKey;
+      }
+      async readResponse(response) {
+        const text2 = await response.text();
+        if (!text2) return {};
+        try {
+          return JSON.parse(text2);
+        } catch {
+          throw new GomboPlusError(
+            `R\xE9ponse Gombo Plus invalide (HTTP ${response.status})`,
+            response.status,
+            { bodyPreview: text2.slice(0, 500) }
+          );
+        }
+      }
+      async request(method, path5, body, query) {
+        let url2 = `${this.baseUrl}${path5}`;
+        if (query) url2 += `?${new URLSearchParams(query).toString()}`;
+        let response;
+        try {
+          response = await fetch(url2, {
+            method,
+            headers: {
+              "X-Public-Key": this.publicKey,
+              "X-Private-Key": this.privateKey,
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            },
+            body: body ? JSON.stringify(body) : void 0,
+            signal: AbortSignal.timeout(3e4)
+          });
+        } catch (err) {
+          throw new GomboPlusError(`Erreur r\xE9seau Gombo Plus : ${err?.message ?? err}`, 503, { retryable: true });
+        }
+        const raw = await this.readResponse(response);
+        if (!response.ok || isRejected(raw)) {
+          throw new GomboPlusError(responseMessage(raw, `Gombo Plus API HTTP ${response.status}`), response.status, raw);
+        }
+        return raw;
+      }
+      buildOperationBody(params) {
+        const country = countryKey(params.country_code);
+        const operator = gomboPlusOperatorCode(params.operator, country);
+        if (!GOMBO_COUNTRIES.has(country) || !operator) {
+          throw new GomboPlusError(`Op\xE9rateur "${params.operator}" (${country}) non support\xE9 par Gombo Plus.`, 422, {});
+        }
+        if (operator === "om" && country === "BF") {
+          throw new GomboPlusError("Orange Money Burkina Faso est temporairement en maintenance chez Gombo Plus.", 503, {});
+        }
+        const recipient_number = normalizeRecipientNumber(params.phone, country);
+        if (!recipient_number || recipient_number.length < 8) {
+          throw new GomboPlusError("Num\xE9ro de t\xE9l\xE9phone invalide pour Gombo Plus.", 422, {});
+        }
+        return {
+          amount: params.amount,
+          recipient_number,
+          country,
+          operator,
+          callback_url: params.callback_url
+        };
+      }
+      async initiatePayin(params) {
+        const response = await this.request("POST", "/api/mobile-services/mobile-deposit/", this.buildOperationBody(params));
+        const content = unwrap(response);
+        const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
+        if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourn\xE9 de r\xE9f\xE9rence de transaction.", 502, response);
+        return {
+          success: true,
+          gomboplus_reference: reference,
+          status: mapStatus(firstValue(response, ["status", "transaction_status", "payment_status"])),
+          payment_url: stringValue(response, ["payment_url", "paymentUrl", "checkout_url", "url"]) || (typeof content === "string" ? content : null),
+          message: responseMessage(response, "Paiement Gombo Plus initi\xE9.")
+        };
+      }
+      async initiatePayout(params) {
+        const response = await this.request("POST", "/api/mobile-services/mobile-withdrawal/", this.buildOperationBody(params));
+        const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
+        if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourn\xE9 de r\xE9f\xE9rence de retrait.", 502, response);
+        return {
+          success: true,
+          gomboplus_reference: reference,
+          status: mapStatus(firstValue(response, ["status", "transaction_status", "payment_status"])),
+          message: responseMessage(response, "Retrait Gombo Plus initi\xE9.")
+        };
+      }
+      async getStatus(reference) {
+        const response = await this.request("POST", "/api/mobile-services/check-transaction-status/", {
+          transaction_reference: reference
+        });
+        const content = unwrap(response);
+        const statusValue = firstValue(response, ["status", "transaction_status", "payment_status", "status_message"]);
+        const status = mapStatus(statusValue);
+        return {
+          gomboplus_reference: stringValue(response, ["reference", "transaction_reference", "transactionReference"]) || reference,
+          status,
+          amount: Number(firstValue(response, ["amount", "total_amount"]) ?? content?.amount ?? 0),
+          currency: stringValue(response, ["currency"]) || "XOF",
+          failure_reason: status === "failed" ? responseMessage(response, "Transaction Gombo Plus \xE9chou\xE9e.") : void 0
+        };
+      }
+      async getBalance(countryCode, operator) {
+        const country = countryKey(countryCode);
+        const operatorCode = gomboPlusOperatorCode(operator, country);
+        if (!operatorCode) throw new GomboPlusError(`Op\xE9rateur "${operator}" (${country}) non support\xE9 par Gombo Plus.`, 422, {});
+        const response = await this.request("GET", "/api/wallets/get-balance/", void 0, {
+          country_code: country,
+          operator_code: operatorCode
+        });
+        const content = unwrap(response);
+        return {
+          balance: Number(content?.balance ?? firstValue(response, ["balance"]) ?? 0),
+          currency: String(content?.currency ?? firstValue(response, ["currency"]) ?? "XOF"),
+          country_code: String(content?.country_code ?? country),
+          operator_code: String(content?.operator_code ?? operatorCode),
+          is_active: Boolean(content?.is_active ?? true)
+        };
+      }
+    };
+    client = null;
+  }
+});
+
 // ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/decode-strings.js
 function decodeBase64(base643) {
   let bufferLength = Math.ceil(base643.length / 4) * 3;
@@ -107741,7 +108017,7 @@ function normalizeBabimoPhone(phone, countryCode) {
   if (country === "CI") return normalizeCoteDIvoirePhone(digits);
   return digits;
 }
-function unwrap(raw) {
+function unwrap2(raw) {
   return raw?.data ?? raw?.result ?? raw;
 }
 function firstString(raw, keys) {
@@ -107759,7 +108035,7 @@ function responseStatus(raw) {
   const value = firstString(raw, ["status", "statut", "transaction_status", "payment_status", "state"]);
   return value.toLowerCase();
 }
-function mapStatus(raw) {
+function mapStatus2(raw) {
   const status = (raw ?? "").toLowerCase();
   if (status === "success" || status === "successfull" || status === "completed" || status === "paid") return "success";
   if (status === "failed" || status === "error" || status === "rejected" || status === "declined") return "failed";
@@ -107771,7 +108047,7 @@ function mapStatus(raw) {
 function errorMessage(raw, fallback) {
   return firstString(raw, ["message", "error", "response_text", "description"]) || fallback;
 }
-function isRejected(raw) {
+function isRejected2(raw) {
   const status = raw?.status ?? raw?.data?.status ?? raw?.result?.status;
   return status === false || raw?.success === false || raw?.data?.success === false;
 }
@@ -107781,11 +108057,11 @@ function babimoPaymentMethod(operator, countryCode, operation = "payin") {
 function isBabimoPayoutSupported(operator, countryCode) {
   return Boolean(babimoPaymentMethod(operator, countryCode, "payout"));
 }
-function countryKey(countryCode) {
+function countryKey2(countryCode) {
   return countryCode.trim().toUpperCase();
 }
 function babimoSecretName(countryCode, suffix) {
-  return `BABIMO_${countryKey(countryCode)}_${suffix}`;
+  return `BABIMO_${countryKey2(countryCode)}_${suffix}`;
 }
 function isBabimoConfigured(countryCode) {
   const email3 = process.env[babimoSecretName(countryCode, "EMAIL")];
@@ -107796,7 +108072,7 @@ function isAnyBabimoConfigured() {
   return ["CI", "BJ", "BF"].some(isBabimoConfigured);
 }
 function getBabimoClient(countryCode) {
-  const key = countryKey(countryCode);
+  const key = countryKey2(countryCode);
   const existing = clients.get(key);
   if (existing) return existing;
   const email3 = process.env[babimoSecretName(key, "EMAIL")];
@@ -107807,18 +108083,18 @@ function getBabimoClient(countryCode) {
     );
   }
   const newClient = new BabimoClient({
-    baseUrl: process.env[babimoSecretName(key, "BASE_URL")] ?? DEFAULT_BASE_URL,
+    baseUrl: process.env[babimoSecretName(key, "BASE_URL")] ?? DEFAULT_BASE_URL2,
     email: email3,
     password
   });
   clients.set(key, newClient);
   return newClient;
 }
-var DEFAULT_BASE_URL, PAYMENT_METHODS, FINAL_STATUSES, BabimoError, BabimoClient, clients;
+var DEFAULT_BASE_URL2, PAYMENT_METHODS, FINAL_STATUSES, BabimoError, BabimoClient, clients;
 var init_babimo = __esm({
   "src/lib/babimo.ts"() {
     "use strict";
-    DEFAULT_BASE_URL = "https://v2.b-pay.co/service/api/v1";
+    DEFAULT_BASE_URL2 = "https://v2.b-pay.co/service/api/v1";
     PAYMENT_METHODS = {
       "mtn|CI": { payin: "MTN_CI", payout: "MTN_CI" },
       "mtn momo|CI": { payin: "MTN_CI", payout: "MTN_CI" },
@@ -107928,7 +108204,7 @@ var init_babimo = __esm({
           this.tokenExpiresAt = 0;
           return this.request(method, path5, body, false);
         }
-        if (!response.ok || isRejected(raw)) {
+        if (!response.ok || isRejected2(raw)) {
           throw new BabimoError(errorMessage(raw, `Babimo API HTTP ${response.status}`), response.status, raw);
         }
         return raw;
@@ -107958,7 +108234,7 @@ var init_babimo = __esm({
           payload.otp_code = params.operator_otp;
         }
         const raw = await this.request("POST", "/paiement", payload);
-        const data = unwrap(raw);
+        const data = unwrap2(raw);
         const reference = firstString(raw, [
           "status_token",
           "statusToken",
@@ -107974,7 +108250,7 @@ var init_babimo = __esm({
         return {
           success: true,
           babimo_reference: reference,
-          status: mapStatus(responseStatus(raw)),
+          status: mapStatus2(responseStatus(raw)),
           payment_url: firstString(raw, ["payment_url", "paymentUrl", "url", "checkout_url"]) || (typeof data === "string" ? data : null),
           message: errorMessage(raw, "Paiement Babimo initi\xE9.")
         };
@@ -108012,14 +108288,14 @@ var init_babimo = __esm({
         return {
           success: true,
           babimo_reference: reference,
-          status: mapStatus(responseStatus(raw)),
+          status: mapStatus2(responseStatus(raw)),
           message: errorMessage(raw, "Payout Babimo initi\xE9.")
         };
       }
       async getStatus(reference) {
         const raw = await this.request("GET", `/check-status/${encodeURIComponent(reference)}`);
-        const status = mapStatus(responseStatus(raw));
-        const data = unwrap(raw);
+        const status = mapStatus2(responseStatus(raw));
+        const data = unwrap2(raw);
         return {
           babimo_reference: reference,
           status,
@@ -108033,266 +108309,6 @@ var init_babimo = __esm({
       }
     };
     clients = /* @__PURE__ */ new Map();
-  }
-});
-
-// src/lib/gombo-plus.ts
-var gombo_plus_exports = {};
-__export(gombo_plus_exports, {
-  GomboPlusClient: () => GomboPlusClient,
-  GomboPlusError: () => GomboPlusError,
-  getGomboPlusClient: () => getGomboPlusClient,
-  gomboPlusOperatorCode: () => gomboPlusOperatorCode,
-  isAnyGomboPlusConfigured: () => isAnyGomboPlusConfigured,
-  isGomboPlusConfigured: () => isGomboPlusConfigured,
-  isGomboPlusSupported: () => isGomboPlusSupported
-});
-function countryKey2(countryCode) {
-  const normalized = String(countryCode ?? "").trim().toUpperCase();
-  return normalized === "BN" ? "BJ" : normalized;
-}
-function operatorKey(operator, countryCode) {
-  return `${String(operator ?? "").trim().toLowerCase()}|${countryKey2(countryCode)}`;
-}
-function normalizeRecipientNumber(phone, countryCode) {
-  const country = countryKey2(countryCode);
-  const dialingCodes = { TG: "228", BJ: "229", BF: "226" };
-  let digits = String(phone ?? "").replace(/\D/g, "");
-  const dialingCode = dialingCodes[country];
-  if (dialingCode && digits.startsWith(dialingCode)) digits = digits.slice(dialingCode.length);
-  return digits.replace(/^0+/, "");
-}
-function unwrap2(raw) {
-  return raw?.content ?? raw?.data ?? raw?.result ?? raw;
-}
-function firstValue(raw, keys) {
-  const candidates = [raw, raw?.content, raw?.data, raw?.result, raw?.content?.data, raw?.data?.data];
-  for (const candidate of candidates) {
-    if (!candidate || typeof candidate !== "object") continue;
-    for (const key of keys) {
-      const value = candidate[key];
-      if (typeof value === "string" && value.trim()) return value.trim();
-      if (typeof value === "number") return value;
-    }
-  }
-  return void 0;
-}
-function stringValue(raw, keys) {
-  const value = firstValue(raw, keys);
-  return value === void 0 ? "" : String(value);
-}
-function mapStatus2(value) {
-  const status = String(value ?? "").toLowerCase().trim();
-  if (status.includes("success") || status.includes("completed") || status.includes("paid") || status === "succes") return "success";
-  if (status.includes("fail") || status.includes("error") || status.includes("reject") || status.includes("declin")) return "failed";
-  if (status.includes("cancel")) return "cancelled";
-  if (status.includes("expir")) return "expired";
-  if (status.includes("process") || status.includes("initi") || status.includes("pending") || status.includes("progress")) return "processing";
-  return "pending";
-}
-function responseMessage(raw, fallback) {
-  return stringValue(raw, ["message", "status_message", "error", "detail", "description"]) || fallback;
-}
-function gomboPlusOperatorCode(operator, countryCode) {
-  return OPERATOR_CODES[operatorKey(operator, countryCode)] ?? null;
-}
-function isGomboPlusSupported(operator, countryCode, operation) {
-  const country = countryKey2(countryCode);
-  const code = gomboPlusOperatorCode(operator, country);
-  if (!GOMBO_COUNTRIES.has(country) || !code) return false;
-  if (operation === "payout" && operatorKey(operator, country) === MAINTENANCE_OPERATOR) return false;
-  return true;
-}
-function isRejected2(raw) {
-  return raw?.status === "failed" || raw?.status === false || raw?.success === false;
-}
-function isGomboPlusConfigured() {
-  return Boolean(process.env.GOMBOPLUS_PUBLIC_KEY && process.env.GOMBOPLUS_PRIVATE_KEY);
-}
-function getGomboPlusClient() {
-  if (client) return client;
-  const publicKey = process.env.GOMBOPLUS_PUBLIC_KEY;
-  const privateKey = process.env.GOMBOPLUS_PRIVATE_KEY;
-  if (!publicKey || !privateKey) {
-    throw new GomboPlusError(
-      "Gombo Plus non configur\xE9. D\xE9finissez GOMBOPLUS_PUBLIC_KEY et GOMBOPLUS_PRIVATE_KEY dans les Secrets Replit.",
-      503,
-      {}
-    );
-  }
-  client = new GomboPlusClient({
-    baseUrl: process.env.GOMBOPLUS_BASE_URL ?? DEFAULT_BASE_URL2,
-    publicKey,
-    privateKey
-  });
-  return client;
-}
-function isAnyGomboPlusConfigured() {
-  return isGomboPlusConfigured();
-}
-var DEFAULT_BASE_URL2, OPERATOR_CODES, GOMBO_COUNTRIES, MAINTENANCE_OPERATOR, GomboPlusError, GomboPlusClient, client;
-var init_gombo_plus = __esm({
-  "src/lib/gombo-plus.ts"() {
-    "use strict";
-    DEFAULT_BASE_URL2 = "https://api.gomboplus.com";
-    OPERATOR_CODES = {
-      "yas|TG": "yas",
-      "tmoney|TG": "yas",
-      "togo telecom|TG": "yas",
-      "moov|TG": "moov",
-      "moov money|TG": "moov",
-      "mtn|BJ": "mtn",
-      "mtn mobile money|BJ": "mtn",
-      "mtn momo|BJ": "mtn",
-      "moov|BJ": "moov",
-      "moov money|BJ": "moov",
-      // Gombo's documentation lists Orange Burkina as temporarily under
-      // maintenance. Keep the code known, but refuse it explicitly below so it
-      // cannot be mistaken for an active route.
-      "orange|BF": "om",
-      "orange money|BF": "om",
-      "om|BF": "om",
-      "moov|BF": "moov",
-      "moov money|BF": "moov"
-    };
-    GOMBO_COUNTRIES = /* @__PURE__ */ new Set(["TG", "BJ", "BF"]);
-    MAINTENANCE_OPERATOR = "om|BF";
-    GomboPlusError = class extends Error {
-      constructor(message, statusCode, raw) {
-        super(message);
-        this.statusCode = statusCode;
-        this.raw = raw;
-        this.name = "GomboPlusError";
-      }
-      statusCode;
-      raw;
-    };
-    GomboPlusClient = class {
-      baseUrl;
-      publicKey;
-      privateKey;
-      constructor(config2) {
-        this.baseUrl = config2.baseUrl.replace(/\/+$/, "");
-        this.publicKey = config2.publicKey;
-        this.privateKey = config2.privateKey;
-      }
-      async readResponse(response) {
-        const text2 = await response.text();
-        if (!text2) return {};
-        try {
-          return JSON.parse(text2);
-        } catch {
-          throw new GomboPlusError(
-            `R\xE9ponse Gombo Plus invalide (HTTP ${response.status})`,
-            response.status,
-            { bodyPreview: text2.slice(0, 500) }
-          );
-        }
-      }
-      async request(method, path5, body, query) {
-        let url2 = `${this.baseUrl}${path5}`;
-        if (query) url2 += `?${new URLSearchParams(query).toString()}`;
-        let response;
-        try {
-          response = await fetch(url2, {
-            method,
-            headers: {
-              "X-Public-Key": this.publicKey,
-              "X-Private-Key": this.privateKey,
-              "Content-Type": "application/json",
-              Accept: "application/json"
-            },
-            body: body ? JSON.stringify(body) : void 0,
-            signal: AbortSignal.timeout(3e4)
-          });
-        } catch (err) {
-          throw new GomboPlusError(`Erreur r\xE9seau Gombo Plus : ${err?.message ?? err}`, 503, { retryable: true });
-        }
-        const raw = await this.readResponse(response);
-        if (!response.ok || isRejected2(raw)) {
-          throw new GomboPlusError(responseMessage(raw, `Gombo Plus API HTTP ${response.status}`), response.status, raw);
-        }
-        return raw;
-      }
-      buildOperationBody(params) {
-        const country = countryKey2(params.country_code);
-        const operator = gomboPlusOperatorCode(params.operator, country);
-        if (!GOMBO_COUNTRIES.has(country) || !operator) {
-          throw new GomboPlusError(`Op\xE9rateur "${params.operator}" (${country}) non support\xE9 par Gombo Plus.`, 422, {});
-        }
-        if (operator === "om" && country === "BF") {
-          throw new GomboPlusError("Orange Money Burkina Faso est temporairement en maintenance chez Gombo Plus.", 503, {});
-        }
-        const recipient_number = normalizeRecipientNumber(params.phone, country);
-        if (!recipient_number || recipient_number.length < 8) {
-          throw new GomboPlusError("Num\xE9ro de t\xE9l\xE9phone invalide pour Gombo Plus.", 422, {});
-        }
-        return {
-          amount: params.amount,
-          recipient_number,
-          country,
-          operator,
-          callback_url: params.callback_url
-        };
-      }
-      async initiatePayin(params) {
-        const response = await this.request("POST", "/api/mobile-services/mobile-deposit/", this.buildOperationBody(params));
-        const content = unwrap2(response);
-        const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
-        if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourn\xE9 de r\xE9f\xE9rence de transaction.", 502, response);
-        return {
-          success: true,
-          gomboplus_reference: reference,
-          status: mapStatus2(firstValue(response, ["status", "transaction_status", "payment_status"])),
-          payment_url: stringValue(response, ["payment_url", "paymentUrl", "checkout_url", "url"]) || (typeof content === "string" ? content : null),
-          message: responseMessage(response, "Paiement Gombo Plus initi\xE9.")
-        };
-      }
-      async initiatePayout(params) {
-        const response = await this.request("POST", "/api/mobile-services/mobile-withdrawal/", this.buildOperationBody(params));
-        const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
-        if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourn\xE9 de r\xE9f\xE9rence de retrait.", 502, response);
-        return {
-          success: true,
-          gomboplus_reference: reference,
-          status: mapStatus2(firstValue(response, ["status", "transaction_status", "payment_status"])),
-          message: responseMessage(response, "Retrait Gombo Plus initi\xE9.")
-        };
-      }
-      async getStatus(reference) {
-        const response = await this.request("POST", "/api/mobile-services/check-transaction-status/", {
-          transaction_reference: reference
-        });
-        const content = unwrap2(response);
-        const statusValue = firstValue(response, ["status", "transaction_status", "payment_status", "status_message"]);
-        const status = mapStatus2(statusValue);
-        return {
-          gomboplus_reference: stringValue(response, ["reference", "transaction_reference", "transactionReference"]) || reference,
-          status,
-          amount: Number(firstValue(response, ["amount", "total_amount"]) ?? content?.amount ?? 0),
-          currency: stringValue(response, ["currency"]) || "XOF",
-          failure_reason: status === "failed" ? responseMessage(response, "Transaction Gombo Plus \xE9chou\xE9e.") : void 0
-        };
-      }
-      async getBalance(countryCode, operator) {
-        const country = countryKey2(countryCode);
-        const operatorCode = gomboPlusOperatorCode(operator, country);
-        if (!operatorCode) throw new GomboPlusError(`Op\xE9rateur "${operator}" (${country}) non support\xE9 par Gombo Plus.`, 422, {});
-        const response = await this.request("GET", "/api/wallets/get-balance/", void 0, {
-          country_code: country,
-          operator_code: operatorCode
-        });
-        const content = unwrap2(response);
-        return {
-          balance: Number(content?.balance ?? firstValue(response, ["balance"]) ?? 0),
-          currency: String(content?.currency ?? firstValue(response, ["currency"]) ?? "XOF"),
-          country_code: String(content?.country_code ?? country),
-          operator_code: String(content?.operator_code ?? operatorCode),
-          is_active: Boolean(content?.is_active ?? true)
-        };
-      }
-    };
-    client = null;
   }
 });
 
@@ -259363,6 +259379,7 @@ var health_default = router;
 // src/routes/help.ts
 var import_express2 = __toESM(require_express2(), 1);
 init_src();
+init_gombo_plus();
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -259419,7 +259436,12 @@ router2.get("/help", async (req, res) => {
     "PORT",
     "ACTIVE_AGGREGATOR"
   ];
+  const gomboConfigured = isGomboPlusConfigured();
   for (const key of required2) {
+    if (key === "GOMBOPLUS_PUBLIC_KEY" || key === "GOMBOPLUS_PRIVATE_KEY") {
+      envChecks[key] = gomboConfigured ? "\u2713 d\xE9fini" : "\u2717 MANQUANT";
+      continue;
+    }
     const val = process.env[key];
     envChecks[key] = val ? `\u2713 d\xE9fini (${val.length} chars)` : "\u2717 MANQUANT";
   }

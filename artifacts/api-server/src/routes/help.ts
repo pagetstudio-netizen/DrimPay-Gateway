@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isGomboPlusConfigured } from "../lib/gombo-plus";
 
 const router: IRouter = Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -66,7 +67,12 @@ router.get("/help", async (req: any, res) => {
     "PORT",
     "ACTIVE_AGGREGATOR",
   ];
+  const gomboConfigured = isGomboPlusConfigured();
   for (const key of required) {
+    if (key === "GOMBOPLUS_PUBLIC_KEY" || key === "GOMBOPLUS_PRIVATE_KEY") {
+      envChecks[key] = gomboConfigured ? "✓ défini" : "✗ MANQUANT";
+      continue;
+    }
     const val = process.env[key];
     envChecks[key] = val ? `✓ défini (${val.length} chars)` : "✗ MANQUANT";
   }
