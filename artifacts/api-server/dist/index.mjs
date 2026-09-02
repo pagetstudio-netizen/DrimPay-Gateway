@@ -278532,16 +278532,19 @@ async function createNotification(userId, type, category, title, body, href = "/
 }
 router11.get("/dashboard/fee-rate", requireAuth, async (req, res) => {
   const userId = req.session.userId;
+  const countryCode = typeof req.query.country_code === "string" ? req.query.country_code : void 0;
+  const operator = typeof req.query.operator === "string" ? req.query.operator : void 0;
   const [payinRate, payoutRate] = await Promise.all([
     getFeeRate(userId, "payin"),
-    getFeeRate(userId, "payout")
+    getFeeRate(userId, "payout", countryCode, operator)
   ]);
   const fmt = (r) => parseFloat((r * 100).toFixed(4));
   res.json({
     payin: fmt(payinRate),
     payout: fmt(payoutRate),
     payin_display: `${fmt(payinRate)}%`,
-    payout_display: `${fmt(payoutRate)}%`
+    payout_display: `${fmt(payoutRate)}%`,
+    ...countryCode && operator ? { country_code: countryCode, operator } : {}
   });
 });
 router11.get("/dashboard/status", requireAuth, async (req, res) => {
@@ -279860,11 +279863,17 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
   }
   const feeRate = await getFeeRate(userId, "payout", countryCode, operator);
   const fee = +(amount * feeRate).toFixed(2);
-  const net = +(amount - fee).toFixed(2);
-  const totalDebit = amount;
+  const net = amount;
+  const totalDebit = +(amount + fee).toFixed(2);
   const balance = parseFloat(wallet.balance);
   if (totalDebit > balance) {
-    res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
+    res.status(400).json({
+      error: `Solde insuffisant. Disponible : ${balance} ${countryMeta.currency}, requis : ${totalDebit} ${countryMeta.currency} (dont ${fee} ${countryMeta.currency} de frais).`,
+      code: "WALLET_INSUFFICIENT_FUNDS",
+      available: balance,
+      required: totalDebit,
+      fee
+    });
     return;
   }
   let resolvedAggregator;
@@ -279901,7 +279910,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
       gateway: resolvedAggregator,
       operation: "payout",
-      amount: net,
+      amount,
       currency: countryMeta.currency,
       country_code: countryCode,
       operator,
@@ -279932,7 +279941,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     try {
       console.info(`[Reversement] \u2192 Initiation ${resolvedAggregator} | ref: ${reference} | ${net} ${countryMeta.currency} | ${operator} (${countryCode}) \u2192 ${phone}`);
       result = await routePayout({
-        amount: net,
+        amount,
         currency: countryMeta.currency,
         country_code: countryCode,
         operator,
@@ -280036,7 +280045,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     "info",
     "wallet",
     `Demande de reversement \u2014 ${amount.toLocaleString("fr-FR")} ${countryMeta.currency}`,
-    `Reversement de ${amount.toLocaleString("fr-FR")} ${countryMeta.currency} vers ${phone} (${operator}, ${countryCode}). Frais : ${fee.toLocaleString("fr-FR")} ${countryMeta.currency}. Net : ${net.toLocaleString("fr-FR")} ${countryMeta.currency}. R\xE9f : ${reference}.`,
+    `Reversement de ${amount.toLocaleString("fr-FR")} ${countryMeta.currency} vers ${phone} (${operator}, ${countryCode}). Frais : ${fee.toLocaleString("fr-FR")} ${countryMeta.currency}. Total d\xE9bit\xE9 : ${totalDebit.toLocaleString("fr-FR")} ${countryMeta.currency}. R\xE9f : ${reference}.`,
     "/dashboard/reversement"
   ).catch(() => {
   });
@@ -280056,7 +280065,13 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     });
   } catch {
   }
-  res.status(201).json({ ...reversement, _sandbox: currentMode === "sandbox" });
+  res.status(201).json({
+    ...reversement,
+    net: amount,
+    totalDebit,
+    feeRate: `${feeRate * 100}%`,
+    _sandbox: currentMode === "sandbox"
+  });
 });
 var WALLET_EXCHANGE_FEE_RATE = 0.03;
 var walletExchangeSchema = external_exports2.object({

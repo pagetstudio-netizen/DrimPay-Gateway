@@ -105,7 +105,7 @@ export default function DocPayout() {
         <Section title="Introduction" icon={Globe}>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
             L'API Pay-out DrimPay vous permet d'envoyer des fonds vers un numéro Mobile Money dans 7 pays d'Afrique de l'Ouest et Centrale.
-            Les frais de <strong className="text-foreground">{feeRate.payout_display}</strong> sont débités du wallet du pays cible à chaque transaction réussie.
+            Le bénéficiaire reçoit exactement le montant demandé. Les frais de <strong className="text-foreground">{feeRate.payout_display}</strong> sont payés par le marchand et débités en plus du montant sur le wallet du pays cible.
           </p>
           <div className="rounded-xl border border-border bg-card overflow-hidden font-mono text-sm">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -127,7 +127,7 @@ export default function DocPayout() {
 
           <h3 className="text-sm font-semibold mb-3">Paramètres</h3>
           <div className="rounded-xl border border-border bg-card overflow-hidden mb-6">
-            <Param name="amount" type="number" required desc="Montant à transférer au bénéficiaire" />
+            <Param name="amount" type="number" required desc="Montant exact reçu par le bénéficiaire (les frais sont ajoutés au débit du wallet)" />
             <Param name="currency" type="string" required desc="Devise ISO 4217 (XOF, XAF)" />
             <Param name="country_code" type="string" required desc="Code pays du bénéficiaire (TG, BJ, CM, BF, ML, SN, CI)" />
             <Param name="operator" type="string" required desc="Opérateur Mobile Money du bénéficiaire" />
@@ -326,7 +326,7 @@ COMMIT;`} />
         <Section title="Calcul des frais" icon={Calculator}>
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-muted-foreground mb-4">
-              Les frais de <strong className="text-foreground">{feeRate.payout_display}</strong> sont calculés sur le montant brut et déduits de votre wallet.
+              Les frais de <strong className="text-foreground">{feeRate.payout_display}</strong> sont calculés sur le montant demandé et payés par le marchand. Le bénéficiaire reçoit exactement le montant demandé ; le wallet est débité de <strong className="text-foreground">montant + frais</strong>.
               Le taux affiché ici est votre taux réel actuel — il peut être personnalisé par l'équipe DrimPay selon votre volume.
             </p>
             <CodeBlock code={`// Exemple : pay-out de 25 000 XOF

@@ -162,12 +162,28 @@ export default function DashboardReversement() {
 
   const { user } = useAuth();
   const isPersonal = (user as any)?.accountType === "personal";
-  const feeRate = 0.035;
+  const [feeRate, setFeeRate] = useState(0.035);
+  const watchedOperator = form.watch("operator");
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (watchCountry && watchedOperator) {
+      params.set("country_code", watchCountry);
+      params.set("operator", watchedOperator);
+    }
+    fetch(`/api/dashboard/fee-rate${params.toString() ? `?${params}` : ""}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d?.payout === "number") setFeeRate(d.payout / 100);
+      })
+      .catch(() => {});
+  }, [watchCountry, watchedOperator]);
 
   const walletForCountry = wallets.find((w) => w.countryCode === watchCountry);
   const amount = parseFloat(form.watch("amount") || "0");
   const fee = isNaN(amount) ? 0 : +(amount * feeRate).toFixed(2);
-  const net = isNaN(amount) ? 0 : +(amount - fee).toFixed(2);
+  const net = isNaN(amount) ? 0 : amount;
+  const totalDebited = isNaN(amount) ? 0 : +(amount + fee).toFixed(2);
 
   const onSubmit = async (values: FormValues) => {
     setStatus("loading");
@@ -305,12 +321,17 @@ export default function DashboardReversement() {
                         <span>{amount.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>Frais DrimPay (3,5%)</span>
+                        <span>Frais DrimPay ({(feeRate * 100).toLocaleString("fr-FR")}%)
+                        </span>
                         <span>— {fee.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
                       <div className="flex justify-between font-semibold text-foreground border-t border-border pt-2 mt-2">
-                        <span>Montant net reçu</span>
+                        <span>Montant reçu</span>
                         <span className="text-primary">{net.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-foreground">
+                        <span>Total débité</span>
+                        <span>{totalDebited.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
                     </div>
                   )}
@@ -408,7 +429,7 @@ export default function DashboardReversement() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>
-                  Frais de reversement : <span className="font-semibold text-foreground">3,5%</span> du montant brut.
+                  Frais de reversement : <span className="font-semibold text-foreground">taux affiché lors de la saisie</span> du montant demandé, débité en plus du montant reçu.
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>

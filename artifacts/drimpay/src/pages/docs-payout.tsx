@@ -346,7 +346,7 @@ print(data["reference"])`,
                 The DrimPay Pay-out API enables you to push money directly to any Mobile Money wallet. This is ideal for supplier payments, agent commissions, salary disbursements, customer refunds, and mass payroll.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Funds are debited from your <strong className="text-foreground">country-specific wallet</strong>. You must have an active wallet with sufficient balance in the destination country before initiating a pay-out. Pay-out is available to <strong className="text-foreground">all accounts</strong> (personal &amp; business). DrimPay charges a flat <strong className="text-foreground">{fees.payout}% fee</strong> per transaction — the total deducted from your wallet is <strong className="text-foreground">amount + fee</strong>.
+                Funds are debited from your <strong className="text-foreground">country-specific wallet</strong>. You must have an active wallet with sufficient balance in the destination country before initiating a pay-out. Pay-out is available to <strong className="text-foreground">all accounts</strong> (personal &amp; business). DrimPay charges a flat <strong className="text-foreground">{fees.payout}% fee</strong> per transaction. The beneficiary receives exactly <strong className="text-foreground">amount</strong>; the total deducted from your wallet is <strong className="text-foreground">amount + fee</strong>.
               </p>
               <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 mb-6 flex gap-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
@@ -441,14 +441,14 @@ print(data["reference"])`,
 
             <section id="response" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4">Response Format</h2>
-              <p className="text-muted-foreground mb-4">Successful responses return HTTP <Badge color="green">201</Badge>. The deducted amount includes the gross amount plus fee.</p>
+              <p className="text-muted-foreground mb-4">Successful responses return HTTP <Badge color="green">201</Badge>. The beneficiary receives exactly the requested <strong className="text-foreground">amount</strong>. The merchant pays the fee, so the wallet debit is <strong className="text-foreground">amount + fee</strong>.</p>
               <CodeBlock lang="json" code={`{
   "reference": "SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8",
   "order_id": "PAYOUT-20240501-042",
   "status": "pending",
   "amount": 10000,
-  "fee": 300,
-  "total_debited": 10300,
+  "fee": ${Math.round(10000 * fees.payout / 100)},
+  "total_debited": ${10000 + Math.round(10000 * fees.payout / 100)},
   "currency": "XOF",
   "country_code": "SN",
   "operator": "orange",

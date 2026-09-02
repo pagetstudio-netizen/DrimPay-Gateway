@@ -54,6 +54,7 @@ export default function Payout() {
   const [success, setSuccess] = useState<any>(null);
   const [error, setError] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<typeof COUNTRIES[0] | null>(null);
+  const [feeRate, setFeeRate] = useState(0.035);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -83,6 +84,22 @@ export default function Payout() {
   };
 
   const selectedWallet = wallets.find((w) => w.countryCode === selectedCountry?.code);
+  const watchedCountry = form.watch("countryCode");
+  const watchedOperator = form.watch("operator");
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (watchedCountry && watchedOperator) {
+      params.set("country_code", watchedCountry);
+      params.set("operator", watchedOperator);
+    }
+    fetch(`/api/dashboard/fee-rate${params.toString() ? `?${params}` : ""}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d?.payout === "number") setFeeRate(d.payout / 100);
+      })
+      .catch(() => {});
+  }, [watchedCountry, watchedOperator]);
 
   const countryOptions = COUNTRIES.map(c => {
     const w = wallets.find(w => w.countryCode === c.code);
@@ -232,7 +249,7 @@ export default function Payout() {
                       <FormControl><Input type="number" placeholder="10000" min="200" {...field} /></FormControl>
                       {field.value && (
                         <p className="text-xs text-muted-foreground">
-                          Frais (3,5%) : {(parseFloat(field.value) * 0.035).toLocaleString("fr-FR")} · Total débité : {(parseFloat(field.value) * 1.035).toLocaleString("fr-FR")} {selectedCountry?.currency ?? "XOF"}
+                           Frais ({(feeRate * 100).toLocaleString("fr-FR")}%): {(parseFloat(field.value) * feeRate).toLocaleString("fr-FR")} · Total débité : {(parseFloat(field.value) * (1 + feeRate)).toLocaleString("fr-FR")} {selectedCountry?.currency ?? "XOF"}
                         </p>
                       )}
                       <FormMessage />

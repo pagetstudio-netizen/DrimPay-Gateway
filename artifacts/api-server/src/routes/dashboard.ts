@@ -128,9 +128,11 @@ async function createNotification(
 // Returns the authenticated user's actual fee rates (honours per-merchant overrides + platform default)
 router.get("/dashboard/fee-rate", requireAuth, async (req: any, res: any) => {
   const userId = req.session.userId!;
+  const countryCode = typeof req.query.country_code === "string" ? req.query.country_code : undefined;
+  const operator = typeof req.query.operator === "string" ? req.query.operator : undefined;
   const [payinRate, payoutRate] = await Promise.all([
     getFeeRate(userId, "payin"),
-    getFeeRate(userId, "payout"),
+    getFeeRate(userId, "payout", countryCode, operator),
   ]);
   const fmt = (r: number) => parseFloat((r * 100).toFixed(4));
   res.json({
@@ -138,6 +140,7 @@ router.get("/dashboard/fee-rate", requireAuth, async (req: any, res: any) => {
     payout: fmt(payoutRate),
     payin_display: `${fmt(payinRate)}%`,
     payout_display: `${fmt(payoutRate)}%`,
+    ...(countryCode && operator ? { country_code: countryCode, operator } : {}),
   });
 });
 
@@ -1680,12 +1683,20 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
 
   const feeRate = await getFeeRate(userId, "payout", countryCode, operator);
   const fee = +(amount * feeRate).toFixed(2);
-  const net = +(amount - fee).toFixed(2);
-  const totalDebit = amount;
+  // The beneficiary receives the requested amount. The merchant pays the fee
+  // on top, so the wallet debit is amount + fee.
+  const net = amount;
+  const totalDebit = +(amount + fee).toFixed(2);
 
   const balance = parseFloat(wallet.balance as string);
   if (totalDebit > balance) {
-    res.status(400).json({ error: "Solde insuffisant dans ce wallet." });
+    res.status(400).json({
+      error: `Solde insuffisant. Disponible : ${balance} ${countryMeta.currency}, requis : ${totalDebit} ${countryMeta.currency} (dont ${fee} ${countryMeta.currency} de frais).`,
+      code: "WALLET_INSUFFICIENT_FUNDS",
+      available: balance,
+      required: totalDebit,
+      fee,
+    });
     return;
   }
 
@@ -1728,7 +1739,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
         gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
           gateway: resolvedAggregator,
           operation: "payout",
-          amount: net,
+          amount,
           currency: countryMeta.currency,
           country_code: countryCode,
           operator,
@@ -1763,7 +1774,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
       console.info(`[Reversement] → Initiation ${resolvedAggregator} | ref: ${reference} | ${net} ${countryMeta.currency} | ${operator} (${countryCode}) → ${phone}`);
 
       result = await routePayout({
-        amount: net,
+        amount,
         currency: countryMeta.currency,
         country_code: countryCode,
         operator,
@@ -1882,7 +1893,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
   createNotification(
     userId, "info", "wallet",
     `Demande de reversement — ${amount.toLocaleString("fr-FR")} ${countryMeta.currency}`,
-    `Reversement de ${amount.toLocaleString("fr-FR")} ${countryMeta.currency} vers ${phone} (${operator}, ${countryCode}). Frais : ${fee.toLocaleString("fr-FR")} ${countryMeta.currency}. Net : ${net.toLocaleString("fr-FR")} ${countryMeta.currency}. Réf : ${reference}.`,
+    `Reversement de ${amount.toLocaleString("fr-FR")} ${countryMeta.currency} vers ${phone} (${operator}, ${countryCode}). Frais : ${fee.toLocaleString("fr-FR")} ${countryMeta.currency}. Total débité : ${totalDebit.toLocaleString("fr-FR")} ${countryMeta.currency}. Réf : ${reference}.`,
     "/dashboard/reversement",
   ).catch(() => {});
 
@@ -1896,7 +1907,13 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
     }).catch(() => {});
   } catch {}
 
-  res.status(201).json({ ...reversement, _sandbox: currentMode === "sandbox" });
+  res.status(201).json({
+    ...reversement,
+    net: amount,
+    totalDebit,
+    feeRate: `${feeRate * 100}%`,
+    _sandbox: currentMode === "sandbox",
+  });
 });
 
 // ─── Échange de wallets (entre pays de la même zone monétaire) ──────────────

@@ -255,6 +255,8 @@ export default function MassPayout() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [wallets, setWallets] = useState<WalletBalance[]>([]);
+  const [defaultFeeRate, setDefaultFeeRate] = useState(0.035);
+  const [feeRates, setFeeRates] = useState<Record<string, number>>({});
   const [showErrors, setShowErrors] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -281,10 +283,46 @@ export default function MassPayout() {
 
   useEffect(() => { loadJobs(); loadWallets(); }, []);
 
+  useEffect(() => {
+    fetch(`${BASE}/api/dashboard/fee-rate`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        if (typeof d?.payout === "number") setDefaultFeeRate(d.payout / 100);
+      })
+      .catch(() => {});
+  }, []);
+
   const addRow    = () => setRecipients(prev => [...prev, newRecipient()]);
   const removeRow = (id: string) => setRecipients(prev => prev.length > 1 ? prev.filter(r => r.id !== id) : prev);
   const updateRow = (id: string, field: keyof Recipient, value: string) =>
     setRecipients(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+
+  const routeSignature = [...new Set(
+    recipients
+      .filter(r => r.countryCode && r.operator)
+      .map(r => `${r.countryCode}:${r.operator}`),
+  )].sort().join("|");
+
+  useEffect(() => {
+    if (!routeSignature) return;
+    const routes = routeSignature.split("|").map(route => {
+      const [countryCode, operator] = route.split(":");
+      return { countryCode, operator, key: route };
+    });
+    Promise.all(routes.map(async ({ countryCode, operator, key }) => {
+      try {
+        const params = new URLSearchParams({ country_code: countryCode, operator });
+        const response = await fetch(`${BASE}/api/dashboard/fee-rate?${params}`, { credentials: "include" });
+        const data = await response.json();
+        return typeof data?.payout === "number" ? [key, data.payout / 100] as const : null;
+      } catch {
+        return null;
+      }
+    })).then(results => {
+      const resolved = Object.fromEntries(results.filter((item): item is readonly [string, number] => item !== null));
+      setFeeRates(previous => ({ ...previous, ...resolved }));
+    });
+  }, [routeSignature]);
 
   const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -319,8 +357,13 @@ export default function MassPayout() {
     URL.revokeObjectURL(url);
   };
 
+  const feeRateForRecipient = (r: Recipient) =>
+    feeRates[`${r.countryCode}:${r.operator}`] ?? defaultFeeRate;
   const totalAmount  = recipients.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0);
-  const fees         = totalAmount * 0.035;
+  const fees         = recipients.reduce((acc, r) => {
+    const amount = parseFloat(r.amount) || 0;
+    return acc + Math.round(amount * feeRateForRecipient(r) * 100) / 100;
+  }, 0);
   const totalDebited = totalAmount + fees;
 
   const allRowsValid = recipients.every(r => rowErrors(r).length === 0);
@@ -328,7 +371,7 @@ export default function MassPayout() {
 
   const balanceByCountry = recipients.reduce<Record<string, number>>((acc, r) => {
     const amt = parseFloat(r.amount) || 0;
-    const fee = amt * 0.035;
+    const fee = Math.round(amt * feeRateForRecipient(r) * 100) / 100;
     acc[r.countryCode] = (acc[r.countryCode] ?? 0) + amt + fee;
     return acc;
   }, {});
@@ -404,7 +447,7 @@ export default function MassPayout() {
               <h2 className="text-xl font-bold mb-2 text-gray-900">Fonctionnalité réservée aux Entreprises</h2>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
                 Le Paiement de Masse est exclusivement disponible pour les <strong className="text-foreground">comptes Entreprise</strong>.
-                Les comptes personnels peuvent retirer leurs fonds via la fonctionnalité <strong className="text-foreground">Reversement</strong> (frais : 3,5%).
+                 Les comptes personnels peuvent retirer leurs fonds via la fonctionnalité <strong className="text-foreground">Reversement</strong> (frais selon le taux affiché).
               </p>
             </div>
             <a href="/dashboard/reversement"
@@ -627,7 +670,7 @@ export default function MassPayout() {
                     <span className="text-sm font-bold text-gray-900">{totalAmount.toLocaleString("fr-FR")} FCFA</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Frais (3,5%)</span>
+                    <span className="text-sm text-gray-500">Frais (taux effectif par opérateur)</span>
                     <span className="text-sm text-amber-600 font-medium">+ {fees.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA</span>
                   </div>
                   <div className="rounded-xl px-4 py-3 flex justify-between items-center" style={{ backgroundColor: "#B5F03C" }}>
