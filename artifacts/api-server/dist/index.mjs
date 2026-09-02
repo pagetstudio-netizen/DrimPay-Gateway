@@ -108020,7 +108020,11 @@ function normalizeBabimoPhone(phone, countryCode) {
   if (country === "CI") return normalizeCoteDIvoirePhone(digits);
   return digits;
 }
-function buildBabimoClientReference(reference) {
+function buildBabimoClientReference(reference, countryCode) {
+  const country = countryCode?.trim().toUpperCase();
+  const configuredReference = country ? process.env[`BABIMO_${country}_CLIENT_REFERENCE`]?.trim() : void 0;
+  if (configuredReference) return configuredReference;
+  if (country === "CI") return "6ybmu2b";
   const normalized = String(reference ?? "").trim();
   if (normalized) return `CL-${normalized}`;
   return `CL-${randomBytes2(8).toString("hex").toUpperCase()}`;
@@ -108227,7 +108231,7 @@ var init_babimo = __esm({
             message: `Op\xE9rateur "${params.operator}" (${params.country_code}) non support\xE9 par Babimo.`
           };
         }
-        const clientReference = params.client_reference?.trim() || buildBabimoClientReference(params.reference);
+        const clientReference = params.client_reference?.trim() || buildBabimoClientReference(params.reference, params.country_code);
         const payload = {
           currency: params.currency || "XOF",
           payment_method: paymentMethod,
@@ -108276,7 +108280,7 @@ var init_babimo = __esm({
             message: `Op\xE9rateur "${params.operator}" (${params.country_code}) non support\xE9 par Babimo pour les payouts.`
           };
         }
-        const clientReference = buildBabimoClientReference(params.reference);
+        const clientReference = buildBabimoClientReference(params.reference, params.country_code);
         const raw = await this.request("POST", "/collect/cashin", {
           payment_method: paymentMethod,
           merchant_transaction_id: params.reference,
@@ -278268,7 +278272,7 @@ function buildGatewayPayloadSnapshot(params) {
         amount: params.amount,
         telephone: normalizeBabimoPhone(params.phone, params.country_code),
         notify_url: params.callback_url,
-        refercence_cl: buildBabimoClientReference(params.reference)
+        refercence_cl: buildBabimoClientReference(params.reference, params.country_code)
       };
     }
     return {
@@ -278283,7 +278287,7 @@ function buildGatewayPayloadSnapshot(params) {
       success_url: params.return_url ?? params.callback_url,
       failed_url: params.return_url ?? params.callback_url,
       notify_url: params.callback_url,
-      refercence_cl: buildBabimoClientReference(params.reference),
+      refercence_cl: buildBabimoClientReference(params.reference, params.country_code),
       ...paymentMethod === "OM_CI" && params.operator_otp ? { otp_code: params.operator_otp } : {}
     };
   }

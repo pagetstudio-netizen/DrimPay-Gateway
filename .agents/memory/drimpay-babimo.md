@@ -9,8 +9,8 @@ Babimo's API uses a login token from `authorisation.token`, Bearer requests, `/p
 
 **How to apply:** Keep `BABIMO_<COUNTRY>_EMAIL` and `BABIMO_<COUNTRY>_PASSWORD` in Replit Secrets, with an optional country-specific base URL. Add Babimo as an aggregator definition and let admin operator mappings choose it; initially preserve existing CI PayDunya mappings until an administrator changes them.
 
-Babimo requires `refercence_cl` in payment requests as a client reference separate from `merchant_transaction_id`; use a unique, directly correlated value such as `CL-<merchant_transaction_id>`.
+Babimo requires `refercence_cl` in payment requests as the provider-assigned client reference, separate from `merchant_transaction_id`; Côte d'Ivoire's current DrimPay account reference is `6ybmu2b`.
 
-**Why:** Babimo's request example uses different values for the two fields and explicitly warns that `refercence_cl` must not be omitted.
+**Why:** Babimo's team rejected generated references for the account and supplied a fixed client reference to use in the payment body.
 
-**How to apply:** Keep the provider's exact spelling, populate it automatically for every Babimo pay-in and payout, and never substitute a payment-link URL or an empty placeholder.
+**How to apply:** Keep the provider's exact spelling, use `BABIMO_<COUNTRY>_CLIENT_REFERENCE` when configured (CI currently defaults to `6ybmu2b`), and never substitute a payment-link URL or an empty placeholder.

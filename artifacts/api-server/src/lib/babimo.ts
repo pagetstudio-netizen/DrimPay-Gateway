@@ -73,7 +73,17 @@ export function normalizeBabimoPhone(phone: string, countryCode: string): string
   return digits;
 }
 
-export function buildBabimoClientReference(reference: string): string {
+export function buildBabimoClientReference(reference: string, countryCode?: string): string {
+  const country = countryCode?.trim().toUpperCase();
+  const configuredReference = country
+    ? process.env[`BABIMO_${country}_CLIENT_REFERENCE`]?.trim()
+    : undefined;
+  if (configuredReference) return configuredReference;
+
+  // Babimo assigned this stable client reference to the DrimPay CI account.
+  // It can be overridden with BABIMO_CI_CLIENT_REFERENCE in Plesk/Replit.
+  if (country === "CI") return "6ybmu2b";
+
   const normalized = String(reference ?? "").trim();
   if (normalized) return `CL-${normalized}`;
   return `CL-${randomBytes(8).toString("hex").toUpperCase()}`;
@@ -296,7 +306,8 @@ export class BabimoClient {
       };
     }
 
-    const clientReference = params.client_reference?.trim() || buildBabimoClientReference(params.reference);
+    const clientReference = params.client_reference?.trim()
+      || buildBabimoClientReference(params.reference, params.country_code);
     const payload: Record<string, unknown> = {
       currency: params.currency || "XOF",
       payment_method: paymentMethod,
@@ -344,7 +355,7 @@ export class BabimoClient {
       };
     }
 
-    const clientReference = buildBabimoClientReference(params.reference);
+    const clientReference = buildBabimoClientReference(params.reference, params.country_code);
     const raw = await this.request<any>("POST", "/collect/cashin", {
       payment_method: paymentMethod,
       merchant_transaction_id: params.reference,

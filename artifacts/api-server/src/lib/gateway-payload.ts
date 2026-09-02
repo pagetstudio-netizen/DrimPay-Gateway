@@ -48,7 +48,7 @@ export function buildGatewayPayloadSnapshot(
         amount: params.amount,
         telephone: normalizeBabimoPhone(params.phone, params.country_code),
         notify_url: params.callback_url,
-        refercence_cl: buildBabimoClientReference(params.reference),
+        refercence_cl: buildBabimoClientReference(params.reference, params.country_code),
       };
     }
 
@@ -64,7 +64,7 @@ export function buildGatewayPayloadSnapshot(
       success_url: params.return_url ?? params.callback_url,
       failed_url: params.return_url ?? params.callback_url,
       notify_url: params.callback_url,
-      refercence_cl: buildBabimoClientReference(params.reference),
+      refercence_cl: buildBabimoClientReference(params.reference, params.country_code),
       ...(paymentMethod === "OM_CI" && params.operator_otp
         ? { otp_code: params.operator_otp }
         : {}),
