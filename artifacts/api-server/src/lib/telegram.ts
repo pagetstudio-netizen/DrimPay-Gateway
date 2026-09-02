@@ -1,12 +1,7 @@
 import { db } from "@workspace/db";
 import { adminSettingsTable, usersTable, transactionsTable, blockedIpsTable, walletExchangesTable, walletsTable } from "@workspace/db/schema";
 import { eq, and, gte, lt, sum, count, desc } from "drizzle-orm";
-import fs from "fs";
-import path from "path";
 import { approveWalletExchange, rejectWalletExchange } from "./wallet-exchange-service";
-
-const STARTUP_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 heures
-const STARTUP_FLAG = path.join("/tmp", "drimpay-startup-notif.txt");
 
 // ─── Country meta for wallet summary display ──────────────────────────────────
 const COUNTRY_META: Record<string, { flag: string; name: string }> = {
@@ -138,41 +133,6 @@ function money(n: number, cur = "FCFA") {
 const LARGE = 500_000;
 
 // ─── Event notifications ───────────────────────────────────────────────────────
-export async function notifyStartup() {
-  // Cooldown : envoyer au maximum une fois par heure
-  try {
-    if (fs.existsSync(STARTUP_FLAG)) {
-      const lastMs = parseInt(fs.readFileSync(STARTUP_FLAG, "utf8").trim(), 10);
-      if (!isNaN(lastMs) && Date.now() - lastMs < STARTUP_COOLDOWN_MS) {
-        console.log("[Telegram] Startup notification skipped (cooldown 4h actif)");
-        return;
-      }
-    }
-    fs.writeFileSync(STARTUP_FLAG, String(Date.now()));
-  } catch { /* ignore fs errors */ }
-
-  await send(
-`🚀 <b>DrimPay Bot Actif</b>
-
-Le serveur a démarré. Alertes actives :
-• Toutes les tentatives de connexion (marchands + admin)
-• VPN / Proxy / Hébergement suspect
-• Connexion hors Afrique + bouton bloquer IP
-• Nouveaux marchands
-• Paiements reçus (liens + API)
-• Demandes &amp; traitements de retrait
-• KYB soumis
-• Gros montants (≥500 000 FCFA)
-• Erreurs système critiques
-• Rapport quotidien (minuit Lomé)
-• Surcharge marchand (≥10 tentatives)
-
-Commandes: /stats | /ip | /stopretraits | /activetraits | /help
-
-📅 ${dt()}`
-  );
-}
-
 export async function notifyContactForm(opts: {
   name: string; email: string; company?: string; subject: string; message: string;
 }) {
