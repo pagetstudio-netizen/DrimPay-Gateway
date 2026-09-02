@@ -279418,6 +279418,13 @@ router11.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req,
   }
   const userId = req.session.userId;
   const { name: name2, description, env } = parsed.data;
+  if (env === "live" && req.session.role !== "admin") {
+    const [kyb] = await db.select({ status: kybSubmissionsTable.status }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, userId));
+    if (!kyb || kyb.status !== "approved") {
+      res.status(403).json({ error: "KYB_NOT_APPROVED" });
+      return;
+    }
+  }
   const rawKey = `dp_${env}_sk_${crypto6.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcryptjs_default.hash(rawKey, 10);
@@ -279483,6 +279490,13 @@ router11.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, 
   if (!["sandbox", "live"].includes(env)) {
     res.status(400).json({ error: "Param\xE8tres invalides" });
     return;
+  }
+  if (env === "live" && req.session.role !== "admin") {
+    const [kyb] = await db.select({ status: kybSubmissionsTable.status }).from(kybSubmissionsTable).where(eq(kybSubmissionsTable.userId, userId));
+    if (!kyb || kyb.status !== "approved") {
+      res.status(403).json({ error: "KYB_NOT_APPROVED" });
+      return;
+    }
   }
   if (!password) {
     res.status(400).json({ error: "Mot de passe requis pour r\xE9g\xE9n\xE9rer une cl\xE9" });
