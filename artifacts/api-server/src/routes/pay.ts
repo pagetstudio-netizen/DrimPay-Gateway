@@ -33,6 +33,7 @@ import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram"
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { GENERIC_ERROR_MESSAGE, merchantFailureLabel } from "../lib/merchant-error";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
+import { buildMerchantPayloadSnapshot } from "../lib/merchant-payload";
 import { ensureLatestMerchantWebhookSecret } from "../lib/webhook-secrets";
 import { getFeeRate } from "../lib/fee-rates";
 
@@ -372,7 +373,7 @@ router.post("/pay/:token", async (req: any, res: any) => {
     webhookSignatureKey: webhookSecret ?? signatureKey,
     mode: "live",
     expiresAt,
-    requestPayload: JSON.stringify(req.body),
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
   }).returning();
 
   // Route through aggregator

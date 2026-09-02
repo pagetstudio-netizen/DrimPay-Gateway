@@ -31744,7 +31744,7 @@ var require_redact = __commonJS({
       } = options;
       validatePaths(paths);
       const pathStructure = buildPathStructure(paths);
-      return function redact(obj) {
+      return function redact2(obj) {
         if (strict && (obj === null || typeof obj !== "object")) {
           if (obj === null || obj === void 0) {
             return serialize ? serialize(obj) : obj;
@@ -35140,7 +35140,7 @@ var require_pino = __commonJS({
       const { opts, stream } = normalize(instance, caller(), ...args);
       if (opts.level && typeof opts.level === "string" && DEFAULT_LEVELS[opts.level.toLowerCase()] !== void 0) opts.level = opts.level.toLowerCase();
       const {
-        redact,
+        redact: redact2,
         crlf,
         serializers: serializers2,
         timestamp: timestamp2,
@@ -35174,8 +35174,8 @@ var require_pino = __commonJS({
       const stringifyFn = stringify.bind({
         [stringifySafeSym]: stringifySafe
       });
-      const stringifiers = redact ? redaction(redact, stringifyFn) : {};
-      const formatOpts = redact ? { stringify: stringifiers[redactFmtSym] } : { stringify: stringifyFn };
+      const stringifiers = redact2 ? redaction(redact2, stringifyFn) : {};
+      const formatOpts = redact2 ? { stringify: stringifiers[redactFmtSym] } : { stringify: stringifyFn };
       const end = "}" + (crlf ? "\r\n" : "\n");
       const coreChindings = asChindings.bind(null, {
         [chindingsSym]: "",
@@ -278483,6 +278483,29 @@ async function getFeeRate(userId, type, countryCode, operator) {
   return Number.isFinite(platformPercent) && platformPercent >= 0 && platformPercent <= 1 ? platformPercent : await getPlatformDefaultFee(type);
 }
 
+// src/lib/merchant-payload.ts
+var SENSITIVE_KEY = /(authorization|password|secret|token|private[_-]?key|api[_-]?key|signature|credential|otp|pin|cvv)/i;
+function redact(value, key) {
+  if (key && SENSITIVE_KEY.test(key)) return "[REDACTED]";
+  if (Array.isArray(value)) return value.map((item) => redact(item));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([entryKey, entryValue]) => [
+        entryKey,
+        redact(entryValue, entryKey)
+      ])
+    );
+  }
+  return value;
+}
+function buildMerchantPayloadSnapshot(body) {
+  const sanitized = redact(body);
+  if (sanitized && typeof sanitized === "object" && !Array.isArray(sanitized)) {
+    return sanitized;
+  }
+  return { payload: sanitized };
+}
+
 // src/routes/dashboard.ts
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 var payLinkImageUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -278831,7 +278854,8 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
       phone,
       description,
       externalRef,
-      mode: currentMode
+      mode: currentMode,
+      requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
     }).returning();
     try {
       const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
@@ -278990,7 +279014,8 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
     phone,
     description,
     externalRef,
-    mode: currentMode
+    mode: currentMode,
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
   }).returning();
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${netAmount}` }).where(eq(walletsTable.id, wallet.id));
   const [updatedWallet] = await db.select().from(walletsTable).where(eq(walletsTable.id, wallet.id));
@@ -279081,7 +279106,8 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
       phone,
       description,
       externalRef,
-      mode: currentMode
+      mode: currentMode,
+      requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
     }).returning();
     let aggregator;
     let client2;
@@ -279304,7 +279330,8 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     phone,
     description,
     externalRef,
-    mode: currentMode
+    mode: currentMode,
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
   }).returning();
   await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} - ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
   await clearWithdrawalFailures(userId);
@@ -279878,7 +279905,8 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     operator,
     phone,
     description: note ?? "Reversement DrimPay",
-    mode: currentMode
+    mode: currentMode,
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
   }).returning();
   await db.update(transactionsTable).set({
     gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
@@ -280594,7 +280622,8 @@ router11.post("/pay/:token", async (req, res) => {
     operator: effectiveOperator,
     phone,
     description: `Payment link: ${link.title}`,
-    mode: linkMode
+    mode: linkMode,
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
   }).returning();
   if (linkMode === "sandbox") {
     await db.update(paymentLinksTable).set({ uses: sql`${paymentLinksTable.uses} + 1` }).where(eq(paymentLinksTable.id, link.id));
@@ -281358,7 +281387,7 @@ router11.post("/qr/:reference", async (req, res) => {
     webhookUrl: merchantInfo?.webhookUrl ?? void 0,
     webhookSignatureKey: webhookSecret ?? signatureKey,
     mode: merchantMode,
-    requestPayload: JSON.stringify(req.body)
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
   }).returning();
   if (merchantMode === "sandbox") {
     await db.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${netAmount}` }).where(eq(walletsTable.id, wallet.id));
@@ -281875,7 +281904,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     webhookSignatureKey: req.resolvedWebhookSecret ?? signatureKey,
     mode,
     expiresAt,
-    requestPayload: JSON.stringify(req.body)
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
   }).returning();
   const API_SPAM_WINDOW_MIN = 5;
   const API_SPAM_THRESHOLD = 10;
@@ -285878,7 +285907,7 @@ router19.post("/pay/:token", async (req, res) => {
     webhookSignatureKey: webhookSecret ?? signatureKey,
     mode: "live",
     expiresAt,
-    requestPayload: JSON.stringify(req.body)
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body))
   }).returning();
   const baseCallbackUrl = getWebhookBaseUrl();
   const frontendBaseUrl = getFrontendBaseUrl();

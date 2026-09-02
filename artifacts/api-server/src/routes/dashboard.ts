@@ -45,6 +45,7 @@ import { settlePayinStatus } from "../lib/payin-settlement";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { ensureLatestMerchantWebhookSecret, ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
 import { getFeeRate } from "../lib/fee-rates";
+import { buildMerchantPayloadSnapshot } from "../lib/merchant-payload";
 
 // Memory storage — files go to Supabase, nothing kept on disk
 const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -526,6 +527,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
         userId, walletId: wallet.id, reference, type: "payin", status: "pending",
         amount: String(amount), fee: String(fee), netAmount: String(netAmount),
         currency, countryCode, operator, phone, description, externalRef, mode: currentMode,
+        requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
       })
       .returning();
 
@@ -666,6 +668,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       userId, walletId: wallet.id, reference, type: "payin", status: "success",
       amount: String(amount), fee: String(fee), netAmount: String(netAmount),
       currency, countryCode, operator, phone, description, externalRef, mode: currentMode,
+      requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
     })
     .returning();
 
@@ -775,6 +778,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
         userId, walletId: wallet.id, reference, type: "payout", status: "pending",
         amount: String(amount), fee: String(fee), netAmount: String(amount),
         currency, countryCode, operator, phone, description, externalRef, mode: currentMode,
+        requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
       })
       .returning();
 
@@ -987,6 +991,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
       description,
       externalRef,
       mode: currentMode,
+      requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
     })
     .returning();
 
@@ -1686,6 +1691,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
       amount: String(amount), fee: String(fee), netAmount: String(net),
       currency: countryMeta.currency, countryCode, operator, phone,
       description: note ?? "Reversement DrimPay", mode: currentMode,
+      requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
     })
     .returning();
 
@@ -2516,6 +2522,7 @@ router.post("/pay/:token", async (req, res) => {
     phone,
     description: `Payment link: ${link.title}`,
     mode: linkMode,
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
   }).returning();
 
   // ── SANDBOX: simulate payment (no real API call) ──────────────────────────
@@ -3446,7 +3453,7 @@ router.post("/qr/:reference", async (req, res) => {
     webhookUrl: merchantInfo?.webhookUrl ?? undefined,
     webhookSignatureKey: webhookSecret ?? signatureKey,
     mode: merchantMode,
-    requestPayload: JSON.stringify(req.body),
+    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
   }).returning();
 
   // ── Sandbox : succès simulé immédiat (comportement inchangé) ──────────────

@@ -23,6 +23,7 @@ import { GENERIC_ERROR_MESSAGE, MERCHANT_FAILURE_LABEL, merchantFailureLabel } f
 import { isMaintenanceModeOn } from "../lib/admin-settings";
 import { ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
 import { getFeeRate } from "../lib/fee-rates";
+import { buildMerchantPayloadSnapshot } from "../lib/merchant-payload";
 
 const router = Router();
 
@@ -333,7 +334,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       webhookSignatureKey: req.resolvedWebhookSecret ?? signatureKey,
       mode: mode as any,
       expiresAt,
-      requestPayload: JSON.stringify(req.body),
+      requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
     })
     .returning();
 

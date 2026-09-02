@@ -122,6 +122,21 @@ function JsonViewer({ data, label, badge }: { data: object | null; label: string
   );
 }
 
+function buildHistoricalMerchantPayload(tx: any): object {
+  return {
+    _capture_status: "historical_reconstruction",
+    _capture_note: "Payload entrant non conservé lors de la création ; champs reconstruits depuis la transaction.",
+    amount: tx.amount != null ? parseFloat(String(tx.amount)) : undefined,
+    currency: tx.currency ?? undefined,
+    country_code: tx.countryCode ?? undefined,
+    operator: tx.operator ?? undefined,
+    phone: tx.phone ?? undefined,
+    order_id: tx.orderId ?? undefined,
+    description: tx.description ?? undefined,
+    submitted_at: tx.createdAt ?? undefined,
+  };
+}
+
 function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => void; onResolved?: () => void }) {
   const [resending, setResending] = useState(false);
   const [resent, setResent]       = useState(false);
@@ -175,6 +190,10 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
   let parsedGateway: object | null = null;
   try { parsedRequest = tx.requestPayload ? JSON.parse(tx.requestPayload) : null; } catch {}
   try { parsedGateway = tx.gatewayPayload ? JSON.parse(tx.gatewayPayload) : null; } catch {}
+  const merchantPayload = parsedRequest ?? buildHistoricalMerchantPayload(tx);
+  const merchantPayloadLabel = parsedRequest
+    ? "POST /v2/payin/initiate"
+    : "POST /v2/payin/initiate · historique reconstitué";
 
   const isSandbox = tx.mode === "sandbox";
 
@@ -307,7 +326,7 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
                   <p className="text-xs text-gray-400 mt-0.5">Paramètres reçus par l'API DrimPay depuis le serveur du marchand</p>
                 </div>
               </div>
-              <JsonViewer data={parsedRequest} label="POST /v2/payin/initiate" />
+              <JsonViewer data={merchantPayload} label={merchantPayloadLabel} />
               <button onClick={onClose} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Fermer</button>
             </>
           )}
