@@ -1096,6 +1096,17 @@ router.post("/dashboard/api-keys", requireAuth, apiKeyRateLimiter, async (req, r
   const userId = req.session.userId!;
   const { name, description, env } = parsed.data;
 
+  if (env === "live" && req.session.role !== "admin") {
+    const [kyb] = await db
+      .select({ status: kybSubmissionsTable.status })
+      .from(kybSubmissionsTable)
+      .where(eq(kybSubmissionsTable.userId, userId));
+    if (!kyb || kyb.status !== "approved") {
+      res.status(403).json({ error: "KYB_NOT_APPROVED" });
+      return;
+    }
+  }
+
   const rawKey = `dp_${env}_sk_${crypto.randomBytes(24).toString("hex")}`;
   const prefix = rawKey.substring(0, env === "sandbox" ? 16 : 12);
   const keyHash = await bcrypt.hash(rawKey, 10);
@@ -1173,6 +1184,17 @@ router.post("/dashboard/api-keys/regenerate", requireAuth, apiKeyRateLimiter, as
   if (!["sandbox", "live"].includes(env)) {
     res.status(400).json({ error: "Paramètres invalides" });
     return;
+  }
+
+  if (env === "live" && req.session.role !== "admin") {
+    const [kyb] = await db
+      .select({ status: kybSubmissionsTable.status })
+      .from(kybSubmissionsTable)
+      .where(eq(kybSubmissionsTable.userId, userId));
+    if (!kyb || kyb.status !== "approved") {
+      res.status(403).json({ error: "KYB_NOT_APPROVED" });
+      return;
+    }
   }
 
   if (!password) {

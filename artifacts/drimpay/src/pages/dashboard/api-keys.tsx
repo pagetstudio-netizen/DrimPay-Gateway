@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import apiIconImg from "@assets/6213702_1778508885407.png";
 import { DashboardLayout } from "./layout";
-import { ProductionGate } from "@/components/ui/production-gate";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -568,7 +567,7 @@ function ApiKeysTab() {
             <AlertCircle className="w-3.5 h-3.5" /> {formErr}
           </p>
         )}
-        {kybStatus !== null && kybStatus !== "approved" ? (
+        {env === "live" && kybStatus !== null && kybStatus !== "approved" && (
           <div className="mt-4 flex items-start gap-3 px-4 py-3.5 rounded-xl bg-amber-50 border border-amber-200">
             <Lock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
@@ -579,8 +578,8 @@ function ApiKeysTab() {
               </p>
               <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
                 {kybStatus === "submitted" || kybStatus === "under_review"
-                  ? "Votre dossier KYB est en cours d'examen. Vous pourrez générer des clés API dès validation."
-                  : "Veuillez compléter votre vérification KYB pour générer des clés API."}
+                  ? "Votre dossier KYB est en cours d'examen. Les clés Live seront disponibles dès validation."
+                  : "Complétez votre vérification KYB pour générer une clé Live. Les clés Sandbox restent disponibles immédiatement."}
               </p>
               {kybStatus !== "submitted" && kybStatus !== "under_review" && (
                 <a
@@ -592,16 +591,15 @@ function ApiKeysTab() {
               )}
             </div>
           </div>
-        ) : (
-          <button
-            onClick={create}
-            disabled={creating || kybStatus === null}
-            className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors disabled:opacity-60"
-          >
-            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-            Générer la clé + le secret webhook
-          </button>
         )}
+        <button
+          onClick={create}
+          disabled={creating || kybStatus === null || (env === "live" && kybStatus !== "approved")}
+          className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors disabled:opacity-60"
+        >
+          {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+          Générer la clé {env === "live" ? "Live" : "Sandbox"} + le secret webhook
+        </button>
       </div>
 
       {/* ── Liste des clés actives ── */}
@@ -1085,8 +1083,7 @@ export default function ApiKeysPage() {
 
   return (
     <DashboardLayout>
-      <ProductionGate>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
           {/* Header */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center shrink-0">
@@ -1124,8 +1121,7 @@ export default function ApiKeysPage() {
           {tab === "keys"     && <ApiKeysTab />}
           {tab === "webhooks" && <WebhooksTab />}
           {tab === "ip"       && <IpTab />}
-        </div>
-      </ProductionGate>
+      </div>
     </DashboardLayout>
   );
 }
