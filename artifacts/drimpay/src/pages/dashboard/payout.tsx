@@ -23,7 +23,9 @@ const COUNTRIES = [
 
 
 const schema = z.object({
-  amount: z.string().min(1, "Montant requis"),
+  amount: z.string()
+    .min(1, "Montant requis")
+    .refine((value) => Number.isFinite(Number(value)) && Number(value) >= 200, "Le montant minimum est de 200"),
   countryCode: z.string().min(2, "Pays requis"),
   operator: z.string().min(1, "Opérateur requis"),
   phone: z.string().min(8, "Numéro invalide"),
@@ -227,7 +229,7 @@ export default function Payout() {
                   <FormField control={form.control} name="amount" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Montant à envoyer ({selectedCountry?.currency ?? "XOF"})</FormLabel>
-                      <FormControl><Input type="number" placeholder="10000" min="1" {...field} /></FormControl>
+                      <FormControl><Input type="number" placeholder="10000" min="200" {...field} /></FormControl>
                       {field.value && (
                         <p className="text-xs text-muted-foreground">
                           Frais (3,5%) : {(parseFloat(field.value) * 0.035).toLocaleString("fr-FR")} · Total débité : {(parseFloat(field.value) * 1.035).toLocaleString("fr-FR")} {selectedCountry?.currency ?? "XOF"}

@@ -95,7 +95,9 @@ const schema = z.object({
   countryCode: z.string().min(2, "Pays requis"),
   operator: z.string().min(1, "Opérateur requis"),
   phone: z.string().min(8, "Numéro invalide"),
-  amount: z.string().min(1, "Montant requis"),
+  amount: z.string()
+    .min(1, "Montant requis")
+    .refine((value) => Number.isFinite(Number(value)) && Number(value) >= 200, "Le montant minimum est de 200"),
   note: z.string().optional(),
 });
 
@@ -290,7 +292,7 @@ export default function DashboardReversement() {
                     <FormItem>
                       <FormLabel>Montant à reverser ({selectedCountry?.currency ?? "XOF"})</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="50000" min="1" {...field} />
+                         <Input type="number" placeholder="50000" min="200" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

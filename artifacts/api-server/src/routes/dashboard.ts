@@ -688,7 +688,7 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
 });
 
 const payoutSchema = z.object({
-  amount: z.number().min(200, "Le montant minimum est de 200"),
+  amount: z.coerce.number().finite().min(200, "Le montant minimum est de 200"),
   currency: z.string().length(3),
   countryCode: z.string().length(2),
   operator: z.string().min(1),
@@ -725,7 +725,10 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
 
   const parsed = payoutSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    res.status(400).json({
+      error: parsed.error.issues[0]?.message ?? "Données invalides",
+      details: parsed.error.flatten(),
+    });
     return;
   }
 
@@ -1591,7 +1594,7 @@ const reversementSchema = z.object({
   countryCode: z.string().min(2),
   operator: z.string().min(1),
   phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
-  amount: z.number().min(200, "Le montant minimum est de 200"),
+  amount: z.coerce.number().finite().min(200, "Le montant minimum est de 200"),
   note: z.string().optional(),
 });
 
@@ -1620,7 +1623,10 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
 
   const parsed = reversementSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+    res.status(400).json({
+      error: parsed.error.issues[0]?.message ?? "Données invalides",
+      details: parsed.error.flatten(),
+    });
     return;
   }
   const userId = req.session.userId!;

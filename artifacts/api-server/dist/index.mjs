@@ -279037,7 +279037,7 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
   res.status(201).json({ transaction: tx, fee, netAmount, feeRate: `${feeRate * 100}%`, walletId: wallet.id, newBalance: parseFloat(String(updatedWallet?.balance ?? 0)) });
 });
 var payoutSchema = external_exports2.object({
-  amount: external_exports2.number().min(200, "Le montant minimum est de 200"),
+  amount: external_exports2.coerce.number().finite().min(200, "Le montant minimum est de 200"),
   currency: external_exports2.string().length(3),
   countryCode: external_exports2.string().length(2),
   operator: external_exports2.string().min(1),
@@ -279069,7 +279069,10 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
   }
   const parsed = payoutSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    res.status(400).json({
+      error: parsed.error.issues[0]?.message ?? "Donn\xE9es invalides",
+      details: parsed.error.flatten()
+    });
     return;
   }
   const userId = req.session.userId;
@@ -279833,7 +279836,7 @@ var reversementSchema = external_exports2.object({
   countryCode: external_exports2.string().min(2),
   operator: external_exports2.string().min(1),
   phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
-  amount: external_exports2.number().min(200, "Le montant minimum est de 200"),
+  amount: external_exports2.coerce.number().finite().min(200, "Le montant minimum est de 200"),
   note: external_exports2.string().optional()
 });
 router11.get("/dashboard/reversements", requireAuth, async (req, res) => {
@@ -279854,7 +279857,10 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
   }
   const parsed = reversementSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
+    res.status(400).json({
+      error: parsed.error.issues[0]?.message ?? "Donn\xE9es invalides",
+      details: parsed.error.flatten()
+    });
     return;
   }
   const userId = req.session.userId;
