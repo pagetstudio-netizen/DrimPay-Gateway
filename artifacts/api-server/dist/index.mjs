@@ -108024,7 +108024,9 @@ function buildBabimoClientReference(reference, countryCode) {
   const country = countryCode?.trim().toUpperCase();
   const configuredReference = country ? process.env[`BABIMO_${country}_CLIENT_REFERENCE`]?.trim() : void 0;
   if (configuredReference) return configuredReference;
-  if (country === "CI") return "6ybmu2b";
+  if (country === "CI") {
+    throw new Error("BABIMO_CI_CLIENT_REFERENCE est manquante pour le compte Babimo CI.");
+  }
   const normalized = String(reference ?? "").trim();
   if (normalized) return `CL-${normalized}`;
   return `CL-${randomBytes2(8).toString("hex").toUpperCase()}`;
