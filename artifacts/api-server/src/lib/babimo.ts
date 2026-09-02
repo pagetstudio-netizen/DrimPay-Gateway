@@ -80,9 +80,11 @@ export function buildBabimoClientReference(reference: string, countryCode?: stri
     : undefined;
   if (configuredReference) return configuredReference;
 
-  // Babimo assigned this stable client reference to the DrimPay CI account.
-  // It can be overridden with BABIMO_CI_CLIENT_REFERENCE in Plesk/Replit.
-  if (country === "CI") return "6ybmu2b";
+  // Babimo assigns a stable client reference to each merchant account.
+  // It must stay outside the repository and be supplied through the runtime.
+  if (country === "CI") {
+    throw new Error("BABIMO_CI_CLIENT_REFERENCE est manquante pour le compte Babimo CI.");
+  }
 
   const normalized = String(reference ?? "").trim();
   if (normalized) return `CL-${normalized}`;
