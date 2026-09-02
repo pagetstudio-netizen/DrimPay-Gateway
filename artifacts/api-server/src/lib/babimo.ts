@@ -56,7 +56,7 @@ function normalizeCoteDIvoirePhone(phone: string): string {
   return digits.startsWith("0") ? digits : `0${digits}`;
 }
 
-function normalizeBabimoPhone(phone: string, countryCode: string): string {
+export function normalizeBabimoPhone(phone: string, countryCode: string): string {
   const digits = String(phone ?? "").replace(/\D/g, "");
   const country = countryCode.toUpperCase().trim();
 
@@ -73,7 +73,7 @@ function normalizeBabimoPhone(phone: string, countryCode: string): string {
   return digits;
 }
 
-function buildBabimoClientReference(reference: string): string {
+export function buildBabimoClientReference(reference: string): string {
   const normalized = String(reference ?? "").trim();
   if (normalized) return `CL-${normalized}`;
   return `CL-${randomBytes(8).toString("hex").toUpperCase()}`;

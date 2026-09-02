@@ -317,7 +317,7 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
               <div className="flex items-start justify-between mb-1">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Soumission vers la passerelle</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Paramètres envoyés par DrimPay à l'agrégateur (ClapAy / PayDunya)</p>
+                   <p className="text-xs text-gray-400 mt-0.5">Paramètres envoyés par DrimPay à l'agrégateur sélectionné</p>
                 </div>
               </div>
               {isSandbox && !parsedGateway ? (

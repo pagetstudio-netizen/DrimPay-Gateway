@@ -107992,10 +107992,12 @@ __export(babimo_exports, {
   BabimoClient: () => BabimoClient,
   BabimoError: () => BabimoError,
   babimoPaymentMethod: () => babimoPaymentMethod,
+  buildBabimoClientReference: () => buildBabimoClientReference,
   getBabimoClient: () => getBabimoClient,
   isAnyBabimoConfigured: () => isAnyBabimoConfigured,
   isBabimoConfigured: () => isBabimoConfigured,
-  isBabimoPayoutSupported: () => isBabimoPayoutSupported
+  isBabimoPayoutSupported: () => isBabimoPayoutSupported,
+  normalizeBabimoPhone: () => normalizeBabimoPhone
 });
 import { randomBytes as randomBytes2 } from "node:crypto";
 function normalizeCoteDIvoirePhone(phone) {
@@ -278247,6 +278249,61 @@ init_paydunya();
 init_babimo();
 init_gombo_plus();
 
+// src/lib/gateway-payload.ts
+init_babimo();
+function buildGatewayPayloadSnapshot(params) {
+  if (params.gateway === "babimo") {
+    const paymentMethod = babimoPaymentMethod(
+      params.operator,
+      params.country_code,
+      params.operation
+    );
+    if (params.operation === "payout") {
+      return {
+        gateway: params.gateway,
+        method: "POST",
+        endpoint: "/collect/cashin",
+        payment_method: paymentMethod,
+        merchant_transaction_id: params.reference,
+        amount: params.amount,
+        telephone: normalizeBabimoPhone(params.phone, params.country_code),
+        notify_url: params.callback_url,
+        refercence_cl: buildBabimoClientReference(params.reference)
+      };
+    }
+    return {
+      gateway: params.gateway,
+      method: "POST",
+      endpoint: "/paiement",
+      currency: params.currency || "XOF",
+      payment_method: paymentMethod,
+      merchant_transaction_id: params.reference,
+      amount: params.amount,
+      telephone: normalizeBabimoPhone(params.phone, params.country_code),
+      success_url: params.return_url ?? params.callback_url,
+      failed_url: params.return_url ?? params.callback_url,
+      notify_url: params.callback_url,
+      refercence_cl: buildBabimoClientReference(params.reference),
+      ...paymentMethod === "OM_CI" && params.operator_otp ? { otp_code: params.operator_otp } : {}
+    };
+  }
+  return {
+    gateway: params.gateway,
+    method: "POST",
+    operation: params.operation,
+    amount: params.amount,
+    currency: params.currency,
+    country_code: params.country_code,
+    operator: params.operator,
+    phone: params.phone,
+    merchant_transaction_id: params.reference,
+    ...params.order_id ? { order_id: params.order_id } : {},
+    callback_url: params.callback_url,
+    ...params.return_url ? { return_url: params.return_url } : {},
+    ...params.description ? { description: params.description } : {}
+  };
+}
+
 // src/lib/payin-settlement.ts
 init_src();
 init_schema2();
@@ -278780,6 +278837,24 @@ router11.post("/dashboard/payin", requireAuth, async (req, res) => {
       const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
       const baseUrl2 = getWebhookBaseUrl();
       const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
+      await db.update(transactionsTable).set({
+        gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+          gateway: aggregator,
+          operation: "payin",
+          amount,
+          currency,
+          country_code: countryCode,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          return_url: `${getFrontendBaseUrl()}/dashboard`,
+          order_id: reference,
+          description,
+          operator_otp: operatorOtp
+        })),
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(transactionsTable.id, tx2.id));
       let gatewayRef;
       if (aggregator === "clapay") {
         const r = await client2.initiatePayin({
@@ -279041,6 +279116,21 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
     }
     const baseUrl2 = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
+    await db.update(transactionsTable).set({
+      gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+        gateway: aggregator,
+        operation: "payout",
+        amount,
+        currency,
+        country_code: countryCode,
+        operator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        description
+      })),
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(transactionsTable.id, tx2.id));
     let gatewayRef;
     try {
       console.log(`[Payout] \u2192 Initiation ${aggregator} | ref: ${reference} | ${amount} ${currency} | ${operator} (${countryCode}) \u2192 ${phone}`);
@@ -279790,6 +279880,21 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     description: note ?? "Reversement DrimPay",
     mode: currentMode
   }).returning();
+  await db.update(transactionsTable).set({
+    gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+      gateway: resolvedAggregator,
+      operation: "payout",
+      amount: net,
+      currency: countryMeta.currency,
+      country_code: countryCode,
+      operator,
+      phone,
+      reference,
+      callback_url: callbackUrl,
+      description: note ?? "Reversement DrimPay"
+    })),
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq(transactionsTable.id, tx.id));
   const [reversement] = await db.insert(reversementsTable).values({
     userId,
     walletId: wallet.id,
@@ -280522,6 +280627,24 @@ router11.post("/pay/:token", async (req, res) => {
     const { aggregator, client: client2 } = await resolveAggregator(effectiveCountry, effectiveOperator);
     const baseUrl2 = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl2}/api/webhooks/${aggregator}`;
+    await db.update(transactionsTable).set({
+      gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+        gateway: aggregator,
+        operation: "payin",
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
+        order_id: reference,
+        description: `Payment link: ${link.title}`,
+        operator_otp: operatorOtp
+      })),
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(transactionsTable.id, tx.id));
     let gatewayRef;
     let gatewayPaymentUrl;
     if (aggregator === "clapay") {
@@ -281271,6 +281394,24 @@ router11.post("/qr/:reference", async (req, res) => {
     const { aggregator, client: client2 } = await resolveAggregator(effectiveCountry, effectiveOperator);
     const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : aggregator === "babimo" ? "/api/webhooks/babimo" : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
+    await db.update(transactionsTable).set({
+      gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+        gateway: aggregator,
+        operation: "payin",
+        amount,
+        currency: effectiveCurrency,
+        country_code: effectiveCountry,
+        operator: effectiveOperator,
+        phone,
+        reference: txReference,
+        callback_url: callbackUrl,
+        return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
+        order_id: tx.orderId,
+        description: `QR payment: ${qr.name}`,
+        operator_otp: operatorOtp
+      })),
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(transactionsTable.id, tx.id));
     let externalRef;
     let paymentUrl = null;
     let ussdCode = null;
@@ -281776,7 +281917,9 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       const { aggregator, client: client2 } = await resolveAggregator(country_code, operator);
       const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : aggregator === "babimo" ? "/api/webhooks/babimo" : "/api/webhooks/gomboplus";
       const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
-      const gatewayPayload = {
+      const gatewayPayload = buildGatewayPayloadSnapshot({
+        gateway: aggregator,
+        operation: "payin",
         amount,
         currency,
         country_code,
@@ -281785,9 +281928,10 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         reference,
         order_id,
         callback_url: callbackUrl,
+        return_url: defaultReturnUrl,
         description,
-        gateway: aggregator
-      };
+        operator_otp
+      });
       await db.update(transactionsTable).set({ gatewayPayload: JSON.stringify(gatewayPayload), updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
       let externalRef;
       let paymentUrl = null;
@@ -285757,6 +285901,24 @@ router19.post("/pay/:token", async (req, res) => {
     const { aggregator, client: client2 } = await resolveAggregator(countryCode, operator);
     const webhookPath = aggregator === "clapay" ? "/api/webhooks/clapay" : aggregator === "paydunya" ? "/api/webhooks/paydunya" : aggregator === "babimo" ? "/api/webhooks/babimo" : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
+    await db.update(transactionsTable).set({
+      gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+        gateway: aggregator,
+        operation: "payin",
+        amount,
+        currency,
+        country_code: countryCode,
+        operator,
+        phone,
+        reference,
+        callback_url: callbackUrl,
+        return_url: returnUrl,
+        order_id: tx.orderId,
+        description: link.title,
+        operator_otp: operatorOtp
+      })),
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(transactionsTable.id, tx.id));
     let externalRef;
     let paymentUrl = null;
     let ussdCode = null;

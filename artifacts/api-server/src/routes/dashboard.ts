@@ -40,6 +40,7 @@ import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { BabimoClient, BabimoError, isBabimoPayoutSupported } from "../lib/babimo";
 import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
+import { buildGatewayPayloadSnapshot } from "../lib/gateway-payload";
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { ensureLatestMerchantWebhookSecret, ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
@@ -533,6 +534,27 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
       const baseUrl = getWebhookBaseUrl();
       const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
 
+      await db.update(transactionsTable)
+        .set({
+          gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+            gateway: aggregator,
+            operation: "payin",
+            amount,
+            currency,
+            country_code: countryCode,
+            operator,
+            phone,
+            reference,
+            callback_url: callbackUrl,
+            return_url: `${getFrontendBaseUrl()}/dashboard`,
+            order_id: reference,
+            description,
+            operator_otp: operatorOtp,
+          })),
+          updatedAt: new Date(),
+        })
+        .where(eq(transactionsTable.id, tx.id));
+
       let gatewayRef: string;
       if (aggregator === "clapay") {
         const r = await (client as ClapayClient).initiatePayin({
@@ -785,6 +807,24 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
 
     const baseUrl = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+
+    await db.update(transactionsTable)
+      .set({
+        gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+          gateway: aggregator,
+          operation: "payout",
+          amount,
+          currency,
+          country_code: countryCode,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          description,
+        })),
+        updatedAt: new Date(),
+      })
+      .where(eq(transactionsTable.id, tx.id));
 
     let gatewayRef: string;
     try {
@@ -1649,6 +1689,24 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
     })
     .returning();
 
+    await db.update(transactionsTable)
+      .set({
+        gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+          gateway: resolvedAggregator,
+          operation: "payout",
+          amount: net,
+          currency: countryMeta.currency,
+          country_code: countryCode,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          description: note ?? "Reversement DrimPay",
+        })),
+        updatedAt: new Date(),
+      })
+      .where(eq(transactionsTable.id, tx.id));
+
   // Créer le reversement lié à la même référence
   const [reversement] = await db
     .insert(reversementsTable)
@@ -2497,6 +2555,27 @@ router.post("/pay/:token", async (req, res) => {
     const { aggregator, client } = await resolveAggregator(effectiveCountry, effectiveOperator);
     const baseUrl = getWebhookBaseUrl();
     const callbackUrl = `${baseUrl}/api/webhooks/${aggregator}`;
+
+    await db.update(transactionsTable)
+      .set({
+        gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+          gateway: aggregator,
+          operation: "payin",
+          amount,
+          currency: effectiveCurrency,
+          country_code: effectiveCountry,
+          operator: effectiveOperator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          return_url: `${getFrontendBaseUrl()}/fr/pay/${token}`,
+          order_id: reference,
+          description: `Payment link: ${link.title}`,
+          operator_otp: operatorOtp,
+        })),
+        updatedAt: new Date(),
+      })
+      .where(eq(transactionsTable.id, tx.id));
 
     let gatewayRef: string;
     let gatewayPaymentUrl: string | undefined;
@@ -3415,6 +3494,27 @@ router.post("/qr/:reference", async (req, res) => {
           ? "/api/webhooks/babimo"
           : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
+
+    await db.update(transactionsTable)
+      .set({
+        gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+          gateway: aggregator,
+          operation: "payin",
+          amount,
+          currency: effectiveCurrency,
+          country_code: effectiveCountry,
+          operator: effectiveOperator,
+          phone,
+          reference: txReference,
+          callback_url: callbackUrl,
+          return_url: `${getFrontendBaseUrl()}/qr/${reference}`,
+          order_id: tx.orderId!,
+          description: `QR payment: ${qr.name}`,
+          operator_otp: operatorOtp,
+        })),
+        updatedAt: new Date(),
+      })
+      .where(eq(transactionsTable.id, tx.id));
 
     let externalRef: string;
     let paymentUrl: string | null = null;

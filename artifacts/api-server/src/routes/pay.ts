@@ -28,6 +28,7 @@ import { ClapayClient, ClapayError } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { BabimoClient, BabimoError } from "../lib/babimo";
 import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
+import { buildGatewayPayloadSnapshot } from "../lib/gateway-payload";
 import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { GENERIC_ERROR_MESSAGE, merchantFailureLabel } from "../lib/merchant-error";
@@ -410,6 +411,27 @@ router.post("/pay/:token", async (req: any, res: any) => {
           ? "/api/webhooks/babimo"
           : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
+
+    await db.update(transactionsTable)
+      .set({
+        gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
+          gateway: aggregator,
+          operation: "payin",
+          amount,
+          currency,
+          country_code: countryCode,
+          operator,
+          phone,
+          reference,
+          callback_url: callbackUrl,
+          return_url: returnUrl,
+          order_id: tx.orderId!,
+          description: link.title,
+          operator_otp: operatorOtp,
+        })),
+        updatedAt: new Date(),
+      })
+      .where(eq(transactionsTable.id, tx.id));
 
     let externalRef: string;
     let paymentUrl: string | null = null;

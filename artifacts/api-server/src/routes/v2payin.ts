@@ -15,6 +15,7 @@ import { ClapayError } from "../lib/clapay";
 import { PayDunyaError } from "../lib/paydunya";
 import { BabimoClient, BabimoError } from "../lib/babimo";
 import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
+import { buildGatewayPayloadSnapshot } from "../lib/gateway-payload";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure, buildWalletsSummary } from "../lib/telegram";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
@@ -396,13 +397,21 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
             : "/api/webhooks/gomboplus";
       const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
 
-      const gatewayPayload = {
-        amount, currency, country_code, operator, phone,
-        reference, order_id,
-        callback_url: callbackUrl,
-        description,
+      const gatewayPayload = buildGatewayPayloadSnapshot({
         gateway: aggregator,
-      };
+        operation: "payin",
+        amount,
+        currency,
+        country_code,
+        operator,
+        phone,
+        reference,
+        order_id,
+        callback_url: callbackUrl,
+        return_url: defaultReturnUrl,
+        description,
+        operator_otp,
+      });
       await db.update(transactionsTable)
         .set({ gatewayPayload: JSON.stringify(gatewayPayload), updatedAt: new Date() })
         .where(eq(transactionsTable.id, tx.id));
