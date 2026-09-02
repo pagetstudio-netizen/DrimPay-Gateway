@@ -2841,7 +2841,7 @@ const massPayoutSchema = z.object({
   description: z.string().optional(),
   recipients: z.array(z.object({
     phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
-    amount: z.number().positive(),
+    amount: z.coerce.number().finite().min(200, "Le montant minimum est de 200"),
     countryCode: z.string().length(2),
     operator: z.string().min(1),
     note: z.string().optional(),
@@ -2863,7 +2863,10 @@ router.get("/dashboard/mass-payout", requireAuth, async (req, res) => {
 router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const parsed = massPayoutSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
+    res.status(400).json({
+      error: parsed.error.issues[0]?.message ?? "Données invalides",
+      details: parsed.error.flatten(),
+    });
     return;
   }
 

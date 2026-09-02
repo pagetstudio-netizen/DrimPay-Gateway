@@ -82,7 +82,9 @@ function rowErrors(r: Recipient): string[] {
   else if (!validatePhone(r.phone, r.countryCode)) {
     errs.push(`Numéro invalide (${country?.phoneDigits} chiffres attendus)`);
   }
-  if (!r.amount || parseFloat(r.amount) <= 0) errs.push("Montant invalide");
+  if (!r.amount || !Number.isFinite(Number(r.amount)) || Number(r.amount) < 200) {
+    errs.push("Montant minimum : 200");
+  }
   return errs;
 }
 
@@ -168,7 +170,7 @@ function RecipientRow({ r, index, onChange, onRemove, showErrors }: {
           <div className="relative">
             <input
               type="number"
-              min="1"
+               min="200"
               placeholder="Montant"
               value={r.amount}
               onChange={e => onChange(r.id, "amount", e.target.value)}

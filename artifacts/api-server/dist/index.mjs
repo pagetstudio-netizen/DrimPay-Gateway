@@ -280904,7 +280904,7 @@ var massPayoutSchema = external_exports2.object({
   description: external_exports2.string().optional(),
   recipients: external_exports2.array(external_exports2.object({
     phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
-    amount: external_exports2.number().positive(),
+    amount: external_exports2.coerce.number().finite().min(200, "Le montant minimum est de 200"),
     countryCode: external_exports2.string().length(2),
     operator: external_exports2.string().min(1),
     note: external_exports2.string().optional()
@@ -280919,7 +280919,10 @@ router11.get("/dashboard/mass-payout", requireAuth, async (req, res) => {
 router11.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   const parsed = massPayoutSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Donn\xE9es invalides", details: parsed.error.flatten() });
+    res.status(400).json({
+      error: parsed.error.issues[0]?.message ?? "Donn\xE9es invalides",
+      details: parsed.error.flatten()
+    });
     return;
   }
   const userId = req.session.userId;
