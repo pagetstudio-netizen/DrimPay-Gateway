@@ -54,7 +54,7 @@ export default function Payout() {
   const [success, setSuccess] = useState<any>(null);
   const [error, setError] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<typeof COUNTRIES[0] | null>(null);
-  const [feeRate, setFeeRate] = useState(0.035);
+  const [feeRate, setFeeRate] = useState<number | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -88,6 +88,7 @@ export default function Payout() {
   const watchedOperator = form.watch("operator");
 
   useEffect(() => {
+    setFeeRate(null);
     const params = new URLSearchParams();
     if (watchedCountry && watchedOperator) {
       params.set("country_code", watchedCountry);
@@ -248,9 +249,11 @@ export default function Payout() {
                       <FormLabel>Montant à envoyer ({selectedCountry?.currency ?? "XOF"})</FormLabel>
                       <FormControl><Input type="number" placeholder="10000" min="200" {...field} /></FormControl>
                       {field.value && (
-                        <p className="text-xs text-muted-foreground">
-                           Frais ({(feeRate * 100).toLocaleString("fr-FR")}%): {(parseFloat(field.value) * feeRate).toLocaleString("fr-FR")} · Total débité : {(parseFloat(field.value) * (1 + feeRate)).toLocaleString("fr-FR")} {selectedCountry?.currency ?? "XOF"}
-                        </p>
+                         <p className="text-xs text-muted-foreground">
+                           {feeRate === null
+                             ? "Taux de frais en cours de chargement..."
+                             : <>Frais ({(feeRate * 100).toLocaleString("fr-FR")}%): {(parseFloat(field.value) * feeRate).toLocaleString("fr-FR")} · Total débité : {(parseFloat(field.value) * (1 + feeRate)).toLocaleString("fr-FR")} {selectedCountry?.currency ?? "XOF"}</>}
+                         </p>
                       )}
                       <FormMessage />
                     </FormItem>
@@ -265,7 +268,7 @@ export default function Payout() {
                     </FormItem>
                   )} />
 
-                  <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
+                  <Button type="submit" variant="primary" className="w-full" disabled={submitting || feeRate === null}>
                     {submitting ? "Traitement..." : <><ArrowUpRight className="w-4 h-4 mr-2" />Initier le Pay-out</>}
                   </Button>
                 </form>

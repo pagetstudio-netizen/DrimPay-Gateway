@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 function useFeeRate() {
-  const [rate, setRate] = useState({ payout: 3.5, payout_display: "3,5%" });
+  const [rate, setRate] = useState<{ payout: number; payout_display: string } | null>(null);
   useEffect(() => {
     fetch("/api/dashboard/fee-rate", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
@@ -62,6 +62,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon?: React.
 
 export default function DocPayout() {
   const feeRate = useFeeRate();
+  const feeRateLabel = feeRate?.payout_display ?? "Chargement...";
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
@@ -74,7 +75,7 @@ export default function DocPayout() {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 font-semibold">Frais Pay-out : {feeRate.payout_display}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 font-semibold">Frais Pay-out : {feeRateLabel}</span>
             <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-mono">v2.0</span>
           </div>
         </div>
@@ -86,7 +87,7 @@ export default function DocPayout() {
             <p className="text-xs text-muted-foreground mt-1">
               L'API Pay-out est <strong className="text-foreground">exclusivement réservée aux comptes Entreprise</strong> vérifiés (KYB approuvé).
               Les comptes personnels ne peuvent pas utiliser cette API. Pour retirer des fonds depuis un compte personnel,
-              utilisez la fonctionnalité <strong className="text-foreground">Reversement</strong> depuis votre dashboard (frais : 3,5%).
+              utilisez la fonctionnalité <strong className="text-foreground">Reversement</strong> depuis votre dashboard (frais selon le taux affiché).
             </p>
           </div>
         </div>
@@ -105,7 +106,7 @@ export default function DocPayout() {
         <Section title="Introduction" icon={Globe}>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
             L'API Pay-out DrimPay vous permet d'envoyer des fonds vers un numéro Mobile Money dans 7 pays d'Afrique de l'Ouest et Centrale.
-            Le bénéficiaire reçoit exactement le montant demandé. Les frais de <strong className="text-foreground">{feeRate.payout_display}</strong> sont payés par le marchand et débités en plus du montant sur le wallet du pays cible.
+            Le bénéficiaire reçoit exactement le montant demandé. Les frais de <strong className="text-foreground">{feeRateLabel}</strong> sont payés par le marchand et débités en plus du montant sur le wallet du pays cible.
           </p>
           <div className="rounded-xl border border-border bg-card overflow-hidden font-mono text-sm">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -326,13 +327,13 @@ COMMIT;`} />
         <Section title="Calcul des frais" icon={Calculator}>
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-muted-foreground mb-4">
-              Les frais de <strong className="text-foreground">{feeRate.payout_display}</strong> sont calculés sur le montant demandé et payés par le marchand. Le bénéficiaire reçoit exactement le montant demandé ; le wallet est débité de <strong className="text-foreground">montant + frais</strong>.
+              Les frais de <strong className="text-foreground">{feeRateLabel}</strong> sont calculés sur le montant demandé et payés par le marchand. Le bénéficiaire reçoit exactement le montant demandé ; le wallet est débité de <strong className="text-foreground">montant + frais</strong>.
               Le taux affiché ici est votre taux réel actuel — il peut être personnalisé par l'équipe DrimPay selon votre volume.
             </p>
             <CodeBlock code={`// Exemple : pay-out de 25 000 XOF
 amount       = 25 000 XOF
-fee (${feeRate.payout_display.replace(".", ",")})     = ${Math.round(25000 * feeRate.payout / 100).toLocaleString("fr-FR")} XOF
-total_debit  = ${(25000 + Math.round(25000 * feeRate.payout / 100)).toLocaleString("fr-FR")} XOF  // Montant prélevé sur votre wallet
+fee (${feeRateLabel.replace(".", ",")})     = ${feeRate === null ? "—" : Math.round(25000 * feeRate.payout / 100).toLocaleString("fr-FR")} XOF
+total_debit  = ${feeRate === null ? "—" : (25000 + Math.round(25000 * feeRate.payout / 100)).toLocaleString("fr-FR")} XOF  // Montant prélevé sur votre wallet
 beneficiary  = 25 000 XOF  // Montant reçu par le bénéficiaire`} lang="text" />
           </div>
         </Section>

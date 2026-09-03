@@ -255,7 +255,6 @@ export default function MassPayout() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [wallets, setWallets] = useState<WalletBalance[]>([]);
-  const [defaultFeeRate, setDefaultFeeRate] = useState(0.035);
   const [feeRates, setFeeRates] = useState<Record<string, number>>({});
   const [showErrors, setShowErrors] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -282,15 +281,6 @@ export default function MassPayout() {
   };
 
   useEffect(() => { loadJobs(); loadWallets(); }, []);
-
-  useEffect(() => {
-    fetch(`${BASE}/api/dashboard/fee-rate`, { credentials: "include" })
-      .then(r => r.json())
-      .then(d => {
-        if (typeof d?.payout === "number") setDefaultFeeRate(d.payout / 100);
-      })
-      .catch(() => {});
-  }, []);
 
   const addRow    = () => setRecipients(prev => [...prev, newRecipient()]);
   const removeRow = (id: string) => setRecipients(prev => prev.length > 1 ? prev.filter(r => r.id !== id) : prev);
@@ -358,20 +348,25 @@ export default function MassPayout() {
   };
 
   const feeRateForRecipient = (r: Recipient) =>
-    feeRates[`${r.countryCode}:${r.operator}`] ?? defaultFeeRate;
+    feeRates[`${r.countryCode}:${r.operator}`];
+  const requiredFeeRateKeys = recipients
+    .filter(r => r.countryCode && r.operator)
+    .map(r => `${r.countryCode}:${r.operator}`);
+  const feeRatesReady = requiredFeeRateKeys.every(key => typeof feeRates[key] === "number");
   const totalAmount  = recipients.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0);
-  const fees         = recipients.reduce((acc, r) => {
+  const fees         = feeRatesReady ? recipients.reduce((acc, r) => {
     const amount = parseFloat(r.amount) || 0;
-    return acc + Math.round(amount * feeRateForRecipient(r) * 100) / 100;
-  }, 0);
-  const totalDebited = totalAmount + fees;
+    const rate = feeRateForRecipient(r) ?? 0;
+    return acc + Math.round(amount * rate * 100) / 100;
+  }, 0) : null;
+  const totalDebited = fees === null ? null : totalAmount + fees;
 
   const allRowsValid = recipients.every(r => rowErrors(r).length === 0);
   const filledCount  = recipients.filter(r => r.phone && r.amount && r.operator).length;
 
   const balanceByCountry = recipients.reduce<Record<string, number>>((acc, r) => {
     const amt = parseFloat(r.amount) || 0;
-    const fee = Math.round(amt * feeRateForRecipient(r) * 100) / 100;
+    const fee = Math.round(amt * (feeRateForRecipient(r) ?? 0) * 100) / 100;
     acc[r.countryCode] = (acc[r.countryCode] ?? 0) + amt + fee;
     return acc;
   }, {});
@@ -388,12 +383,16 @@ export default function MassPayout() {
     }
   }
 
-  const canSubmit = allRowsValid && balanceWarnings.length === 0;
+  const canSubmit = allRowsValid && feeRatesReady && balanceWarnings.length === 0;
 
   const submit = async () => {
     setShowErrors(true);
     if (!allRowsValid) {
       setError("Veuillez corriger les erreurs dans les destinataires.");
+      return;
+    }
+    if (!feeRatesReady) {
+      setError("Chargement du taux de frais administrateur en cours.");
       return;
     }
     if (balanceWarnings.length > 0) {
@@ -671,11 +670,11 @@ export default function MassPayout() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">Frais (taux effectif par opérateur)</span>
-                    <span className="text-sm text-amber-600 font-medium">+ {fees.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA</span>
+                    <span className="text-sm text-amber-600 font-medium">{fees === null ? "—" : `+ ${fees.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA`}</span>
                   </div>
                   <div className="rounded-xl px-4 py-3 flex justify-between items-center" style={{ backgroundColor: "#B5F03C" }}>
                     <span className="text-sm font-bold text-gray-900">Total débité</span>
-                    <span className="text-sm font-bold text-gray-900">{totalDebited.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA</span>
+                    <span className="text-sm font-bold text-gray-900">{totalDebited === null ? "—" : `${totalDebited.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA`}</span>
                   </div>
                 </div>
               </div>

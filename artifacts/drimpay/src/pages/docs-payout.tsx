@@ -63,7 +63,7 @@ function ParamRow({ name, type, required, desc }: { name: string; type: string; 
 }
 
 function usePlatformFees() {
-  const [fees, setFees] = useState({ payin: 3.5, payout: 3.5 });
+  const [fees, setFees] = useState<{ payin: number; payout: number } | null>(null);
   useEffect(() => {
     fetch("/api/fees")
       .then(r => r.ok ? r.json() : null)
@@ -79,6 +79,7 @@ export default function DocsPayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const LANGS = ["curl", "node.js", "php", "python"];
   const fees = usePlatformFees();
+  const payoutFeeLabel = fees?.payout == null ? "Loading..." : `${fees.payout}%`;
   const lang = useLang();
   useSEO({
     title: lang === "fr"
@@ -346,7 +347,7 @@ print(data["reference"])`,
                 The DrimPay Pay-out API enables you to push money directly to any Mobile Money wallet. This is ideal for supplier payments, agent commissions, salary disbursements, customer refunds, and mass payroll.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Funds are debited from your <strong className="text-foreground">country-specific wallet</strong>. You must have an active wallet with sufficient balance in the destination country before initiating a pay-out. Pay-out is available to <strong className="text-foreground">all accounts</strong> (personal &amp; business). DrimPay charges a flat <strong className="text-foreground">{fees.payout}% fee</strong> per transaction. The beneficiary receives exactly <strong className="text-foreground">amount</strong>; the total deducted from your wallet is <strong className="text-foreground">amount + fee</strong>.
+                Funds are debited from your <strong className="text-foreground">country-specific wallet</strong>. You must have an active wallet with sufficient balance in the destination country before initiating a pay-out. Pay-out is available to <strong className="text-foreground">all accounts</strong> (personal &amp; business). DrimPay charges a flat <strong className="text-foreground">{payoutFeeLabel} fee</strong> per transaction. The beneficiary receives exactly <strong className="text-foreground">amount</strong>; the total deducted from your wallet is <strong className="text-foreground">amount + fee</strong>.
               </p>
               <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 mb-6 flex gap-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
@@ -447,8 +448,8 @@ print(data["reference"])`,
   "order_id": "PAYOUT-20240501-042",
   "status": "pending",
   "amount": 10000,
-  "fee": ${Math.round(10000 * fees.payout / 100)},
-  "total_debited": ${10000 + Math.round(10000 * fees.payout / 100)},
+  "fee": ${fees?.payout == null ? "—" : Math.round(10000 * fees.payout / 100)},
+  "total_debited": ${fees?.payout == null ? "—" : 10000 + Math.round(10000 * fees.payout / 100)},
   "currency": "XOF",
   "country_code": "SN",
   "operator": "orange",
