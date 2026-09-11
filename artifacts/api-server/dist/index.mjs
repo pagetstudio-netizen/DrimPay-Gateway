@@ -56703,7 +56703,9 @@ __export(gombo_plus_exports, {
   gomboPlusOperatorCode: () => gomboPlusOperatorCode,
   isAnyGomboPlusConfigured: () => isAnyGomboPlusConfigured,
   isGomboPlusConfigured: () => isGomboPlusConfigured,
-  isGomboPlusSupported: () => isGomboPlusSupported
+  isGomboPlusSupported: () => isGomboPlusSupported,
+  loadGomboPlusPublicKeyFromSettings: () => loadGomboPlusPublicKeyFromSettings,
+  setGomboPlusPublicKeyFromSettings: () => setGomboPlusPublicKeyFromSettings
 });
 function countryKey(countryCode) {
   const normalized = String(countryCode ?? "").trim().toUpperCase();
@@ -56764,7 +56766,21 @@ function isGomboPlusSupported(operator, countryCode, operation) {
 function isRejected(raw) {
   return raw?.status === "failed" || raw?.status === false || raw?.success === false;
 }
+async function loadGomboPlusPublicKeyFromSettings() {
+  try {
+    const [setting] = await db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, GOMBO_PUBLIC_KEY_SETTING)).limit(1);
+    adminPublicKey = setting?.value?.trim() || void 0;
+    client = null;
+  } catch (error40) {
+    console.warn(`[Gombo Plus] Cl\xE9 publique admin indisponible: ${error40?.message ?? error40}`);
+  }
+}
+function setGomboPlusPublicKeyFromSettings(value) {
+  adminPublicKey = value?.trim() || void 0;
+  client = null;
+}
 function readGomboCredential(name2) {
+  if (name2 === "GOMBOPLUS_PUBLIC_KEY" && adminPublicKey) return adminPublicKey;
   const direct = process.env[name2]?.trim();
   if (direct) return direct;
   const prefix = `${name2}_`;
@@ -56804,11 +56820,15 @@ function getGomboPlusClient() {
 function isAnyGomboPlusConfigured() {
   return isGomboPlusConfigured();
 }
-var DEFAULT_BASE_URL, OPERATOR_CODES, GOMBO_COUNTRIES, MAINTENANCE_OPERATOR, GomboPlusError, GomboPlusClient, client;
+var DEFAULT_BASE_URL, GOMBO_PUBLIC_KEY_SETTING, OPERATOR_CODES, GOMBO_COUNTRIES, MAINTENANCE_OPERATOR, GomboPlusError, GomboPlusClient, adminPublicKey, client;
 var init_gombo_plus = __esm({
   "src/lib/gombo-plus.ts"() {
     "use strict";
+    init_src();
+    init_schema2();
+    init_drizzle_orm();
     DEFAULT_BASE_URL = "https://api.gomboplus.com";
+    GOMBO_PUBLIC_KEY_SETTING = "gomboplus_public_key";
     OPERATOR_CODES = {
       "yas|TG": "yas",
       "tmoney|TG": "yas",
@@ -282429,6 +282449,7 @@ init_src();
 init_schema2();
 init_drizzle_orm();
 import crypto8 from "crypto";
+init_gombo_plus();
 import path2 from "path";
 var import_multer2 = __toESM(require_multer(), 1);
 
@@ -284029,6 +284050,9 @@ router13.put(AP + "/settings", requireAdmin, async (req, res) => {
   const updates = req.body;
   for (const [key, value] of Object.entries(updates)) {
     await db.insert(adminSettingsTable).values({ key, value }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value, updatedAt: /* @__PURE__ */ new Date() } });
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, "gomboplus_public_key")) {
+    setGomboPlusPublicKeyFromSettings(updates.gomboplus_public_key);
   }
   await logAdminAction(req.session.userId, "UPDATE_SETTINGS", "settings", void 0, JSON.stringify(Object.keys(updates)), req.ip);
   res.json({ ok: true });
@@ -286637,6 +286661,7 @@ function startBabimoReconciliation() {
 
 // src/index.ts
 init_clapay();
+init_gombo_plus();
 init_src();
 var __dirname22 = dirname2(fileURLToPath3(import.meta.url));
 var logDir = join2(__dirname22, "..", "..", "..", "logs");
@@ -286658,6 +286683,7 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason) => {
   crashLog("[unhandledRejection]", reason);
 });
+await loadGomboPlusPublicKeyFromSettings();
 var rawPort = process.env["PORT"] || "8080";
 var port = Number(rawPort);
 var effectivePort = Number.isNaN(port) || port <= 0 ? 8080 : port;
