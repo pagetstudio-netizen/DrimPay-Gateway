@@ -1,4 +1,4 @@
--- Réparation ciblée du marchand Bieleu Tcheumeni Dayna Clea.
+-- Seed de réparation ciblé du marchand Bieleu Tcheumeni Dayna Clea.
 --
 -- À exécuter dans l'éditeur SQL Supabase après vérification du marchand.
 -- Le bloc échoue volontairement si l'état observé n'est plus celui attendu,
