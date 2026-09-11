@@ -1018,23 +1018,31 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
 
 router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
-  const keys = await db
-    .select({
-      id: apiKeysTable.id,
-      name: apiKeysTable.name,
-      description: apiKeysTable.description,
-      prefix: apiKeysTable.prefix,
-      env: apiKeysTable.env,
-      status: apiKeysTable.status,
-      hasWebhookSecret: sql<boolean>`${apiKeysTable.webhookSecret} IS NOT NULL`,
-      lastUsedAt: apiKeysTable.lastUsedAt,
-      createdAt: apiKeysTable.createdAt,
-    })
-    .from(apiKeysTable)
-    .where(eq(apiKeysTable.userId, userId))
-    .orderBy(desc(apiKeysTable.createdAt));
+  try {
+    const keys = await db
+      .select({
+        id: apiKeysTable.id,
+        name: apiKeysTable.name,
+        description: apiKeysTable.description,
+        prefix: apiKeysTable.prefix,
+        env: apiKeysTable.env,
+        status: apiKeysTable.status,
+        hasWebhookSecret: sql<boolean>`${apiKeysTable.webhookSecret} IS NOT NULL`,
+        lastUsedAt: apiKeysTable.lastUsedAt,
+        createdAt: apiKeysTable.createdAt,
+      })
+      .from(apiKeysTable)
+      .where(eq(apiKeysTable.userId, userId))
+      .orderBy(desc(apiKeysTable.createdAt));
 
-  res.json(keys);
+    res.json(keys);
+  } catch (error) {
+    console.error("[API Keys] list failed", {
+      userId,
+      error: error instanceof Error ? error.message : "unknown database error",
+    });
+    res.status(503).json({ error: "Clés API temporairement indisponibles" });
+  }
 });
 
 // Reveal full API key — requires password confirmation

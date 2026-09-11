@@ -12,6 +12,33 @@ import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+async function fetchJsonWithRetry<T>(url: string, init?: RequestInit, maxAttempts = 3): Promise<T> {
+  let lastError = new Error("Erreur réseau");
+  const retryableStatuses = new Set([401, 408, 425, 429, 500, 502, 503, 504]);
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(url, init);
+      const data = await response.json().catch(() => null);
+      if (response.ok) return data as T;
+
+      lastError = new Error(
+        typeof data?.error === "string" ? data.error : `HTTP ${response.status}`,
+      );
+      if (!retryableStatuses.has(response.status) || attempt === maxAttempts - 1) {
+        return Promise.reject(lastError);
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : lastError;
+      if (attempt === maxAttempts - 1) throw lastError;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+  }
+
+  throw lastError;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ApiKey = {
@@ -215,6 +242,7 @@ type KybStatus = "pending" | "submitted" | "under_review" | "approved" | "reject
 function ApiKeysTab() {
   const [keys, setKeys]               = useState<ApiKey[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [loadError, setLoadError]     = useState("");
   const [creating, setCreating]       = useState(false);
   const [name, setName]               = useState("");
   const [description, setDescription] = useState("");
@@ -241,17 +269,32 @@ function ApiKeysTab() {
 
   const { copied, copy } = useCopy();
 
-  const fetch_ = () => {
+  const fetch_ = async () => {
     setLoading(true);
-    fetch(`${BASE}/api/dashboard/api-keys`, { credentials: "include" })
-      .then(r => r.json()).then(setKeys).catch(() => setKeys([]))
-      .finally(() => setLoading(false));
+    setLoadError("");
+    try {
+      const data = await fetchJsonWithRetry<unknown>(
+        `${BASE}/api/dashboard/api-keys`,
+        { credentials: "include" },
+      );
+      if (!Array.isArray(data)) {
+        throw new Error("Réponse invalide du serveur");
+      }
+      setKeys(data as ApiKey[]);
+    } catch {
+      setKeys([]);
+      setLoadError("Les clés API n'ont pas pu être chargées. Vérifiez votre connexion puis réessayez.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetch_();
-    fetch(`${BASE}/api/dashboard/status`, { credentials: "include" })
-      .then(r => r.json())
+    fetchJsonWithRetry<{ kybStatus?: KybStatus }>(
+      `${BASE}/api/dashboard/status`,
+      { credentials: "include" },
+    )
       .then(d => setKybStatus(d.kybStatus ?? "pending"))
       .catch(() => setKybStatus("pending"));
   }, []);
@@ -623,6 +666,20 @@ function ApiKeysTab() {
         {loading ? (
           <div className="p-5 space-y-3">
             {[1, 2].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center py-12 px-5 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mb-3">
+              <AlertCircle className="w-6 h-6 text-red-400" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Chargement impossible</p>
+            <p className="text-xs text-gray-500 max-w-sm">{loadError}</p>
+            <button
+              onClick={fetch_}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Réessayer
+            </button>
           </div>
         ) : activeKeys.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 text-center">
