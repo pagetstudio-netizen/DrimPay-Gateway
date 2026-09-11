@@ -42,9 +42,21 @@ try {
     console.log("OK:", col.split("ADD COLUMN IF NOT EXISTS")[1]?.split(" ")[1] ?? col.slice(0, 60));
   }
 
+  // Secret HMAC propre à chaque clé API — nullable pour préserver
+  // les clés créées avant l'ajout de la signature des webhooks.
+  const apiKeyCols = [
+    `ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS webhook_secret text`,
+  ];
+  for (const col of apiKeyCols) {
+    await sql(col);
+    console.log("OK:", col.split("ADD COLUMN IF NOT EXISTS")[1]?.split(" ")[1] ?? col.slice(0, 60));
+  }
+
   // Vérification finale
   const res = await sql(`SELECT column_name FROM information_schema.columns WHERE table_name='users' ORDER BY ordinal_position`);
   console.log("\nColonnes users:", res.rows.map(r => r.column_name).join(", "));
+  const apiKeysRes = await sql(`SELECT column_name FROM information_schema.columns WHERE table_name='api_keys' ORDER BY ordinal_position`);
+  console.log("Colonnes api_keys:", apiKeysRes.rows.map(r => r.column_name).join(", "));
   console.log("\nMigration terminée ✓");
 } catch (e) {
   console.error("Erreur:", e.message);

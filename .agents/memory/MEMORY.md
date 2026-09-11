@@ -12,3 +12,4 @@
 - [DrimPay security baseline](drimpay-security.md) — scan tracked source and generated dist together; keep real credentials only in the secret manager and runtime logs value-free.
 - [Gateway payload diagnostics](drimpay-gateway-payloads.md) — store sanitized aggregator request snapshots before calls so failed submissions remain diagnosable.
 - [DrimPay API key access](drimpay-api-keys.md) — Sandbox keys are available before KYB approval; only Live key operations require approved KYB.
+- [DrimPay API key schema](drimpay-api-key-schema.md) — older Plesk/Supabase databases need the nullable webhook_secret column before the API key page can load.

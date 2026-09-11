@@ -225,6 +225,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "webhook_secret": {
+          "name": "webhook_secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "prefix": {
           "name": "prefix",
           "type": "text",

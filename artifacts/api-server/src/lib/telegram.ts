@@ -107,9 +107,26 @@ function escapeTelegramHtml(value: string) {
     .replace(/>/g, "&gt;");
 }
 
+function getErrorDetails(error: unknown) {
+  const details: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; depth < 3 && current; depth += 1) {
+    if (current instanceof Error) {
+      details.push(current.message);
+      current = current.cause;
+      continue;
+    }
+    if (typeof current === "object" && "message" in current) {
+      const message = (current as { message?: unknown }).message;
+      if (typeof message === "string") details.push(message);
+    }
+    break;
+  }
+  return [...new Set(details)].join(" | ") || "Erreur inconnue";
+}
+
 export async function notifyApiKeyListFailure(opts: { userId: number; error: unknown }) {
-  const rawError = opts.error instanceof Error ? opts.error.message : String(opts.error);
-  const safeError = escapeTelegramHtml(rawError).slice(0, 700);
+  const safeError = escapeTelegramHtml(getErrorDetails(opts.error)).slice(0, 900);
   await send(
     `🚨 <b>Erreur chargement clés API marchand</b>\n\n` +
     `Marchand ID : <code>${opts.userId}</code>\n` +

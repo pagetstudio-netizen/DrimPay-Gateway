@@ -53,6 +53,7 @@ CREATE TABLE "api_keys" (
 	"description" text,
 	"key_hash" text NOT NULL,
 	"raw_key" text,
+	"webhook_secret" text,
 	"prefix" text NOT NULL,
 	"env" "api_key_env" DEFAULT 'sandbox' NOT NULL,
 	"status" "api_key_status" DEFAULT 'active' NOT NULL,

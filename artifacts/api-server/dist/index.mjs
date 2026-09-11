@@ -263991,9 +263991,25 @@ async function send(text2) {
 function escapeTelegramHtml(value) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+function getErrorDetails(error40) {
+  const details = [];
+  let current = error40;
+  for (let depth = 0; depth < 3 && current; depth += 1) {
+    if (current instanceof Error) {
+      details.push(current.message);
+      current = current.cause;
+      continue;
+    }
+    if (typeof current === "object" && "message" in current) {
+      const message = current.message;
+      if (typeof message === "string") details.push(message);
+    }
+    break;
+  }
+  return [...new Set(details)].join(" | ") || "Erreur inconnue";
+}
 async function notifyApiKeyListFailure(opts) {
-  const rawError = opts.error instanceof Error ? opts.error.message : String(opts.error);
-  const safeError = escapeTelegramHtml(rawError).slice(0, 700);
+  const safeError = escapeTelegramHtml(getErrorDetails(opts.error)).slice(0, 900);
   await send(
     `\u{1F6A8} <b>Erreur chargement cl\xE9s API marchand</b>
 
