@@ -56,10 +56,52 @@ export async function settlePayinStatus(params: SettlePayinParams): Promise<{ cr
       return row ?? null;
     }
 
+    // Defense in depth: a transaction must only credit a wallet from the
+    // same environment. Older API requests could attach a Live transaction
+    // to an existing Sandbox wallet because the wallet lookup omitted mode.
+    let [wallet] = await trx
+      .select()
+      .from(walletsTable)
+      .where(eq(walletsTable.id, row.walletId));
+
+    if (!wallet || wallet.mode !== row.mode) {
+      const [modeWallet] = await trx
+        .select()
+        .from(walletsTable)
+        .where(and(
+          eq(walletsTable.userId, row.userId),
+          eq(walletsTable.countryCode, row.countryCode),
+          eq(walletsTable.mode, row.mode),
+        ));
+      wallet = modeWallet;
+
+      if (!wallet) {
+        [wallet] = await trx
+          .insert(walletsTable)
+          .values({
+            userId: row.userId,
+            countryCode: row.countryCode,
+            currency: row.currency,
+            mode: row.mode,
+          })
+          .returning();
+      }
+
+      await trx
+        .update(transactionsTable)
+        .set({ walletId: wallet.id, updatedAt: new Date() })
+        .where(eq(transactionsTable.id, row.id));
+
+      console.warn(
+        `[Settlement] Wallet mode corrigé pour ${row.reference}: ` +
+        `${row.mode} → wallet #${wallet.id}`,
+      );
+    }
+
     await trx
       .update(walletsTable)
       .set({ balance: sql`${walletsTable.balance} + ${row.netAmount}` })
-      .where(eq(walletsTable.id, row.walletId));
+      .where(eq(walletsTable.id, wallet.id));
 
     return row;
   });

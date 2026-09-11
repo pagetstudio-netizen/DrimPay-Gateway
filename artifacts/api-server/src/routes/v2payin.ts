@@ -269,7 +269,11 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
   const [existing] = await db
     .select()
     .from(transactionsTable)
-    .where(and(eq(transactionsTable.userId, userId), eq(transactionsTable.orderId, order_id)));
+    .where(and(
+      eq(transactionsTable.userId, userId),
+      eq(transactionsTable.orderId, order_id),
+      eq(transactionsTable.mode, mode as "sandbox" | "live"),
+    ));
 
   if (existing) {
     res.status(200).json({
@@ -295,12 +299,21 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
   let [wallet] = await db
     .select()
     .from(walletsTable)
-    .where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, country_code)));
+    .where(and(
+      eq(walletsTable.userId, userId),
+      eq(walletsTable.countryCode, country_code),
+      eq(walletsTable.mode, mode as "sandbox" | "live"),
+    ));
 
   if (!wallet) {
     [wallet] = await db
       .insert(walletsTable)
-      .values({ userId, countryCode: country_code, currency })
+      .values({
+        userId,
+        countryCode: country_code,
+        currency,
+        mode: mode as "sandbox" | "live",
+      })
       .returning();
   } else {
     // Geo-isolation: wallet country must match request country

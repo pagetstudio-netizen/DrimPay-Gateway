@@ -278321,7 +278321,28 @@ async function settlePayinStatus(params) {
     if (!row || status !== "success") {
       return row ?? null;
     }
-    await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${row.netAmount}` }).where(eq(walletsTable.id, row.walletId));
+    let [wallet] = await trx.select().from(walletsTable).where(eq(walletsTable.id, row.walletId));
+    if (!wallet || wallet.mode !== row.mode) {
+      const [modeWallet] = await trx.select().from(walletsTable).where(and(
+        eq(walletsTable.userId, row.userId),
+        eq(walletsTable.countryCode, row.countryCode),
+        eq(walletsTable.mode, row.mode)
+      ));
+      wallet = modeWallet;
+      if (!wallet) {
+        [wallet] = await trx.insert(walletsTable).values({
+          userId: row.userId,
+          countryCode: row.countryCode,
+          currency: row.currency,
+          mode: row.mode
+        }).returning();
+      }
+      await trx.update(transactionsTable).set({ walletId: wallet.id, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, row.id));
+      console.warn(
+        `[Settlement] Wallet mode corrig\xE9 pour ${row.reference}: ${row.mode} \u2192 wallet #${wallet.id}`
+      );
+    }
+    await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${row.netAmount}` }).where(eq(walletsTable.id, wallet.id));
     return row;
   });
   if (!updated) {
@@ -281907,7 +281928,11 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     });
     return;
   }
-  const [existing] = await db.select().from(transactionsTable).where(and(eq(transactionsTable.userId, userId), eq(transactionsTable.orderId, order_id)));
+  const [existing] = await db.select().from(transactionsTable).where(and(
+    eq(transactionsTable.userId, userId),
+    eq(transactionsTable.orderId, order_id),
+    eq(transactionsTable.mode, mode)
+  ));
   if (existing) {
     res.status(200).json({
       idempotent: true,
@@ -281927,9 +281952,18 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
     });
     return;
   }
-  let [wallet] = await db.select().from(walletsTable).where(and(eq(walletsTable.userId, userId), eq(walletsTable.countryCode, country_code)));
+  let [wallet] = await db.select().from(walletsTable).where(and(
+    eq(walletsTable.userId, userId),
+    eq(walletsTable.countryCode, country_code),
+    eq(walletsTable.mode, mode)
+  ));
   if (!wallet) {
-    [wallet] = await db.insert(walletsTable).values({ userId, countryCode: country_code, currency }).returning();
+    [wallet] = await db.insert(walletsTable).values({
+      userId,
+      countryCode: country_code,
+      currency,
+      mode
+    }).returning();
   } else {
     if (!assertGeoMatch(wallet.countryCode, country_code, res)) return;
   }

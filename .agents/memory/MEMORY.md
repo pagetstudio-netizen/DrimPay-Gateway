@@ -13,3 +13,4 @@
 - [Gateway payload diagnostics](drimpay-gateway-payloads.md) — store sanitized aggregator request snapshots before calls so failed submissions remain diagnosable.
 - [DrimPay API key access](drimpay-api-keys.md) — Sandbox keys are available before KYB approval; only Live key operations require approved KYB.
 - [DrimPay API key schema](drimpay-api-key-schema.md) — older Plesk/Supabase databases need the nullable webhook_secret column before the API key page can load.
+- [DrimPay API wallet modes](drimpay-api-wallet-modes.md) — API wallet lookups and settlement must always enforce the key/transaction mode to prevent Live credits entering Sandbox.
