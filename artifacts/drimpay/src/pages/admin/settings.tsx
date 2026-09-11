@@ -46,6 +46,19 @@ const SETTINGS_GROUPS = [
     ],
   },
   {
+    title: "Gombo Plus",
+    key: "gomboplus",
+    fields: [
+      {
+        key: "gomboplus_public_key",
+        label: "Clé publique Gombo Plus",
+        type: "textarea",
+        placeholder: "Collez uniquement la clé publique Gombo Plus",
+        hint: "Cette clé est enregistrée dans les paramètres Supabase et n'utilise pas la limite Plesk de 255 caractères. La clé privée reste uniquement dans le secret GOMBOPLUS_PRIVATE_KEY.",
+      },
+    ],
+  },
+  {
     title: "Contact & Support",
     key: "contact",
     fields: [
@@ -827,9 +840,20 @@ export default function AdminSettings() {
                         )}
                       </div>
                       {field.type !== "boolean" && (
-                        <input type={field.type} value={get(field.key, "")} onChange={e => set(field.key, e.target.value)}
-                          placeholder={"placeholder" in field ? field.placeholder : undefined}
-                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        field.type === "textarea" ? (
+                          <textarea
+                            value={get(field.key, "")}
+                            onChange={e => set(field.key, e.target.value)}
+                            placeholder={"placeholder" in field ? field.placeholder : undefined}
+                            rows={4}
+                            spellCheck={false}
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-mono break-all focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        ) : (
+                          <input type={field.type} value={get(field.key, "")} onChange={e => set(field.key, e.target.value)}
+                            placeholder={"placeholder" in field ? field.placeholder : undefined}
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        )
                       )}
                       <p className="text-xs text-gray-400 mt-1">{field.hint}</p>
                     </div>
