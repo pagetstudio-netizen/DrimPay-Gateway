@@ -19,6 +19,7 @@ import {
   parseOperatorFeeRates,
   type OperatorFeeRates,
 } from "../lib/fee-rates";
+import { setGomboPlusPublicKeyFromSettings } from "../lib/gombo-plus";
 import bcrypt from "bcryptjs";
 import path from "path";
 import fs from "fs";
@@ -1641,6 +1642,9 @@ router.put(AP + "/settings", requireAdmin, async (req: any, res: any) => {
   const updates = req.body as Record<string, string>;
   for (const [key, value] of Object.entries(updates)) {
     await db.insert(adminSettingsTable).values({ key, value }).onConflictDoUpdate({ target: adminSettingsTable.key, set: { value, updatedAt: new Date() } });
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, "gomboplus_public_key")) {
+    setGomboPlusPublicKeyFromSettings(updates.gomboplus_public_key);
   }
   await logAdminAction(req.session.userId, "UPDATE_SETTINGS", "settings", undefined, JSON.stringify(Object.keys(updates)), req.ip);
   res.json({ ok: true });

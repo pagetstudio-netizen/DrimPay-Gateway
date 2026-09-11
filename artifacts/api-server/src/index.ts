@@ -37,9 +37,14 @@ import { startDailyReport, startPolling } from "./lib/telegram";
 import { startBabimoReconciliation } from "./lib/babimo-reconciliation";
 import { ensureKybBucket, ensureContractTemplate } from "./lib/storage";
 import { logClapayConfig } from "./lib/clapay";
+import { loadGomboPlusPublicKeyFromSettings } from "./lib/gombo-plus";
 import { pool } from "@workspace/db";
 
 // ── Start ─────────────────────────────────────────────────────────────────────
+
+// Load the public Gombo Plus key before accepting requests. The private key
+// remains in GOMBOPLUS_PRIVATE_KEY and is never copied to admin settings.
+await loadGomboPlusPublicKeyFromSettings();
 
 // Use || (not ??) so that empty-string PORT (e.g. set to "" in Plesk) falls
 // back to 8080 instead of being parsed as NaN/0 and crashing the process.

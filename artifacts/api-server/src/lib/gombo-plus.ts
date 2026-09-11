@@ -25,7 +25,12 @@
  *   GOMBOPLUS_WEBHOOK_SECRET (optional; reserved for provider rollout)
  */
 
+import { db } from "@workspace/db";
+import { adminSettingsTable } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
+
 const DEFAULT_BASE_URL = "https://api.gomboplus.com";
+const GOMBO_PUBLIC_KEY_SETTING = "gomboplus_public_key";
 
 type GomboOperation = "payin" | "payout";
 
@@ -316,12 +321,44 @@ export class GomboPlusClient {
 
 type GomboCredentialName = "GOMBOPLUS_PUBLIC_KEY" | "GOMBOPLUS_PRIVATE_KEY";
 
+let adminPublicKey: string | undefined;
+
+/**
+ * Load the public key from the admin settings table. This keeps the long
+ * public credential out of Plesk's environment-variable length limit.
+ * The private key is intentionally never read from admin settings.
+ */
+export async function loadGomboPlusPublicKeyFromSettings(): Promise<void> {
+  try {
+    const [setting] = await db
+      .select({ value: adminSettingsTable.value })
+      .from(adminSettingsTable)
+      .where(eq(adminSettingsTable.key, GOMBO_PUBLIC_KEY_SETTING))
+      .limit(1);
+
+    adminPublicKey = setting?.value?.trim() || undefined;
+    client = null;
+  } catch (error: any) {
+    // Keep the secure environment fallback available if the settings table
+    // is unavailable during startup or on an older database.
+    console.warn(`[Gombo Plus] Clé publique admin indisponible: ${error?.message ?? error}`);
+  }
+}
+
+export function setGomboPlusPublicKeyFromSettings(value: string | null | undefined): void {
+  adminPublicKey = value?.trim() || undefined;
+  client = null;
+}
+
 /**
  * Read a credential directly, or rebuild it from numbered Plesk chunks.
- * The direct value always wins so existing Replit configuration is unchanged.
+ * The admin setting takes precedence for the public key, while the private
+ * key remains exclusively in the secure environment.
  * Missing or non-contiguous chunks are treated as an unconfigured credential.
  */
 function readGomboCredential(name: GomboCredentialName): string | undefined {
+  if (name === "GOMBOPLUS_PUBLIC_KEY" && adminPublicKey) return adminPublicKey;
+
   const direct = process.env[name]?.trim();
   if (direct) return direct;
 
