@@ -263988,6 +263988,21 @@ async function send(text2) {
   if (!cfg) return;
   await sendTo(cfg.token, cfg.chatId, text2);
 }
+function escapeTelegramHtml(value) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+async function notifyApiKeyListFailure(opts) {
+  const rawError = opts.error instanceof Error ? opts.error.message : String(opts.error);
+  const safeError = escapeTelegramHtml(rawError).slice(0, 700);
+  await send(
+    `\u{1F6A8} <b>Erreur chargement cl\xE9s API marchand</b>
+
+Marchand ID : <code>${opts.userId}</code>
+Route : <code>GET /dashboard/api-keys</code>
+Heure : ${escapeTelegramHtml(dt())}
+Cause r\xE9elle : <code>${safeError}</code>`
+  );
+}
 async function sendWithButtons(text2, buttons) {
   const cfg = await getConfig();
   if (!cfg) return;
@@ -278479,6 +278494,7 @@ function buildMerchantPayloadSnapshot(body) {
 var kybUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 var payLinkImageUpload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 var router11 = (0, import_express11.Router)();
+var apiKeyListAlertAt = /* @__PURE__ */ new Map();
 function requireAuth(req, res, next) {
   if (!req.session?.userId) {
     res.status(401).json({ error: "Authentication required" });
@@ -279323,18 +279339,33 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
 });
 router11.get("/dashboard/api-keys", requireAuth, async (req, res) => {
   const userId = req.session.userId;
-  const keys = await db.select({
-    id: apiKeysTable.id,
-    name: apiKeysTable.name,
-    description: apiKeysTable.description,
-    prefix: apiKeysTable.prefix,
-    env: apiKeysTable.env,
-    status: apiKeysTable.status,
-    hasWebhookSecret: sql`${apiKeysTable.webhookSecret} IS NOT NULL`,
-    lastUsedAt: apiKeysTable.lastUsedAt,
-    createdAt: apiKeysTable.createdAt
-  }).from(apiKeysTable).where(eq(apiKeysTable.userId, userId)).orderBy(desc(apiKeysTable.createdAt));
-  res.json(keys);
+  try {
+    const keys = await db.select({
+      id: apiKeysTable.id,
+      name: apiKeysTable.name,
+      description: apiKeysTable.description,
+      prefix: apiKeysTable.prefix,
+      env: apiKeysTable.env,
+      status: apiKeysTable.status,
+      hasWebhookSecret: sql`${apiKeysTable.webhookSecret} IS NOT NULL`,
+      lastUsedAt: apiKeysTable.lastUsedAt,
+      createdAt: apiKeysTable.createdAt
+    }).from(apiKeysTable).where(eq(apiKeysTable.userId, userId)).orderBy(desc(apiKeysTable.createdAt));
+    res.json(keys);
+  } catch (error40) {
+    console.error("[API Keys] list failed", {
+      userId,
+      error: error40 instanceof Error ? error40.message : "unknown database error"
+    });
+    const now = Date.now();
+    const lastAlertAt = apiKeyListAlertAt.get(userId) ?? 0;
+    if (now - lastAlertAt > 6e4) {
+      apiKeyListAlertAt.set(userId, now);
+      notifyApiKeyListFailure({ userId, error: error40 }).catch(() => {
+      });
+    }
+    res.status(503).json({ error: "Cl\xE9s API temporairement indisponibles" });
+  }
 });
 router11.post("/dashboard/api-keys/:id/reveal", requireAuth, async (req, res) => {
   const userId = req.session.userId;
