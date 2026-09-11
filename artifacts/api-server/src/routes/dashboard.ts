@@ -28,7 +28,7 @@ import { eq, and, desc, sum, count, sql, gte, asc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange, notifyCriticalError, buildWalletsSummary } from "../lib/telegram";
+import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange, notifyCriticalError, notifyApiKeyListFailure, buildWalletsSummary } from "../lib/telegram";
 import { GENERIC_ERROR_MESSAGE, sanitizeMerchantTransaction } from "../lib/merchant-error";
 import { isMaintenanceModeOn } from "../lib/admin-settings";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
@@ -52,6 +52,7 @@ const kybUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 
 const payLinkImageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const router = Router();
+const apiKeyListAlertAt = new Map<number, number>();
 
 function requireAuth(req: any, res: any, next: any) {
   if (!req.session?.userId) {
@@ -1041,6 +1042,12 @@ router.get("/dashboard/api-keys", requireAuth, async (req, res) => {
       userId,
       error: error instanceof Error ? error.message : "unknown database error",
     });
+    const now = Date.now();
+    const lastAlertAt = apiKeyListAlertAt.get(userId) ?? 0;
+    if (now - lastAlertAt > 60_000) {
+      apiKeyListAlertAt.set(userId, now);
+      notifyApiKeyListFailure({ userId, error }).catch(() => {});
+    }
     res.status(503).json({ error: "Clés API temporairement indisponibles" });
   }
 });

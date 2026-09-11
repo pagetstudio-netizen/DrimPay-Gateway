@@ -100,6 +100,25 @@ async function send(text: string) {
   await sendTo(cfg.token, cfg.chatId, text);
 }
 
+function escapeTelegramHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+export async function notifyApiKeyListFailure(opts: { userId: number; error: unknown }) {
+  const rawError = opts.error instanceof Error ? opts.error.message : String(opts.error);
+  const safeError = escapeTelegramHtml(rawError).slice(0, 700);
+  await send(
+    `🚨 <b>Erreur chargement clés API marchand</b>\n\n` +
+    `Marchand ID : <code>${opts.userId}</code>\n` +
+    `Route : <code>GET /dashboard/api-keys</code>\n` +
+    `Heure : ${escapeTelegramHtml(dt())}\n` +
+    `Cause réelle : <code>${safeError}</code>`,
+  );
+}
+
 // Send with inline keyboard buttons [[{text, callback_data}]]
 async function sendWithButtons(text: string, buttons: Array<Array<{ text: string; callback_data: string }>>) {
   const cfg = await getConfig();
