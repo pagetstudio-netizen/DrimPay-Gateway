@@ -489,7 +489,23 @@ router.post("/pay/:token", async (req: any, res: any) => {
       externalRef = babimoRes.babimo_reference;
       paymentUrl = babimoRes.payment_url ?? null;
     } else {
-      const gomboRes = await (client as GomboPlusClient).initiatePayin({
+      const gomboClient = client as GomboPlusClient;
+      const gomboBalance = await gomboClient.getBalance(countryCode, operator);
+      if (Number.isFinite(gomboBalance.balance) && gomboBalance.balance < amount) {
+        throw new GomboPlusError(
+          `Solde Gombo Plus insuffisant pour ${gomboBalance.operator_code}/${gomboBalance.country_code}: ` +
+          `${gomboBalance.balance} ${currency} disponible(s), ${amount} ${currency} requis.`,
+          503,
+          {
+            country_code: gomboBalance.country_code,
+            operator_code: gomboBalance.operator_code,
+            available_balance: gomboBalance.balance,
+            required_amount: amount,
+          },
+        );
+      }
+
+      const gomboRes = await gomboClient.initiatePayin({
         amount, currency, country_code: countryCode, operator, phone,
         reference, callback_url: callbackUrl, return_url: returnUrl,
         description: link.title,

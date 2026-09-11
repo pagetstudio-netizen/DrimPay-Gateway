@@ -14,3 +14,9 @@ The long Gombo Plus public key may be stored in the admin settings table under `
 **Why:** Plesk environment fields can reject long public keys, while the private credential must never be exposed in the dashboard.
 
 **How to apply:** Load the public setting before accepting requests, refresh the cached client after an admin update, and retain environment/chunked public-key fallback for existing installations.
+
+Gombo Plus can authenticate successfully while rejecting mobile deposits when the country/operator wallet has no available balance; the TG/YAS balance endpoint is the preflight check.
+
+**Why:** The provider may return the generic `Données invalides` response instead of an explicit insufficient-balance error, which can mislead merchants into changing valid credentials or phone numbers.
+
+**How to apply:** Check the relevant Gombo wallet balance before initiating a deposit, keep the detailed reason for administrators, and show merchants only the generic service-unavailable message.
