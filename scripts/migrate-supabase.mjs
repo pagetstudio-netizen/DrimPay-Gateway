@@ -1,6 +1,10 @@
-import pg from "pg";
+import { createRequire } from "node:module";
 
-const { Pool } = pg;
+// `pg` est une dépendance du workspace @workspace/db. Utiliser le resolver
+// CommonJS permet d'exécuter ce script depuis la racine sans dupliquer la
+// dépendance dans le package scripts.
+const require = createRequire(import.meta.url);
+const { Pool } = require("../lib/db/node_modules/pg");
 
 const url = process.env.SUPABASE_DATABASE_URL;
 if (!url) { console.error("SUPABASE_DATABASE_URL manquant"); process.exit(1); }
