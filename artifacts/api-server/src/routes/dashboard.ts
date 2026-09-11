@@ -264,7 +264,11 @@ router.get("/dashboard/wallets", requireAuth, async (req, res) => {
       })
       .from(transactionsTable)
       .where(and(
-        eq(transactionsTable.walletId, w.id),
+        // Keep dashboard statistics attached to the wallet's accounting
+        // scope (merchant + country + mode). This also makes historical
+        // transactions visible while an old wallet_id mismatch is repaired.
+        eq(transactionsTable.userId, w.userId),
+        eq(transactionsTable.countryCode, w.countryCode),
         eq(transactionsTable.mode, currentMode),
       ))
       .groupBy(transactionsTable.type, transactionsTable.status);
@@ -306,7 +310,8 @@ router.get("/dashboard/wallets", requireAuth, async (req, res) => {
       })
       .from(transactionsTable)
       .where(and(
-        eq(transactionsTable.walletId, w.id),
+        eq(transactionsTable.userId, w.userId),
+        eq(transactionsTable.countryCode, w.countryCode),
         eq(transactionsTable.mode, currentMode),
         eq(transactionsTable.status, "success"),
       ))

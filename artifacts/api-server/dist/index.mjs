@@ -278680,7 +278680,11 @@ router11.get("/dashboard/wallets", requireAuth, async (req, res) => {
       fees: sum(transactionsTable.fee),
       cnt: count()
     }).from(transactionsTable).where(and(
-      eq(transactionsTable.walletId, w.id),
+      // Keep dashboard statistics attached to the wallet's accounting
+      // scope (merchant + country + mode). This also makes historical
+      // transactions visible while an old wallet_id mismatch is repaired.
+      eq(transactionsTable.userId, w.userId),
+      eq(transactionsTable.countryCode, w.countryCode),
       eq(transactionsTable.mode, currentMode)
     )).groupBy(transactionsTable.type, transactionsTable.status);
     const payinSuccess = txStats.find((r) => r.type === "payin" && r.status === "success");
@@ -278712,7 +278716,8 @@ router11.get("/dashboard/wallets", requireAuth, async (req, res) => {
       cnt: count(),
       total: sum(transactionsTable.amount)
     }).from(transactionsTable).where(and(
-      eq(transactionsTable.walletId, w.id),
+      eq(transactionsTable.userId, w.userId),
+      eq(transactionsTable.countryCode, w.countryCode),
       eq(transactionsTable.mode, currentMode),
       eq(transactionsTable.status, "success")
     )).groupBy(transactionsTable.operator, transactionsTable.type);
