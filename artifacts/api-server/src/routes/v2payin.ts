@@ -55,6 +55,17 @@ function generateSignatureKey(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function storedPaymentUrl(gatewayPayload: string | null | undefined): string | null {
+  if (!gatewayPayload) return null;
+  try {
+    const parsed = JSON.parse(gatewayPayload);
+    const value = parsed?.payment_url ?? parsed?.paymentUrl;
+    return typeof value === "string" && value.trim() ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Auth middleware: session (dashboard) OR Bearer API key ──────────────────
 async function resolveUser(
   req: any,
@@ -289,6 +300,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
       operator: existing.operator,
       phone: existing.phone,
       mode: existing.mode,
+      payment_url: storedPaymentUrl(existing.gatewayPayload),
       expires_at: existing.expiresAt?.toISOString() ?? null,
       created_at: existing.createdAt.toISOString(),
     });
@@ -486,8 +498,17 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
 
       // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver
       // pendant les 20s de polling, et les fallbacks cherchent par externalRef en DB.
+      const persistedGatewayPayload = {
+        ...gatewayPayload,
+        payment_url: paymentUrl,
+        ussd_code: ussdCode,
+      };
       await db.update(transactionsTable)
-        .set({ externalRef, updatedAt: new Date() })
+        .set({
+          externalRef,
+          gatewayPayload: JSON.stringify(persistedGatewayPayload),
+          updatedAt: new Date(),
+        })
         .where(eq(transactionsTable.id, tx.id));
 
       // Polling du statut chez le fournisseur (API payin = 4s × max 20s)
@@ -750,6 +771,7 @@ router.get("/v2/payin/:reference", resolveUser, async (req: any, res: any) => {
     description: tx.description ?? null,
     failure_reason: merchantFailureLabel(tx.status, tx.failureReason) ?? null,
     expires_at: tx.expiresAt?.toISOString() ?? null,
+       payment_url: storedPaymentUrl(tx.gatewayPayload),
     webhook_url: tx.webhookUrl ?? null,
     webhook_status_code: tx.webhookLastStatusCode ?? null,
     webhook_retry_count: tx.webhookRetryCount,
