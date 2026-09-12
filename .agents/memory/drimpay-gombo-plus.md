@@ -9,6 +9,12 @@ Gombo Plus uses `X-Public-Key` and `X-Private-Key` headers. Pay-ins use `POST /a
 
 **How to apply:** Keep `BJ` as the internal and outgoing country code, normalize Togo `TMoney` to provider operator `yas`, and treat Burkina Faso Orange Money (`om`) as unavailable while the provider documents it under maintenance. Cashout activation is account-specific and must be confirmed with Gombo Plus before live payouts.
 
+Gombo Plus cash-in requests use `amount`, `phone_number`, `country_code`, `operator`, `reference`, and `callback_url`. For Togo, `yas` is used for YAS/TMoney and `moov` for Moov.
+
+**Why:** The provider confirmed the published documentation was outdated; the former `recipient_number`/`country` field names are rejected for cash-in.
+
+**How to apply:** Keep the cash-in payload separate from the payout payload and send the DrimPay transaction reference in `reference`.
+
 The long Gombo Plus public key may be stored in the admin settings table under `gomboplus_public_key`; keep the private key exclusively in the secure `GOMBOPLUS_PRIVATE_KEY` secret.
 
 **Why:** Plesk environment fields can reject long public keys, while the private credential must never be exposed in the dashboard.

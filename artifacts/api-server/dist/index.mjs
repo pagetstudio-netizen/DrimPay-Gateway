@@ -56908,7 +56908,7 @@ var init_gombo_plus = __esm({
         }
         return raw;
       }
-      buildOperationBody(params) {
+      validateOperation(params) {
         const country = countryKey(params.country_code);
         const operator = gomboPlusOperatorCode(params.operator, country);
         if (!GOMBO_COUNTRIES.has(country) || !operator) {
@@ -56921,6 +56921,21 @@ var init_gombo_plus = __esm({
         if (!recipient_number || recipient_number.length < 8) {
           throw new GomboPlusError("Num\xE9ro de t\xE9l\xE9phone invalide pour Gombo Plus.", 422, {});
         }
+        return { country, operator, recipient_number };
+      }
+      buildPayinBody(params) {
+        const { country, operator, recipient_number } = this.validateOperation(params);
+        return {
+          amount: params.amount,
+          phone_number: recipient_number,
+          country_code: country,
+          operator,
+          reference: params.reference,
+          callback_url: params.callback_url
+        };
+      }
+      buildPayoutBody(params) {
+        const { country, operator, recipient_number } = this.validateOperation(params);
         return {
           amount: params.amount,
           recipient_number,
@@ -56930,7 +56945,7 @@ var init_gombo_plus = __esm({
         };
       }
       async initiatePayin(params) {
-        const response = await this.request("POST", "/api/mobile-services/mobile-deposit/", this.buildOperationBody(params));
+        const response = await this.request("POST", "/api/mobile-services/mobile-deposit/", this.buildPayinBody(params));
         const content = unwrap(response);
         const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
         if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourn\xE9 de r\xE9f\xE9rence de transaction.", 502, response);
@@ -56943,7 +56958,7 @@ var init_gombo_plus = __esm({
         };
       }
       async initiatePayout(params) {
-        const response = await this.request("POST", "/api/mobile-services/mobile-withdrawal/", this.buildOperationBody(params));
+        const response = await this.request("POST", "/api/mobile-services/mobile-withdrawal/", this.buildPayoutBody(params));
         const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
         if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourn\xE9 de r\xE9f\xE9rence de retrait.", 502, response);
         return {

@@ -236,7 +236,7 @@ export class GomboPlusClient {
     return raw as T;
   }
 
-  private buildOperationBody(params: GomboPlusPayinRequest | GomboPlusPayoutRequest) {
+  private validateOperation(params: GomboPlusPayinRequest | GomboPlusPayoutRequest) {
     const country = countryKey(params.country_code);
     const operator = gomboPlusOperatorCode(params.operator, country);
     if (!GOMBO_COUNTRIES.has(country) || !operator) {
@@ -249,6 +249,23 @@ export class GomboPlusClient {
     if (!recipient_number || recipient_number.length < 8) {
       throw new GomboPlusError("Numéro de téléphone invalide pour Gombo Plus.", 422, {});
     }
+    return { country, operator, recipient_number };
+  }
+
+  private buildPayinBody(params: GomboPlusPayinRequest) {
+    const { country, operator, recipient_number } = this.validateOperation(params);
+    return {
+      amount: params.amount,
+      phone_number: recipient_number,
+      country_code: country,
+      operator,
+      reference: params.reference,
+      callback_url: params.callback_url,
+    };
+  }
+
+  private buildPayoutBody(params: GomboPlusPayoutRequest) {
+    const { country, operator, recipient_number } = this.validateOperation(params);
     return {
       amount: params.amount,
       recipient_number,
@@ -259,7 +276,7 @@ export class GomboPlusClient {
   }
 
   async initiatePayin(params: GomboPlusPayinRequest): Promise<GomboPlusPaymentResponse> {
-    const response = await this.request<any>("POST", "/api/mobile-services/mobile-deposit/", this.buildOperationBody(params));
+    const response = await this.request<any>("POST", "/api/mobile-services/mobile-deposit/", this.buildPayinBody(params));
     const content = unwrap(response);
     const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
     if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourné de référence de transaction.", 502, response);
@@ -273,7 +290,7 @@ export class GomboPlusClient {
   }
 
   async initiatePayout(params: GomboPlusPayoutRequest): Promise<GomboPlusPaymentResponse> {
-    const response = await this.request<any>("POST", "/api/mobile-services/mobile-withdrawal/", this.buildOperationBody(params));
+    const response = await this.request<any>("POST", "/api/mobile-services/mobile-withdrawal/", this.buildPayoutBody(params));
     const reference = stringValue(response, ["reference", "transaction_reference", "transactionReference"]);
     if (!reference) throw new GomboPlusError("Gombo Plus n'a pas retourné de référence de retrait.", 502, response);
     return {
