@@ -426,6 +426,7 @@ export default function PayPage() {
   const [txRef, setTxRef]                 = useState("");
   const [attemptId, setAttemptId]         = useState<number | null>(null);
   const [paymentUrl, setPaymentUrl]       = useState("");
+  const [submitting, setSubmitting]       = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -502,12 +503,15 @@ export default function PayPage() {
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setError("");
+    setSubmitting(false);
     const id = await logAttempt();
     setAttemptId(id);
     setStep("confirm");
   };
 
   const handleConfirm = async () => {
+    if (submitting) return;
+    setSubmitting(true);
     setStep("processing");
     if (attemptId) await updateAttempt(attemptId, "confirmed");
     try {
@@ -527,6 +531,7 @@ export default function PayPage() {
       const data = await r.json();
       if (!r.ok) {
         if (attemptId) await updateAttempt(attemptId, "failed");
+        setSubmitting(false);
         setError(data.message ?? data.error ?? "Paiement échoué");
         setStep("error");
         return;
@@ -541,6 +546,7 @@ export default function PayPage() {
       }
     } catch {
       if (attemptId) await updateAttempt(attemptId, "failed");
+      setSubmitting(false);
       setError("Erreur réseau. Veuillez réessayer.");
       setStep("error");
     }
@@ -899,7 +905,7 @@ export default function PayPage() {
                   transition={{ duration: 0.2 }}
                 >
                   <button
-                    onClick={() => setStep("form")}
+                    onClick={() => { setSubmitting(false); setStep("form"); }}
                     className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 mb-4"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" /> {t.edit}
@@ -939,9 +945,10 @@ export default function PayPage() {
 
                   <button
                     onClick={handleConfirm}
-                    className="w-full h-12 rounded-lg font-bold text-sm uppercase tracking-wide bg-gray-900 text-white hover:bg-gray-800 transition-all"
+                    disabled={submitting}
+                    className="w-full h-12 rounded-lg font-bold text-sm uppercase tracking-wide bg-gray-900 text-white hover:bg-gray-800 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {t.confirmPayment}
+                    {submitting ? t.processing : t.confirmPayment}
                   </button>
                 </motion.div>
               )}
@@ -1061,7 +1068,7 @@ export default function PayPage() {
                   <h2 className="text-base font-bold text-gray-900 mb-2">{t.errorTitle}</h2>
                   <p className="text-sm text-gray-500 mb-5">{error}</p>
                   <button
-                    onClick={() => { setError(""); setStep("form"); }}
+                    onClick={() => { setError(""); setSubmitting(false); setStep("form"); }}
                     className="px-6 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
                   >
                     {t.retry}

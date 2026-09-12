@@ -511,38 +511,33 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         })
         .where(eq(transactionsTable.id, tx.id));
 
-      // Polling du statut chez le fournisseur (API payin = 4s × max 20s)
-      // L'utilisateur doit approuver sur son téléphone — on attend jusqu'à 20s,
-      // puis le webhook confirme le statut final si toujours en attente.
-      const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
-        intervalMs: 4_000,
-        maxDurationMs: 20_000,
-      });
-      const verifiedStatus = statusCheck?.status ?? "processing";
-      const verifiedFailureReason = statusCheck?.failureReason;
-
-      // Use the same atomic settlement path as the webhook and payment-link
-      // flow. In particular, a late polling result must never overwrite a
-      // successful webhook or credit the wallet twice.
-      await settlePayinStatus({
-        txId: tx.id,
-        status: verifiedStatus as any,
-        gatewayReference: externalRef,
-        failureReason: verifiedFailureReason,
-        gateway: aggregator,
-      });
-
-      if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
-        res.status(502).json({
-          error: "PAYMENT_REJECTED",
-          message: GENERIC_ERROR_MESSAGE,
-          reference, status: verifiedStatus,
-        });
-        return;
-      }
+      // The provider reference and payment URL are available now. Do not wait
+      // for the customer to approve the prompt before responding to the API.
+      // Polling continues in the background and uses the same atomic settlement
+      // path as the webhook, so a late poll cannot overwrite a successful
+      // webhook or credit the wallet twice.
+      void (async () => {
+        try {
+          const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+            intervalMs: 4_000,
+            maxDurationMs: 20_000,
+          });
+          await settlePayinStatus({
+            txId: tx.id,
+            status: (statusCheck?.status ?? "processing") as any,
+            gatewayReference: externalRef,
+            failureReason: statusCheck?.failureReason,
+            gateway: aggregator,
+          });
+        } catch (pollError: any) {
+          // The webhook remains the source of truth if a status poll fails.
+          // Keep the transaction pending instead of reporting a false failure.
+          console.warn(`[API Payin] Background status poll failed for ${reference}: ${pollError?.message ?? pollError}`);
+        }
+      })();
 
       res.status(201).json({
-        reference, order_id, status: verifiedStatus,
+        reference, order_id, status: "processing",
         amount, fee, net_amount: netAmount, currency, country_code, operator, phone, mode,
         expires_at: expiresAt.toISOString(),
         webhook_url: webhook_url ?? null,
@@ -550,7 +545,7 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         ussd_code: ussdCode,
         message: "Prompt de paiement envoyé au téléphone du client",
         gateway_reference: externalRef,
-        verified_status: verifiedStatus,
+        verified_status: "processing",
         created_at: tx.createdAt.toISOString(),
       });
       return;
@@ -563,6 +558,8 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
           ? "paydunya"
           : err instanceof BabimoError
             ? "babimo"
+          : err instanceof GomboPlusError
+            ? "gomboplus"
             : "?";
       if (err instanceof AggregatorNotConfiguredError) {
         res.status(503).json({ error: "AGGREGATOR_NOT_CONFIGURED", message: GENERIC_ERROR_MESSAGE, reference });

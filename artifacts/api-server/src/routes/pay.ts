@@ -21,7 +21,7 @@ import {
   operatorAggregatorsTable,
   blacklistedPhonesTable,
 } from "@workspace/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc, like } from "drizzle-orm";
 import crypto from "crypto";
 import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable } from "../lib/aggregator-router";
 import { ClapayClient, ClapayError } from "../lib/clapay";
@@ -60,6 +60,31 @@ function signPayload(payload: string, secret: string, timestamp: number): string
     .update(`${timestamp}.${payload}`)
     .digest("hex");
 }
+
+function paymentLinkOrderId(
+  token: string,
+  phone: string,
+  amount: number,
+  countryCode: string,
+  operator: string,
+): string {
+  const key = [token, phone.replace(/\D/g, ""), amount, countryCode, operator.trim().toLowerCase()].join("|");
+  const digest = crypto.createHash("sha256").update(key).digest("hex").slice(0, 32);
+  return `pl-${token}-${digest}`;
+}
+
+function storedPaymentUrl(gatewayPayload: string | null | undefined): string | null {
+  if (!gatewayPayload) return null;
+  try {
+    const parsed = JSON.parse(gatewayPayload);
+    const value = parsed?.payment_url ?? parsed?.paymentUrl;
+    return typeof value === "string" && value.trim() ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+const REUSABLE_PAYMENT_STATUSES = new Set(["queued", "pending", "processing", "success"]);
 
 // ─── GET /pay/status/:reference ───────────────────────────────────────────────
 // Public endpoint: poll transaction status by reference (for payment link flow)
@@ -331,66 +356,14 @@ router.post("/pay/:token", async (req: any, res: any) => {
     .where(eq(usersTable.id, link.userId));
   const webhookSecret = await ensureLatestMerchantWebhookSecret(link.userId, "live");
 
-  const feeRate = await getFeeRate(link.userId, "payin", countryCode, operator);
-  const fee = Math.round(amount * feeRate * 100) / 100;
-  const netAmount = Math.round((amount - fee) * 100) / 100;
-  const reference = `PL-${countryCode}-${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
-  const signatureKey = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 10 * 60_000);
-
-  // Get or create wallet
-  let [wallet] = await db
-    .select()
-    .from(walletsTable)
-    .where(and(eq(walletsTable.userId, link.userId), eq(walletsTable.countryCode, countryCode)));
-
-  if (!wallet) {
-    [wallet] = await db.insert(walletsTable).values({
-      userId: link.userId,
-      countryCode,
-      currency,
-      mode: "live",
-    }).returning();
-  }
-
-  // Create transaction
-  const [tx] = await db.insert(transactionsTable).values({
-    userId: link.userId,
-    walletId: wallet.id,
-    reference,
-    orderId: `pl-${token}-${Date.now()}`,
-    type: "payin",
-    status: "pending",
-    amount: String(amount),
-    fee: String(fee),
-    netAmount: String(netAmount),
-    currency,
-    countryCode,
-    operator,
-    phone,
-    description: link.title + (customerName ? ` — ${customerName}` : ""),
-    webhookUrl: merchantInfo?.webhookUrl ?? undefined,
-    webhookSignatureKey: webhookSecret ?? signatureKey,
-    mode: "live",
-    expiresAt,
-    requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
-  }).returning();
-
-  // Route through aggregator
-  const baseCallbackUrl = getWebhookBaseUrl();
-  const frontendBaseUrl = getFrontendBaseUrl();
-
-  const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
-
-  // Vérifier disponibilité opérateur (actif, maintenance, liens bloqués)
+  // Validate operator and OTP before creating a transaction. Otherwise an
+  // invalid request could leave a pending transaction that blocks valid retries.
   const opCheck = await checkOperatorAvailable(countryCode, operator, "paymentLinks");
   if (!opCheck.ok) {
     res.status(opCheck.status).json({ error: opCheck.error });
     return;
   }
 
-  // Orange Money CI/SN/BF exige un code de confirmation (OTP) généré par USSD
-  // par le client avant l'appel à l'agrégateur — le vérifier tôt évite un aller-retour inutile.
   const isOrangeMoneyOp = /^orange( money)?$/i.test(operator.trim());
   const OTP_REQUIRED_COUNTRIES = new Set(["CI", "SN", "BF"]);
   if (isOrangeMoneyOp && OTP_REQUIRED_COUNTRIES.has(countryCode) && !operatorOtp) {
@@ -401,6 +374,112 @@ router.post("/pay/:token", async (req: any, res: any) => {
     });
     return;
   }
+
+  const feeRate = await getFeeRate(link.userId, "payin", countryCode, operator);
+  const fee = Math.round(amount * feeRate * 100) / 100;
+  const netAmount = Math.round((amount - fee) * 100) / 100;
+  const orderId = paymentLinkOrderId(token, phone, amount, countryCode, operator);
+  const lockKey = `payment-link:${link.id}:${orderId}`;
+
+  // Serialize identical payment-link submissions. This protects against
+  // double-clicks and concurrent browser retries before the first aggregator
+  // request has returned.
+  const created = await db.transaction(async (trx) => {
+    await trx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`);
+
+    const candidates = await trx
+      .select()
+      .from(transactionsTable)
+      .where(and(
+        eq(transactionsTable.userId, link.userId),
+        eq(transactionsTable.type, "payin"),
+        like(transactionsTable.orderId, `pl-${token}-%`),
+        eq(transactionsTable.amount, String(amount)),
+        eq(transactionsTable.countryCode, countryCode),
+        eq(transactionsTable.operator, operator),
+        eq(transactionsTable.phone, phone),
+        eq(transactionsTable.mode, "live"),
+      ))
+      .orderBy(desc(transactionsTable.createdAt));
+
+    const reusable = candidates.find(txn => REUSABLE_PAYMENT_STATUSES.has(txn.status));
+    if (reusable) {
+      return { tx: reusable, reused: true as const };
+    }
+
+    let [wallet] = await trx
+      .select()
+      .from(walletsTable)
+      .where(and(
+        eq(walletsTable.userId, link.userId),
+        eq(walletsTable.countryCode, countryCode),
+        eq(walletsTable.mode, "live"),
+      ));
+
+    if (!wallet) {
+      [wallet] = await trx.insert(walletsTable).values({
+        userId: link.userId,
+        countryCode,
+        currency,
+        mode: "live",
+      }).returning();
+    }
+
+    const reference = `PL-${countryCode}-${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
+    const signatureKey = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 10 * 60_000);
+    const [tx] = await trx.insert(transactionsTable).values({
+      userId: link.userId,
+      walletId: wallet.id,
+      reference,
+      orderId,
+      type: "payin",
+      status: "pending",
+      amount: String(amount),
+      fee: String(fee),
+      netAmount: String(netAmount),
+      currency,
+      countryCode,
+      operator,
+      phone,
+      description: link.title + (customerName ? ` — ${customerName}` : ""),
+      webhookUrl: merchantInfo?.webhookUrl ?? undefined,
+      webhookSignatureKey: webhookSecret ?? signatureKey,
+      mode: "live",
+      expiresAt,
+      requestPayload: JSON.stringify(buildMerchantPayloadSnapshot(req.body)),
+    }).returning();
+
+    return { tx, reused: false as const };
+  });
+
+  const tx = created.tx;
+  const reference = tx.reference;
+  const expiresAt = tx.expiresAt ?? new Date(Date.now() + 10 * 60_000);
+
+  if (created.reused) {
+    const status = tx.status;
+    res.status(200).json({
+      reference,
+      status,
+      amount: parseFloat(tx.amount),
+      fee: parseFloat(tx.fee),
+      net_amount: parseFloat(tx.netAmount),
+      currency: tx.currency,
+      payment_url: storedPaymentUrl(tx.gatewayPayload),
+      message: status === "success"
+        ? "Paiement déjà confirmé"
+        : "Paiement déjà en cours de traitement",
+      reused: true,
+    });
+    return;
+  }
+
+  // Route through aggregator
+  const baseCallbackUrl = getWebhookBaseUrl();
+  const frontendBaseUrl = getFrontendBaseUrl();
+
+  const returnUrl = `${frontendBaseUrl}/fr/pay/${token}`;
 
   try {
     const { aggregator, client } = await resolveAggregator(countryCode, operator);
@@ -413,23 +492,25 @@ router.post("/pay/:token", async (req: any, res: any) => {
           : "/api/webhooks/gomboplus";
     const callbackUrl = `${baseCallbackUrl}${webhookPath}`;
 
+    const gatewayPayload = buildGatewayPayloadSnapshot({
+      gateway: aggregator,
+      operation: "payin",
+      amount,
+      currency,
+      country_code: countryCode,
+      operator,
+      phone,
+      reference,
+      callback_url: callbackUrl,
+      return_url: returnUrl,
+      order_id: tx.orderId!,
+      description: link.title,
+      operator_otp: operatorOtp,
+    });
+
     await db.update(transactionsTable)
       .set({
-        gatewayPayload: JSON.stringify(buildGatewayPayloadSnapshot({
-          gateway: aggregator,
-          operation: "payin",
-          amount,
-          currency,
-          country_code: countryCode,
-          operator,
-          phone,
-          reference,
-          callback_url: callbackUrl,
-          return_url: returnUrl,
-          order_id: tx.orderId!,
-          description: link.title,
-          operator_otp: operatorOtp,
-        })),
+        gatewayPayload: JSON.stringify(gatewayPayload),
         updatedAt: new Date(),
       })
       .where(eq(transactionsTable.id, tx.id));
@@ -504,7 +585,15 @@ router.post("/pay/:token", async (req: any, res: any) => {
     // Sauvegarder externalRef AVANT le poll — le webhook Clapay peut arriver
     // pendant les 20s de polling, et les fallbacks cherchent par externalRef en DB.
     await db.update(transactionsTable)
-      .set({ externalRef })
+      .set({
+        externalRef,
+        gatewayPayload: JSON.stringify({
+          ...gatewayPayload,
+          payment_url: paymentUrl,
+          ussd_code: ussdCode,
+        }),
+        updatedAt: new Date(),
+      })
       .where(eq(transactionsTable.id, tx.id));
 
     // Polling du statut chez le fournisseur (lien de paiement = 4s × max 20s)

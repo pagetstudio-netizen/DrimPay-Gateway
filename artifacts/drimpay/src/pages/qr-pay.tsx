@@ -166,6 +166,7 @@ export default function QrPayPage() {
   const [txRef, setTxRef]                   = useState("");
   const [paymentUrl, setPaymentUrl]         = useState("");
   const [isSandbox, setIsSandbox]           = useState(false);
+  const [submitting, setSubmitting]         = useState(false);
 
   useEffect(() => {
     if (!reference) return;
@@ -202,6 +203,8 @@ export default function QrPayPage() {
   const isWave = selectedOperator === "Wave";
 
   const handleConfirm = async () => {
+    if (submitting) return;
+    setSubmitting(true);
     setStep("processing");
     try {
       const r = await fetch(`${BASE}/api/qr/${reference}`, {
@@ -216,6 +219,7 @@ export default function QrPayPage() {
       });
       const data = await r.json();
       if (!r.ok) {
+        setSubmitting(false);
         setError(data.error ?? "Paiement échoué");
         setStep("error");
         return;
@@ -229,6 +233,7 @@ export default function QrPayPage() {
         setStep("pending");
       }
     } catch {
+      setSubmitting(false);
       setError("Erreur réseau. Veuillez réessayer.");
       setStep("error");
     }
@@ -437,7 +442,7 @@ export default function QrPayPage() {
               {step === "confirm" && (
                 <motion.div key="confirm" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}>
                   <div className="flex items-center gap-2 mb-4">
-                    <button onClick={() => setStep("form")} className="text-gray-400 hover:text-gray-700 transition-colors">
+                     <button onClick={() => { setSubmitting(false); setStep("form"); }} className="text-gray-400 hover:text-gray-700 transition-colors">
                       <ArrowLeft className="w-4 h-4" />
                     </button>
                     <p className="text-sm font-medium text-gray-700">Récapitulatif</p>
@@ -460,9 +465,10 @@ export default function QrPayPage() {
                   </div>
                   <button
                     onClick={handleConfirm}
-                    className="w-full h-12 mt-5 rounded-xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 active:bg-gray-950 transition-colors"
+                    disabled={submitting}
+                    className="w-full h-12 mt-5 rounded-xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 active:bg-gray-950 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Payer maintenant
+                    {submitting ? "Traitement…" : "Payer maintenant"}
                   </button>
                 </motion.div>
               )}
@@ -549,7 +555,7 @@ export default function QrPayPage() {
                   <h2 className="text-lg font-bold text-gray-900">Paiement échoué</h2>
                   <p className="text-sm text-gray-500">{error}</p>
                   <button
-                    onClick={() => { setError(""); setStep("form"); }}
+                    onClick={() => { setError(""); setSubmitting(false); setStep("form"); }}
                     className="mt-2 text-sm text-blue-600 hover:underline font-medium"
                   >
                     Réessayer
