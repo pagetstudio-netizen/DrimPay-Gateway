@@ -281789,6 +281789,16 @@ function signPayload(payload, secret, timestamp2) {
 function generateSignatureKey() {
   return crypto7.randomBytes(32).toString("hex");
 }
+function storedPaymentUrl(gatewayPayload) {
+  if (!gatewayPayload) return null;
+  try {
+    const parsed = JSON.parse(gatewayPayload);
+    const value = parsed?.payment_url ?? parsed?.paymentUrl;
+    return typeof value === "string" && value.trim() ? value : null;
+  } catch {
+    return null;
+  }
+}
 async function resolveUser(req, res, next) {
   if (req.session?.userId) {
     req.resolvedUserId = req.session.userId;
@@ -281972,6 +281982,7 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
       operator: existing.operator,
       phone: existing.phone,
       mode: existing.mode,
+      payment_url: storedPaymentUrl(existing.gatewayPayload),
       expires_at: existing.expiresAt?.toISOString() ?? null,
       created_at: existing.createdAt.toISOString()
     });
@@ -282153,7 +282164,16 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         externalRef = gomboRes.gomboplus_reference;
         paymentUrl = gomboRes.payment_url ?? null;
       }
-      await db.update(transactionsTable).set({ externalRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+      const persistedGatewayPayload = {
+        ...gatewayPayload,
+        payment_url: paymentUrl,
+        ussd_code: ussdCode
+      };
+      await db.update(transactionsTable).set({
+        externalRef,
+        gatewayPayload: JSON.stringify(persistedGatewayPayload),
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(transactionsTable.id, tx.id));
       const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
         intervalMs: 4e3,
         maxDurationMs: 2e4
@@ -282369,6 +282389,7 @@ router12.get("/v2/payin/:reference", resolveUser, async (req, res) => {
     description: tx.description ?? null,
     failure_reason: merchantFailureLabel(tx.status, tx.failureReason) ?? null,
     expires_at: tx.expiresAt?.toISOString() ?? null,
+    payment_url: storedPaymentUrl(tx.gatewayPayload),
     webhook_url: tx.webhookUrl ?? null,
     webhook_status_code: tx.webhookLastStatusCode ?? null,
     webhook_retry_count: tx.webhookRetryCount,
