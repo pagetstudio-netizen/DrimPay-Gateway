@@ -281854,6 +281854,43 @@ init_clapay();
 init_paydunya();
 init_babimo();
 init_gombo_plus();
+
+// src/lib/payin-response.ts
+function startPayinStatusPolling(params, dependencies) {
+  void (async () => {
+    try {
+      const statusCheck = await dependencies.pollUntilSettled(
+        params.aggregator,
+        params.client,
+        params.externalRef,
+        {
+          intervalMs: 4e3,
+          maxDurationMs: 2e4
+        }
+      );
+      await dependencies.settlePayinStatus({
+        txId: params.transactionId,
+        status: statusCheck?.status ?? "processing",
+        gatewayReference: params.externalRef,
+        failureReason: statusCheck?.failureReason,
+        gateway: params.aggregator
+      });
+    } catch (pollError) {
+      console.warn(
+        `[API Payin] Background status poll failed for ${params.reference}: ${pollError?.message ?? pollError}`
+      );
+    }
+  })();
+}
+function sendPayinProcessingResponse(res, body) {
+  res.status(201).json({
+    ...body,
+    status: "processing",
+    verified_status: "processing"
+  });
+}
+
+// src/routes/v2payin.ts
 var router12 = (0, import_express12.Router)();
 var rateLimitStore = /* @__PURE__ */ new Map();
 function checkRateLimit(keyId) {
@@ -282258,27 +282295,19 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         gatewayPayload: JSON.stringify(persistedGatewayPayload),
         updatedAt: /* @__PURE__ */ new Date()
       }).where(eq(transactionsTable.id, tx.id));
-      void (async () => {
-        try {
-          const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
-            intervalMs: 4e3,
-            maxDurationMs: 2e4
-          });
-          await settlePayinStatus({
-            txId: tx.id,
-            status: statusCheck?.status ?? "processing",
-            gatewayReference: externalRef,
-            failureReason: statusCheck?.failureReason,
-            gateway: aggregator
-          });
-        } catch (pollError) {
-          console.warn(`[API Payin] Background status poll failed for ${reference}: ${pollError?.message ?? pollError}`);
-        }
-      })();
-      res.status(201).json({
+      startPayinStatusPolling({
+        aggregator,
+        client: client2,
+        externalRef,
+        transactionId: tx.id,
+        reference
+      }, {
+        pollUntilSettled,
+        settlePayinStatus
+      });
+      sendPayinProcessingResponse(res, {
         reference,
         order_id,
-        status: "processing",
         amount,
         fee,
         net_amount: netAmount,
@@ -282293,7 +282322,6 @@ router12.post("/v2/payin/initiate", resolveUser, async (req, res) => {
         ussd_code: ussdCode,
         message: "Prompt de paiement envoy\xE9 au t\xE9l\xE9phone du client",
         gateway_reference: externalRef,
-        verified_status: "processing",
         created_at: tx.createdAt.toISOString()
       });
       return;

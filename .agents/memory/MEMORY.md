@@ -15,3 +15,4 @@
 - [DrimPay API key schema](drimpay-api-key-schema.md) — older Plesk/Supabase databases need the nullable webhook_secret column before the API key page can load.
 - [DrimPay API wallet modes](drimpay-api-wallet-modes.md) — API wallet lookups and settlement must always enforce the key/transaction mode to prevent Live credits entering Sandbox.
 - [DrimPay API pay-in latency](drimpay-api-payin-latency.md) — return provider payment URLs immediately; polling and settlement must not block the API initiation response.
+- [DrimPay API pay-in initiation](drimpay-api-payin-initiation.md) — return the provider payment URL as processing; final settlement remains asynchronous and idempotent.
