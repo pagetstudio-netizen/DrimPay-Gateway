@@ -26,7 +26,7 @@ router.get("/help", async (req: any, res) => {
     uptimeSeconds: Math.floor(process.uptime()),
     env: process.env["NODE_ENV"] ?? "(non défini)",
     port: process.env["PORT"] ?? "(non défini)",
-    replId: process.env["REPL_ID"] ? "✓ replit" : "✗ (Plesk/autre)",
+    runtime: process.env["REPL_ID"] ? "managed" : "external",
   };
 
   // ── Mémoire ──────────────────────────────────────────────────────────────

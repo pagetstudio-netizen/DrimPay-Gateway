@@ -429,7 +429,7 @@ export function getBabimoClient(countryCode: string): BabimoClient {
   const password = process.env[babimoSecretName(key, "PASSWORD")];
   if (!email || !password) {
     throw new Error(
-      `Babimo ${key} non configuré. Définissez ${babimoSecretName(key, "EMAIL")} et ${babimoSecretName(key, "PASSWORD")} dans les Secrets Replit.`,
+      `Babimo ${key} non configuré. Vérifiez les identifiants sécurisés ${babimoSecretName(key, "EMAIL")} et ${babimoSecretName(key, "PASSWORD")}.`,
     );
   }
 

@@ -77,7 +77,7 @@ export interface RouteResult {
 
 export class AggregatorNotConfiguredError extends Error {
   constructor(public readonly aggregator: AggregatorCode) {
-    super(`Agrégateur "${aggregator}" non configuré. Vérifiez les secrets dans Replit.`);
+    super(`Agrégateur "${aggregator}" non configuré. Vérifiez sa configuration sécurisée.`);
     this.name = "AggregatorNotConfiguredError";
   }
 }

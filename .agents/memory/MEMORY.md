@@ -17,3 +17,4 @@
 - [DrimPay API pay-in latency](drimpay-api-payin-latency.md) — return provider payment URLs immediately; polling and settlement must not block the API initiation response.
 - [DrimPay API pay-in initiation](drimpay-api-payin-initiation.md) — return the provider payment URL as processing; final settlement remains asynchronous and idempotent.
 - [Post-merge setup hook](post-merge-setup-hook.md) — post-merge automation requires an explicit workspace script path and timeout.
+- [Browser source visibility](browser-source-visibility.md) — frontend code can always be inspected; protect admin data server-side and lazy-load internal screens.

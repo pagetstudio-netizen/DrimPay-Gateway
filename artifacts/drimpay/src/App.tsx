@@ -6,7 +6,7 @@ import { Layout } from "@/components/layout";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ModeProvider } from "@/lib/mode-context";
 import { LangProvider, type Lang } from "@/lib/i18n";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
 import Home from "@/pages/home";
 import About from "@/pages/about";
@@ -53,45 +53,57 @@ import DashboardPaymentLinksCreate from "@/pages/dashboard/payment-links-create"
 import DashboardQrCodes from "@/pages/dashboard/qr-codes";
 import DashboardMassPayout from "@/pages/dashboard/mass-payout";
 import DashboardWalletExchange from "@/pages/dashboard/wallet-exchange";
-import AdminWalletExchanges from "@/pages/admin/wallet-exchanges";
 import PayPage from "@/pages/pay";
 import QrPayPage from "@/pages/qr-pay";
 
-import SupportAdminLogin from "@/pages/support-admin/login";
-import SupportAdminChangePassword from "@/pages/support-admin/change-password";
-import SupportAdminDashboard from "@/pages/support-admin/index";
-import SupportAdminMessages from "@/pages/support-admin/messages";
-import SupportAdminMessageDetail from "@/pages/support-admin/message-detail";
-import SupportAdminSettings from "@/pages/support-admin/settings";
-import SupportAdminNotifications from "@/pages/support-admin/notifications";
-import SupportAdminWalletExchanges from "@/pages/support-admin/wallet-exchanges";
-
-import AdminDashboard from "@/pages/admin/index";
-import AdminMerchants from "@/pages/admin/merchants";
-import AdminKyb from "@/pages/admin/kyb";
-import AdminTransactions from "@/pages/admin/transactions";
-import AdminWallets from "@/pages/admin/wallets";
-import AdminAggregators from "@/pages/admin/aggregators";
-import AdminOperators from "@/pages/admin/operators";
-import AdminPaymentLinks from "@/pages/admin/payment-links";
-import AdminKybContracts from "@/pages/admin/kyb-contracts";
-import AdminBlacklist from "@/pages/admin/blacklist";
-import AdminLogs from "@/pages/admin/logs";
-import AdminSecurity from "@/pages/admin/security";
-import AdminNotifications from "@/pages/admin/notifications";
-import AdminBroadcast from "@/pages/admin/broadcast";
 import DashboardNotifications from "@/pages/dashboard/notifications";
 import DashboardVerifyCode from "@/pages/dashboard/verify-code";
 import DashboardSupport from "@/pages/dashboard/support";
 import DashboardApiKeys from "@/pages/dashboard/api-keys";
-import AdminSettings from "@/pages/admin/settings";
-import AdminContract from "@/pages/admin/contract";
-import AdminSocialLinks from "@/pages/admin/social-links";
-import AdminJobs from "@/pages/admin/jobs";
-import AdminSupportAgents from "@/pages/admin/support-agents";
-import AdminApiKeys from "@/pages/admin/api-keys";
 import SupportPage from "@/pages/support";
 import SocialRedirect from "@/pages/social-redirect";
+
+// Admin-only screens are kept out of the public entry bundle. This reduces
+// accidental exposure of internal UI/source in the public site's Sources tab;
+// authorization is still enforced by AuthProvider and every server route.
+const SupportAdminLogin = lazy(() => import("@/pages/support-admin/login"));
+const SupportAdminChangePassword = lazy(() => import("@/pages/support-admin/change-password"));
+const SupportAdminDashboard = lazy(() => import("@/pages/support-admin/index"));
+const SupportAdminMessages = lazy(() => import("@/pages/support-admin/messages"));
+const SupportAdminMessageDetail = lazy(() => import("@/pages/support-admin/message-detail"));
+const SupportAdminSettings = lazy(() => import("@/pages/support-admin/settings"));
+const SupportAdminNotifications = lazy(() => import("@/pages/support-admin/notifications"));
+const SupportAdminWalletExchanges = lazy(() => import("@/pages/support-admin/wallet-exchanges"));
+
+const AdminDashboard = lazy(() => import("@/pages/admin/index"));
+const AdminMerchants = lazy(() => import("@/pages/admin/merchants"));
+const AdminKyb = lazy(() => import("@/pages/admin/kyb"));
+const AdminTransactions = lazy(() => import("@/pages/admin/transactions"));
+const AdminWallets = lazy(() => import("@/pages/admin/wallets"));
+const AdminAggregators = lazy(() => import("@/pages/admin/aggregators"));
+const AdminOperators = lazy(() => import("@/pages/admin/operators"));
+const AdminPaymentLinks = lazy(() => import("@/pages/admin/payment-links"));
+const AdminKybContracts = lazy(() => import("@/pages/admin/kyb-contracts"));
+const AdminBlacklist = lazy(() => import("@/pages/admin/blacklist"));
+const AdminLogs = lazy(() => import("@/pages/admin/logs"));
+const AdminSecurity = lazy(() => import("@/pages/admin/security"));
+const AdminNotifications = lazy(() => import("@/pages/admin/notifications"));
+const AdminBroadcast = lazy(() => import("@/pages/admin/broadcast"));
+const AdminSettings = lazy(() => import("@/pages/admin/settings"));
+const AdminContract = lazy(() => import("@/pages/admin/contract"));
+const AdminSocialLinks = lazy(() => import("@/pages/admin/social-links"));
+const AdminJobs = lazy(() => import("@/pages/admin/jobs"));
+const AdminSupportAgents = lazy(() => import("@/pages/admin/support-agents"));
+const AdminApiKeys = lazy(() => import("@/pages/admin/api-keys"));
+const AdminWalletExchanges = lazy(() => import("@/pages/admin/wallet-exchanges"));
+
+function ProtectedAreaLoading() {
+  return (
+    <div className="flex items-center justify-center h-screen bg-background">
+      <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -252,30 +264,32 @@ function AdminSwitch() {
   }
 
   return (
-    <Switch>
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/admin/merchants" component={AdminMerchants} />
-      <Route path="/admin/kyb" component={AdminKyb} />
-      <Route path="/admin/transactions" component={AdminTransactions} />
-      <Route path="/admin/wallets" component={AdminWallets} />
-      <Route path="/admin/aggregators" component={AdminAggregators} />
-      <Route path="/admin/operators" component={AdminOperators} />
-      <Route path="/admin/payment-links" component={AdminPaymentLinks} />
-      <Route path="/admin/kyb-contracts" component={AdminKybContracts} />
-      <Route path="/admin/blacklist" component={AdminBlacklist} />
-      <Route path="/admin/logs" component={AdminLogs} />
-      <Route path="/admin/security" component={AdminSecurity} />
-      <Route path="/admin/broadcast" component={AdminBroadcast} />
-      <Route path="/admin/notifications" component={AdminNotifications} />
-      <Route path="/admin/contract" component={AdminContract} />
-      <Route path="/admin/settings" component={AdminSettings} />
-      <Route path="/admin/social-links" component={AdminSocialLinks} />
-      <Route path="/admin/jobs" component={AdminJobs} />
-      <Route path="/admin/support-agents" component={AdminSupportAgents} />
-      <Route path="/admin/api-keys" component={AdminApiKeys} />
-      <Route path="/admin/wallet-exchanges" component={AdminWalletExchanges} />
-      <Route component={AdminDashboard} />
-    </Switch>
+    <Suspense fallback={<ProtectedAreaLoading />}>
+      <Switch>
+        <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/merchants" component={AdminMerchants} />
+        <Route path="/admin/kyb" component={AdminKyb} />
+        <Route path="/admin/transactions" component={AdminTransactions} />
+        <Route path="/admin/wallets" component={AdminWallets} />
+        <Route path="/admin/aggregators" component={AdminAggregators} />
+        <Route path="/admin/operators" component={AdminOperators} />
+        <Route path="/admin/payment-links" component={AdminPaymentLinks} />
+        <Route path="/admin/kyb-contracts" component={AdminKybContracts} />
+        <Route path="/admin/blacklist" component={AdminBlacklist} />
+        <Route path="/admin/logs" component={AdminLogs} />
+        <Route path="/admin/security" component={AdminSecurity} />
+        <Route path="/admin/broadcast" component={AdminBroadcast} />
+        <Route path="/admin/notifications" component={AdminNotifications} />
+        <Route path="/admin/contract" component={AdminContract} />
+        <Route path="/admin/settings" component={AdminSettings} />
+        <Route path="/admin/social-links" component={AdminSocialLinks} />
+        <Route path="/admin/jobs" component={AdminJobs} />
+        <Route path="/admin/support-agents" component={AdminSupportAgents} />
+        <Route path="/admin/api-keys" component={AdminApiKeys} />
+        <Route path="/admin/wallet-exchanges" component={AdminWalletExchanges} />
+        <Route component={AdminDashboard} />
+      </Switch>
+    </Suspense>
   );
 }
 

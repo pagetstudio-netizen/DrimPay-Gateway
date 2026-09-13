@@ -108128,7 +108128,7 @@ function getBabimoClient(countryCode) {
   const password = process.env[babimoSecretName(key, "PASSWORD")];
   if (!email3 || !password) {
     throw new Error(
-      `Babimo ${key} non configur\xE9. D\xE9finissez ${babimoSecretName(key, "EMAIL")} et ${babimoSecretName(key, "PASSWORD")} dans les Secrets Replit.`
+      `Babimo ${key} non configur\xE9. V\xE9rifiez les identifiants s\xE9curis\xE9s ${babimoSecretName(key, "EMAIL")} et ${babimoSecretName(key, "PASSWORD")}.`
     );
   }
   const newClient = new BabimoClient({
@@ -259452,7 +259452,7 @@ router2.get("/help", async (req, res) => {
     uptimeSeconds: Math.floor(process.uptime()),
     env: process.env["NODE_ENV"] ?? "(non d\xE9fini)",
     port: process.env["PORT"] ?? "(non d\xE9fini)",
-    replId: process.env["REPL_ID"] ? "\u2713 replit" : "\u2717 (Plesk/autre)"
+    runtime: process.env["REPL_ID"] ? "managed" : "external"
   };
   const mem = process.memoryUsage();
   checks.memory = {
@@ -277991,7 +277991,7 @@ async function findOperatorAggregatorByCanonicalName(countryCode, canonicalName)
 }
 var AggregatorNotConfiguredError = class extends Error {
   constructor(aggregator) {
-    super(`Agr\xE9gateur "${aggregator}" non configur\xE9. V\xE9rifiez les secrets dans Replit.`);
+    super(`Agr\xE9gateur "${aggregator}" non configur\xE9. V\xE9rifiez sa configuration s\xE9curis\xE9e.`);
     this.aggregator = aggregator;
     this.name = "AggregatorNotConfiguredError";
   }
