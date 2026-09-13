@@ -60,9 +60,15 @@ const MAINTENANCE_OPERATOR = "om|BF";
 
 function countryKey(countryCode: string): string {
   const normalized = String(countryCode ?? "").trim().toUpperCase();
-  // Gombo's documentation contains both BN and BJ for Bénin; DrimPay's
-  // canonical country code is BJ, and the API examples use BJ.
+  // DrimPay's canonical country code is BJ. Keep this internal value stable
+  // for database/operator routing.
   return normalized === "BN" ? "BJ" : normalized;
+}
+
+function gomboCountryCode(countryCode: string): string {
+  // Gombo's current documentation uses BN for Bénin, while DrimPay uses BJ
+  // internally. Convert only at the provider boundary.
+  return countryKey(countryCode) === "BJ" ? "BN" : countryKey(countryCode);
 }
 
 function operatorKey(operator: string, countryCode: string): string {
@@ -130,7 +136,9 @@ export interface GomboPlusPayinRequest {
   description?: string;
 }
 
-export type GomboPlusPayoutRequest = Omit<GomboPlusPayinRequest, "return_url">;
+export type GomboPlusPayoutRequest = Omit<GomboPlusPayinRequest, "return_url" | "callback_url"> & {
+  callback_url?: string;
+};
 
 export interface GomboPlusPaymentResponse {
   success: boolean;
@@ -175,7 +183,7 @@ export function isGomboPlusSupported(operator: string, countryCode: string, oper
   const country = countryKey(countryCode);
   const code = gomboPlusOperatorCode(operator, country);
   if (!GOMBO_COUNTRIES.has(country) || !code) return false;
-  if (operation === "payout" && operatorKey(operator, country) === MAINTENANCE_OPERATOR) return false;
+  if (operation === "payout" && code === "om" && country === "BF") return false;
   return true;
 }
 
@@ -266,13 +274,23 @@ export class GomboPlusClient {
 
   private buildPayoutBody(params: GomboPlusPayoutRequest) {
     const { country, operator, recipient_number } = this.validateOperation(params);
-    return {
+    const body: {
+      amount: number;
+      recipient_number: string;
+      country: string;
+      operator: string;
+      callback_url?: string;
+    } = {
       amount: params.amount,
       recipient_number,
-      country,
+      country: gomboCountryCode(country),
       operator,
-      callback_url: params.callback_url,
     };
+    // callback_url is optional in Gombo's documented cashout contract.
+    // Send it only when configured, while preserving the webhook callback
+    // used by DrimPay in normal production requests.
+    if (params.callback_url?.trim()) body.callback_url = params.callback_url.trim();
+    return body;
   }
 
   async initiatePayin(params: GomboPlusPayinRequest): Promise<GomboPlusPaymentResponse> {

@@ -7,7 +7,7 @@ Gombo Plus uses `X-Public-Key` and `X-Private-Key` headers. Pay-ins use `POST /a
 
 **Why:** The provider documentation uses inconsistent naming (`GomboPlus`/`EgoPay`) and contains both `BN` and `BJ` for Benin, while DrimPay's existing country model uses `BJ`.
 
-**How to apply:** Keep `BJ` as the internal and outgoing country code, normalize Togo `TMoney` to provider operator `yas`, and treat Burkina Faso Orange Money (`om`) as unavailable while the provider documents it under maintenance. Cashout activation is account-specific and must be confirmed with Gombo Plus before live payouts.
+**How to apply:** Keep `BJ` as the internal DrimPay code, convert it to Gombo's documented `BN` only at the provider boundary, normalize Togo `TMoney` to provider operator `yas`, and treat Burkina Faso Orange Money (`om`) as unavailable while the provider documents it under maintenance. Apply the maintenance rule to the mapped provider operator code in both prevalidation and request validation. Cashout activation is account-specific and must be confirmed with Gombo Plus before live payouts.
 
 Gombo Plus cash-in requests use `amount`, `phone_number`, `country_code`, `operator`, `reference`, and `callback_url`. For Togo, `yas` is used for YAS/TMoney and `moov` for Moov.
 
