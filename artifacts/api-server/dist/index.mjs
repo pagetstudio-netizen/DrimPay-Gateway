@@ -56121,6 +56121,7 @@ var init_drimpay = __esm({
       country: text("country").notNull().default("OTHER"),
       role: userRoleEnum("role").notNull().default("user"),
       accountType: accountTypeEnum("account_type").notNull().default("enterprise"),
+      dashboardMode: text("dashboard_mode").$type().notNull().default("sandbox"),
       merchantCode: text("merchant_code").unique(),
       webhookUrl: text("webhook_url"),
       staticIp: text("static_ip"),
@@ -268985,13 +268986,14 @@ router10.post("/auth/login", loginRateLimiter, async (req, res) => {
   }
   req.session.userId = user.id;
   req.session.role = user.role;
+  req.session.mode = user.dashboardMode === "live" ? "live" : "sandbox";
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Connexion r\xE9ussie : ${email3}`, riskLevel: "low" });
   resolveGeoInfo(ip).then((geo) => {
     notifyLoginAttempt({ type: "success", email: email3, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {
     });
   }).catch(() => {
   });
-  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode });
 });
 router10.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
   const { email: email3, code } = req.body;
@@ -269040,8 +269042,9 @@ router10.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
   }
   req.session.userId = user.id;
   req.session.role = user.role;
+  req.session.mode = user.dashboardMode === "live" ? "live" : "sandbox";
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Email v\xE9rifi\xE9 : ${email3}`, riskLevel: "low" });
-  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode });
 });
 router10.get("/auth/activate", async (req, res) => {
   const { token } = req.query;
@@ -269086,6 +269089,7 @@ router10.get("/auth/activate", async (req, res) => {
   }
   req.session.userId = user.id;
   req.session.role = user.role;
+  req.session.mode = user.dashboardMode === "live" ? "live" : "sandbox";
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Activation lien email : ${user.email}`, riskLevel: "low" });
   res.redirect(user.role === "admin" ? "/admin" : "/dashboard");
 });
@@ -269216,8 +269220,9 @@ router10.get("/auth/me", async (req, res) => {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
-  if (!req.session.mode) req.session.mode = "sandbox";
-  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode, isSupportAgent: user.isSupportAgent ?? false });
+  const mode = user.dashboardMode === "live" ? "live" : "sandbox";
+  req.session.mode = mode;
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode, isSupportAgent: user.isSupportAgent ?? false });
 });
 var auth_default = router10;
 
@@ -278859,7 +278864,13 @@ function requireAuth(req, res, next) {
   next();
 }
 router11.get("/dashboard/mode", requireAuth, async (req, res) => {
-  if (!req.session.mode) req.session.mode = "sandbox";
+  const [user] = await db.select({ dashboardMode: usersTable.dashboardMode }).from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const mode = user.dashboardMode === "live" ? "live" : "sandbox";
+  req.session.mode = mode;
   let kybStatus = "pending";
   if (req.session.role !== "admin") {
     const userId = req.session.userId;
@@ -278868,7 +278879,7 @@ router11.get("/dashboard/mode", requireAuth, async (req, res) => {
   } else {
     kybStatus = "approved";
   }
-  res.json({ mode: req.session.mode, kybStatus });
+  res.json({ mode, kybStatus });
 });
 router11.post("/dashboard/mode", requireAuth, async (req, res) => {
   const { mode } = req.body;
@@ -278883,6 +278894,11 @@ router11.post("/dashboard/mode", requireAuth, async (req, res) => {
       res.status(403).json({ error: "KYB_NOT_APPROVED" });
       return;
     }
+  }
+  const [user] = await db.update(usersTable).set({ dashboardMode: mode }).where(eq(usersTable.id, req.session.userId)).returning({ id: usersTable.id });
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
   }
   req.session.mode = mode;
   res.json({ mode });
