@@ -189,7 +189,7 @@ function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
           <div className="py-3 border-b border-border/50">
             <p className="text-xs text-muted-foreground mb-1">Fee</p>
             <p className="text-lg font-semibold text-yellow-400">{parseFloat(tx.fee).toLocaleString("fr-FR")} {tx.currency}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Taux fixe : 3,50%</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Taux effectif selon le pays et l'opérateur</p>
           </div>
 
           <div className="py-3 border-b border-border/50">

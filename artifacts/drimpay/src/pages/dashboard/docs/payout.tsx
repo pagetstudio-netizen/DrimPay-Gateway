@@ -161,7 +161,7 @@ export default function DocPayout() {
   "amount": 25000,
   "fee": 750,
   "total_debit": 25750,
-  "fee_rate": "3%",
+  "fee_rate": "effective country/operator rate",
   "currency": "XOF",
   "country_code": "TG",
   "operator": "TMoney",

@@ -34,13 +34,13 @@ const BUSINESS_COUNTRIES = [
 ];
 
 const ENTERPRISE_FEATURES = [
-  "Frais de 3,5% par transaction",
+  "Frais selon le pays et l'opérateur (base 4,5% au Togo, au Sénégal et au Mali)",
   "Accès Pay-in et Pay-out",
   "API Pay-in et Pay-out complètes",
   "Fiabilité assurée — KYB entreprise requis",
 ];
 const PERSONAL_FEATURES = [
-  "Frais de 3,5% par transaction",
+  "Frais selon le pays et l'opérateur (base 4,5% au Togo, au Sénégal et au Mali)",
   "Accès Pay-in et Pay-out",
   "API Pay-in et Pay-out disponibles",
   "KYC — pièce d'identité ou autre document requis",

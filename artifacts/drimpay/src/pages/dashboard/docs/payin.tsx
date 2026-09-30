@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 function useFeeRate() {
-  const [rate, setRate] = useState({ payin: 3.5, payin_display: "3,5%" });
+  const [rate, setRate] = useState({ payin: 4.5, payin_display: "taux effectif" });
   useEffect(() => {
     fetch("/api/dashboard/fee-rate", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
@@ -161,7 +161,7 @@ export default function DocPayin() {
   "amount": 50000,
   "fee": 1500,
   "net_amount": 48500,
-  "fee_rate": "3%",  // 5% pour les comptes personnels
+  "fee_rate": "effective country/operator rate",
   "currency": "XOF",
   "country_code": "TG",
   "operator": "TMoney",

@@ -113,8 +113,8 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
     // ── 4. SERVICES ──────────────────────────────────────────────────────────
     section("4. SERVICES FOURNIS PAR DRIMPAY");
     const services = [
-      "API PayIn (réception de paiements) — Frais : 3,5%",
-      "API Payout (retraits et transferts) — Frais : 3,5%",
+      "API PayIn (réception de paiements) — Frais selon le pays, l'opérateur et la configuration applicable",
+      "API Payout (retraits et transferts) — Frais selon le pays, l'opérateur et la configuration applicable",
       "PayIn Link (liens de paiement instantané)",
       "Dashboard de gestion marchand",
       "Bulk Payout, cartes virtuelles, Airtime (selon éligibilité)",

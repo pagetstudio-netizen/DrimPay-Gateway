@@ -157,7 +157,7 @@ router.get("/dashboard/fee-rate", requireAuth, async (req: any, res: any) => {
   const countryCode = typeof req.query.country_code === "string" ? req.query.country_code : undefined;
   const operator = typeof req.query.operator === "string" ? req.query.operator : undefined;
   const [payinRate, payoutRate] = await Promise.all([
-    getFeeRate(userId, "payin"),
+    getFeeRate(userId, "payin", countryCode, operator),
     getFeeRate(userId, "payout", countryCode, operator),
   ]);
   const fmt = (r: number) => parseFloat((r * 100).toFixed(4));

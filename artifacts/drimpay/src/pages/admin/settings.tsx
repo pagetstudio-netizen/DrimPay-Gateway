@@ -79,10 +79,21 @@ interface OperatorFeeRow {
   active: boolean;
   payin: number | null;
   payout: number | null;
+  payinDefault?: number;
+  payoutDefault?: number;
+}
+
+interface CountryFeeRow {
+  countryCode: string;
+  payin: number | null;
+  payout: number | null;
+  payinDefault?: number;
+  payoutDefault?: number;
 }
 
 function OperatorFeesSection() {
   const [rows, setRows] = useState<OperatorFeeRow[]>([]);
+  const [countries, setCountries] = useState<CountryFeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "ok" | "error"; message: string } | null>(null);
@@ -94,6 +105,7 @@ function OperatorFeesSection() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error ?? "Impossible de charger les frais");
       setRows(data?.operators ?? []);
+      setCountries(data?.countries ?? []);
     } catch (error: any) {
       setStatus({ type: "error", message: error?.message ?? "Impossible de charger les frais" });
     } finally {
@@ -109,6 +121,12 @@ function OperatorFeesSection() {
     setRows(current => current.map(row => row.key === key ? { ...row, [type]: parsed } : row));
   };
 
+  const setCountryRate = (countryCode: string, type: "payin" | "payout", value: string) => {
+    const parsed = value === "" ? null : Number(value);
+    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0 || parsed > 100)) return;
+    setCountries(current => current.map(row => row.countryCode === countryCode ? { ...row, [type]: parsed } : row));
+  };
+
   const save = async () => {
     setSaving(true);
     setStatus(null);
@@ -117,11 +135,16 @@ function OperatorFeesSection() {
         row.key,
         { payin: row.payin, payout: row.payout },
       ]));
-      const response = await fetch(`${ADMIN_BASE}/operator-fees`, {
+       const response = await fetch(`${ADMIN_BASE}/operator-fees`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rates }),
+         body: JSON.stringify({
+           rates,
+           countryDefaults: Object.fromEntries(countries.map(country => [
+             country.countryCode, { payin: country.payin, payout: country.payout },
+           ])),
+         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error ?? "Échec de l'enregistrement");
@@ -173,6 +196,20 @@ function OperatorFeesSection() {
         </div>
       ) : (
         <div className="overflow-x-auto">
+          <div className="mb-7 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
+            <h3 className="text-sm font-bold text-gray-800 mb-1">Tarifs par défaut des pays</h3>
+            <p className="text-xs text-gray-500 mb-3">Un champ vide conserve le tarif global. Ces valeurs sont héritées par les opérateurs sans override.</p>
+            <div className="min-w-[430px]">
+              <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 px-3 pb-2 text-[11px] uppercase tracking-wide font-bold text-gray-400"><span>Pays</span><span>Pay-in (%)</span><span>Pay-out (%)</span></div>
+              <div className="space-y-2">{countries.map(country => (
+                <div key={country.countryCode} className="grid grid-cols-[1fr_1fr_1fr] items-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-2">
+                  <span className="text-sm font-semibold text-gray-700">{country.countryCode}</span>
+                  <input type="number" min="0" max="100" step="0.01" value={country.payin ?? ""} onChange={e => setCountryRate(country.countryCode, "payin", e.target.value)} placeholder={country.payinDefault != null ? `${country.payinDefault}% global` : "Global"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input type="number" min="0" max="100" step="0.01" value={country.payout ?? ""} onChange={e => setCountryRate(country.countryCode, "payout", e.target.value)} placeholder={country.payoutDefault != null ? `${country.payoutDefault}% global` : "Global"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+              ))}</div>
+            </div>
+          </div>
           <div className="min-w-[560px]">
             <div className="grid grid-cols-[1.2fr_1.5fr_1fr_1fr] gap-3 px-3 pb-2 text-[11px] uppercase tracking-wide font-bold text-gray-400">
               <span>Pays</span><span>Opérateur</span><span>Pay-in (%)</span><span>Pay-out (%)</span>
@@ -184,7 +221,7 @@ function OperatorFeesSection() {
                   row.active ? "border-gray-100 bg-white" : "border-gray-100 bg-gray-50 opacity-60",
                 )}>
                   <span className="text-sm font-semibold text-gray-700">{row.countryCode}</span>
-                  <span className="text-sm text-gray-700">{row.name}</span>
+                   <span className="text-sm text-gray-700">{row.name}<small className="block text-[10px] text-gray-400">Défaut: {row.payinDefault ?? "—"}% / {row.payoutDefault ?? "—"}%</small></span>
                   <input
                     type="number" min="0" max="100" step="0.01"
                     value={row.payin ?? ""}

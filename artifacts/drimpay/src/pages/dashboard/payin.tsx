@@ -180,6 +180,7 @@ export default function Payin() {
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<(typeof COUNTRIES)[0] | null>(null);
+  const [payinRate, setPayinRate] = useState<number | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -208,6 +209,15 @@ export default function Payin() {
     name: op,
     flag: getOperatorLogo(op, 28),
   }));
+  const watchedOperator = form.watch("operator");
+
+  useEffect(() => {
+    setPayinRate(null);
+    if (!selectedCountry || !watchedOperator) return;
+    const params = new URLSearchParams({ country_code: selectedCountry.code, operator: watchedOperator });
+    fetch(`/api/dashboard/fee-rate?${params}`, { credentials: "include" })
+      .then(r => r.json()).then(d => { if (typeof d?.payin === "number") setPayinRate(d.payin / 100); }).catch(() => {});
+  }, [selectedCountry, watchedOperator]);
 
   const onSubmit = async (values: FormData) => {
     setSubmitting(true);
@@ -348,7 +358,7 @@ export default function Payin() {
                         <FormControl><Input type="number" placeholder="10000" min="1" {...field} /></FormControl>
                         {field.value && !isNaN(parseFloat(field.value)) && (
                           <p className="text-xs text-muted-foreground">
-                            Frais 3,5% : {(parseFloat(field.value) * 0.035).toLocaleString("fr-FR")} · Net : <strong>{(parseFloat(field.value) * 0.965).toLocaleString("fr-FR")}</strong> {selectedCountry?.currency ?? "XOF"}
+                            Frais {payinRate === null ? "—" : `${(payinRate * 100).toLocaleString("fr-FR")}%`} (taux effectif pays/opérateur) : {payinRate === null ? "—" : (parseFloat(field.value) * payinRate).toLocaleString("fr-FR")} · Net : <strong>{payinRate === null ? "—" : (parseFloat(field.value) * (1 - payinRate)).toLocaleString("fr-FR")}</strong> {selectedCountry?.currency ?? "XOF"}
                           </p>
                         )}
                         <FormMessage />

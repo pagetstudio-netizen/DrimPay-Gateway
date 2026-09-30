@@ -15,9 +15,13 @@ import { eq, and, asc, desc, sum, count, sql, ilike, or, gte, lt, inArray, isNot
 import crypto from "crypto";
 import {
   OPERATOR_FEE_RATES_SETTING,
+  COUNTRY_FEE_RATES_SETTING,
   operatorFeeConfigKey,
   parseOperatorFeeRates,
+  parseCountryFeeDefaults,
+  defaultCountryFee,
   type OperatorFeeRates,
+  type CountryFeeDefaults,
 } from "../lib/fee-rates";
 import { setGomboPlusPublicKeyFromSettings } from "../lib/gombo-plus";
 import bcrypt from "bcryptjs";
@@ -1652,16 +1656,41 @@ router.put(AP + "/settings", requireAdmin, async (req: any, res: any) => {
 
 // ─── OPERATOR / COUNTRY FEES ─────────────────────────────────────────────────
 router.get(AP + "/operator-fees", requireAdmin, async (_req: any, res: any) => {
-  const [operators, setting] = await Promise.all([
+  const [operators, setting, countrySetting, platformSettings] = await Promise.all([
     db.select().from(operatorsTable).orderBy(operatorsTable.countryCode, operatorsTable.name),
     db.select({ value: adminSettingsTable.value })
       .from(adminSettingsTable)
       .where(eq(adminSettingsTable.key, OPERATOR_FEE_RATES_SETTING))
       .limit(1),
+    db.select({ value: adminSettingsTable.value })
+      .from(adminSettingsTable)
+      .where(eq(adminSettingsTable.key, COUNTRY_FEE_RATES_SETTING))
+      .limit(1),
+    db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value })
+      .from(adminSettingsTable)
+      .where(inArray(adminSettingsTable.key, ["default_payin_fee_percent", "default_payout_fee_percent", "payin_fee_percent", "payout_fee_percent"])),
   ]);
   const rates = parseOperatorFeeRates(setting?.[0]?.value);
+  const countryDefaults = parseCountryFeeDefaults(countrySetting?.[0]?.value);
+  const platform = (type: "payin" | "payout") => {
+    const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+    const legacy = type === "payin" ? "payin_fee_percent" : "payout_fee_percent";
+    const raw = platformSettings.find(s => s.key === key)?.value ?? platformSettings.find(s => s.key === legacy)?.value;
+    const value = raw === null || raw === undefined ? 3.5 : Number(raw);
+    return Number.isFinite(value) && value >= 0 && value <= 100 ? value : 3.5;
+  };
+  const supportedCountries = [...new Set(operators.map(operator => operator.countryCode.toUpperCase()))];
+  const countries = supportedCountries.map(countryCode => ({
+    countryCode,
+    payin: countryDefaults[countryCode]?.payin ?? null,
+    payout: countryDefaults[countryCode]?.payout ?? null,
+    payinDefault: (defaultCountryFee(countryCode, "payin", countryDefaults) ?? platform("payin") / 100) * 100,
+    payoutDefault: (defaultCountryFee(countryCode, "payout", countryDefaults) ?? platform("payout") / 100) * 100,
+  }));
   res.json({
     rates,
+    countryDefaults,
+    countries,
     operators: operators.map(operator => ({
       id: operator.id,
       countryCode: operator.countryCode,
@@ -1671,6 +1700,11 @@ router.get(AP + "/operator-fees", requireAdmin, async (_req: any, res: any) => {
       key: operatorFeeConfigKey(operator.countryCode, operator.name),
       payin: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payin ?? null,
       payout: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payout ?? null,
+      payinDefault: ((defaultCountryFee(operator.countryCode, "payin", countryDefaults) ?? platform("payin") / 100) * 100),
+      payoutDefault: ((defaultCountryFee(operator.countryCode, "payout", countryDefaults) ?? platform("payout") / 100) * 100),
+      // Retain these aliases for older admin clients.
+      inheritedPayin: ((defaultCountryFee(operator.countryCode, "payin", countryDefaults) ?? platform("payin") / 100) * 100),
+      inheritedPayout: ((defaultCountryFee(operator.countryCode, "payout", countryDefaults) ?? platform("payout") / 100) * 100),
     })),
   });
 });
@@ -1682,6 +1716,7 @@ router.put(AP + "/operator-fees", requireAdmin, async (req: any, res: any) => {
   });
   const parsed = z.object({
     rates: z.record(z.string().min(3).max(200), feeSchema),
+    countryDefaults: z.record(z.string().length(2), feeSchema).optional(),
   }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Tarifs invalides. Chaque frais doit être compris entre 0 et 100 %." });
@@ -1695,8 +1730,18 @@ router.put(AP + "/operator-fees", requireAdmin, async (req: any, res: any) => {
     res.status(400).json({ error: `Opérateur inconnu : ${unknownKey}` });
     return;
   }
+  const supportedCountries = new Set(operators.map(operator => operator.countryCode.trim().toUpperCase()));
+  const unknownCountry = Object.keys(parsed.data.countryDefaults ?? {})
+    .find(country => !supportedCountries.has(country.trim().toUpperCase()));
+  if (unknownCountry) {
+    res.status(400).json({ error: `Pays inconnu : ${unknownCountry}` });
+    return;
+  }
 
   const rates: OperatorFeeRates = parsed.data.rates;
+  const countryDefaults: CountryFeeDefaults = Object.fromEntries(
+    Object.entries(parsed.data.countryDefaults ?? {}).map(([country, value]) => [country.toUpperCase(), value]),
+  );
   await db.insert(adminSettingsTable).values({
     key: OPERATOR_FEE_RATES_SETTING,
     value: JSON.stringify(rates),
@@ -1704,8 +1749,17 @@ router.put(AP + "/operator-fees", requireAdmin, async (req: any, res: any) => {
     target: adminSettingsTable.key,
     set: { value: JSON.stringify(rates), updatedAt: new Date() },
   });
+  if (parsed.data.countryDefaults) {
+    await db.insert(adminSettingsTable).values({
+      key: COUNTRY_FEE_RATES_SETTING,
+      value: JSON.stringify(countryDefaults),
+    }).onConflictDoUpdate({
+      target: adminSettingsTable.key,
+      set: { value: JSON.stringify(countryDefaults), updatedAt: new Date() },
+    });
+  }
   await logAdminAction(req.session.userId, "UPDATE_OPERATOR_FEES", "settings", undefined, JSON.stringify(Object.keys(rates)), req.ip);
-  res.json({ ok: true, rates });
+  res.json({ ok: true, rates, countryDefaults });
 });
 
 // ─── LISTE NOIRE (Blacklist) ───────────────────────────────────────────────────

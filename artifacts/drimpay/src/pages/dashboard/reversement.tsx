@@ -322,8 +322,8 @@ export default function DashboardReversement() {
                         <span>{amount.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
                        <div className="flex justify-between text-muted-foreground">
-                         <span>Frais DrimPay</span>
-                         <span>{feeRate === null ? "Taux en cours de chargement..." : `(${(feeRate * 100).toLocaleString("fr-FR")}%) — ${fee.toLocaleString()} ${selectedCountry?.currency ?? "XOF"}`}</span>
+                         <span>Frais DrimPay ({watchCountry}/{watchedOperator || "opérateur"})</span>
+                         <span>{feeRate === null ? "Taux effectif en cours de chargement..." : `(${(feeRate * 100).toLocaleString("fr-FR")}%) — ${fee.toLocaleString()} ${selectedCountry?.currency ?? "XOF"}`}</span>
                        </div>
                       <div className="flex justify-between font-semibold text-foreground border-t border-border pt-2 mt-2">
                         <span>Montant reçu</span>
@@ -429,7 +429,7 @@ export default function DashboardReversement() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>
-                  Frais de reversement : <span className="font-semibold text-foreground">taux affiché lors de la saisie</span> du montant demandé, débité en plus du montant reçu.
+                  Frais de reversement : <span className="font-semibold text-foreground">taux effectif du pays et de l'opérateur affiché lors de la saisie</span>, débité en plus du montant reçu. Les éventuels tarifs marchands personnalisés restent prioritaires.
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>

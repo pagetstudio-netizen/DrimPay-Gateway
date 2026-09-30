@@ -669,7 +669,7 @@ export default function MassPayout() {
                     <span className="text-sm font-bold text-gray-900">{totalAmount.toLocaleString("fr-FR")} FCFA</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Frais (taux effectif par opérateur)</span>
+                    <span className="text-sm text-gray-500">Frais (taux effectif par pays et opérateur)</span>
                     <span className="text-sm text-amber-600 font-medium">{fees === null ? "—" : `+ ${fees.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA`}</span>
                   </div>
                   <div className="rounded-xl px-4 py-3 flex justify-between items-center" style={{ backgroundColor: "#B5F03C" }}>

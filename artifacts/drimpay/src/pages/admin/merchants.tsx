@@ -269,7 +269,7 @@ function MerchantPanel({
                   </div>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-1.5">
-                  Taux global actuel : 3,5% (entreprise & personnel). Les frais personnalisés prennent le dessus.
+                  Les taux plateforme varient selon le pays et l'opérateur. Les frais personnalisés attribués à un marchand prennent le dessus.
                 </p>
               </div>
             </div>

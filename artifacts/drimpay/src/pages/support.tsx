@@ -161,12 +161,12 @@ const FAQ_ITEMS = [
   {
     category: "fees",
     q: "Quels sont les frais de transaction DrimPay ?",
-    a: "DrimPay applique un taux fixe de 3,5% sur chaque transaction réussie (Pay-in et Pay-out), pour tous les comptes (particuliers et entreprises). Aucun frais cachés, aucun frais d'installation. Les frais sont déduits automatiquement du montant net crédité sur votre wallet.",
+    a: "DrimPay applique un taux selon le pays et l'opérateur sur chaque transaction réussie (Pay-in et Pay-out). Le taux de base est de 4,5% au Togo, au Sénégal et au Mali. Aucun frais caché ni frais d'installation.",
   },
   {
     category: "fees",
     q: "Y a-t-il des frais d'abonnement ou d'inscription ?",
-    a: "Non. L'inscription sur DrimPay est entièrement gratuite. Aucun abonnement mensuel. Vous ne payez que 3,5% par transaction réussie (Pay-in & Pay-out), quel que soit le type de compte. Si la transaction échoue, aucun frais n'est prélevé.",
+    a: "Non. L'inscription sur DrimPay est entièrement gratuite. Aucun abonnement mensuel. Vous payez le taux effectif du pays et de l'opérateur par transaction réussie (Pay-in & Pay-out). Si la transaction échoue, aucun frais n'est prélevé.",
   },
   {
     category: "security",

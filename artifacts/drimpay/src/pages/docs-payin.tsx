@@ -106,7 +106,7 @@ function Alert({ type, title, children }: { type: "warning" | "info" | "success"
 }
 
 function usePlatformFees() {
-  const [fees, setFees] = useState({ payin: 3.5, payout: 3.5 });
+  const [fees, setFees] = useState({ payin: 4.5, payout: 4.5 });
   useEffect(() => {
     fetch("/api/fees")
       .then(r => r.ok ? r.json() : null)
@@ -601,7 +601,7 @@ def drimpay_webhook():
                 The DrimPay Pay-in API lets you initiate Mobile Money collection requests directly from your backend. The customer never leaves your interface — you send us the phone number and amount, we send the payment prompt to their phone, they confirm, and you receive a signed webhook with the result.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                DrimPay charges a flat <strong className="text-foreground">{fees.payin}% fee on Payin</strong> for all accounts (personal &amp; business). The net amount is credited to your country-specific wallet immediately upon confirmation.
+                DrimPay charges the effective country/operator rate, currently <strong className="text-foreground">{fees.payin}% on Payin</strong> for this platform default. Rates can vary by corridor and account-specific merchant agreements take priority. The net amount is credited to your country-specific wallet immediately upon confirmation.
               </p>
               <Alert type="info" title="Full payment flow">
                 <ol className="list-decimal list-inside space-y-1 mt-1">

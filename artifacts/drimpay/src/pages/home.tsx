@@ -214,7 +214,7 @@ export default function Home() {
         name: "DrimPay API",
         applicationCategory: "FinanceApplication",
         operatingSystem: "Web",
-        offers: { "@type": "Offer", price: "0", priceCurrency: "XOF", description: "3,5% Payin & Payout — tous comptes (particuliers & entreprises)" },
+        offers: { "@type": "Offer", price: "0", priceCurrency: "XOF", description: "Pay-in & Pay-out : taux selon le pays et l'opérateur ; base 4,5% au Togo, au Sénégal et au Mali" },
         provider: { "@id": `${SITE_URL}/#organization` },
       },
     ],

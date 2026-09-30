@@ -167,6 +167,7 @@ export default function QrPayPage() {
   const [paymentUrl, setPaymentUrl]         = useState("");
   const [isSandbox, setIsSandbox]           = useState(false);
   const [submitting, setSubmitting]         = useState(false);
+  const [feeRate, setFeeRate]               = useState<number | null>(null);
 
   useEffect(() => {
     if (!reference) return;
@@ -191,7 +192,17 @@ export default function QrPayPage() {
   const currentCountryData = qr?.countries.find(c => c.code === selectedCountry);
   const currency           = currentCountryData?.currency ?? qr?.currency ?? "XOF";
   const displayAmount      = parseFloat(amount || "0");
-  const platformFee        = Math.round(displayAmount * 0.035 * 100) / 100;
+  useEffect(() => {
+    setFeeRate(null);
+    if (!selectedCountry || !selectedOperator) return;
+    fetch(`${BASE}/api/fees?countryCode=${encodeURIComponent(selectedCountry)}&operator=${encodeURIComponent(selectedOperator)}`)
+      .then(r => r.json())
+      .then(d => {
+        const match = Array.isArray(d?.countryRates) ? d.countryRates.find((r: any) => r.countryCode === selectedCountry && r.operator === selectedOperator) : null;
+        if (typeof match?.payin === "number") setFeeRate(match.payin / 100);
+      }).catch(() => {});
+  }, [selectedCountry, selectedOperator]);
+  const platformFee        = feeRate === null ? 0 : Math.round(displayAmount * feeRate * 100) / 100;
   const merchantNet        = Math.round((displayAmount - platformFee) * 100) / 100;
   const operatorLabel      = OPERATOR_BRAND[selectedOperator]?.label ?? selectedOperator;
   const countryMeta        = COUNTRY_META[selectedCountry];
@@ -452,7 +463,7 @@ export default function QrPayPage() {
                       { label: "Marchand",  value: qr?.merchantName ?? "" },
                       { label: "QR",         value: qr?.name ?? "" },
                       { label: "Montant",    value: `${displayAmount.toLocaleString("fr-FR")} ${currency}` },
-                      { label: "Frais (3,5%)", value: `${platformFee.toLocaleString("fr-FR")} ${currency}`, sub: true },
+                      { label: `Frais (${feeRate === null ? "taux en chargement" : `${(feeRate * 100).toLocaleString("fr-FR")}% — ${selectedCountry}/${operatorLabel}`})`, value: `${platformFee.toLocaleString("fr-FR")} ${currency}`, sub: true },
                       { label: "Net marchand", value: `${merchantNet.toLocaleString("fr-FR")} ${currency}`, sub: true },
                       { label: "Opérateur", value: operatorLabel },
                       { label: "Téléphone", value: phone },

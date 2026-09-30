@@ -9,11 +9,11 @@ import { useT, useLang } from "@/lib/i18n";
 import { useSEO, webPageSchema, faqSchema, SITE_URL } from "@/lib/seo";
 
 function usePlatformFees() {
-  const [fees, setFees] = useState({ payin: 3.5, payout: 3.5 });
+  const [fees, setFees] = useState<{ payin: number; payout: number; countryRates: Array<{ countryCode: string; operator: string; payin: number; payout: number }> }>({ payin: 4.5, payout: 4.5, countryRates: [] });
   useEffect(() => {
     fetch("/api/fees")
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.payin != null) setFees({ payin: d.payin, payout: d.payout }); })
+      .then(d => { if (d?.payin != null) setFees({ payin: d.payin, payout: d.payout, countryRates: Array.isArray(d.countryRates) ? d.countryRates : [] }); })
       .catch(() => {});
   }, []);
   return fees;
@@ -31,30 +31,30 @@ export default function Pricing() {
   const lang = useLang();
   useSEO({
     title: lang === "fr"
-      ? "Tarification DrimPay — 3,5% Particuliers · 3% Entreprises (Payin & Payout)"
-      : "DrimPay Pricing — 3.5% Personal · 3% Business (Payin & Payout)",
+       ? "Tarification DrimPay — frais Pay-in & Pay-out par pays et opérateur"
+       : "DrimPay Pricing — Pay-in & Pay-out fees by country and operator",
     description: lang === "fr"
-      ? "Tarification transparente DrimPay : 3,5% pour les particuliers sur Payin, 3% fixe pour les entreprises sur Payin et Payout. Sans abonnement, sans frais cachés."
-      : "Transparent DrimPay pricing: 3.5% for personal accounts on Payin, flat 3% for businesses on Payin and Payout. No subscription, no hidden fees.",
+       ? "Tarification transparente DrimPay : les frais Pay-in et Pay-out varient selon le pays et l'opérateur. Le tarif de base est de 4,5% au Togo, au Sénégal et au Mali. Sans abonnement."
+       : "Transparent DrimPay pricing: Pay-in and Pay-out fees vary by country and operator. The base rate is 4.5% in Togo, Senegal and Mali. No subscription.",
     keywords: lang === "fr"
-      ? "tarif paiement Afrique, frais Mobile Money, 3,5% particuliers, 3% entreprises, prix API paiement"
-      : "Africa payment pricing, Mobile Money fees, 3.5% personal, 3% business, payment API cost",
+       ? "tarifs paiement Afrique, frais Mobile Money par pays, opérateur, Pay-in, Pay-out, API paiement"
+       : "Africa payment pricing, Mobile Money fees by country and operator, Pay-in, Pay-out, payment API cost",
     jsonLd: [
       webPageSchema(
         `${SITE_URL}/${lang}/pricing`,
         lang === "fr" ? "Tarification DrimPay" : "DrimPay Pricing",
-        lang === "fr" ? "3,5% particuliers (Payin), 3% entreprises (Payin & Payout). Frais transparents." : "3.5% personal (Payin), 3% businesses (Payin & Payout). Transparent fees.",
+         lang === "fr" ? "Frais Pay-in et Pay-out variables selon le pays et l'opérateur, avec un tarif de base de 4,5% au Togo, au Sénégal et au Mali." : "Pay-in and Pay-out fees vary by country and operator, with a 4.5% base rate in Togo, Senegal and Mali.",
         [{ name: lang === "fr" ? "Tarification" : "Pricing", url: `${SITE_URL}/${lang}/pricing` }],
       ),
       faqSchema(lang === "fr" ? [
-        { question: "Quels sont les frais DrimPay pour les particuliers ?", answer: "DrimPay applique un taux de 3,5% sur le Payin pour les particuliers. Le Payout n'est pas disponible sur les comptes personnels. Ce taux est négociable selon le volume." },
-        { question: "Quels sont les frais DrimPay pour les entreprises ?", answer: "DrimPay applique un taux fixe de 3% sur chaque transaction réussie pour les entreprises, aussi bien sur le Payin que sur le Payout." },
+         { question: "Comment sont calculés les frais DrimPay ?", answer: "Les taux Pay-in et Pay-out dépendent du pays et de l'opérateur sélectionnés. Le tarif de base est de 4,5% au Togo, au Sénégal et au Mali ; consultez le tableau par corridor pour le taux effectif. Les accords marchands personnalisés restent prioritaires." },
+         { question: "Les frais sont-ils les mêmes pour chaque opérateur ?", answer: "Non. Le taux effectif est publié par pays et opérateur et peut différer selon le corridor. Le tarif affiché avant une transaction est celui qui s'applique." },
         { question: "Pourquoi le Payout n'est-il pas disponible pour les particuliers ?", answer: "Le Payout (décaissement) est réservé aux comptes entreprise vérifiés (KYB). Les particuliers peuvent uniquement encaisser des paiements via le Payin." },
         { question: "Y a-t-il un abonnement mensuel ?", answer: "Non. DrimPay fonctionne sur un modèle pay-as-you-go. Vous payez uniquement sur les transactions réussies." },
         { question: "DrimPay est-il disponible en mode sandbox ?", answer: "Oui. Chaque compte DrimPay inclut un environnement sandbox complet pour tester vos intégrations sans argent réel." },
       ] : [
-        { question: "What are DrimPay's fees for personal accounts?", answer: "DrimPay charges 3.5% on Payin for personal accounts. Payout is not available on personal accounts. The rate is negotiable based on volume." },
-        { question: "What are DrimPay's fees for business accounts?", answer: "DrimPay charges a flat 3% on every successful transaction for businesses, on both Payin and Payout." },
+         { question: "How are DrimPay fees calculated?", answer: "Pay-in and Pay-out rates depend on the selected country and operator. The base rate is 4.5% in Togo, Senegal and Mali; use the corridor table for the effective rate. Account-specific merchant agreements take priority." },
+         { question: "Are fees the same for every operator?", answer: "No. The effective rate is published for each country and operator and may differ by corridor. The rate shown before a transaction is the rate that applies." },
         { question: "Why is Payout not available for personal accounts?", answer: "Payout (disbursement) is reserved for KYB-verified business accounts. Personal accounts can only collect payments via Payin." },
         { question: "Is there a monthly subscription?", answer: "No. DrimPay operates on a pay-as-you-go model. You only pay on successful transactions." },
         { question: "Is sandbox mode available?", answer: "Yes. Every DrimPay account includes a full sandbox environment for testing integrations without real money." },
@@ -235,9 +235,8 @@ export default function Pricing() {
               </thead>
               <tbody>
                 {t.pricing.feeRows.map((row, i) => {
-                  // First 2 rows = payin + payout → use live platform rate
-                  const isDynamic = i < 2;
-                  const displayFee = isDynamic ? rateStr : null;
+                  // Pay-in and Pay-out use live platform defaults; exchange fees remain separate.
+                  const displayFee = i === 0 ? fmtRate(fees.payin, lang) : i === 1 ? fmtRate(fees.payout, lang) : null;
                   const feePersonal = displayFee ?? row.feePersonal;
                   const feeBusiness = displayFee ?? row.feeBusiness;
                   return (
@@ -270,6 +269,22 @@ export default function Pricing() {
             </table>
           </div>
           <p className="mt-3 text-xs text-[#0f0f0f]/45 italic px-1">{t.pricing.feeNote}</p>
+          <div className="mt-12">
+            <h3 className="text-xl font-extrabold text-[#0f0f0f] mb-2">{lang === "fr" ? "Tarifs par pays et opérateur" : "Fees by country and operator"}</h3>
+            <p className="text-sm text-[#0f0f0f]/55 mb-5">{lang === "fr" ? "Les taux ci-dessous sont les tarifs plateforme publiés. Un éventuel tarif marchand personnalisé reste prioritaire." : "These are the published platform rates. Any account-specific merchant rate takes priority."}</p>
+            {fees.countryRates.length ? (
+              <div className="rounded-2xl border border-[#E5E3DC] overflow-x-auto">
+                <table className="w-full text-sm min-w-[520px]">
+                  <thead><tr className="bg-[#F5F0E8] border-b border-[#E5E3DC]">
+                    <th className="text-left px-5 py-3">{lang === "fr" ? "Pays" : "Country"}</th><th className="text-left px-5 py-3">{lang === "fr" ? "Opérateur" : "Operator"}</th><th className="text-left px-5 py-3">Pay-in</th><th className="text-left px-5 py-3">Pay-out</th>
+                  </tr></thead>
+                  <tbody>{fees.countryRates.map((r, i) => <tr key={`${r.countryCode}-${r.operator}-${i}`} className="border-b border-[#E5E3DC] last:border-0">
+                    <td className="px-5 py-3 font-semibold">{r.countryCode}</td><td className="px-5 py-3">{r.operator}</td><td className="px-5 py-3 font-bold">{fmtRate(r.payin, lang)}</td><td className="px-5 py-3 font-bold">{fmtRate(r.payout, lang)}</td>
+                  </tr>)}</tbody>
+                </table>
+              </div>
+            ) : <p className="text-sm text-[#0f0f0f]/45 italic">{lang === "fr" ? "Les tarifs par corridor sont chargés depuis l'API." : "Corridor rates are loaded from the API."}</p>}
+          </div>
         </div>
       </div>
 
