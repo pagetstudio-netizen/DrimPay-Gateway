@@ -751,7 +751,7 @@ def drimpay_webhook():
               <div className="grid md:grid-cols-3 gap-4">
                 {[
                   { label: "Max transaction", value: "1 000 000 FCFA" },
-                  { label: "Max per day", value: "10 000 000 FCFA" },
+                  { label: "Max per day", value: "2 000 000 FCFA" },
                   { label: "Rate limit", value: "100 req / min / key" },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
@@ -760,6 +760,7 @@ def drimpay_webhook():
                   </div>
                 ))}
               </div>
+              <p className="mt-3 text-sm text-muted-foreground">The daily transaction cap is subject to the applicable limits and terms of the selected Mobile Money operator.</p>
             </section>
 
             {/* Transaction Statuses */}

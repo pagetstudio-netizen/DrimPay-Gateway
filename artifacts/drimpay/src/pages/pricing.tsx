@@ -73,8 +73,8 @@ export default function Pricing() {
     ? "consultez le tableau pour les tarifs actuellement publiés"
     : "see the table for currently published rates");
   const feeDescription = lang === "fr"
-    ? `Frais Pay-in et Pay-out affichés par pays et opérateur. ${ratesSummary}. Les tarifs marchands personnalisés restent prioritaires.`
-    : `Pay-in and Pay-out fees are listed by country and operator. ${ratesSummary}. Account-specific merchant rates take priority.`;
+    ? `Frais Pay-in et Pay-out par pays et opérateur. ${ratesSummary}. Plafond journalier jusqu'à 2 000 000 XOF, selon les conditions applicables chez chaque opérateur.`
+    : `Pay-in and Pay-out fees by country and operator. ${ratesSummary}. Daily cap up to XOF 2,000,000, subject to each operator's applicable limits and terms.`;
   useSEO({
     title: lang === "fr"
       ? "Tarification DrimPay — frais Pay-in et Pay-out par pays et opérateur"

@@ -506,7 +506,7 @@ print(data["reference"])`,
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {[
                   { label: "Max per transaction", value: "1 000 000 FCFA" },
-                  { label: "Max per day", value: "10 000 000 FCFA" },
+                  { label: "Max per day", value: "2 000 000 FCFA" },
                   { label: "Rate limit", value: "100 req / min / key" },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
@@ -515,7 +515,7 @@ print(data["reference"])`,
                   </div>
                 ))}
               </div>
-              <p className="text-muted-foreground text-sm">Requests exceeding these limits return <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code>. Contact support to request higher limits.</p>
+              <p className="text-muted-foreground text-sm">The daily transaction cap is subject to each operator's applicable limits and terms. Requests exceeding the effective limits return <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code>. Contact support about account-specific limits.</p>
             </section>
 
             <section id="kyb" className="mb-14 scroll-mt-20">

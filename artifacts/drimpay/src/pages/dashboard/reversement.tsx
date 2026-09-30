@@ -14,6 +14,10 @@ import { CountryPicker } from "@/components/ui/country-picker";
 import { useAuth } from "@/lib/auth";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const reversementInputClass =
+  "h-[58px] rounded-full border-[#E5E5E0] bg-white px-5 text-base text-[#171813] shadow-[0_2px_8px_rgba(15,15,15,0.025)] transition placeholder:text-[#9a9b96] hover:border-[#cfd0c8] focus-visible:border-[#8ebc2c] focus-visible:ring-4 focus-visible:ring-[#B5F03C]/20";
+const reversementPickerClass =
+  "h-[58px] rounded-full border-[#E5E5E0] bg-white px-5 text-base shadow-[0_2px_8px_rgba(15,15,15,0.025)] transition focus:border-[#8ebc2c] focus:ring-4 focus:ring-[#B5F03C]/20 hover:border-[#cfd0c8]";
 
 const OPERATOR_LOGOS: Record<string, string> = {
   "TMoney":           `${BASE}/op-tmoney.png`,
@@ -222,21 +226,24 @@ export default function DashboardReversement() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-3">
-            <div className="rounded-xl border border-border bg-card p-6">
-              <h2 className="text-base font-semibold mb-5">Nouvelle demande de reversement</h2>
+            <div className="rounded-[28px] border border-[#E7E5DE] bg-white p-6 shadow-[0_22px_60px_rgba(32,35,20,0.09)] sm:p-9">
+              <div className="mb-7">
+                <div className="mb-5 h-1.5 w-10 rounded-full bg-[#B5F03C]" aria-hidden="true" />
+                <h2 className="text-lg font-bold tracking-tight text-[#0f0f0f]">Nouvelle demande de reversement</h2>
+              </div>
 
               {status === "success" && (
-                <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3 mb-5">
-                  <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
-                  <p className="text-sm text-green-400 font-medium">Demande soumise avec succès. Traitement en cours.</p>
+                <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-700" />
+                  <p className="text-sm font-medium text-emerald-800">Demande soumise avec succès. Traitement en cours.</p>
                 </div>
               )}
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-7">
                   <FormField control={form.control} name="countryCode" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Wallet source (pays)</FormLabel>
+                      <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">Wallet source (pays)</FormLabel>
                       <FormControl>
                         <CountryPicker
                           options={COUNTRIES.map((c) => {
@@ -251,6 +258,7 @@ export default function DashboardReversement() {
                           value={field.value}
                           onChange={field.onChange}
                           placeholder="Sélectionner le wallet à débiter"
+                          className={reversementPickerClass}
                         />
                       </FormControl>
                       <FormMessage />
@@ -258,25 +266,25 @@ export default function DashboardReversement() {
                   )} />
 
                   {watchCountry && walletForCountry && (
-                    <div className="flex items-center gap-2 text-sm bg-muted/30 rounded-lg px-4 py-3 border border-border">
-                      <Banknote className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-muted-foreground">Solde disponible :</span>
-                      <span className="font-semibold text-foreground">
+                    <div className="flex items-center gap-2 rounded-2xl border border-[#E7E5DE] bg-[#F8F6F1] px-4 py-3 text-sm">
+                      <Banknote className="h-4 w-4 shrink-0 text-[#789f23]" />
+                      <span className="text-[#777970]">Solde disponible :</span>
+                      <span className="font-semibold text-[#171813]">
                         {walletForCountry.balance.toLocaleString()} {walletForCountry.currency}
                       </span>
                     </div>
                   )}
 
                   {watchCountry && !walletForCountry && (
-                    <div className="flex items-center gap-2 text-sm bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-3">
-                      <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
-                      <span className="text-yellow-300">Aucun wallet actif pour ce pays.</span>
+                    <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700" />
+                      <span className="text-amber-800">Aucun wallet actif pour ce pays.</span>
                     </div>
                   )}
 
                   <FormField control={form.control} name="operator" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Opérateur de réception</FormLabel>
+                      <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">Opérateur de réception</FormLabel>
                       <FormControl>
                         <CountryPicker
                           options={(selectedCountry?.operators ?? []).map(op => ({
@@ -289,6 +297,7 @@ export default function DashboardReversement() {
                           placeholder={selectedCountry ? "Choisir un opérateur" : "Sélectionnez un pays d'abord"}
                           title="Opérateur de réception"
                           disabled={!selectedCountry}
+                          className={reversementPickerClass}
                         />
                       </FormControl>
                       <FormMessage />
@@ -297,9 +306,9 @@ export default function DashboardReversement() {
 
                   <FormField control={form.control} name="phone" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Numéro Mobile Money de réception</FormLabel>
+                      <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">Numéro Mobile Money de réception</FormLabel>
                       <FormControl>
-                        <Input placeholder="+228 90 00 00 00" {...field} />
+                        <Input className={reversementInputClass} placeholder="+228 90 00 00 00" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -307,29 +316,29 @@ export default function DashboardReversement() {
 
                   <FormField control={form.control} name="amount" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Montant à reverser ({selectedCountry?.currency ?? "XOF"})</FormLabel>
+                      <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">Montant à reverser ({selectedCountry?.currency ?? "XOF"})</FormLabel>
                       <FormControl>
-                         <Input type="number" placeholder="50000" min="200" {...field} />
+                        <Input className={reversementInputClass} type="number" placeholder="50000" min="200" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
 
                   {amount > 0 && (
-                     <div className="rounded-lg bg-muted/20 border border-border p-4 space-y-2 text-sm">
-                      <div className="flex justify-between text-muted-foreground">
+                      <div className="space-y-3 rounded-2xl border border-[#E7E5DE] bg-[#F8F6F1] p-5 text-sm">
+                       <div className="flex justify-between text-[#777970]">
                         <span>Montant brut</span>
                         <span>{amount.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
-                       <div className="flex justify-between text-muted-foreground">
+                        <div className="flex justify-between text-[#777970]">
                          <span>Frais DrimPay ({watchCountry}/{watchedOperator || "opérateur"})</span>
                          <span>{feeRate === null ? "Taux effectif en cours de chargement..." : `(${(feeRate * 100).toLocaleString("fr-FR")}%) — ${fee.toLocaleString()} ${selectedCountry?.currency ?? "XOF"}`}</span>
                        </div>
-                      <div className="flex justify-between font-semibold text-foreground border-t border-border pt-2 mt-2">
+                       <div className="mt-2 flex justify-between border-t border-[#E2E0D8] pt-3 font-semibold text-[#171813]">
                         <span>Montant reçu</span>
-                        <span className="text-primary">{net.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
+                         <span className="text-[#6d941d]">{net.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
-                      <div className="flex justify-between font-semibold text-foreground">
+                       <div className="flex justify-between font-semibold text-[#171813]">
                         <span>Total débité</span>
                         <span>{totalDebited.toLocaleString()} {selectedCountry?.currency ?? "XOF"}</span>
                       </div>
@@ -338,22 +347,22 @@ export default function DashboardReversement() {
 
                   <FormField control={form.control} name="note" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Note (optionnel)</FormLabel>
+                      <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">Note (optionnel)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Reversement semaine 18" {...field} />
+                        <Input className={reversementInputClass} placeholder="Ex: Reversement semaine 18" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
 
                   {status === "error" && (
-                    <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-3">{errorMsg}</p>
+                    <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMsg}</p>
                   )}
 
                   <Button
                     type="submit"
                     variant="primary"
-                    className="w-full"
+                    className="min-h-[62px] w-full rounded-full border-[#a7dc35] bg-[#B5F03C] px-7 text-base font-bold text-[#11130c] shadow-[0_12px_28px_rgba(143,190,43,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#c5ff4a] hover:shadow-[0_16px_32px_rgba(143,190,43,0.28)] focus-visible:ring-4 focus-visible:ring-[#B5F03C]/30"
                      disabled={status === "loading" || feeRate === null}
                   >
                     {status === "loading" ? "Traitement..." : "Demander le reversement"}

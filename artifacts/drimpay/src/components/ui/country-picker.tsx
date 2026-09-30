@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Check, X, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type CountryOption = {
   code: string;
@@ -18,6 +19,7 @@ interface CountryPickerProps {
   searchPlaceholder?: string;
   disabled?: boolean;
   error?: boolean;
+  className?: string;
 }
 
 export function CountryPicker({
@@ -29,6 +31,7 @@ export function CountryPicker({
   searchPlaceholder,
   disabled,
   error,
+  className,
 }: CountryPickerProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.code === value);
@@ -39,11 +42,13 @@ export function CountryPicker({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className={`w-full h-12 rounded-xl border bg-muted/30 px-4 text-sm flex items-center gap-3 text-left outline-none transition-all
-          focus:border-primary focus:ring-2 focus:ring-primary/20
-          hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed
-          ${error ? "border-red-400" : "border-border"}
-          ${selected ? "text-foreground" : "text-muted-foreground/60"}`}
+        className={cn(
+          "w-full h-12 rounded-xl border bg-muted/30 px-4 text-sm flex items-center gap-3 text-left outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed",
+          !className && (error ? "border-red-400" : "border-border"),
+          className,
+          error && "border-red-400",
+          selected ? "text-foreground" : "text-muted-foreground/60",
+        )}
       >
         {selected ? (
           <>

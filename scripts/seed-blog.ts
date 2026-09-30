@@ -320,7 +320,7 @@ Certains pays ont des formats spécifiques (ex: Togo — NIF sur 12 chiffres). V
 Une fois votre KYB approuvé :
 1. Votre compte passe en mode **Production**
 2. Créez une clé API **Live** dans le dashboard
-3. Votre limite de transaction initiale est de 500 000 FCFA/jour (augmentable sur demande)
+3. Votre limite de transaction initiale est de 500 000 FCFA/jour. Elle peut être augmentée jusqu'à 2 000 000 FCFA par jour, sous réserve des limites et conditions applicables chez l'opérateur.
 4. Vous recevez un email de confirmation avec votre contrat marchand signé électroniquement
 
 ## Conclusion
@@ -367,6 +367,8 @@ La BCEAO a publié en 2020 le **Règlement R-2020-10** sur les systèmes de paie
 | Compte marchand vérifié | 10 000 000 | Sans limite* |
 
 *Sous réserve de reporting AML pour les transactions > 5 000 000 XOF
+
+Ces montants sont des références réglementaires par transaction ou mensuelles, pas le plafond journalier DrimPay. Chez DrimPay, le plafond journalier peut aller jusqu'à 2 000 000 XOF, sous réserve des limites et conditions applicables chez l'opérateur et des paramètres du compte.
 
 ### Ce que cela signifie pour votre business
 

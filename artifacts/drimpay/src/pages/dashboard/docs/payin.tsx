@@ -281,7 +281,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             {[
               { label: "Max par transaction", value: "1 000 000 FCFA" },
-              { label: "Max par jour", value: "10 000 000 FCFA" },
+              { label: "Max par jour", value: "2 000 000 FCFA" },
               { label: "Limite de requêtes", value: "100 req / min / clé" },
             ].map(({ label, value }) => (
               <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
@@ -290,7 +290,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
               </div>
             ))}
           </div>
-          <p className="text-sm text-muted-foreground">Les requêtes dépassant ces limites reçoivent une réponse <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code>. Contactez le support pour augmenter vos limites.</p>
+          <p className="text-sm text-muted-foreground">Le plafond journalier dépend aussi des limites et conditions applicables chez l'opérateur Mobile Money sélectionné. Les requêtes dépassant les limites effectives reçoivent une réponse <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code>. Contactez le support pour connaître les limites de votre compte.</p>
         </Section>
 
         <Section title="Retry automatique" icon={RefreshCw}>

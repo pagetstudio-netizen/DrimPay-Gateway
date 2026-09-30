@@ -10,14 +10,16 @@ export default function Terms() {
       ? "Conditions Générales d'Utilisation — DrimPay"
       : "Terms of Service — DrimPay",
     description: lang === "fr"
-      ? "Conditions générales d'utilisation de la plateforme DrimPay. Droits, obligations et responsabilités des marchands utilisant l'infrastructure de paiement DrimPay."
-      : "Terms of service for the DrimPay platform. Rights, obligations and responsibilities of merchants using DrimPay payment infrastructure.",
+      ? "CGU DrimPay : droits et obligations des marchands. Plafond journalier jusqu'à 2 000 000 XOF, sous réserve des limites et conditions applicables chez les opérateurs."
+      : "DrimPay terms: merchant rights and obligations. Daily transaction cap up to XOF 2,000,000, subject to applicable operator limits and terms.",
     noIndex: false,
     jsonLd: [
       webPageSchema(
         `${SITE_URL}/${lang}/terms`,
         lang === "fr" ? "CGU DrimPay" : "DrimPay Terms of Service",
-        lang === "fr" ? "Conditions générales d'utilisation de DrimPay." : "DrimPay terms of service.",
+        lang === "fr"
+          ? "CGU DrimPay : plafond journalier jusqu'à 2 000 000 XOF, sous réserve des conditions applicables chez les opérateurs."
+          : "DrimPay terms: daily cap up to XOF 2,000,000, subject to operator terms.",
         [{ name: lang === "fr" ? "CGU" : "Terms", url: `${SITE_URL}/${lang}/terms` }],
       ),
     ],
