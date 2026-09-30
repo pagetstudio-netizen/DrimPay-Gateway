@@ -634,7 +634,7 @@ async function initiatePayout(req: any, res: any) {
     .limit(1);
   res.status(201).json({
     ...payoutResponse(latest ?? { ...transaction, status: "processing", externalRef: gatewayReference }),
-    message: "Payout accepted and processing. Final status will be sent by webhook.",
+    message: "Payout accepted and processing. Check the status endpoint for updates; webhook delivery depends on provider notifications.",
   });
 
   void (async () => {

@@ -83,11 +83,10 @@ export default function DocPayout() {
         <div className="flex items-start gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 mb-4">
           <Lock className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-red-400">Compte Entreprise uniquement</p>
+            <p className="text-sm font-semibold text-red-400">KYB requis pour le mode Live</p>
             <p className="text-xs text-muted-foreground mt-1">
-              L'API Pay-out est <strong className="text-foreground">exclusivement réservée aux comptes Entreprise</strong> vérifiés (KYB approuvé).
-              Les comptes personnels ne peuvent pas utiliser cette API. Pour retirer des fonds depuis un compte personnel,
-              utilisez la fonctionnalité <strong className="text-foreground">Reversement</strong> depuis votre dashboard (frais selon le taux affiché).
+              Une clé API Live ne peut initier un pay-out que si votre KYB est approuvé. Le Sandbox ne nécessite pas de KYB,
+              mais exige un wallet Sandbox actif et suffisamment approvisionné.
             </p>
           </div>
         </div>
@@ -97,8 +96,9 @@ export default function DocPayout() {
           <div>
             <p className="text-sm font-semibold">Règle géographique des wallets</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Les pay-outs sont déboursés depuis le wallet du pays cible. Les fonds reçus au Togo ne peuvent être retirés que via le wallet Togo.
-              Assurez-vous d'avoir un solde suffisant dans le wallet du pays avant d'initier un pay-out.
+              Le wallet débité correspond au pays de destination et au mode de la clé API (Sandbox ou Live).
+              Les fonds reçus au Togo ne peuvent être payés qu'à partir du wallet Togo du même mode.
+              Le solde doit couvrir le montant demandé plus les frais.
             </p>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function DocPayout() {
         <Section title="Introduction" icon={Globe}>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
             L'API Pay-out DrimPay vous permet d'envoyer des fonds vers un numéro Mobile Money dans 7 pays d'Afrique de l'Ouest et Centrale.
-            Le bénéficiaire reçoit exactement le montant demandé. Les frais de <strong className="text-foreground">{feeRateLabel}</strong> sont payés par le marchand et débités en plus du montant sur le wallet du pays cible.
+            Le bénéficiaire reçoit le montant demandé. Les frais dépendent du pays et de l'opérateur ; ils sont ajoutés au débit du wallet correspondant au pays cible et au mode de la clé API.
           </p>
           <div className="rounded-xl border border-border bg-card overflow-hidden font-mono text-sm">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -118,6 +118,10 @@ export default function DocPayout() {
               <span className="text-yellow-500">https://drimpay.com/sandbox-api/v2</span>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Utilisez une clé <code className="font-mono text-primary">dp_sandbox_sk_</code> avec Sandbox, ou
+            une clé <code className="font-mono text-primary">dp_live_sk_</code> avec Live. Ne partagez jamais une clé secrète dans le navigateur.
+          </p>
         </Section>
 
         <Section title="Initier un Pay-out" icon={Send}>
@@ -128,18 +132,21 @@ export default function DocPayout() {
 
           <h3 className="text-sm font-semibold mb-3">Paramètres</h3>
           <div className="rounded-xl border border-border bg-card overflow-hidden mb-6">
-            <Param name="amount" type="number" required desc="Montant exact reçu par le bénéficiaire (les frais sont ajoutés au débit du wallet)" />
+            <Param name="amount" type="number" required desc="Montant reçu par le bénéficiaire; minimum 200 (les frais sont ajoutés au débit du wallet)" />
             <Param name="currency" type="string" required desc="Devise ISO 4217 (XOF, XAF)" />
             <Param name="country_code" type="string" required desc="Code pays du bénéficiaire (TG, BJ, CM, BF, ML, SN, CI)" />
-            <Param name="operator" type="string" required desc="Opérateur Mobile Money du bénéficiaire" />
-            <Param name="phone" type="string" required desc="Numéro Mobile Money du bénéficiaire au format international" />
-            <Param name="description" type="string" desc="Motif du transfert" />
-            <Param name="external_ref" type="string" desc="Référence dans votre système" />
-            <Param name="webhook_url" type="string" desc="URL de callback pour les notifications" />
+            <Param name="operator" type="string" required desc="Opérateur Mobile Money configuré pour le pays cible" />
+            <Param name="phone" type="string" required desc="Numéro local ou international correspondant au pays cible" />
+            <Param name="external_ref" type="string" desc="Référence unique (max. 128 caractères); obligatoire si order_id est absent" />
+            <Param name="order_id" type="string" desc="Alias de external_ref; si les deux sont fournis, ils doivent être identiques" />
+            <Param name="description" type="string" desc="Motif du transfert (max. 255 caractères)" />
+            <Param name="webhook_url" type="string" desc="URL HTTPS facultative pour les notifications" />
+            <Param name="operator_otp" type="string" desc="OTP opérateur facultatif si demandé" />
+            <Param name="metadata" type="object" desc="Données personnalisées clé-valeur renvoyées dans la réponse et le webhook" />
           </div>
 
           <CodeBlock lang="curl" code={`curl -X POST https://drimpay.com/api/v2/payout/initiate \\
-  -H "Authorization: Bearer dp_live_xxxx" \\
+  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
     "amount": 25000,
@@ -148,31 +155,42 @@ export default function DocPayout() {
     "operator": "TMoney",
     "phone": "+22890123456",
     "description": "Paiement fournisseur",
-    "external_ref": "supplier_pmt_456",
+            "external_ref": "supplier_pmt_456",
     "webhook_url": "https://votre-site.com/webhook/drimpay"
   }'`} />
 
           <h3 className="text-sm font-semibold mt-6 mb-3">Réponse (201 Created)</h3>
           <CodeBlock code={`{
-  "id": "out_8g4l3n0o",
-  "reference": "OUT-1715000000-E5F6G7H8",
+  "id": 12345,
+  "reference": "OUT-1778058000000-A1B2C3D4",
+  "external_ref": "supplier_pmt_456",
+  "order_id": "supplier_pmt_456",
   "status": "processing",
   "type": "payout",
   "amount": 25000,
   "fee": 750,
   "total_debit": 25750,
-  "fee_rate": "effective country/operator rate",
+  "net_amount": 25000,
+  "fee_rate": "3%",
   "currency": "XOF",
   "country_code": "TG",
   "operator": "TMoney",
   "phone": "+22890123456",
-  "description": "Paiement fournisseur",
-  "wallet_debited": true,
-  "wallet_id": "wal_tg_001",
-  "wallet_balance_after": 224250,
-  "created_at": "2024-05-07T11:00:00Z",
-  "estimated_completion": "2024-05-07T11:05:00Z"
+  "mode": "live",
+  "gateway_reference": "provider-reference",
+  "failure_reason": null,
+  "webhook_url": "https://votre-site.com/webhook/drimpay",
+  "metadata": {},
+  "created_at": "2026-05-07T11:00:00.000Z",
+  "updated_at": "2026-05-07T11:00:01.000Z",
+  "idempotent": false,
+  "message": "Payout accepted and processing. Check the status endpoint for updates; webhook delivery depends on provider notifications."
 }`} />
+          <p className="text-xs text-muted-foreground mt-3">Exemple indicatif : le montant des frais et le taux renvoyé dépendent de la règle effective pour le pays et l'opérateur.</p>
+          <p className="text-xs text-muted-foreground mt-3">
+            Une création renvoie HTTP 201. Une nouvelle soumission idempotente renvoie HTTP 200 avec la transaction existante.
+            Le Sandbox renvoie immédiatement <code className="font-mono text-primary">success</code>; une initiation Live acceptée renvoie <code className="font-mono text-primary">processing</code>.
+          </p>
         </Section>
 
         <Section title="Vérifier le statut" icon={SearchCheck}>
@@ -181,7 +199,23 @@ export default function DocPayout() {
             <code className="text-sm font-mono text-muted-foreground">/payout/{"{reference}"}</code>
           </div>
           <CodeBlock lang="curl" code={`curl "https://drimpay.com/api/v2/payout/OUT-1715000000-E5F6G7H8" \\
-  -H "Authorization: Bearer dp_live_xxxx"`} />
+  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
+          <p className="text-xs text-muted-foreground mt-3">La référence DrimPay ou votre <code className="font-mono text-primary">external_ref</code> peut être utilisée. Le mode de la clé doit correspondre au mode de la transaction.</p>
+          <p className="text-xs text-muted-foreground mt-2">La réponse est l'objet pay-out présenté dans l'exemple d'initiation.</p>
+        </Section>
+
+        <Section title="Lister les pay-outs" icon={SearchCheck}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 font-bold font-mono">GET</span>
+            <code className="text-sm font-mono text-muted-foreground">/payout/transactions</code>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">La liste est paginée. Filtres facultatifs : <code className="font-mono text-primary">page</code>, <code className="font-mono text-primary">limit</code> (1 à 100), <code className="font-mono text-primary">country_code</code> et <code className="font-mono text-primary">status</code>.</p>
+          <CodeBlock lang="curl" code={`curl "https://drimpay.com/api/v2/payout/transactions?page=1&limit=20&country_code=TG&status=processing" \\
+  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
+          <CodeBlock code={`{
+  "data": [{ "reference": "OUT-1778058000000-A1B2C3D4", "status": "processing" }],
+  "meta": { "total": 1, "page": 1, "limit": 20, "pages": 1 }
+}`} />
         </Section>
 
         <Section title="Webhook & Signature" icon={Webhook}>
@@ -189,44 +223,66 @@ export default function DocPayout() {
             <Shield className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-orange-500 mb-1">Signature obligatoire</p>
-              <p className="text-xs text-muted-foreground">Chaque webhook inclut un header <code className="font-mono text-primary">X-DrimPay-Signature: sha256=HASH</code>. Vérifiez toujours cette signature avant de traiter l'événement.</p>
+              <p className="text-xs text-muted-foreground">La signature HMAC-SHA256 est calculée sur <code className="font-mono text-primary">timestamp.corps_JSON_brut</code> avec le secret webhook associé à la clé API. Vérifiez-la avant de traiter l'événement.</p>
             </div>
           </div>
-          <CodeBlock lang="bash" code={`X-DrimPay-Signature: sha256=a3f9e1c2b4d5...`} />
+          <CodeBlock lang="bash" code={`X-DrimPay-Signature: t=1715000000,v1=<64 caractères hexadécimaux>
+X-DrimPay-Timestamp: 1715000000
+X-DrimPay-Event: payout.success`} />
           <h3 className="text-sm font-semibold mt-5 mb-3">Payload du webhook</h3>
           <CodeBlock code={`{
   "event": "payout.success",
-  "reference": "OUT-1715000000-E5F6G7H8",
+  "reference": "OUT-1778058000000-A1B2C3D4",
+  "external_ref": "supplier_pmt_456",
+  "order_id": "supplier_pmt_456",
   "status": "success",
   "amount": 25000,
   "fee": 750,
-  "total_debit": 25750,
+  "net_amount": 25000,
   "currency": "XOF",
   "country_code": "TG",
   "operator": "TMoney",
   "phone": "+22890123456",
-  "external_ref": "supplier_pmt_456",
-  "timestamp": "2024-05-07T11:04:12Z"
+  "mode": "live",
+  "gateway_reference": "provider-reference",
+  "failure_reason": null,
+  "metadata": {},
+  "created_at": "2026-05-07T11:00:00.000Z",
+  "updated_at": "2026-05-07T11:04:12.000Z"
 }`} />
           <h3 className="text-sm font-semibold mt-5 mb-3">Vérification (Node.js)</h3>
           <CodeBlock lang="javascript" code={`const crypto = require("crypto");
 
 app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, res) => {
-  const signature = req.headers["x-drimpay-signature"]; // "sha256=<hex>"
+  const header = String(req.headers["x-drimpay-signature"] || "");
+  const [tPart, v1Part] = header.split(",");
+  const timestamp = tPart?.startsWith("t=") ? tPart.slice(2) : "";
+  const signature = v1Part?.startsWith("v1=") ? v1Part.slice(3) : "";
+  if (!/^\\d+$/.test(timestamp) || !/^[a-f0-9]{64}$/i.test(signature) ||
+      Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) {
+    return res.status(400).send("Invalid or expired signature");
+  }
 
-  const expectedSignature = "sha256=" + crypto
+  const expectedSignature = crypto
     .createHmac("sha256", process.env.WEBHOOK_SECRET)
-    .update(req.body) // Buffer brut
-    .digest("hex");
+    .update(timestamp + "." + req.body.toString("utf8")) // corps brut exact
+    .digest();
+  const receivedSignature = Buffer.from(signature, "hex");
 
-  if (signature !== expectedSignature) {
+  if (!crypto.timingSafeEqual(receivedSignature, expectedSignature)) {
     return res.status(400).send("Invalid signature");
   }
 
-  const event = JSON.parse(req.body);
-  // Gérer les statuts : queued | processing | success | failed | reversed | cancelled
+  const event = JSON.parse(req.body.toString("utf8"));
+  // Traiter l'événement puis répondre en 2xx.
   res.status(200).send("OK");
 });`} />
+          <p className="text-xs text-muted-foreground mt-3">Configurez le parseur de corps brut avant tout parseur JSON global sur cette route. En Live, le polling interne ne déclenche pas à lui seul le webhook marchand ; le callback dépend de la notification du fournisseur. Les tentatives de livraison peuvent varier selon le fournisseur; certains callbacks de fournisseur ajoutent leur propre champ de référence.</p>
+
+          <h3 className="text-sm font-semibold mt-5 mb-3">Renvoyer le webhook</h3>
+          <p className="text-sm text-muted-foreground mb-3">Le renvoi utilise le webhook URL et le secret enregistrés sur le pay-out. La référence DrimPay ou la référence externe peut être utilisée.</p>
+          <CodeBlock lang="curl" code={`curl -X POST https://drimpay.com/api/v2/payout/OUT-1778058000000-A1B2C3D4/resend-webhook \\
+  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
         </Section>
 
         <Section title="Statuts de transaction" icon={Activity}>
@@ -237,8 +293,9 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
               { status: "processing", color: "text-blue-600 bg-blue-500/10", desc: "Traitement en cours chez l'opérateur" },
               { status: "success", color: "text-green-600 bg-green-500/10", desc: "Validé — bénéficiaire crédité" },
               { status: "failed", color: "text-red-600 bg-red-500/10", desc: "Échec de la transaction" },
-              { status: "reversed", color: "text-red-600 bg-red-500/10", desc: "Remboursé — fonds retournés au wallet" },
               { status: "cancelled", color: "text-red-600 bg-red-500/10", desc: "Annulé avant traitement" },
+              { status: "expired", color: "text-red-600 bg-red-500/10", desc: "La demande a expiré" },
+              { status: "reversed", color: "text-red-600 bg-red-500/10", desc: "Opération inversée, si ce statut est signalé par le fournisseur" },
             ].map((s) => (
               <div key={s.status} className="flex items-center gap-4 px-5 py-3 border-b border-border last:border-0">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-semibold font-mono ${s.color}`}>{s.status}</span>
@@ -254,20 +311,39 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
             <div>
               <p className="text-sm font-semibold">Vérification KYB requise</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Les pay-outs en production sont bloqués tant que votre KYB n'est pas approuvé. Soumettez vos documents dans les paramètres de votre compte.
+                Les pay-outs Live sont bloqués tant que votre KYB n'est pas approuvé. Soumettez vos documents dans la section KYB du dashboard.
               </p>
             </div>
           </div>
-          <CodeBlock code={`// Réponse si KYB non approuvé
+          <CodeBlock code={`// Réponse Live si KYB non approuvé (HTTP 403)
 {
-  "error": "KYB_REQUIRED",
-  "message": "Votre compte doit compléter la vérification KYB avant d'effectuer des pay-outs en production"
+  "error": "KYB_NOT_APPROVED",
+  "message": "Your account must complete KYB verification before sending live payouts."
 }`} />
+        </Section>
+
+        <Section title="Erreurs courantes" icon={AlertTriangle}>
+          <p className="text-sm text-muted-foreground mb-4">Toutes les réponses d'erreur de l'API incluent généralement <code className="font-mono text-primary">error</code> et <code className="font-mono text-primary">message</code>. Les erreurs de validation peuvent aussi fournir <code className="font-mono text-primary">details</code>.</p>
+          <CodeBlock lang="json" code={`// Solde insuffisant (HTTP 402)
+{
+  "error": "INSUFFICIENT_FUNDS",
+  "message": "Insufficient wallet balance. Required: 25750 XOF, including 750 XOF in fees.",
+  "available": 20000,
+  "required": 25750
+}
+
+// Même external_ref réutilisé avec d'autres détails (HTTP 409)
+{
+  "error": "IDEMPOTENCY_CONFLICT",
+  "message": "This external_ref was already used with different payout details.",
+  "reference": "OUT-1778058000000-A1B2C3D4"
+}`} />
+          <p className="text-sm text-muted-foreground mt-3">Autres codes possibles : <code className="font-mono text-primary">INVALID_REQUEST</code>, <code className="font-mono text-primary">WALLET_NOT_FOUND</code>, <code className="font-mono text-primary">WALLET_INACTIVE</code>, <code className="font-mono text-primary">INVALID_COUNTRY</code>, <code className="font-mono text-primary">INVALID_CURRENCY</code>, <code className="font-mono text-primary">INVALID_PHONE</code>, <code className="font-mono text-primary">RATE_LIMITED</code> et <code className="font-mono text-primary">GATEWAY_ERROR</code>.</p>
         </Section>
 
         <Section title="Protection du wallet (anti double dépense)" icon={Lock}>
           <p className="text-sm text-muted-foreground mb-4">
-            DrimPay utilise un verrou au niveau de la base de données pour chaque débit de wallet. Les requêtes simultanées sont sérialisées — votre solde ne peut jamais passer en négatif. Utilisez toujours un <code className="font-mono text-primary">order_id</code> unique pour éviter les doublons.
+            DrimPay réserve le débit dans une transaction de base de données et verrouille le wallet sélectionné. Le wallet est choisi par pays de destination et mode de la clé API. Utilisez la même référence externe pour résoudre une réponse incertaine sans créer un doublon.
           </p>
           <CodeBlock lang="sql" code={`-- Logique interne DrimPay (simplifiée)
 BEGIN;
@@ -284,11 +360,11 @@ COMMIT;`} />
         </Section>
 
         <Section title="Limites & Sécurité" icon={ShieldCheck}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
             {[
-              { label: "Max par transaction", value: "1 000 000 FCFA" },
-              { label: "Max par jour", value: "2 000 000 FCFA" },
-              { label: "Limite de requêtes", value: "100 req / min / clé" },
+              { label: "Minimum par transaction", value: "200" },
+              { label: "Initiations", value: "10 req / min / IP" },
+              { label: "Limite API générale", value: "100 req / min / clé" },
             ].map(({ label, value }) => (
               <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
                 <p className="text-lg font-bold text-primary mb-1">{value}</p>
@@ -296,33 +372,19 @@ COMMIT;`} />
               </div>
             ))}
           </div>
-          <p className="text-sm text-muted-foreground">Le plafond journalier dépend aussi des limites et conditions applicables chez l'opérateur Mobile Money sélectionné.</p>
+          <p className="text-sm text-muted-foreground">Aucun montant maximum ni plafond journalier fixe n'est défini dans cet endpoint; les plafonds de l'opérateur peuvent s'appliquer. Les limites d'initiation sont calculées par adresse IP, tandis que la limite générale API est appliquée par clé. Le paiement de masse existe dans le dashboard, mais pas comme route publique de l'API.</p>
         </Section>
 
         <Section title="Retry automatique" icon={RefreshCw}>
           <p className="text-sm text-muted-foreground mb-4">
-            En cas d'échec réseau, réessayez avec le même <code className="font-mono text-primary">order_id</code>. L'API est idempotente et ne débitera jamais deux fois le même paiement.
+            Si l'initiation expire côté client et que vous ignorez si le pay-out a été accepté, vérifiez d'abord le statut en utilisant votre <code className="font-mono text-primary">external_ref</code> comme référence. Si aucune transaction n'est trouvée, répétez exactement la même requête avec la même référence et les mêmes détails : l'API renvoie la transaction existante si elle a déjà été créée. Cette répétition ne relance pas un pay-out en échec. Utilisez une nouvelle référence uniquement pour une nouvelle opération.
           </p>
-          <CodeBlock lang="javascript" code={`async function payoutAvecRetry(payload, tentatives = 0) {
-  if (tentatives >= 3) throw new Error("Nombre max de tentatives atteint");
+          <CodeBlock lang="bash" code={`# Vérifier d'abord l'opération par sa référence DrimPay :
+curl "https://drimpay.com/api/v2/payout/supplier_pmt_456" \\
+  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"
 
-  try {
-    const res = await fetch("https://drimpay.com/api/v2/payout/send", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + process.env.DRIMPAY_SECRET_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload), // même order_id à chaque tentative
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return await res.json();
-  } catch (err) {
-    const delai = 2000 * Math.pow(2, tentatives); // 2s, 4s, 8s
-    await new Promise(resolve => setTimeout(resolve, delai));
-    return payoutAvecRetry(payload, tentatives + 1);
-  }
-}`} />
+# Si la réponse initiale est incertaine, répéter le POST original avec
+# le même external_ref et exactement les mêmes détails.`} />
         </Section>
 
         <Section title="Calcul des frais" icon={Calculator}>

@@ -440,10 +440,10 @@ print(data["reference"])`,
 
             <section id="errors" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4">Error Codes</h2>
-              <p className="text-muted-foreground mb-4">All error responses include both an <code className="font-mono text-primary text-sm">error</code> code and a human-readable <code className="font-mono text-primary text-sm">message</code> field.</p>
+              <p className="text-muted-foreground mb-4">Error responses include an <code className="font-mono text-primary text-sm">error</code> code and a human-readable <code className="font-mono text-primary text-sm">message</code>. Validation failures may also include <code className="font-mono text-primary text-sm">details</code>; insufficient-funds responses include <code className="font-mono text-primary text-sm">available</code> and <code className="font-mono text-primary text-sm">required</code>.</p>
               <CodeBlock lang="json" code={`{
   "error": "INVALID_PHONE",
-  "message": "Phone must be in E.164 format (e.g. +22890000000)"
+  "message": "Phone number does not match country SN"
 }`} />
               <div className="overflow-x-auto rounded-xl border border-border mt-4">
                 <table className="w-full text-sm">
@@ -454,18 +454,31 @@ print(data["reference"])`,
                   </tr></thead>
                   <tbody>
                     {[
-                      ["400", "INVALID_REQUEST", "Invalid fields; amount must be at least 200"],
+                      ["400", "INVALID_REQUEST", "Missing or invalid fields; amount must be at least 200 and a reference is required"],
                       ["400", "INVALID_COUNTRY", "Unsupported payout country"],
                       ["400", "INVALID_CURRENCY", "Currency does not match the selected country"],
                       ["400", "INVALID_PHONE", "Phone number does not match the selected country"],
-                      ["401", "UNAUTHORIZED", "Missing or invalid API key"],
-                      ["402", "INSUFFICIENT_FUNDS", "Available balance is below amount plus payout fee"],
+                      ["400", "WALLET_NOT_FOUND", "No wallet exists for the destination country and API-key mode"],
+                      ["400", "WALLET_CURRENCY_MISMATCH", "Wallet currency does not match the requested currency"],
+                      ["401", "UNAUTHORIZED", "Missing, invalid, or incorrectly prefixed API key"],
+                      ["402", "INSUFFICIENT_FUNDS", "Wallet balance is below amount plus the applicable fee"],
                       ["403", "KYB_NOT_APPROVED", "Live payouts require approved KYB"],
                       ["403", "WALLET_INACTIVE", "The destination-country wallet is inactive"],
                       ["409", "IDEMPOTENCY_CONFLICT", "Reference was reused with different payout details"],
-                      ["423", "WITHDRAWAL_TEMPORARILY_LOCKED", "Payout attempts are temporarily locked"],
-                      ["429", "RATE_LIMITED", "Too many requests — 100 req/min max per API key"],
-                      ["503", "PAYOUTS_DISABLED", "Payouts are temporarily unavailable"],
+                      ["409", "DUPLICATE_EXTERNAL_REF", "The reference is already used by another payout"],
+                      ["423", "WITHDRAWAL_TEMPORARILY_LOCKED", "Failed payout attempts have temporarily locked withdrawals"],
+                      ["429", "RATE_LIMITED", "The API key exceeded 100 requests/minute"],
+                      ["429", "IP rate limit", "10 initiation requests/minute per IP; the limiter returns an error message rather than a stable code"],
+                      ["502/503", "GATEWAY_ERROR", "The payout provider could not accept the request"],
+                      ["502/503", "PAYOUT_ROUTE_UNAVAILABLE", "No available provider route for this country/operator"],
+                      ["503", "MAINTENANCE_MODE", "The platform is temporarily under maintenance"],
+                      ["503", "PAYOUTS_DISABLED", "Payouts are temporarily disabled by the platform"],
+                      ["503", "PAYOUTS_UNAVAILABLE", "Payout configuration could not be loaded"],
+                      ["503", "AGGREGATOR_NOT_CONFIGURED", "The selected payout provider is not configured"],
+                      ["400", "NO_WEBHOOK_URL", "This payout has no webhook URL configured"],
+                      ["409", "WEBHOOK_SECRET_UNAVAILABLE", "The webhook signing secret is unavailable"],
+                      ["404", "NOT_FOUND", "Payout was not found for this API key and mode"],
+                      ["400", "INVALID_STATUS", "Unknown status filter on the transaction list"],
                     ].map(([code, err, desc]) => (
                       <tr key={err} className="border-b border-border/50 last:border-0">
                         <td className="px-4 py-3"><Badge color={code.startsWith("4") ? "red" : "yellow"}>{code}</Badge></td>
@@ -480,10 +493,11 @@ print(data["reference"])`,
 
             <section id="limits" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-orange-400" /> Limits & Security</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {[
                   { label: "Minimum payout amount", value: "200" },
-                  { label: "Rate limit", value: "100 req / min / key" },
+                  { label: "Initiation limit", value: "10 req / min / IP" },
+                  { label: "API-key limit", value: "100 req / min / key" },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
                     <p className="text-xl font-bold text-orange-400 mb-1">{value}</p>
@@ -491,13 +505,13 @@ print(data["reference"])`,
                   </div>
                 ))}
               </div>
-              <p className="text-muted-foreground text-sm">Provider and operator limits may also apply. DrimPay does not expose a batch Pay-out API; use the dashboard's mass-pay-out feature for supported batch operations.</p>
+              <p className="text-muted-foreground text-sm">No maximum payout amount or daily API limit is defined by this endpoint; provider and operator limits may still apply. There is no public batch Pay-out endpoint. Batch payouts are available through the dashboard's <Link href="/dashboard/docs/mass-payout" className="text-primary hover:underline">Mass Pay-out feature</Link>.</p>
             </section>
 
             <section id="kyb" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Users className="w-5 h-5 text-orange-400" /> KYB Verification</h2>
               <p className="text-muted-foreground mb-4">
-                Pay-out is a privileged operation. Your business account must pass KYB (Know Your Business) verification before you can initiate any live payouts. Sandbox payouts are unrestricted.
+                Live Pay-out is a privileged operation. Your account must pass KYB (Know Your Business) verification before you can initiate live payouts. Sandbox payouts do not require KYB, but still require an active Sandbox wallet with sufficient funds.
               </p>
               <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 mb-5 flex gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -587,6 +601,7 @@ COMMIT;`} />
               <p className="text-muted-foreground mb-4">Poll the status of a payout by its reference. Use as a fallback if your webhook wasn't received.</p>
               <CodeBlock lang="bash" code={`curl https://drimpay.com/api/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8 \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
+              <p className="text-sm text-muted-foreground mt-3">The response is the payout object described above. You may use either the DrimPay reference or your <code className="font-mono text-primary">external_ref</code>; the API key must match the payout environment.</p>
             </section>
 
             <section id="list" className="mb-14 scroll-mt-20">
@@ -598,64 +613,25 @@ COMMIT;`} />
               <p className="text-muted-foreground mb-4">Returns a paginated list of all your outgoing transactions with filters.</p>
               <CodeBlock lang="bash" code={`curl "https://drimpay.com/api/v2/payout/transactions?page=1&limit=20&country_code=SN&status=success" \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
-            </section>
-
-            <section id="mass" className="mb-14 scroll-mt-20">
-              <h2 className="text-2xl font-bold mb-2 flex items-center gap-2"><Users className="w-5 h-5 text-orange-400" /> Mass Pay-out</h2>
-              <div className="flex items-center gap-3 mb-4">
-                <Badge color="green">POST</Badge>
-                <code className="text-sm font-mono text-muted-foreground">/v2/payout/mass</code>
-              </div>
-              <p className="text-muted-foreground mb-5">Send to up to 50,000 recipients in a single request. The job processes asynchronously — you receive webhook updates per recipient and a final summary webhook.</p>
-              <CodeBlock lang="bash" code={`curl -X POST https://drimpay.com/api/v2/payout/mass \\
-  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "description": "May 2026 Payroll",
-    "webhook_url": "https://yourapp.com/webhook/drimpay",
-    "recipients": [
-      {
-        "phone": "+22890000001",
-        "country_code": "TG",
-        "operator": "tmoney",
-        "amount": 150000,
-        "currency": "XOF",
-        "order_id": "PAYROLL-MAY2026-EMP001"
-      },
-      {
-        "phone": "+22190000002",
-        "country_code": "SN",
-        "operator": "orange",
-        "amount": 200000,
-        "currency": "XOF",
-        "order_id": "PAYROLL-MAY2026-EMP002"
-      }
-    ]
-  }'`} />
+              <p className="text-sm text-muted-foreground mt-3">Optional query parameters: <code className="font-mono text-primary">page</code>, <code className="font-mono text-primary">limit</code> (1–100), <code className="font-mono text-primary">country_code</code>, and <code className="font-mono text-primary">status</code>. The response contains a <code className="font-mono text-primary">data</code> array and pagination details in <code className="font-mono text-primary">meta</code>.</p>
               <CodeBlock lang="json" code={`{
-  "job_id": "MASS-JOB-A1B2C3D4E5F6",
-  "status": "processing",
-  "total_recipients": 2,
-  "total_amount": 350000,
-  "total_fees": 10500,
-  "total_debited": 360500,
-  "currency": "XOF",
-  "created_at": "2026-05-06T10:00:00.000Z"
+  "data": [{ "reference": "OUT-1778058000000-A1B2C3D4", "status": "success", "amount": 10000 }],
+  "meta": { "total": 1, "page": 1, "limit": 20, "pages": 1 }
 }`} />
             </section>
 
             <section id="webhooks" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Webhook className="w-5 h-5 text-orange-400" /> Webhooks</h2>
-              <p className="text-muted-foreground mb-4">DrimPay POSTs to your <code className="font-mono text-primary text-sm">webhook_url</code> when a payout is confirmed or fails. Your server must return HTTP 200 within 10 seconds.</p>
+              <p className="text-muted-foreground mb-4">The <code className="font-mono text-primary text-sm">webhook_url</code> must use HTTPS. Sandbox initiation sends an immediate simulated result. For Live payouts, merchant notifications are sent when a provider status notification is processed; the background status poll after initiation does not itself send a merchant webhook. Webhook delivery times and retry behavior can vary by provider.</p>
               <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-4 mb-5 flex gap-3">
                 <Shield className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-orange-400 mb-1">Webhook signature — mandatory</p>
-                  <p className="text-sm text-muted-foreground">Every API key has a dedicated webhook secret. Copy it from the credential banner in <strong className="text-foreground">Dashboard → Clés API</strong>, or reveal it later after confirming your account password. Store it only on your server and verify every webhook before processing.</p>
+                  <p className="text-sm text-muted-foreground">Each API key has a dedicated webhook secret. Copy it when creating or regenerating the key in <strong className="text-foreground">Dashboard → API Keys</strong>, or reveal it later after confirming your account password. Store it only on your server and verify every webhook before processing.</p>
                 </div>
               </div>
               <h3 className="text-base font-semibold mb-2">Signature header</h3>
-              <CodeBlock lang="bash" code={`X-DrimPay-Signature: t=1715000000,v1=a3f9e1c2b4d5...sha256hex...
+              <CodeBlock lang="bash" code={`X-DrimPay-Signature: t=1715000000,v1=<64-character-hex-HMAC>
 X-DrimPay-Timestamp: 1715000000
 X-DrimPay-Event: payout.success`} />
               <h3 className="text-base font-semibold mb-2 mt-4">Signature verification (Node.js)</h3>
@@ -664,41 +640,47 @@ X-DrimPay-Event: payout.success`} />
 app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, res) => {
   const header = req.headers["x-drimpay-signature"] || "";
   const [timestampPart, signaturePart] = header.split(",");
-  const timestamp = timestampPart?.split("=")[1];
-  const signature = signaturePart?.split("=")[1];
-  if (!timestamp || !signature || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) {
+  const timestamp = timestampPart?.startsWith("t=") ? timestampPart.slice(2) : "";
+  const signature = signaturePart?.startsWith("v1=") ? signaturePart.slice(3) : "";
+  if (!/^\\d+$/.test(timestamp) || !/^[a-f0-9]{64}$/i.test(signature) ||
+      Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) {
     return res.status(400).send("Invalid or expired signature");
   }
 
   const expectedSignature = crypto
     .createHmac("sha256", process.env.DRIMPAY_WEBHOOK_SECRET)
-    .update(timestamp + "." + req.body.toString("utf8")) // raw body
-    .digest("hex");
+    .update(timestamp + "." + req.body.toString("utf8")) // exact raw body
+    .digest();
+  const receivedSignature = Buffer.from(signature, "hex");
 
-  if (!crypto.timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expectedSignature, "hex"))) {
+  if (!crypto.timingSafeEqual(receivedSignature, expectedSignature)) {
     return res.status(400).send("Invalid signature");
   }
 
   const event = JSON.parse(req.body);
-  // handle event.status: queued | processing | success | failed | reversed | cancelled
+  // Handle event/status, then return a 2xx response.
   res.status(200).send("OK");
 });`} />
               <h3 className="text-base font-semibold mb-2 mt-4">Webhook payload</h3>
               <CodeBlock lang="json" code={`{
   "event": "payout.success",
-  "reference": "SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8",
-  "order_id": "PAYOUT-20240501-042",
+  "reference": "OUT-1778058000000-A1B2C3D4",
+  "external_ref": "PAYOUT-20260506-042",
+  "order_id": "PAYOUT-20260506-042",
   "status": "success",
   "amount": 10000,
   "fee": 300,
-  "total_debited": 10300,
+  "net_amount": 10000,
   "currency": "XOF",
   "country_code": "SN",
   "operator": "orange",
   "phone": "+221770000000",
-  "gateway_reference": "ORANGE-REF-55443",
+  "mode": "live",
+  "gateway_reference": "provider-reference",
+  "failure_reason": null,
+  "metadata": {},
   "created_at": "2026-05-06T09:00:00.000Z",
-  "completed_at": "2026-05-06T09:00:47.000Z"
+  "updated_at": "2026-05-06T09:00:47.000Z"
 }`} />
             </section>
 
@@ -708,36 +690,27 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
                 <Badge color="green">POST</Badge>
                 <code className="text-sm font-mono text-muted-foreground">/v2/payout/{"{reference}"}/resend-webhook</code>
               </div>
-              <p className="text-muted-foreground mb-4">Re-trigger the webhook notification for any payout. Also available directly from your <Link href="/dashboard/payments" className="text-primary hover:underline">Payment History dashboard</Link>.</p>
+              <p className="text-muted-foreground mb-4">Re-send the current payout status to the HTTPS <code className="font-mono text-primary">webhook_url</code> saved on that transaction. You can identify the payout by its DrimPay reference or your external reference. This endpoint returns after the delivery attempt; inspect your webhook logs or retry if your server did not receive it.</p>
               <CodeBlock lang="bash" code={`curl -X POST https://drimpay.com/api/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8/resend-webhook \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
+              <CodeBlock lang="json" code={`{
+  "message": "Webhook resend attempted.",
+  "reference": "OUT-1778058000000-A1B2C3D4",
+  "status": "success"
+}`} />
             </section>
 
             <section id="retry" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Webhook className="w-5 h-5 text-orange-400" /> Retry Logic</h2>
               <p className="text-muted-foreground mb-4">
-                If your webhook endpoint fails, DrimPay retries up to <strong className="text-foreground">3 times</strong> with exponential backoff. For your own retries on network errors, always reuse the same <code className="font-mono text-primary">order_id</code> — the API is idempotent and will never double-pay.
+                If the initiation request times out and you do not know whether DrimPay accepted it, check the payout using your <code className="font-mono text-primary">external_ref</code> as the reference. If no payout is found, repeat the <strong className="text-foreground">same request with the same reference</strong> and unchanged details. The API returns an existing payout rather than creating a second one. A definitive failed payout is not re-submitted by repeating that reference; use a new reference only when you intentionally create a new payout.
               </p>
-              <CodeBlock lang="node.js" code={`async function payoutWithRetry(payload, attempts = 0) {
-  if (attempts >= 3) throw new Error("Max retries reached");
+# Safe resolution after an uncertain initiation response:
+curl "https://drimpay.com/api/v2/payout/PAYOUT-20260506-042" \\
+  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"
 
-  try {
-    const res = await fetch("https://drimpay.com/api/v2/payout/send", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + process.env.DRIMPAY_SECRET_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload), // same order_id on every attempt
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return await res.json();
-  } catch (err) {
-    const delay = 2000 * Math.pow(2, attempts); // 2s, 4s, 8s
-    await new Promise(resolve => setTimeout(resolve, delay));
-    return payoutWithRetry(payload, attempts + 1);
-  }
-}`} />
+# If no payout is found, repeat the original POST with the exact same external_ref/details.
+# To create a new payout after a confirmed failure, use a new external_ref.`} />
             </section>
 
             <div className="border border-border rounded-2xl p-6 bg-card mt-6">
