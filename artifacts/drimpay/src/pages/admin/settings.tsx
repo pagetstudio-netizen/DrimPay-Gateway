@@ -15,8 +15,8 @@ const SETTINGS_GROUPS = [
     title: "Frais & Commissions",
     key: "fees",
     fields: [
-      { key: "payin_fee_percent", label: "Frais Pay-in (%)", type: "number", placeholder: "3", hint: "Commission prélevée sur chaque dépôt" },
-      { key: "payout_fee_percent", label: "Frais Pay-out (%)", type: "number", placeholder: "3", hint: "Commission prélevée sur chaque retrait" },
+      { key: "default_payin_fee_percent", label: "Frais Pay-in globaux (%)", type: "number", placeholder: "3.5", hint: "Taux de repli pour les pays sans règle dédiée; les règles pays/opérateur et les tarifs marchands personnalisés restent prioritaires" },
+      { key: "default_payout_fee_percent", label: "Frais Pay-out globaux (%)", type: "number", placeholder: "3.5", hint: "Taux de repli pour les pays sans règle dédiée; les règles pays/opérateur et les tarifs marchands personnalisés restent prioritaires" },
       { key: "min_payin_amount", label: "Montant min Pay-in (XOF)", type: "number", placeholder: "500", hint: "Montant minimum accepté en dépôt" },
       { key: "max_payin_amount", label: "Montant max Pay-in (XOF)", type: "number", placeholder: "500000", hint: "Plafond par transaction de dépôt" },
       { key: "min_payout_amount", label: "Montant min Pay-out (XOF)", type: "number", placeholder: "1000", hint: "Montant minimum pour un retrait" },
@@ -198,14 +198,14 @@ function OperatorFeesSection() {
         <div className="overflow-x-auto">
           <div className="mb-7 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
             <h3 className="text-sm font-bold text-gray-800 mb-1">Tarifs par défaut des pays</h3>
-            <p className="text-xs text-gray-500 mb-3">Un champ vide conserve le tarif global. Ces valeurs sont héritées par les opérateurs sans override.</p>
+            <p className="text-xs text-gray-500 mb-3">Un champ vide conserve le tarif par défaut hérité : 4,5% au Togo, au Sénégal et au Mali, sinon le taux global. Les tarifs opérateur peuvent ensuite le remplacer.</p>
             <div className="min-w-[430px]">
               <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 px-3 pb-2 text-[11px] uppercase tracking-wide font-bold text-gray-400"><span>Pays</span><span>Pay-in (%)</span><span>Pay-out (%)</span></div>
               <div className="space-y-2">{countries.map(country => (
                 <div key={country.countryCode} className="grid grid-cols-[1fr_1fr_1fr] items-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-2">
                   <span className="text-sm font-semibold text-gray-700">{country.countryCode}</span>
-                  <input type="number" min="0" max="100" step="0.01" value={country.payin ?? ""} onChange={e => setCountryRate(country.countryCode, "payin", e.target.value)} placeholder={country.payinDefault != null ? `${country.payinDefault}% global` : "Global"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                  <input type="number" min="0" max="100" step="0.01" value={country.payout ?? ""} onChange={e => setCountryRate(country.countryCode, "payout", e.target.value)} placeholder={country.payoutDefault != null ? `${country.payoutDefault}% global` : "Global"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input type="number" min="0" max="100" step="0.01" value={country.payin ?? ""} onChange={e => setCountryRate(country.countryCode, "payin", e.target.value)} placeholder={country.payinDefault != null ? `${country.payinDefault}% hérité` : "Taux global"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input type="number" min="0" max="100" step="0.01" value={country.payout ?? ""} onChange={e => setCountryRate(country.countryCode, "payout", e.target.value)} placeholder={country.payoutDefault != null ? `${country.payoutDefault}% hérité` : "Taux global"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                 </div>
               ))}</div>
             </div>
@@ -226,14 +226,14 @@ function OperatorFeesSection() {
                     type="number" min="0" max="100" step="0.01"
                     value={row.payin ?? ""}
                     onChange={event => setRate(row.key, "payin", event.target.value)}
-                    placeholder="Défaut"
+                    placeholder={`${row.payinDefault ?? "Défaut"}% hérité`}
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <input
                     type="number" min="0" max="100" step="0.01"
                     value={row.payout ?? ""}
                     onChange={event => setRate(row.key, "payout", event.target.value)}
-                    placeholder="Défaut"
+                    placeholder={`${row.payoutDefault ?? "Défaut"}% hérité`}
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -765,7 +765,14 @@ export default function AdminSettings() {
     setLoading(true);
     const r = await fetch(`${ADMIN_BASE}/settings`, { credentials: "include" });
     const d = await r.json();
-    setValues(d ?? {});
+    const nextValues = { ...(d ?? {}) };
+    if (nextValues.default_payin_fee_percent == null && nextValues.payin_fee_percent != null) {
+      nextValues.default_payin_fee_percent = nextValues.payin_fee_percent;
+    }
+    if (nextValues.default_payout_fee_percent == null && nextValues.payout_fee_percent != null) {
+      nextValues.default_payout_fee_percent = nextValues.payout_fee_percent;
+    }
+    setValues(nextValues);
     setLoading(false);
   };
 

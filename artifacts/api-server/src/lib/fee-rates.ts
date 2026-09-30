@@ -82,6 +82,32 @@ export function defaultCountryFee(countryCode: string, type: FeeType, defaults: 
   return ["TG", "SN", "ML"].includes(countryCode.trim().toUpperCase()) ? SPECIAL_COUNTRY_DEFAULTS[type]! / 100 : null;
 }
 
+export function resolveFeeRate(
+  type: FeeType,
+  merchantPercent: unknown,
+  countryCode: string | undefined,
+  operator: string | undefined,
+  operatorRates: OperatorFeeRates,
+  countryDefaults: CountryFeeDefaults,
+  platformDefaultRate: number,
+): number {
+  const merchantValue = typeof merchantPercent === "number"
+    ? merchantPercent
+    : Number.parseFloat(String(merchantPercent ?? ""));
+  if (validPercent(merchantValue)) return merchantValue / 100;
+
+  if (countryCode && operator) {
+    const operatorPercent = operatorRates[operatorFeeConfigKey(countryCode, operator)]?.[type];
+    if (validPercent(operatorPercent)) return operatorPercent / 100;
+  }
+
+  const countryRate = countryCode ? defaultCountryFee(countryCode, type, countryDefaults) : null;
+  if (countryRate !== null) return countryRate;
+  return Number.isFinite(platformDefaultRate) && platformDefaultRate >= 0 && platformDefaultRate <= 1
+    ? platformDefaultRate
+    : DEFAULT_FEE_RATE;
+}
+
 async function getPlatformDefaultFee(type: FeeType, settings?: { key: string; value: string | null }[]): Promise<number> {
   const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
   const rows = settings ?? await db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value })
@@ -125,18 +151,14 @@ export async function getFeeRate(
   ]);
 
   const merchantPercent = type === "payin" ? user?.payinFeePercent : user?.payoutFeePercent;
-  if (merchantPercent !== null && merchantPercent !== undefined) {
-    const merchantRate = parseFloat(String(merchantPercent)) / 100;
-    if (Number.isFinite(merchantRate) && merchantRate >= 0 && merchantRate <= 1) return merchantRate;
-  }
-
-  if (countryCode && operator && operatorSetting?.value) {
-    const configured = parseOperatorFeeRates(operatorSetting.value)[operatorFeeConfigKey(countryCode, operator)];
-    const operatorPercent = configured?.[type];
-    if (operatorPercent !== null && operatorPercent !== undefined) return operatorPercent / 100;
-  }
-
-  const countryRate = countryCode ? defaultCountryFee(countryCode, type, parseCountryFeeDefaults(countrySetting?.value)) : null;
-  if (countryRate !== null && countryRate !== undefined) return countryRate;
-  return getPlatformDefaultFee(type, platformSettings);
+  const platformDefaultRate = await getPlatformDefaultFee(type, platformSettings);
+  return resolveFeeRate(
+    type,
+    merchantPercent,
+    countryCode,
+    operator,
+    parseOperatorFeeRates(operatorSetting?.value),
+    parseCountryFeeDefaults(countrySetting?.value),
+    platformDefaultRate,
+  );
 }

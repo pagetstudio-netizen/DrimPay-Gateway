@@ -42,10 +42,10 @@ router.get("/fees", async (_req, res) => {
         payout: override?.payout ?? (countryPayout === null ? payout : countryPayout * 100),
       };
     });
-    res.setHeader("Cache-Control", "public, max-age=300");
+    res.setHeader("Cache-Control", "public, max-age=60");
     res.json({ payin, payout, payin_display: `${payin}%`, payout_display: `${payout}%`, countryRates });
   } catch {
-    res.json({ payin: 3.5, payout: 3.5, payin_display: "3.5%", payout_display: "3.5%" });
+    res.status(503).json({ error: "Impossible de charger le barème des frais.", countryRates: [] });
   }
 });
 
