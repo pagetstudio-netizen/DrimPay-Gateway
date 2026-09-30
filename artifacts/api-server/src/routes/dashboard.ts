@@ -90,7 +90,18 @@ function requireAuth(req: any, res: any, next: any) {
 // ── Live / Sandbox mode ───────────────────────────────────────────────────────
 
 router.get("/dashboard/mode", requireAuth, async (req, res) => {
-  if (!req.session.mode) req.session.mode = "sandbox";
+  const [user] = await db
+    .select({ dashboardMode: usersTable.dashboardMode })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.session.userId))
+    .limit(1);
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const mode = user.dashboardMode === "live" ? "live" : "sandbox";
+  req.session.mode = mode;
+
   let kybStatus: string = "pending";
   if (req.session.role !== "admin") {
     const userId = req.session.userId!;
@@ -102,7 +113,7 @@ router.get("/dashboard/mode", requireAuth, async (req, res) => {
   } else {
     kybStatus = "approved";
   }
-  res.json({ mode: req.session.mode, kybStatus });
+  res.json({ mode, kybStatus });
 });
 
 router.post("/dashboard/mode", requireAuth, async (req, res) => {
@@ -122,6 +133,16 @@ router.post("/dashboard/mode", requireAuth, async (req, res) => {
       return;
     }
   }
+  const [user] = await db
+    .update(usersTable)
+    .set({ dashboardMode: mode })
+    .where(eq(usersTable.id, req.session.userId))
+    .returning({ id: usersTable.id });
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
   req.session.mode = mode;
   res.json({ mode });
 });

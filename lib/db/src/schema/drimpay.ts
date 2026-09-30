@@ -23,6 +23,7 @@ export const usersTable = pgTable("users", {
   country: text("country").notNull().default("OTHER"),
   role: userRoleEnum("role").notNull().default("user"),
   accountType: accountTypeEnum("account_type").notNull().default("enterprise"),
+  dashboardMode: text("dashboard_mode").$type<"sandbox" | "live">().notNull().default("sandbox"),
   merchantCode: text("merchant_code").unique(),
   webhookUrl: text("webhook_url"),
   staticIp: text("static_ip"),

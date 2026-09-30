@@ -272,6 +272,7 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
 
   req.session.userId = user.id;
   req.session.role = user.role;
+  req.session.mode = user.dashboardMode === "live" ? "live" : "sandbox";
 
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Connexion réussie : ${email}`, riskLevel: "low" });
 
@@ -279,7 +280,7 @@ router.post("/auth/login", loginRateLimiter, async (req, res) => {
     notifyLoginAttempt({ type: "success", email, role: user.role === "admin" ? "admin" : "merchant", ip, country: geo.country, isVpn: geo.isVpn, isHosting: geo.isHosting, org: geo.org, userId: user.id }).catch(() => {});
   }).catch(() => {});
 
-  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode });
 });
 
 // ─── VERIFY EMAIL (code or after activation link) ────────────────────────────
@@ -349,10 +350,11 @@ router.post("/auth/verify-email", codeVerifyRateLimiter, async (req, res) => {
 
   req.session.userId = user.id;
   req.session.role = user.role;
+  req.session.mode = user.dashboardMode === "live" ? "live" : "sandbox";
 
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Email vérifié : ${email}`, riskLevel: "low" });
 
-  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode });
 });
 
 // ─── ACTIVATE VIA LINK ────────────────────────────────────────────────────────
@@ -409,6 +411,7 @@ router.get("/auth/activate", async (req, res) => {
 
   req.session.userId = user.id;
   req.session.role = user.role;
+  req.session.mode = user.dashboardMode === "live" ? "live" : "sandbox";
 
   await logSecurityEvent({ eventType: "LOGIN_SUCCESS", req, userId: user.id, details: `Activation lien email : ${user.email}`, riskLevel: "low" });
 
@@ -593,9 +596,10 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
-  if (!req.session.mode) req.session.mode = "sandbox";
+  const mode = user.dashboardMode === "live" ? "live" : "sandbox";
+  req.session.mode = mode;
 
-  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode: req.session.mode, isSupportAgent: user.isSupportAgent ?? false });
+  res.json({ id: user.id, email: user.email, companyName: user.companyName, country: user.country, role: user.role, accountType: user.accountType, merchantCode: user.merchantCode, mode, isSupportAgent: user.isSupportAgent ?? false });
 });
 
 export default router;
