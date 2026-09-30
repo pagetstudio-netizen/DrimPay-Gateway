@@ -22,6 +22,7 @@ const SECTIONS = [
   { id: "limits", label: "Limits & Security", group: "API REFERENCE" },
   { id: "kyb", label: "KYB Verification", group: "API REFERENCE" },
   { id: "wallet-protection", label: "Wallet Protection", group: "API REFERENCE" },
+  { id: "wallet-balance", label: "Wallet Balance", group: "ENDPOINTS" },
   { id: "send", label: "Send a Pay-out", group: "ENDPOINTS" },
   { id: "status", label: "Check Status", group: "ENDPOINTS" },
   { id: "list", label: "List Transactions", group: "ENDPOINTS" },
@@ -160,7 +161,7 @@ const response = await fetch(
   }
 );
 const data = await response.json();
-console.log(data.reference); // SN-X9Y8Z7W6V5U4...`,
+console.log(data.reference); // OUT-1778058000000-A1B2C3D4`,
     "php": `<?php
 // Sandbox: use sandbox-api/v2 + dp_sandbox_sk_ key for testing
 // Live:    use api/v2       + dp_live_sk_    key in production
@@ -418,23 +419,32 @@ print(data["reference"])`,
 
             <section id="response" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4">Response Format</h2>
-              <p className="text-muted-foreground mb-4">A new payout returns HTTP <Badge color="green">201</Badge>; an identical idempotent retry returns HTTP <Badge color="blue">200</Badge>. Live payouts are returned as <code className="font-mono text-primary">processing</code> after the provider accepts them; Sandbox payouts are simulated as <code className="font-mono text-primary">success</code>. The beneficiary receives the requested <strong className="text-foreground">amount</strong>; the wallet debit is <strong className="text-foreground">amount + fee</strong>.</p>
+              <p className="text-muted-foreground mb-4">A new payout returns HTTP <Badge color="green">201</Badge>; an identical idempotent retry returns HTTP <Badge color="blue">200</Badge>. Live payouts are returned as <code className="font-mono text-primary">processing</code> after the provider accepts them; Sandbox payouts are simulated as <code className="font-mono text-primary">success</code>. The beneficiary receives the requested <strong className="text-foreground">amount</strong>; the wallet debit is <strong className="text-foreground">amount + fee</strong>. Fee values below are illustrative; use the values returned by the API.</p>
               <CodeBlock lang="json" code={`{
-  "reference": "SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8",
+  "id": 12345,
+  "reference": "OUT-1778058000000-A1B2C3D4",
   "external_ref": "PAYOUT-20240501-042",
   "order_id": "PAYOUT-20240501-042",
   "status": "processing",
+  "type": "payout",
   "amount": 10000,
-  "fee": ${fees?.payout == null ? "—" : Math.round(10000 * fees.payout / 100)},
-  "total_debit": ${fees?.payout == null ? "—" : 10000 + Math.round(10000 * fees.payout / 100)},
+  "fee": ${Math.round(10000 * (fees?.payout ?? 3) / 100)},
+  "total_debit": ${10000 + Math.round(10000 * (fees?.payout ?? 3) / 100)},
+  "net_amount": 10000,
+  "fee_rate": "${fees?.payout ?? 3}%",
   "currency": "XOF",
   "country_code": "SN",
   "operator": "orange",
   "phone": "+221770000000",
   "mode": "live",
   "gateway_reference": "provider-reference",
+  "failure_reason": null,
+  "webhook_url": "https://yourapp.com/webhook/drimpay",
+  "metadata": {},
   "created_at": "2026-05-06T09:00:00.000Z",
-  "idempotent": false
+  "updated_at": "2026-05-06T09:00:01.000Z",
+  "idempotent": false,
+  "message": "Payout accepted and processing. Check the status endpoint for updates; webhook delivery depends on provider notifications."
 }`} />
             </section>
 
@@ -458,7 +468,7 @@ print(data["reference"])`,
                       ["400", "INVALID_COUNTRY", "Unsupported payout country"],
                       ["400", "INVALID_CURRENCY", "Currency does not match the selected country"],
                       ["400", "INVALID_PHONE", "Phone number does not match the selected country"],
-                      ["400", "WALLET_NOT_FOUND", "No wallet exists for the destination country and API-key mode"],
+                      ["400/404", "WALLET_NOT_FOUND", "No wallet exists for the destination country and API-key mode (HTTP 400 on payout initiation; HTTP 404 on balance lookup)"],
                       ["400", "WALLET_CURRENCY_MISMATCH", "Wallet currency does not match the requested currency"],
                       ["401", "UNAUTHORIZED", "Missing, invalid, or incorrectly prefixed API key"],
                       ["402", "INSUFFICIENT_FUNDS", "Wallet balance is below amount plus the applicable fee"],
@@ -549,13 +559,32 @@ COMMIT;`} />
               <p className="text-sm text-muted-foreground mt-3">The available balance must cover <code className="font-mono text-primary">amount + fee</code>. The wallet is selected by destination country and API-key mode (Sandbox or Live). Use the same idempotency reference on safe retries.</p>
             </section>
 
+            <section id="wallet-balance" className="mb-14 scroll-mt-20">
+              <h2 className="text-2xl font-bold mb-2">Check Wallet Balance</h2>
+              <div className="flex items-center gap-3 mb-4">
+                <Badge color="blue">GET</Badge>
+                <code className="text-sm font-mono text-muted-foreground">/v2/payout/wallets/{"{country_code}"}/balance</code>
+              </div>
+              <p className="text-muted-foreground mb-4">Returns the balance and active status for your wallet in the selected country. The API-key environment selects Sandbox or Live; this endpoint cannot read another account's wallets. The balance must cover the payout amount plus its fee.</p>
+              <CodeBlock lang="bash" code={`curl https://drimpay.com/api/v2/payout/wallets/SN/balance \\
+  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
+              <CodeBlock lang="json" code={`{
+  "country_code": "SN",
+  "currency": "XOF",
+  "balance": 125000,
+  "active": true,
+  "mode": "live"
+}`} />
+              <p className="text-sm text-muted-foreground mt-3">Use <code className="font-mono text-primary">https://drimpay.com/sandbox-api/v2</code> with a Sandbox key to read the Sandbox wallet. Unsupported countries return <code className="font-mono text-primary">400 INVALID_COUNTRY</code>; a missing wallet returns <code className="font-mono text-primary">404 WALLET_NOT_FOUND</code>.</p>
+            </section>
+
             <section id="send" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-2">Send a Pay-out</h2>
               <div className="flex items-center gap-3 mb-4">
                 <Badge color="green">POST</Badge>
                 <code className="text-sm font-mono text-muted-foreground">/v2/payout/initiate</code>
               </div>
-              <p className="text-muted-foreground mb-5">Disburse funds from your wallet to a Mobile Money recipient. The wallet matching the destination country is debited automatically.</p>
+              <p className="text-muted-foreground mb-5">Disburse funds from your wallet to a Mobile Money recipient. The wallet matching the destination country is debited automatically. For older integrations, <code className="font-mono text-primary">POST /v2/payout/send</code> remains available as a compatibility alias; use <code className="font-mono text-primary">/v2/payout/initiate</code> for new integrations.</p>
 
               <h3 className="text-base font-semibold mb-3">Request Parameters</h3>
               <div className="rounded-xl border border-border overflow-hidden mb-4">
@@ -599,7 +628,7 @@ COMMIT;`} />
                 <code className="text-sm font-mono text-muted-foreground">/v2/payout/{"{reference}"}</code>
               </div>
               <p className="text-muted-foreground mb-4">Poll the status of a payout by its reference. Use as a fallback if your webhook wasn't received.</p>
-              <CodeBlock lang="bash" code={`curl https://drimpay.com/api/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8 \\
+              <CodeBlock lang="bash" code={`curl https://drimpay.com/api/v2/payout/OUT-1778058000000-A1B2C3D4 \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
               <p className="text-sm text-muted-foreground mt-3">The response is the payout object described above. You may use either the DrimPay reference or your <code className="font-mono text-primary">external_ref</code>; the API key must match the payout environment.</p>
             </section>
@@ -691,7 +720,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
                 <code className="text-sm font-mono text-muted-foreground">/v2/payout/{"{reference}"}/resend-webhook</code>
               </div>
               <p className="text-muted-foreground mb-4">Re-send the current payout status to the HTTPS <code className="font-mono text-primary">webhook_url</code> saved on that transaction. You can identify the payout by its DrimPay reference or your external reference. This endpoint returns after the delivery attempt; inspect your webhook logs or retry if your server did not receive it.</p>
-              <CodeBlock lang="bash" code={`curl -X POST https://drimpay.com/api/v2/payout/SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8/resend-webhook \\
+              <CodeBlock lang="bash" code={`curl -X POST https://drimpay.com/api/v2/payout/OUT-1778058000000-A1B2C3D4/resend-webhook \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
               <CodeBlock lang="json" code={`{
   "message": "Webhook resend attempted.",
@@ -705,7 +734,7 @@ app.post("/webhook/drimpay", express.raw({ type: "application/json" }), (req, re
               <p className="text-muted-foreground mb-4">
                 If the initiation request times out and you do not know whether DrimPay accepted it, check the payout using your <code className="font-mono text-primary">external_ref</code> as the reference. If no payout is found, repeat the <strong className="text-foreground">same request with the same reference</strong> and unchanged details. The API returns an existing payout rather than creating a second one. A definitive failed payout is not re-submitted by repeating that reference; use a new reference only when you intentionally create a new payout.
               </p>
-# Safe resolution after an uncertain initiation response:
+              <CodeBlock lang="bash" code={`# Safe resolution after an uncertain initiation response:
 curl "https://drimpay.com/api/v2/payout/PAYOUT-20260506-042" \\
   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"
 

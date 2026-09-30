@@ -713,6 +713,50 @@ router.get("/v2/payout/transactions", resolveUser, async (req: any, res: any) =>
   });
 });
 
+router.get("/v2/payout/wallets/:country_code/balance", resolveUser, async (req: any, res: any) => {
+  const userId: number = req.resolvedUserId;
+  const mode = req.resolvedMode === "live" ? "live" : "sandbox";
+  const countryCode = String(req.params.country_code ?? "").trim().toUpperCase();
+
+  if (!COUNTRY_CURRENCIES[countryCode]) {
+    res.status(400).json({
+      error: "INVALID_COUNTRY",
+      message: `Country ${countryCode} is not supported for payout`,
+    });
+    return;
+  }
+
+  const [wallet] = await db
+    .select({
+      currency: walletsTable.currency,
+      balance: walletsTable.balance,
+      active: walletsTable.active,
+    })
+    .from(walletsTable)
+    .where(and(
+      eq(walletsTable.userId, userId),
+      eq(walletsTable.countryCode, countryCode),
+      eq(walletsTable.mode, mode),
+    ))
+    .limit(1);
+
+  if (!wallet) {
+    res.status(404).json({
+      error: "WALLET_NOT_FOUND",
+      message: `No ${mode} wallet exists for ${countryCode}.`,
+    });
+    return;
+  }
+
+  res.json({
+    country_code: countryCode,
+    currency: wallet.currency,
+    balance: Number(wallet.balance),
+    active: wallet.active,
+    mode,
+  });
+});
+
 router.post("/v2/payout/:reference/resend-webhook", resolveUser, async (req: any, res: any) => {
   const userId: number = req.resolvedUserId;
   const mode = req.resolvedMode === "live" ? "live" : "sandbox";

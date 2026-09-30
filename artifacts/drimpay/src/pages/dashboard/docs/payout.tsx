@@ -124,11 +124,30 @@ export default function DocPayout() {
           </p>
         </Section>
 
+        <Section title="Consulter le solde du wallet" icon={SearchCheck}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 font-bold font-mono">GET</span>
+            <code className="text-sm font-mono text-muted-foreground">/payout/wallets/{"{country_code}"}/balance</code>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">Renvoie le solde et le statut du wallet du pays demandé. Le mode du wallet (Sandbox ou Live) est déterminé par la clé API; une clé ne peut pas consulter les wallets d'un autre compte.</p>
+          <CodeBlock lang="curl" code={`curl https://drimpay.com/api/v2/payout/wallets/TG/balance \\
+  -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx"`} />
+          <CodeBlock code={`{
+  "country_code": "TG",
+  "currency": "XOF",
+  "balance": 125000,
+  "active": true,
+  "mode": "live"
+}`} />
+          <p className="text-xs text-muted-foreground mt-3">Utilisez <code className="font-mono text-primary">https://drimpay.com/sandbox-api/v2</code> et une clé Sandbox pour consulter le wallet Sandbox. Le solde doit couvrir le montant demandé plus les frais. Un pays non pris en charge renvoie HTTP 400 <code className="font-mono text-primary">INVALID_COUNTRY</code>; un wallet absent renvoie HTTP 404 <code className="font-mono text-primary">WALLET_NOT_FOUND</code>.</p>
+        </Section>
+
         <Section title="Initier un Pay-out" icon={Send}>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500/10 text-green-600 font-bold font-mono">POST</span>
             <code className="text-sm font-mono text-muted-foreground">/payout/initiate</code>
           </div>
+          <p className="text-xs text-muted-foreground mb-4">Pour les anciennes intégrations, <code className="font-mono text-primary">POST /payout/send</code> reste disponible comme alias de compatibilité; utilisez <code className="font-mono text-primary">/payout/initiate</code> pour les nouvelles intégrations.</p>
 
           <h3 className="text-sm font-semibold mb-3">Paramètres</h3>
           <div className="rounded-xl border border-border bg-card overflow-hidden mb-6">
