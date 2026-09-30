@@ -346,7 +346,7 @@ print(data["reference"])`,
                 The DrimPay Pay-out API enables you to send money directly to a Mobile Money wallet. Use it for individual supplier payments, commissions, and customer refunds.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Funds are debited from your <strong className="text-foreground">country-specific wallet</strong>. You must have an active wallet with sufficient balance in the destination country before initiating a pay-out. Pay-out is available to <strong className="text-foreground">all accounts</strong> (personal &amp; business). DrimPay charges the effective country/operator rate ({payoutFeeLabel}) per transaction. The beneficiary receives exactly <strong className="text-foreground">amount</strong>; the total deducted from your wallet is <strong className="text-foreground">amount + fee</strong>.
+                Funds are debited from your <strong className="text-foreground">wallet for the destination country and API-key environment</strong>. You need an active wallet with enough available balance for the payout amount plus its fee. Pay-in credits the net amount after its fee, so the deposited amount is not necessarily the wallet balance available for payout. Live payouts require approved KYB. DrimPay charges the effective country/operator rate ({payoutFeeLabel}); the beneficiary receives the requested <strong className="text-foreground">amount</strong>.
               </p>
               <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 mb-6 flex gap-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
@@ -413,7 +413,7 @@ print(data["reference"])`,
 
             <section id="request" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Code className="w-5 h-5 text-orange-400" /> Request Format</h2>
-              <p className="text-muted-foreground mb-4">All requests must use <code className="text-primary font-mono text-sm">Content-Type: application/json</code>. Send a unique <code className="text-primary font-mono text-sm">external_ref</code> for idempotency. The compatibility alias <code className="text-primary font-mono text-sm">order_id</code> is also accepted; if both are sent, they must match. Retrying the same request returns the existing payout rather than sending money twice.</p>
+              <p className="text-muted-foreground mb-4">All requests must use <code className="text-primary font-mono text-sm">Content-Type: application/json</code>. Provide one unique <code className="text-primary font-mono text-sm">external_ref</code> or <code className="text-primary font-mono text-sm">order_id</code> for idempotency. If both are sent, they must match. Retrying the same request returns the existing payout rather than sending money twice.</p>
             </section>
 
             <section id="response" className="mb-14 scroll-mt-20">
@@ -454,19 +454,18 @@ print(data["reference"])`,
                   </tr></thead>
                   <tbody>
                     {[
-                      ["400", "INVALID_PHONE", "Phone must be in E.164 format"],
-                      ["400", "INVALID_AMOUNT", "Amount must be a positive integer"],
-                      ["400", "INVALID_CURRENCY", "Unsupported currency code"],
-                      ["400", "INVALID_OPERATOR", "Operator not supported for this country"],
+                      ["400", "INVALID_REQUEST", "Invalid fields; amount must be at least 200"],
+                      ["400", "INVALID_COUNTRY", "Unsupported payout country"],
+                      ["400", "INVALID_CURRENCY", "Currency does not match the selected country"],
+                      ["400", "INVALID_PHONE", "Phone number does not match the selected country"],
                       ["401", "UNAUTHORIZED", "Missing or invalid API key"],
-                      ["402", "WALLET_INSUFFICIENT_FUNDS", "Your wallet balance is too low for this payout"],
-                      ["403", "KYB_REQUIRED", "KYB not approved — complete verification first"],
-                      ["403", "NO_WALLET_FOR_COUNTRY", "No active wallet for this country — fund one first"],
-                      ["403", "LIMIT_EXCEEDED", "Amount exceeds max transaction or daily limit"],
-                      ["409", "DUPLICATE_ORDER", "order_id already used — original payout returned"],
-                      ["422", "OPERATOR_UNAVAILABLE", "Operator temporarily unavailable"],
+                      ["402", "INSUFFICIENT_FUNDS", "Available balance is below amount plus payout fee"],
+                      ["403", "KYB_NOT_APPROVED", "Live payouts require approved KYB"],
+                      ["403", "WALLET_INACTIVE", "The destination-country wallet is inactive"],
+                      ["409", "IDEMPOTENCY_CONFLICT", "Reference was reused with different payout details"],
+                      ["423", "WITHDRAWAL_TEMPORARILY_LOCKED", "Payout attempts are temporarily locked"],
                       ["429", "RATE_LIMITED", "Too many requests — 100 req/min max per API key"],
-                      ["500", "INTERNAL_ERROR", "Server error — contact support"],
+                      ["503", "PAYOUTS_DISABLED", "Payouts are temporarily unavailable"],
                     ].map(([code, err, desc]) => (
                       <tr key={err} className="border-b border-border/50 last:border-0">
                         <td className="px-4 py-3"><Badge color={code.startsWith("4") ? "red" : "yellow"}>{code}</Badge></td>
@@ -481,10 +480,9 @@ print(data["reference"])`,
 
             <section id="limits" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-orange-400" /> Limits & Security</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {[
-                  { label: "Max per transaction", value: "1 000 000 FCFA" },
-                  { label: "Max per day", value: "2 000 000 FCFA" },
+                  { label: "Minimum payout amount", value: "200" },
                   { label: "Rate limit", value: "100 req / min / key" },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-4 rounded-xl border border-border bg-card text-center">
@@ -493,7 +491,7 @@ print(data["reference"])`,
                   </div>
                 ))}
               </div>
-              <p className="text-muted-foreground text-sm">The daily transaction cap is subject to each operator's applicable limits and terms. Requests exceeding the effective limits return <code className="font-mono text-primary">403 LIMIT_EXCEEDED</code>. Contact support about account-specific limits.</p>
+              <p className="text-muted-foreground text-sm">Provider and operator limits may also apply. DrimPay does not expose a batch Pay-out API; use the dashboard's mass-pay-out feature for supported batch operations.</p>
             </section>
 
             <section id="kyb" className="mb-14 scroll-mt-20">
@@ -505,12 +503,12 @@ print(data["reference"])`,
                 <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-red-400 mb-1">KYB required for live payouts</p>
-                  <p className="text-sm text-muted-foreground">If your account is not approved, the API returns <code className="font-mono text-xs">403 KYB_REQUIRED</code>. Submit your documents in the <Link href="/dashboard/kyb" className="text-primary hover:underline">KYB dashboard</Link>.</p>
+                  <p className="text-sm text-muted-foreground">If your account is not approved, the API returns <code className="font-mono text-xs">403 KYB_NOT_APPROVED</code>. Submit your documents in the <Link href="/dashboard/kyb" className="text-primary hover:underline">KYB dashboard</Link>.</p>
                 </div>
               </div>
               <CodeBlock lang="json" code={`// Response when KYB is not approved
 {
-  "error": "KYB_REQUIRED",
+  "error": "KYB_NOT_APPROVED",
   "message": "Your account must complete KYB verification before sending live payouts"
 }`} />
             </section>
@@ -534,14 +532,14 @@ UPDATE wallets
   WHERE id = :wallet_id;
 
 COMMIT;`} />
-              <p className="text-sm text-muted-foreground mt-3">This guarantees your wallet can never go negative due to race conditions. Use idempotent <code className="font-mono text-primary">order_id</code> values to safely retry without risking duplicate payouts.</p>
+              <p className="text-sm text-muted-foreground mt-3">The available balance must cover <code className="font-mono text-primary">amount + fee</code>. The wallet is selected by destination country and API-key mode (Sandbox or Live). Use the same idempotency reference on safe retries.</p>
             </section>
 
             <section id="send" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-2">Send a Pay-out</h2>
               <div className="flex items-center gap-3 mb-4">
                 <Badge color="green">POST</Badge>
-                <code className="text-sm font-mono text-muted-foreground">/v2/payout/send</code>
+                <code className="text-sm font-mono text-muted-foreground">/v2/payout/initiate</code>
               </div>
               <p className="text-muted-foreground mb-5">Disburse funds from your wallet to a Mobile Money recipient. The wallet matching the destination country is debited automatically.</p>
 
@@ -554,14 +552,16 @@ COMMIT;`} />
                     <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wide">Description</th>
                   </tr></thead>
                   <tbody className="divide-y divide-border/40">
-                    <ParamRow name="amount" type="number" required desc="Gross amount to send (fee will be added on top)" />
+                    <ParamRow name="amount" type="number" required desc="Amount received by the beneficiary; minimum 200 (fee is added to wallet debit)" />
                     <ParamRow name="currency" type="string" required desc="ISO 4217 currency code: XOF, XAF" />
-                    <ParamRow name="country_code" type="string" required desc="Destination country code: TG, BJ, CM, SN, CI, ML, BF — and NG, CD for Airtel/Vodacom" />
-                    <ParamRow name="operator" type="string" required desc="Mobile Money operator slug: tmoney, moov, mtn, orange, wave, wizall, vodacom, airtel" />
-                    <ParamRow name="phone" type="string" required desc="Recipient's Mobile Money phone number in E.164 format" />
-                    <ParamRow name="order_id" type="string" required desc="Your unique payout ID for idempotency (max 128 chars)" />
-                    <ParamRow name="webhook_url" type="string" required desc="HTTPS URL for payout status notifications" />
+                    <ParamRow name="country_code" type="string" required desc="Destination country: TG, BJ, BF, ML, SN, CI, or CM" />
+                    <ParamRow name="operator" type="string" required desc="Mobile Money operator configured for the destination country" />
+                    <ParamRow name="phone" type="string" required desc="Local number or international number matching country_code" />
+                    <ParamRow name="external_ref" type="string" desc="Unique merchant payout ID (max 128 chars); required unless order_id is sent" />
+                    <ParamRow name="order_id" type="string" desc="Compatibility alias for external_ref; if both are sent, they must match" />
+                    <ParamRow name="webhook_url" type="string" desc="Optional HTTPS URL for payout status notifications" />
                     <ParamRow name="description" type="string" desc="Payout description for accounting (max 255 chars)" />
+                    <ParamRow name="operator_otp" type="string" desc="Optional operator OTP when required" />
                     <ParamRow name="metadata" type="object" desc="Custom key-value data attached to this payout" />
                   </tbody>
                 </table>
