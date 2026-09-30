@@ -259766,15 +259766,138 @@ var import_express3 = __toESM(require_express2(), 1);
 init_src();
 init_schema2();
 init_drizzle_orm();
+
+// src/lib/fee-rates.ts
+init_src();
+init_schema2();
+init_drizzle_orm();
+var DEFAULT_FEE_RATE = 0.035;
+var OPERATOR_FEE_RATES_SETTING = "operator_fee_rates";
+var COUNTRY_FEE_RATES_SETTING = "country_fee_rates";
+var SPECIAL_COUNTRY_DEFAULTS = { payin: 4.5, payout: 4.5 };
+function validPercent(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
+}
+function normalizeOperatorForFee(value) {
+  return value.toLowerCase().replace(/mobile\s*money/g, "").replace(/momo/g, "").replace(/money/g, "").replace(/[^a-z0-9]/g, "").trim();
+}
+function operatorFeeConfigKey(countryCode, operator) {
+  return `${countryCode.trim().toUpperCase()}:${normalizeOperatorForFee(operator)}`;
+}
+function parseOperatorFeeRates(raw) {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const result = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const item = value;
+      result[key] = {
+        payin: validPercent(item.payin) ? item.payin : null,
+        payout: validPercent(item.payout) ? item.payout : null
+      };
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+function parseCountryFeeDefaults(raw) {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const result = {};
+    for (const [country, value] of Object.entries(parsed)) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const item = value;
+      result[country.trim().toUpperCase()] = {
+        payin: validPercent(item.payin) ? item.payin : null,
+        payout: validPercent(item.payout) ? item.payout : null
+      };
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+function defaultCountryFee(countryCode, type, defaults2 = {}) {
+  const configured = defaults2[countryCode.trim().toUpperCase()];
+  const configuredRate = configured?.[type];
+  if (configuredRate !== null && configuredRate !== void 0) return configuredRate / 100;
+  return ["TG", "SN", "ML"].includes(countryCode.trim().toUpperCase()) ? SPECIAL_COUNTRY_DEFAULTS[type] / 100 : null;
+}
+async function getPlatformDefaultFee(type, settings) {
+  const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+  const rows = settings ?? await db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, key));
+  const row = rows.find((r) => r.key === key) ?? rows[0];
+  const value = row?.value ? parseFloat(row.value) / 100 : DEFAULT_FEE_RATE;
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : DEFAULT_FEE_RATE;
+}
+async function getFeeRate(userId, type, countryCode, operator) {
+  const feeKey = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+  const legacyKey = type === "payin" ? "payin_fee_percent" : "payout_fee_percent";
+  const [[user], platformSettings, [operatorSetting], [countrySetting]] = await Promise.all([
+    db.select({
+      payinFeePercent: usersTable.payinFeePercent,
+      payoutFeePercent: usersTable.payoutFeePercent
+    }).from(usersTable).where(eq(usersTable.id, userId)),
+    db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value }).from(adminSettingsTable).where(or(eq(adminSettingsTable.key, feeKey), eq(adminSettingsTable.key, legacyKey))),
+    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, OPERATOR_FEE_RATES_SETTING)).limit(1),
+    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, COUNTRY_FEE_RATES_SETTING)).limit(1)
+  ]);
+  const merchantPercent = type === "payin" ? user?.payinFeePercent : user?.payoutFeePercent;
+  if (merchantPercent !== null && merchantPercent !== void 0) {
+    const merchantRate = parseFloat(String(merchantPercent)) / 100;
+    if (Number.isFinite(merchantRate) && merchantRate >= 0 && merchantRate <= 1) return merchantRate;
+  }
+  if (countryCode && operator && operatorSetting?.value) {
+    const configured = parseOperatorFeeRates(operatorSetting.value)[operatorFeeConfigKey(countryCode, operator)];
+    const operatorPercent = configured?.[type];
+    if (operatorPercent !== null && operatorPercent !== void 0) return operatorPercent / 100;
+  }
+  const countryRate = countryCode ? defaultCountryFee(countryCode, type, parseCountryFeeDefaults(countrySetting?.value)) : null;
+  if (countryRate !== null && countryRate !== void 0) return countryRate;
+  return getPlatformDefaultFee(type, platformSettings);
+}
+
+// src/routes/stats.ts
 var router3 = (0, import_express3.Router)();
 router3.get("/fees", async (_req, res) => {
   try {
-    const rows = await db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value }).from(adminSettingsTable).where(inArray(adminSettingsTable.key, ["default_payin_fee_percent", "default_payout_fee_percent"]));
+    const [rows, operators] = await Promise.all([db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value }).from(adminSettingsTable).where(inArray(adminSettingsTable.key, [
+      "default_payin_fee_percent",
+      "default_payout_fee_percent",
+      "payin_fee_percent",
+      "payout_fee_percent",
+      COUNTRY_FEE_RATES_SETTING,
+      OPERATOR_FEE_RATES_SETTING
+    ])), db.select().from(operatorsTable).where(inArray(operatorsTable.active, [true]))]);
     const map2 = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-    const payin = parseFloat(map2["default_payin_fee_percent"] ?? "3.5");
-    const payout = parseFloat(map2["default_payout_fee_percent"] ?? "3.5");
+    const numberSetting = (key, legacy) => {
+      const value = map2[key] ?? map2[legacy] ?? "3.5";
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : 3.5;
+    };
+    const payin = numberSetting("default_payin_fee_percent", "payin_fee_percent");
+    const payout = numberSetting("default_payout_fee_percent", "payout_fee_percent");
+    const countryDefaults = parseCountryFeeDefaults(map2[COUNTRY_FEE_RATES_SETTING]);
+    const overrides = parseOperatorFeeRates(map2[OPERATOR_FEE_RATES_SETTING]);
+    const countryRates = operators.map((operator) => {
+      const key = operatorFeeConfigKey(operator.countryCode, operator.name);
+      const override = overrides[key];
+      const countryPayin = defaultCountryFee(operator.countryCode, "payin", countryDefaults);
+      const countryPayout = defaultCountryFee(operator.countryCode, "payout", countryDefaults);
+      return {
+        countryCode: operator.countryCode,
+        operator: operator.name,
+        payin: override?.payin ?? (countryPayin === null ? payin : countryPayin * 100),
+        payout: override?.payout ?? (countryPayout === null ? payout : countryPayout * 100)
+      };
+    });
     res.setHeader("Cache-Control", "public, max-age=300");
-    res.json({ payin, payout, payin_display: `${payin}%`, payout_display: `${payout}%` });
+    res.json({ payin, payout, payin_display: `${payin}%`, payout_display: `${payout}%`, countryRates });
   } catch {
     res.json({ payin: 3.5, payout: 3.5, payin_display: "3.5%", payout_display: "3.5%" });
   }
@@ -278675,70 +278798,6 @@ async function ensureLatestMerchantWebhookSecret(userId, env) {
   return key ? ensureWebhookSecretForApiKey(key.id) : null;
 }
 
-// src/lib/fee-rates.ts
-init_src();
-init_schema2();
-init_drizzle_orm();
-var DEFAULT_FEE_RATE = 0.035;
-var OPERATOR_FEE_RATES_SETTING = "operator_fee_rates";
-function validPercent(value) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
-}
-function normalizeOperatorForFee(value) {
-  return value.toLowerCase().replace(/mobile\s*money/g, "").replace(/momo/g, "").replace(/money/g, "").replace(/[^a-z0-9]/g, "").trim();
-}
-function operatorFeeConfigKey(countryCode, operator) {
-  return `${countryCode.trim().toUpperCase()}:${normalizeOperatorForFee(operator)}`;
-}
-function parseOperatorFeeRates(raw) {
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    const result = {};
-    for (const [key, value] of Object.entries(parsed)) {
-      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
-      const item = value;
-      result[key] = {
-        payin: validPercent(item.payin) ? item.payin : null,
-        payout: validPercent(item.payout) ? item.payout : null
-      };
-    }
-    return result;
-  } catch {
-    return {};
-  }
-}
-async function getPlatformDefaultFee(type) {
-  const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
-  const [row] = await db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, key)).limit(1);
-  const value = row?.value ? parseFloat(row.value) / 100 : DEFAULT_FEE_RATE;
-  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : DEFAULT_FEE_RATE;
-}
-async function getFeeRate(userId, type, countryCode, operator) {
-  const feeKey = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
-  const [[user], [platformSetting], [operatorSetting]] = await Promise.all([
-    db.select({
-      payinFeePercent: usersTable.payinFeePercent,
-      payoutFeePercent: usersTable.payoutFeePercent
-    }).from(usersTable).where(eq(usersTable.id, userId)),
-    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, feeKey)).limit(1),
-    countryCode && operator ? db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, OPERATOR_FEE_RATES_SETTING)).limit(1) : Promise.resolve([])
-  ]);
-  const merchantPercent = type === "payin" ? user?.payinFeePercent : user?.payoutFeePercent;
-  if (merchantPercent !== null && merchantPercent !== void 0) {
-    const merchantRate = parseFloat(String(merchantPercent)) / 100;
-    if (Number.isFinite(merchantRate) && merchantRate >= 0 && merchantRate <= 1) return merchantRate;
-  }
-  if (countryCode && operator && operatorSetting?.value) {
-    const configured = parseOperatorFeeRates(operatorSetting.value)[operatorFeeConfigKey(countryCode, operator)];
-    const operatorPercent = configured?.[type];
-    if (operatorPercent !== null && operatorPercent !== void 0) return operatorPercent / 100;
-  }
-  const platformPercent = platformSetting?.value ? parseFloat(platformSetting.value) / 100 : DEFAULT_FEE_RATE;
-  return Number.isFinite(platformPercent) && platformPercent >= 0 && platformPercent <= 1 ? platformPercent : await getPlatformDefaultFee(type);
-}
-
 // src/lib/merchant-payload.ts
 var SENSITIVE_KEY = /(authorization|password|secret|token|private[_-]?key|api[_-]?key|signature|credential|otp|pin|cvv)/i;
 function redact(value, key) {
@@ -278839,7 +278898,7 @@ router11.get("/dashboard/fee-rate", requireAuth, async (req, res) => {
   const countryCode = typeof req.query.country_code === "string" ? req.query.country_code : void 0;
   const operator = typeof req.query.operator === "string" ? req.query.operator : void 0;
   const [payinRate, payoutRate] = await Promise.all([
-    getFeeRate(userId, "payin"),
+    getFeeRate(userId, "payin", countryCode, operator),
     getFeeRate(userId, "payout", countryCode, operator)
   ]);
   const fmt = (r) => parseFloat((r * 100).toFixed(4));
@@ -282849,8 +282908,8 @@ async function generateContractPdf(data) {
     ) + 10;
     section("4. SERVICES FOURNIS PAR DRIMPAY");
     const services = [
-      "API PayIn (r\xE9ception de paiements) \u2014 Frais : 3,5%",
-      "API Payout (retraits et transferts) \u2014 Frais : 3,5%",
+      "API PayIn (r\xE9ception de paiements) \u2014 Frais selon le pays, l'op\xE9rateur et la configuration applicable",
+      "API Payout (retraits et transferts) \u2014 Frais selon le pays, l'op\xE9rateur et la configuration applicable",
       "PayIn Link (liens de paiement instantan\xE9)",
       "Dashboard de gestion marchand",
       "Bulk Payout, cartes virtuelles, Airtime (selon \xE9ligibilit\xE9)"
@@ -284388,13 +284447,33 @@ router13.put(AP + "/settings", requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 router13.get(AP + "/operator-fees", requireAdmin, async (_req, res) => {
-  const [operators, setting] = await Promise.all([
+  const [operators, setting, countrySetting, platformSettings] = await Promise.all([
     db.select().from(operatorsTable).orderBy(operatorsTable.countryCode, operatorsTable.name),
-    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, OPERATOR_FEE_RATES_SETTING)).limit(1)
+    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, OPERATOR_FEE_RATES_SETTING)).limit(1),
+    db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, COUNTRY_FEE_RATES_SETTING)).limit(1),
+    db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value }).from(adminSettingsTable).where(inArray(adminSettingsTable.key, ["default_payin_fee_percent", "default_payout_fee_percent", "payin_fee_percent", "payout_fee_percent"]))
   ]);
   const rates = parseOperatorFeeRates(setting?.[0]?.value);
+  const countryDefaults = parseCountryFeeDefaults(countrySetting?.[0]?.value);
+  const platform = (type) => {
+    const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
+    const legacy = type === "payin" ? "payin_fee_percent" : "payout_fee_percent";
+    const raw = platformSettings.find((s) => s.key === key)?.value ?? platformSettings.find((s) => s.key === legacy)?.value;
+    const value = raw === null || raw === void 0 ? 3.5 : Number(raw);
+    return Number.isFinite(value) && value >= 0 && value <= 100 ? value : 3.5;
+  };
+  const supportedCountries = [...new Set(operators.map((operator) => operator.countryCode.toUpperCase()))];
+  const countries = supportedCountries.map((countryCode) => ({
+    countryCode,
+    payin: countryDefaults[countryCode]?.payin ?? null,
+    payout: countryDefaults[countryCode]?.payout ?? null,
+    payinDefault: (defaultCountryFee(countryCode, "payin", countryDefaults) ?? platform("payin") / 100) * 100,
+    payoutDefault: (defaultCountryFee(countryCode, "payout", countryDefaults) ?? platform("payout") / 100) * 100
+  }));
   res.json({
     rates,
+    countryDefaults,
+    countries,
     operators: operators.map((operator) => ({
       id: operator.id,
       countryCode: operator.countryCode,
@@ -284403,7 +284482,12 @@ router13.get(AP + "/operator-fees", requireAdmin, async (_req, res) => {
       active: operator.active,
       key: operatorFeeConfigKey(operator.countryCode, operator.name),
       payin: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payin ?? null,
-      payout: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payout ?? null
+      payout: rates[operatorFeeConfigKey(operator.countryCode, operator.name)]?.payout ?? null,
+      payinDefault: (defaultCountryFee(operator.countryCode, "payin", countryDefaults) ?? platform("payin") / 100) * 100,
+      payoutDefault: (defaultCountryFee(operator.countryCode, "payout", countryDefaults) ?? platform("payout") / 100) * 100,
+      // Retain these aliases for older admin clients.
+      inheritedPayin: (defaultCountryFee(operator.countryCode, "payin", countryDefaults) ?? platform("payin") / 100) * 100,
+      inheritedPayout: (defaultCountryFee(operator.countryCode, "payout", countryDefaults) ?? platform("payout") / 100) * 100
     }))
   });
 });
@@ -284413,7 +284497,8 @@ router13.put(AP + "/operator-fees", requireAdmin, async (req, res) => {
     payout: external_exports2.number().min(0).max(100).nullable()
   });
   const parsed = external_exports2.object({
-    rates: external_exports2.record(external_exports2.string().min(3).max(200), feeSchema)
+    rates: external_exports2.record(external_exports2.string().min(3).max(200), feeSchema),
+    countryDefaults: external_exports2.record(external_exports2.string().length(2), feeSchema).optional()
   }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Tarifs invalides. Chaque frais doit \xEAtre compris entre 0 et 100 %." });
@@ -284426,7 +284511,16 @@ router13.put(AP + "/operator-fees", requireAdmin, async (req, res) => {
     res.status(400).json({ error: `Op\xE9rateur inconnu : ${unknownKey}` });
     return;
   }
+  const supportedCountries = new Set(operators.map((operator) => operator.countryCode.trim().toUpperCase()));
+  const unknownCountry = Object.keys(parsed.data.countryDefaults ?? {}).find((country) => !supportedCountries.has(country.trim().toUpperCase()));
+  if (unknownCountry) {
+    res.status(400).json({ error: `Pays inconnu : ${unknownCountry}` });
+    return;
+  }
   const rates = parsed.data.rates;
+  const countryDefaults = Object.fromEntries(
+    Object.entries(parsed.data.countryDefaults ?? {}).map(([country, value]) => [country.toUpperCase(), value])
+  );
   await db.insert(adminSettingsTable).values({
     key: OPERATOR_FEE_RATES_SETTING,
     value: JSON.stringify(rates)
@@ -284434,8 +284528,17 @@ router13.put(AP + "/operator-fees", requireAdmin, async (req, res) => {
     target: adminSettingsTable.key,
     set: { value: JSON.stringify(rates), updatedAt: /* @__PURE__ */ new Date() }
   });
+  if (parsed.data.countryDefaults) {
+    await db.insert(adminSettingsTable).values({
+      key: COUNTRY_FEE_RATES_SETTING,
+      value: JSON.stringify(countryDefaults)
+    }).onConflictDoUpdate({
+      target: adminSettingsTable.key,
+      set: { value: JSON.stringify(countryDefaults), updatedAt: /* @__PURE__ */ new Date() }
+    });
+  }
   await logAdminAction(req.session.userId, "UPDATE_OPERATOR_FEES", "settings", void 0, JSON.stringify(Object.keys(rates)), req.ip);
-  res.json({ ok: true, rates });
+  res.json({ ok: true, rates, countryDefaults });
 });
 router13.get(AP + "/blacklist", requireAdmin, async (req, res) => {
   const { search = "", page = "1", limit = "50" } = req.query;
