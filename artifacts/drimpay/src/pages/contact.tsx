@@ -107,53 +107,95 @@ export default function Contact() {
             <div className="lg:col-span-2">
               {submitted ? (
                 <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-[#B5F03C]/40 bg-[#B5F03C]/8">
+                  className="flex flex-col items-center justify-center rounded-[28px] border border-[#B5F03C]/45 bg-white px-6 py-20 text-center shadow-[0_22px_60px_rgba(32,35,20,0.08)] sm:px-10">
                   <CheckCircle2 className="w-16 h-16 text-[#3a7a00] mb-6" />
                   <h2 className="text-2xl font-extrabold mb-3 text-[#0f0f0f]">{t.contact.successTitle}</h2>
                   <p className="text-[#0f0f0f]/55 max-w-md">{t.contact.successDesc}</p>
                 </motion.div>
               ) : (
-                <div className="rounded-2xl border border-[#E5E3DC] bg-white p-8 shadow-sm">
+                <div className="rounded-[28px] border border-[#E7E5DE] bg-white p-6 shadow-[0_22px_60px_rgba(32,35,20,0.09)] sm:p-9">
+                  <div className="mb-8 flex items-center gap-3">
+                    <span className="h-1.5 w-10 rounded-full bg-[#B5F03C]" aria-hidden="true" />
+                    <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#777970]">
+                      Contact DrimPay
+                    </span>
+                  </div>
                   <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <FormField control={form.control} name="name" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-[#0f0f0f] font-semibold">{t.contact.fullName}</FormLabel>
-                            <FormControl><Input placeholder={t.contact.namePlaceholder} {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="email" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-[#0f0f0f] font-semibold">{t.contact.email}</FormLabel>
-                            <FormControl><Input placeholder="aminata@company.com" type="email" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                      </div>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-7">
+                      <FormField control={form.control} name="name" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">{t.contact.fullName}</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="h-[58px] rounded-full border-[#E5E5E0] bg-white px-5 text-base text-[#171813] shadow-[0_2px_8px_rgba(15,15,15,0.025)] transition placeholder:text-[#9a9b96] hover:border-[#cfd0c8] focus-visible:border-[#8ebc2c] focus-visible:ring-4 focus-visible:ring-[#B5F03C]/20"
+                              placeholder={t.contact.namePlaceholder}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">{t.contact.email}</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="h-[58px] rounded-full border-[#E5E5E0] bg-white px-5 text-base text-[#171813] shadow-[0_2px_8px_rgba(15,15,15,0.025)] transition placeholder:text-[#9a9b96] hover:border-[#cfd0c8] focus-visible:border-[#8ebc2c] focus-visible:ring-4 focus-visible:ring-[#B5F03C]/20"
+                              placeholder="aminata@company.com"
+                              type="email"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
                       <FormField control={form.control} name="company" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[#0f0f0f] font-semibold">{t.contact.company}</FormLabel>
-                          <FormControl><Input placeholder={t.contact.companyPlaceholder} {...field} /></FormControl>
+                          <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">{t.contact.company}</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="h-[58px] rounded-full border-[#E5E5E0] bg-white px-5 text-base text-[#171813] shadow-[0_2px_8px_rgba(15,15,15,0.025)] transition placeholder:text-[#9a9b96] hover:border-[#cfd0c8] focus-visible:border-[#8ebc2c] focus-visible:ring-4 focus-visible:ring-[#B5F03C]/20"
+                              placeholder={t.contact.companyPlaceholder}
+                              {...field}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="subject" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[#0f0f0f] font-semibold">{t.contact.subject}</FormLabel>
-                          <FormControl><Input placeholder={t.contact.subjectPlaceholder} {...field} /></FormControl>
+                          <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">{t.contact.subject}</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="h-[58px] rounded-full border-[#E5E5E0] bg-white px-5 text-base text-[#171813] shadow-[0_2px_8px_rgba(15,15,15,0.025)] transition placeholder:text-[#9a9b96] hover:border-[#cfd0c8] focus-visible:border-[#8ebc2c] focus-visible:ring-4 focus-visible:ring-[#B5F03C]/20"
+                              placeholder={t.contact.subjectPlaceholder}
+                              {...field}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="message" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[#0f0f0f] font-semibold">{t.contact.message}</FormLabel>
-                          <FormControl><Textarea placeholder={t.contact.messagePlaceholder} rows={6} {...field} /></FormControl>
+                          <FormLabel className="block text-[15px] font-semibold leading-5 text-[#171813]">{t.contact.message}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              className="min-h-[184px] resize-y rounded-[24px] border-[#E5E5E0] bg-white px-5 py-4 text-base leading-6 text-[#171813] shadow-[0_2px_8px_rgba(15,15,15,0.025)] transition placeholder:text-[#9a9b96] hover:border-[#cfd0c8] focus-visible:border-[#8ebc2c] focus-visible:ring-4 focus-visible:ring-[#B5F03C]/20"
+                              placeholder={t.contact.messagePlaceholder}
+                              rows={6}
+                              {...field}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
-                      <Button type="submit" size="lg" disabled={mutation.isPending}>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="lg"
+                        disabled={mutation.isPending}
+                        className="group min-h-[62px] w-full rounded-full border-[#a7dc35] bg-[#B5F03C] px-7 text-base font-bold text-[#11130c] shadow-[0_12px_28px_rgba(143,190,43,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#c5ff4a] hover:shadow-[0_16px_32px_rgba(143,190,43,0.28)] focus-visible:ring-4 focus-visible:ring-[#B5F03C]/30"
+                      >
                         {mutation.isPending ? t.contact.sending : t.contact.send} <ArrowRight className="ml-2 w-4 h-4" />
                       </Button>
                     </form>
