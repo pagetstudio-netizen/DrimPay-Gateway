@@ -69,36 +69,35 @@ Required for database-backed features: `SUPABASE_DATABASE_URL`, `SESSION_SECRET`
 
 ### Workflow de déploiement
 
-**Les fichiers compilés (`dist/`) sont committés dans git.** Le build se fait automatiquement sur Replit, pas sur Plesk.
+**Les fichiers compilés (`dist/`) sont suivis dans git.** Le serveur Plesk utilise ces bundles préconstruits; il ne compile pas l'application.
 
-**Sur Replit (après chaque modification) :**
-> Rien à faire — le workflow `Start application` rebuild automatiquement. Replit checkpoint les fichiers dist compilés dans git.
-
-**Sur GitHub :**
-```
-git push origin main
-```
-
-**Sur Plesk (SSH) :**
+**Sur Replit, avant de pousser des changements :**
 ```bash
-git pull origin main
-touch tmp/restart.txt
+pnpm run deploy
 ```
-C'est tout. Ou avec le script dédié :
+Cette commande installe les dépendances verrouillées, vérifie le typecheck du workspace, exécute les tests API, puis reconstruit le serveur et le frontend. Vérifier ensuite `git status` et inclure les changements sous `dist/` dans le commit.
+
+**Sur GitHub :** committer et pousser les sources ainsi que les fichiers `dist/`.
+
+**Dans Plesk :** utiliser **Pull + Deploy Now**, puis redémarrer l'application Node.js/Passenger. Aucun build ni `pnpm install` n'est nécessaire sur Plesk.
+
+En SSH, le script dédié fait le pull, vérifie les bundles et variables requises, puis redémarre Passenger :
 ```bash
 bash scripts/deploy-plesk.sh
 ```
 
 ### Variables d'environnement obligatoires sur Plesk
 - `SUPABASE_DATABASE_URL` — URL complète Supabase PostgreSQL (Settings > Database)
+- `SUPABASE_URL` — URL du projet Supabase, requise par le client Storage côté serveur
 - `SESSION_SECRET` — clé secrète aléatoire longue
 - `NODE_ENV=production`
-- `SUPABASE_SERVICE_ROLE_KEY` — clé service role Supabase (Settings > API > service_role). **Obligatoire** pour le stockage des documents KYB dans Supabase Storage. Sans cette clé les dépôts de documents KYB échouent.
+- `SUPABASE_SERVICE_ROLE_KEY` — clé service role Supabase (Settings > API > service_role). À conserver uniquement dans les variables d'environnement Plesk; elle est requise pour le stockage des documents KYB et des images.
 
 ### Fichier de démarrage Plesk (IMPORTANT)
 ```
 start.cjs
 ```
+Configurer l'application Plesk avec **Node.js 20 ou supérieur** (le bundle serveur cible Node 20).
 > **Ne pas utiliser** `artifacts/api-server/dist/index.mjs` directement — Passenger charge les fichiers `.mjs` via `require()` ce qui provoque `ERR_REQUIRE_ESM`. Le wrapper `start.cjs` charge correctement le bundle ESM via `import()` dynamique.
 > Pas besoin de `pnpm install` ni de `npm run build` sur Plesk — tout est déjà compilé.
 >

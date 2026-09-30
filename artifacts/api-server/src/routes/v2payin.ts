@@ -20,7 +20,11 @@ import { resolveAggregator, AggregatorNotConfiguredError, pollUntilSettled, chec
 import { notifyPayin, notifyAttemptSpam, notifyTransactionFailure, buildWalletsSummary } from "../lib/telegram";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { GENERIC_ERROR_MESSAGE, MERCHANT_FAILURE_LABEL, merchantFailureLabel } from "../lib/merchant-error";
-import { isMaintenanceModeOn } from "../lib/admin-settings";
+import {
+  isMaintenanceModeOn,
+  isPaymentOperationEnabled,
+  PAYMENT_UNAVAILABLE_MESSAGE,
+} from "../lib/admin-settings";
 import { ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
 import { getFeeRate } from "../lib/fee-rates";
 import { buildMerchantPayloadSnapshot } from "../lib/merchant-payload";
@@ -233,6 +237,13 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
 
   const userId: number = req.resolvedUserId;
   const mode: string = req.resolvedMode;
+  if (!(await isPaymentOperationEnabled(userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
   const {
     amount, currency, country_code, operator, phone,
     order_id, webhook_url, description, metadata, expires_in_minutes, operator_otp,

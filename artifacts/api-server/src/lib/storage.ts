@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import ws from "ws";
 import { withRetry } from "./retry";
+import { publicImageProxyUrl } from "./public-storage-url";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -19,6 +20,19 @@ export const supabaseAdmin = (supabaseUrl && (serviceRoleKey || anonKey))
   : null;
 
 const KYB_BUCKET = "kyb-documents";
+const PUBLIC_IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+function publicImageExtension(mimetype: string): string {
+  const extension = PUBLIC_IMAGE_EXTENSIONS[mimetype.toLowerCase()];
+  if (!extension) throw new Error("Unsupported image type");
+  return extension;
+}
 
 // ── Bucket bootstrap ──────────────────────────────────────────────────────────
 
@@ -46,7 +60,7 @@ export async function ensureKybBucket(): Promise<void> {
       console.log(`[Storage] Bucket '${KYB_BUCKET}' ready in Supabase`);
     }
   } catch (err: any) {
-    console.error("[Storage] Failed to ensure Supabase bucket:", err?.message ?? err);
+    console.error("[Storage] Failed to ensure Supabase bucket");
     throw err;
   }
 }
@@ -61,7 +75,7 @@ export async function uploadContractTemplateBuffer(buffer: Buffer): Promise<void
   const { error } = await supabaseAdmin.storage
     .from(KYB_BUCKET)
     .upload(CONTRACT_TEMPLATE_PATH, buffer, { contentType: CONTRACT_MIME, upsert: true });
-  if (error) throw new Error(`Contract upload failed: ${error.message}`);
+  if (error) throw new Error("Contract upload failed");
   console.log("[Storage] Contract template uploaded to Supabase");
 }
 
@@ -99,7 +113,7 @@ export async function ensureContractTemplate(): Promise<void> {
     if (error) throw error;
     console.log("[Storage] Contract template uploaded to Supabase");
   } catch (err: any) {
-    console.error("[Storage] Failed to upload contract template:", err?.message ?? err);
+    console.error("[Storage] Failed to upload contract template");
   }
 }
 
@@ -109,12 +123,12 @@ export async function downloadContractTemplate(): Promise<Buffer> {
       const { data, error } = await supabaseAdmin.storage
         .from(KYB_BUCKET)
         .download(CONTRACT_TEMPLATE_PATH);
-      if (error || !data) throw new Error(error?.message ?? "no data");
+      if (error || !data) throw new Error("Contract template unavailable");
       const ab = await data.arrayBuffer();
       console.log("[Storage] Contract template downloaded from Supabase");
       return Buffer.from(ab);
     } catch (err: any) {
-      console.warn("[Storage] Supabase contract download failed, falling back to disk:", err?.message ?? err);
+      console.warn("[Storage] Contract download failed, falling back to disk");
     }
   }
   const localPath = path.join(process.cwd(), "static", "contrat-drimpay.docx");
@@ -155,7 +169,7 @@ export async function uploadKybDocument(
         .from(KYB_BUCKET)
         .upload(storagePath, buffer, { contentType: mimetype, upsert: true });
       if (error) {
-        throw new Error(`[Storage] Supabase upload failed (${fieldName}): ${error.message}`);
+        throw new Error(`[Storage] Upload failed (${fieldName})`);
       }
     },
     { attempts: 3, baseDelayMs: 400, label: `uploadKybDocument(${fieldName})` }
@@ -168,7 +182,7 @@ export async function uploadKybDocument(
 export async function downloadKybDocument(storagePath: string): Promise<Buffer> {
   if (!supabaseAdmin) throw new Error("[Storage] Supabase not configured");
   const { data, error } = await supabaseAdmin.storage.from(KYB_BUCKET).download(storagePath);
-  if (error || !data) throw new Error(`Storage download failed: ${error?.message ?? "no data"}`);
+  if (error || !data) throw new Error("Storage download failed");
   const arrayBuffer = await data.arrayBuffer();
   return Buffer.from(arrayBuffer);
 }
@@ -196,7 +210,7 @@ export async function ensureBannerBucket(): Promise<void> {
       console.log(`[Storage] Bucket '${BANNER_BUCKET}' created`);
     }
   } catch (err: any) {
-    console.warn("[Storage] ensureBannerBucket:", err?.message ?? err);
+    console.warn("[Storage] Failed to ensure banner bucket");
   }
 }
 
@@ -207,14 +221,13 @@ export async function uploadBannerImage(
 ): Promise<string> {
   if (!serviceRoleKey || !supabaseAdmin) throw new Error("SUPABASE_SERVICE_ROLE_KEY required");
   await ensureBannerBucket();
-  const ext = originalName.split(".").pop()?.toLowerCase() ?? "png";
+  const ext = publicImageExtension(mimetype);
   const filename = `banner_${Date.now()}.${ext}`;
   const { error } = await supabaseAdmin.storage
     .from(BANNER_BUCKET)
     .upload(filename, buffer, { contentType: mimetype, upsert: false });
-  if (error) throw new Error(`Banner upload failed: ${error.message}`);
-  const { data } = supabaseAdmin.storage.from(BANNER_BUCKET).getPublicUrl(filename);
-  return data.publicUrl;
+  if (error) throw new Error("Banner upload failed");
+  return publicImageProxyUrl(BANNER_BUCKET, filename);
 }
 
 // ── Payment-link / QR-code images — public Supabase Storage ──────────────────
@@ -235,7 +248,7 @@ export async function ensurePaymentLinkImagesBucket(): Promise<void> {
       console.log(`[Storage] Bucket '${PAYLINK_BUCKET}' created`);
     }
   } catch (err: any) {
-    console.warn("[Storage] ensurePaymentLinkImagesBucket:", err?.message ?? err);
+    console.warn("[Storage] Failed to ensure payment-link image bucket");
   }
 }
 
@@ -246,12 +259,11 @@ export async function uploadPaymentLinkImage(
 ): Promise<string> {
   if (!serviceRoleKey || !supabaseAdmin) throw new Error("SUPABASE_SERVICE_ROLE_KEY required");
   await ensurePaymentLinkImagesBucket();
-  const ext = originalName.split(".").pop()?.toLowerCase() ?? "png";
+  const ext = publicImageExtension(mimetype);
   const filename = `paylink_${Date.now()}.${ext}`;
   const { error } = await supabaseAdmin.storage
     .from(PAYLINK_BUCKET)
     .upload(filename, buffer, { contentType: mimetype, upsert: false });
-  if (error) throw new Error(`Payment link image upload failed: ${error.message}`);
-  const { data } = supabaseAdmin.storage.from(PAYLINK_BUCKET).getPublicUrl(filename);
-  return data.publicUrl;
+  if (error) throw new Error("Payment link image upload failed");
+  return publicImageProxyUrl(PAYLINK_BUCKET, filename);
 }

@@ -19,6 +19,7 @@ import {
   honeypotMiddleware,
 } from "./middlewares/security";
 import { subdomainMiddleware } from "./middlewares/subdomain";
+import { rewriteSupabaseUrls } from "./lib/public-storage-url";
 
 const app: Express = express();
 
@@ -152,6 +153,11 @@ if (ADMIN_ROUTE_PREFIX !== "admin") {
 app.use(subdomainMiddleware);
 
 // ── API routes ────────────────────────────────────────────────────────────────
+app.use("/api", (req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = ((body: unknown) => originalJson(rewriteSupabaseUrls(body))) as typeof res.json;
+  next();
+});
 app.use("/api", router);
 
 // ── 404 handler for unmatched /api/* routes (must come before SPA fallback) ───
@@ -203,8 +209,14 @@ if (existsSync(frontendDist) && existsSync(indexHtml)) {
 // 4-argument signature is required for Express to recognise this as an error handler
 app.use((err: any, _req: any, res: any, _next: any) => {
   const status: number = typeof err?.status === "number" ? err.status : 500;
-  const message: string = err?.message ?? "Erreur interne du serveur";
-  logger.error({ err, status }, "Unhandled route error");
+  const message =
+    status >= 400 && status < 500 && typeof err?.message === "string"
+      ? err.message
+      : "Erreur interne du serveur";
+  logger.error(
+    { status, errorType: err instanceof Error ? err.name : typeof err },
+    "Unhandled route error",
+  );
   if (!res.headersSent) {
     res.status(status).json({ error: message });
   }

@@ -27,7 +27,8 @@ const SETTINGS_GROUPS = [
     title: "Mode & Environnement",
     key: "mode",
     fields: [
-      { key: "maintenance_mode", label: "Mode maintenance global", type: "boolean", hint: "Désactive toutes les transactions sur la plateforme" },
+       { key: "maintenance_mode", label: "Mode maintenance global", type: "boolean", hint: "Désactive toutes les transactions sur la plateforme" },
+       { key: "payins_enabled", label: "Pay-in globaux activés", type: "boolean", defaultValue: "true", hint: "Désactiver bloque les dépôts depuis le dashboard marchand, les liens de paiement, les QR codes et l'API" },
       { key: "platform_block_withdrawals", label: "Bloquer TOUS les retraits", type: "boolean", hint: "Bloque immédiatement tous les pay-out et reversements sur toute la plateforme" },
       { key: "wallet_exchange_enabled", label: "Échange entre wallets activé", type: "boolean", defaultValue: "true", hint: "Désactiver pour mettre l'échange de wallets en maintenance — les utilisateurs verront un écran de maintenance" },
       { key: "sandbox_enabled", label: "Mode sandbox activé", type: "boolean", hint: "Permet les transactions en mode test" },
@@ -95,6 +96,7 @@ function OperatorFeesSection() {
   const [rows, setRows] = useState<OperatorFeeRow[]>([]);
   const [countries, setCountries] = useState<CountryFeeRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "ok" | "error"; message: string } | null>(null);
 
@@ -759,32 +761,51 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState("fees");
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch(`${ADMIN_BASE}/settings`, { credentials: "include" });
-    const d = await r.json();
-    const nextValues = { ...(d ?? {}) };
-    if (nextValues.default_payin_fee_percent == null && nextValues.payin_fee_percent != null) {
-      nextValues.default_payin_fee_percent = nextValues.payin_fee_percent;
+    setLoadError(null);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/settings`, { credentials: "include" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error ?? "Impossible de charger les paramètres");
+      const nextValues = { ...(d ?? {}) };
+      if (nextValues.payins_enabled == null) nextValues.payins_enabled = "true";
+      if (nextValues.default_payin_fee_percent == null && nextValues.payin_fee_percent != null) {
+        nextValues.default_payin_fee_percent = nextValues.payin_fee_percent;
+      }
+      if (nextValues.default_payout_fee_percent == null && nextValues.payout_fee_percent != null) {
+        nextValues.default_payout_fee_percent = nextValues.payout_fee_percent;
+      }
+      setValues(nextValues);
+    } catch (error: any) {
+      setLoadError(error?.message ?? "Erreur réseau lors du chargement");
+    } finally {
+      setLoading(false);
     }
-    if (nextValues.default_payout_fee_percent == null && nextValues.payout_fee_percent != null) {
-      nextValues.default_payout_fee_percent = nextValues.payout_fee_percent;
-    }
-    setValues(nextValues);
-    setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
   const save = async () => {
     setSaving(true);
-    await fetch(`${ADMIN_BASE}/settings`, {
-      method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaveError(null);
+    try {
+      const response = await fetch(`${ADMIN_BASE}/settings`, {
+        method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error ?? "Échec de l'enregistrement des paramètres");
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error: any) {
+      setSaveError(error?.message ?? "Erreur réseau lors de l'enregistrement");
+    }
     setSaving(false);
   };
 
@@ -805,6 +826,11 @@ export default function AdminSettings() {
             {saved && (
               <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-medium">
                 <CheckCircle2 className="w-4 h-4" /> Enregistré !
+              </div>
+            )}
+            {saveError && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium">
+                <AlertTriangle className="w-4 h-4" /> {saveError}
               </div>
             )}
             {activeGroup !== "telegram" && activeGroup !== "contact-info" && activeGroup !== "operator-fees" && (
@@ -867,6 +893,10 @@ export default function AdminSettings() {
               <h2 className="font-bold text-gray-900 mb-5">{currentGroup.title}</h2>
               {loading ? (
                 <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />)}</div>
+              ) : loadError ? (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+                  <AlertTriangle className="w-4 h-4 shrink-0" /> {loadError}
+                </div>
               ) : (
                 <div className="space-y-5">
                   {currentGroup.fields.map(field => (

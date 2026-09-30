@@ -67,6 +67,7 @@ overrides:
   '@babel/core': ^7.29.6
   body-parser: ^2.3.0
   brace-expansion@^2: ^2.1.4
+  brace-expansion@^5: ^5.0.12
   browserslist: ^4.28.7
   esbuild: ^0.28.1
   esbuild>@esbuild/aix-ppc64: '-'
@@ -128,12 +129,12 @@ overrides:
   rollup>@rollup/rollup-win32-ia32-msvc: '-'
   rollup>@rollup/rollup-win32-x64-gnu: '-'
   rollup>@rollup/rollup-win32-x64-msvc: '-'
-  fast-uri: ^3.1.5
-  ip-address: ^10.3.1
+  fast-uri: ^3.1.8
+  ip-address: ^10.7.2
   js-yaml: ^4.3.1
   linkify-it: ^5.0.2
   lodash: ^4.18.1
-  markdown-it: ^14.2.0
+  markdown-it: ^14.3.2
   path-to-regexp: ^8.4.0
   'picomatch@^2': ^2.3.2
   'picomatch@^4': ^4.0.4

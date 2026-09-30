@@ -80,8 +80,8 @@ const server = app.listen(effectivePort, "0.0.0.0", () => {
   // Supabase Storage — ensure KYB bucket exists and upload contract template
   ensureKybBucket()
     .then(() => ensureContractTemplate())
-    .catch((err) => {
-      logger.warn({ err }, "Storage init skipped");
+    .catch(() => {
+      logger.warn("Storage initialization failed; details omitted");
     });
 
   // Telegram bot: command polling + daily report

@@ -20,7 +20,11 @@ import { buildGatewayPayloadSnapshot } from "../lib/gateway-payload";
 import { buildMerchantPayloadSnapshot } from "../lib/merchant-payload";
 import { getWebhookBaseUrl } from "../lib/base-urls";
 import { getFeeRate } from "../lib/fee-rates";
-import { isMaintenanceModeOn } from "../lib/admin-settings";
+import {
+  isMaintenanceModeOn,
+  isPaymentOperationEnabled,
+  PAYMENT_UNAVAILABLE_MESSAGE,
+} from "../lib/admin-settings";
 import { GENERIC_ERROR_MESSAGE, merchantFailureLabel } from "../lib/merchant-error";
 import { notifyTransactionFailure } from "../lib/telegram";
 import {
@@ -268,6 +272,13 @@ async function initiatePayout(req: any, res: any) {
   }
 
   const userId: number = req.resolvedUserId;
+  if (!(await isPaymentOperationEnabled(userId, "payout"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
   const mode = req.resolvedMode === "live" ? "live" : "sandbox";
   const {
     amount,

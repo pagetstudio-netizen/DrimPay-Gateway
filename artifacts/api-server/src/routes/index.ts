@@ -20,9 +20,11 @@ import gomboPlusWebhookRouter from "./gombo-plus-webhook";
 import supportAdminRouter from "./support-admin";
 import payRouter from "./pay";
 import securityRouter from "./security";
+import publicStorageRouter from "./public-storage";
 
 const router: IRouter = Router();
 
+router.use(publicStorageRouter);
 router.use(authRouter);
 router.use(healthRouter);
 router.use(helpRouter);

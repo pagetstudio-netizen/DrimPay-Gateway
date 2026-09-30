@@ -30,7 +30,11 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import { notifyKybSubmitted, notifyReversement, notifyPayin, notifyAttemptSpam, notifyTransactionFailure, notifyWalletExchange, notifyCriticalError, notifyApiKeyListFailure, buildWalletsSummary } from "../lib/telegram";
 import { GENERIC_ERROR_MESSAGE, sanitizeMerchantTransaction } from "../lib/merchant-error";
-import { isMaintenanceModeOn } from "../lib/admin-settings";
+import {
+  isMaintenanceModeOn,
+  isPaymentOperationEnabled,
+  PAYMENT_UNAVAILABLE_MESSAGE,
+} from "../lib/admin-settings";
 import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate, uploadPaymentLinkImage } from "../lib/storage";
@@ -547,6 +551,13 @@ router.post("/dashboard/payin", requireAuth, async (req, res) => {
   }
 
   const userId = req.session.userId!;
+  if (!(await isPaymentOperationEnabled(userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
   const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
     const { amount, currency, countryCode, operator, phone, description, externalRef, operatorOtp } = parsed.data;
 
@@ -754,6 +765,14 @@ const payoutSchema = z.object({
 });
 
 router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
+  const payoutUserId = req.session.userId!;
+  if (!(await isPaymentOperationEnabled(payoutUserId, "payout"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
   const withdrawalLock = await getWithdrawalLockStatus(req.session.userId!);
   if (withdrawalLock.locked) {
     res.status(423).json({
@@ -1334,9 +1353,9 @@ router.get("/dashboard/kyb", requireAuth, async (req, res) => {
       .where(eq(kybSubmissionsTable.userId, userId));
 
     res.json({ ...(kyb ?? { status: "pending" }), accountType: user?.accountType ?? "enterprise" });
-  } catch (err: any) {
-    console.error("[KYB GET error]", err);
-    res.status(500).json({ error: "Erreur serveur", details: err?.message ?? String(err) });
+  } catch {
+    console.error("[KYB GET] request failed");
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
@@ -1703,6 +1722,14 @@ router.get("/dashboard/reversements", requireAuth, async (req, res) => {
 });
 
 router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (req, res) => {
+  const payoutUserId = req.session.userId!;
+  if (!(await isPaymentOperationEnabled(payoutUserId, "payout"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
   const withdrawalLock = await getWithdrawalLockStatus(req.session.userId!);
   if (withdrawalLock.locked) {
     res.status(423).json({
@@ -2482,6 +2509,13 @@ router.get("/pay/:token", async (req, res) => {
   if (link.maxUses && link.uses >= link.maxUses) {
     res.status(410).json({ error: "Ce lien a atteint son nombre maximum d'utilisations." }); return;
   }
+  if (!(await isPaymentOperationEnabled(link.userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
 
   const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, link.userId));
 
@@ -2557,6 +2591,13 @@ router.post("/pay/:token", async (req, res) => {
   const [link] = await db.select().from(paymentLinksTable).where(eq(paymentLinksTable.token, token));
   if (!link || link.status !== "active") {
     res.status(410).json({ error: "Lien invalide ou inactif." }); return;
+  }
+  if (!(await isPaymentOperationEnabled(link.userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
   }
   if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
     res.status(410).json({ error: "Lien expiré." }); return;
@@ -2809,6 +2850,13 @@ router.post("/pay/:token/attempt", async (req, res) => {
   if (!link || link.status !== "active") {
     res.status(410).json({ error: "Lien invalide." }); return;
   }
+  if (!(await isPaymentOperationEnabled(link.userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
 
   const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.ip ?? "";
   const ua = req.headers["user-agent"] ?? "";
@@ -2977,6 +3025,13 @@ router.post("/dashboard/mass-payout", requireAuth, async (req, res) => {
   }
 
   const userId = req.session.userId!;
+  if (!(await isPaymentOperationEnabled(userId, "payout"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
 
   const [massPayoutUserRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
 
@@ -3466,6 +3521,13 @@ router.get("/qr/:reference", async (req, res) => {
   if (qr.status !== "active") {
     res.status(410).json({ error: "Ce QR code est désactivé." }); return;
   }
+  if (!(await isPaymentOperationEnabled(qr.userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
 
   const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, qr.userId));
 
@@ -3523,6 +3585,13 @@ router.post("/qr/:reference", async (req, res) => {
   const [qr] = await db.select().from(qrCodesTable).where(eq(qrCodesTable.reference, reference));
   if (!qr || qr.status !== "active") {
     res.status(410).json({ error: "QR code invalide ou inactif." }); return;
+  }
+  if (!(await isPaymentOperationEnabled(qr.userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
   }
   if (qr.expiresAt && new Date(qr.expiresAt) < new Date()) {
     res.status(410).json({ error: "Ce QR code a expiré." }); return;

@@ -74,7 +74,7 @@ router.get("/help", async (req: any, res) => {
       continue;
     }
     const val = process.env[key];
-    envChecks[key] = val ? `✓ défini (${val.length} chars)` : "✗ MANQUANT";
+    envChecks[key] = val ? "✓ défini" : "✗ MANQUANT";
   }
   checks.env = envChecks;
 
@@ -89,11 +89,9 @@ router.get("/help", async (req: any, res) => {
     checks.database = {
       status: "✓ connecté",
       latencyMs: Date.now() - dbStart,
-      url: process.env["SUPABASE_DATABASE_URL"]
-        ? `SUPABASE_DATABASE_URL (${(process.env["SUPABASE_DATABASE_URL"] ?? "").split("@")[1] ?? "?"} )`
-        : process.env["DATABASE_URL"]
-        ? `DATABASE_URL`
-        : "✗ aucune URL",
+      connection: process.env["SUPABASE_DATABASE_URL"] || process.env["DATABASE_URL"]
+        ? "✓ configurée"
+        : "✗ non configurée",
       tables: result.rows.map((r: any) => r.table_name),
       tableCount: result.rows.length,
     };
@@ -101,7 +99,7 @@ router.get("/help", async (req: any, res) => {
     checks.database = {
       status: "✗ ERREUR",
       latencyMs: Date.now() - dbStart,
-      error: err?.message ?? String(err),
+      error: "Connexion à la base impossible",
     };
   }
 

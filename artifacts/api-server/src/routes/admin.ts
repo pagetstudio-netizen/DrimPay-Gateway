@@ -41,6 +41,7 @@ import { sendBroadcastEmail, sendKybApprovedEmail, sendKybRejectedEmail } from "
 import { settlePayinStatus } from "../lib/payin-settlement";
 import { resolveAggregator } from "../lib/aggregator-router";
 import { approveWalletExchange, rejectWalletExchange } from "../lib/wallet-exchange-service";
+import { getMerchantPaymentControls, setMerchantPaymentControls } from "../lib/admin-settings";
 
 const contractUpload = multer({
   storage: multer.memoryStorage(),
@@ -421,6 +422,47 @@ router.put(AP + "/merchants/:id", requireAdmin, async (req: any, res: any) => {
   res.json({ ok: true });
 });
 
+router.get(AP + "/merchants/:id/payment-controls", requireAdmin, async (req: any, res: any) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Marchand invalide" });
+    return;
+  }
+  const [merchant] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, id));
+  if (!merchant) {
+    res.status(404).json({ error: "Marchand introuvable" });
+    return;
+  }
+  res.json(await getMerchantPaymentControls(id));
+});
+
+router.put(AP + "/merchants/:id/payment-controls", requireAdmin, async (req: any, res: any) => {
+  const id = Number(req.params.id);
+  const parsed = z.object({
+    payinEnabled: z.boolean(),
+    payoutEnabled: z.boolean(),
+  }).safeParse(req.body);
+  if (!Number.isSafeInteger(id) || id <= 0 || !parsed.success) {
+    res.status(400).json({ error: "Paramètres de paiement invalides" });
+    return;
+  }
+  const [merchant] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, id));
+  if (!merchant) {
+    res.status(404).json({ error: "Marchand introuvable" });
+    return;
+  }
+  await setMerchantPaymentControls(id, parsed.data);
+  await logAdminAction(
+    req.session.userId,
+    "UPDATE_MERCHANT_PAYMENT_CONTROLS",
+    "user",
+    String(id),
+    JSON.stringify(parsed.data),
+    req.ip,
+  );
+  res.json({ ok: true, ...parsed.data });
+});
+
 router.patch(AP + "/merchants/:id/toggle-support-agent", requireAdmin, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   const [user] = await db.select({ id: usersTable.id, email: usersTable.email, isSupportAgent: usersTable.isSupportAgent })
@@ -556,8 +598,9 @@ router.delete(AP + "/merchants/:id", requireAdmin, async (req: any, res: any) =>
     await db.update(globalBannersTable).set({ createdById: null }).where(eq(globalBannersTable.createdById, id));
     await db.delete(usersTable).where(eq(usersTable.id, id));
     res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ error: "Impossible de supprimer ce marchand : " + (err?.message ?? String(err)) });
+  } catch {
+    console.error("[Admin] Merchant removal failed");
+    res.status(500).json({ error: "Impossible de supprimer ce marchand pour le moment." });
   }
 });
 
@@ -915,9 +958,9 @@ router.get(AP + "/kyb/:id/contract", requireAdmin, async (req: any, res: any) =>
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Length", pdfBuf.length);
     res.send(pdfBuf);
-  } catch (err: any) {
-    console.error("[CONTRACT PDF]", err);
-    res.status(500).json({ error: "Erreur lors de la génération du PDF", details: err?.message });
+  } catch {
+    console.error("[CONTRACT PDF] generation failed");
+    res.status(500).json({ error: "Erreur lors de la génération du PDF" });
   }
 });
 
@@ -948,9 +991,9 @@ router.post(
       await uploadContractTemplateBuffer(file.buffer);
       await logAdminAction(req.session.userId, "UPLOAD_CONTRACT_TEMPLATE", "contract", undefined, `${file.originalname} (${file.size} octets)`, req.ip);
       res.json({ ok: true, size: file.size, originalName: file.originalname });
-    } catch (err: any) {
-      console.error("[Admin] Contract upload error:", err?.message);
-      res.status(500).json({ error: err?.message ?? "Erreur lors de l'upload" });
+    } catch {
+      console.error("[Admin] Contract upload failed");
+      res.status(500).json({ error: "Erreur lors de l'upload" });
     }
   }
 );
@@ -1139,9 +1182,9 @@ router.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req: any
     );
 
     res.json({ ok: true, aggregator, gatewayStatus, credited, settled: isSettled });
-  } catch (err: any) {
-    console.error("[admin/sync-gateway]", err?.message);
-    res.status(500).json({ error: err?.message ?? "Erreur lors de la synchronisation" });
+  } catch {
+    console.error("[admin/sync-gateway] synchronization failed");
+    res.status(500).json({ error: "Erreur lors de la synchronisation" });
   }
 });
 
@@ -2374,8 +2417,9 @@ router.post(AP + "/global-banners/upload-image", requireAdmin, bannerImageUpload
   try {
     const publicUrl = await uploadBannerImage(req.file.buffer, req.file.mimetype, req.file.originalname);
     res.json({ url: publicUrl });
-  } catch (err: any) {
-    res.status(500).json({ error: err?.message ?? "Échec upload" });
+  } catch {
+    console.error("[Admin] Banner image upload failed");
+    res.status(500).json({ error: "Échec upload" });
   }
 });
 

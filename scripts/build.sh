@@ -30,19 +30,25 @@ echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━
 echo ""
 
 # ── 1. Dépendances ────────────────────────────────────────────────────────────
-section "1/4  Dépendances"
+section "1/5  Dépendances"
 log "Vérification des dépendances..."
 pnpm install --frozen-lockfile || error "pnpm install échoué"
 ok "Dépendances OK"
 
 # ── 2. Typecheck ──────────────────────────────────────────────────────────────
-section "2/4  Typecheck"
-log "Vérification TypeScript..."
-pnpm run typecheck:libs || error "Typecheck librairies échoué"
+section "2/5  Typecheck"
+log "Vérification TypeScript de tout le workspace..."
+pnpm run typecheck || error "Typecheck workspace échoué"
 ok "TypeScript OK"
 
-# ── 3. Build API Server ───────────────────────────────────────────────────────
-section "3/4  Build API Server"
+# ── 3. Tests API ──────────────────────────────────────────────────────────────
+section "3/5  Tests API"
+log "Exécution des tests du serveur..."
+pnpm --filter @workspace/api-server test || error "Tests API échoués"
+ok "Tests API OK"
+
+# ── 4. Build API Server ───────────────────────────────────────────────────────
+section "4/5  Build API Server"
 log "Compilation du serveur Express (esbuild)..."
 pnpm --filter @workspace/api-server run build || error "Build API server échoué"
 
@@ -50,11 +56,16 @@ BUNDLE="artifacts/api-server/dist/index.mjs"
 if [ ! -f "$BUNDLE" ]; then
   error "Bundle introuvable après build : $BUNDLE"
 fi
+for WORKER in pino-worker.mjs pino-file.mjs pino-pretty.mjs thread-stream-worker.mjs; do
+  if [ ! -f "artifacts/api-server/dist/$WORKER" ]; then
+    error "Fichier runtime API introuvable après build : artifacts/api-server/dist/$WORKER"
+  fi
+done
 BUNDLE_SIZE=$(du -sh "$BUNDLE" | cut -f1)
 ok "Bundle API server créé — $BUNDLE_SIZE  →  $BUNDLE"
 
-# ── 4. Build Frontend ─────────────────────────────────────────────────────────
-section "4/4  Build Frontend"
+# ── 5. Build Frontend ─────────────────────────────────────────────────────────
+section "5/5  Build Frontend"
 log "Compilation du frontend React (Vite)..."
 pnpm --filter @workspace/drimpay run build || error "Build frontend échoué"
 
@@ -71,6 +82,6 @@ echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━�
 echo -e "${BOLD}${GREEN}  ✓ Build terminé avec succès — $(date '+%H:%M:%S')${NC}"
 echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "  Prochaine étape → ${BOLD}git push origin main${NC}"
-echo -e "  Sur Plesk       → ${BOLD}git pull origin main${NC} + restart"
+echo -e "  GitHub → commit + push des sources et des fichiers dist/"
+echo -e "  Plesk  → ${BOLD}Pull + Deploy Now${NC}, puis redémarrer l'application Node.js"
 echo ""

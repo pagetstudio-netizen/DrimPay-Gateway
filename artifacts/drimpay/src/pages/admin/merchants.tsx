@@ -45,6 +45,55 @@ function MerchantPanel({
   });
   const [savingInfo, setSavingInfo] = useState(false);
   const [savedInfo, setSavedInfo] = useState(false);
+  const [paymentControls, setPaymentControls] = useState({ payinEnabled: true, payoutEnabled: true });
+  const [loadingPaymentControls, setLoadingPaymentControls] = useState(true);
+  const [savingPaymentControls, setSavingPaymentControls] = useState(false);
+  const [paymentControlsStatus, setPaymentControlsStatus] = useState<{ type: "ok" | "error"; message: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const loadPaymentControls = async () => {
+      setLoadingPaymentControls(true);
+      setPaymentControlsStatus(null);
+      try {
+        const response = await fetch(`${ADMIN_BASE}/merchants/${merchant.id}/payment-controls`, { credentials: "include" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data?.error ?? "Impossible de charger les contrôles de paiement");
+        if (active) {
+          setPaymentControls({
+            payinEnabled: data.payinEnabled === true,
+            payoutEnabled: data.payoutEnabled === true,
+          });
+        }
+      } catch (error: any) {
+        if (active) setPaymentControlsStatus({ type: "error", message: error?.message ?? "Erreur réseau" });
+      } finally {
+        if (active) setLoadingPaymentControls(false);
+      }
+    };
+    loadPaymentControls();
+    return () => { active = false; };
+  }, [merchant.id]);
+
+  const savePaymentControls = async () => {
+    setSavingPaymentControls(true);
+    setPaymentControlsStatus(null);
+    try {
+      const response = await fetch(`${ADMIN_BASE}/merchants/${merchant.id}/payment-controls`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentControls),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error ?? "Échec de l'enregistrement des contrôles");
+      setPaymentControlsStatus({ type: "ok", message: "Contrôles de paiement enregistrés." });
+    } catch (error: any) {
+      setPaymentControlsStatus({ type: "error", message: error?.message ?? "Erreur réseau lors de l'enregistrement" });
+    } finally {
+      setSavingPaymentControls(false);
+    }
+  };
 
   const [wallets, setWallets] = useState<any[]>(merchant.wallets ?? []);
   const [editingWallet, setEditingWallet] = useState<number | null>(null);
@@ -271,6 +320,58 @@ function MerchantPanel({
                 <p className="text-[10px] text-gray-400 mt-1.5">
                   Les taux plateforme varient selon le pays et l'opérateur. Les frais personnalisés attribués à un marchand prennent le dessus.
                 </p>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Contrôles de paiement
+                </p>
+                <p className="text-[10px] text-gray-400 mb-3">
+                  Activez ou bloquez séparément les dépôts (Pay-in) et les retraits (Pay-out) de ce marchand.
+                </p>
+                {loadingPaymentControls ? (
+                  <div className="space-y-2">
+                    <div className="h-12 bg-gray-50 rounded-xl animate-pulse" />
+                    <div className="h-12 bg-gray-50 rounded-xl animate-pulse" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {([
+                      ["payinEnabled", "Pay-in — dépôts", "Autoriser les dépôts via dashboard, liens, QR et API"],
+                      ["payoutEnabled", "Pay-out — retraits", "Autoriser les retraits et reversements"],
+                    ] as const).map(([key, label, hint]) => (
+                      <div key={key} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">{label}</p>
+                          <p className="text-[10px] text-gray-400">{hint}</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={paymentControls[key]}
+                            onChange={event => setPaymentControls(current => ({ ...current, [key]: event.target.checked }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
+                        </label>
+                      </div>
+                    ))}
+                    {paymentControlsStatus && (
+                      <div className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium",
+                        paymentControlsStatus.type === "ok" ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-700",
+                      )}>
+                        {paymentControlsStatus.type === "ok" ? <Check className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                        {paymentControlsStatus.message}
+                      </div>
+                    )}
+                    <button onClick={savePaymentControls} disabled={savingPaymentControls}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
+                      <Save className="w-4 h-4" />
+                      {savingPaymentControls ? "Enregistrement..." : "Enregistrer les contrôles"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

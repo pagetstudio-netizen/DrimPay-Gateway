@@ -19,11 +19,11 @@ router.get("/healthz", async (_req, res) => {
       memory: process.memoryUsage(),
       timestamp: new Date().toISOString(),
     });
-  } catch (err: any) {
+  } catch {
     res.status(503).json({
       status: "error",
       db: "unreachable",
-      error: err?.message ?? "DB connection failed",
+      error: "DB connection failed",
       timestamp: new Date().toISOString(),
     });
   }

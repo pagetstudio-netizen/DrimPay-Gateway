@@ -34,9 +34,12 @@ echo ""
 # ── 1. Vérification env vars critiques ───────────────────────────────────────
 log "Vérification des variables d'environnement..."
 MISSING=()
-for VAR in SUPABASE_DATABASE_URL SESSION_SECRET SUPABASE_SERVICE_ROLE_KEY; do
+for VAR in SUPABASE_DATABASE_URL SESSION_SECRET SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
   [ -z "${!VAR:-}" ] && MISSING+=("$VAR")
 done
+if [ "${NODE_ENV:-}" != "production" ]; then
+  MISSING+=("NODE_ENV=production")
+fi
 if [ ${#MISSING[@]} -gt 0 ]; then
   warn "Variables manquantes : ${MISSING[*]}"
   warn "→ Plesk > Node.js App > Environment Variables"

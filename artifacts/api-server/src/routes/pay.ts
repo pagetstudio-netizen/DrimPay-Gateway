@@ -31,6 +31,10 @@ import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
 import { buildGatewayPayloadSnapshot } from "../lib/gateway-payload";
 import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
+import {
+  isPaymentOperationEnabled,
+  PAYMENT_UNAVAILABLE_MESSAGE,
+} from "../lib/admin-settings";
 import { GENERIC_ERROR_MESSAGE, merchantFailureLabel } from "../lib/merchant-error";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { buildMerchantPayloadSnapshot } from "../lib/merchant-payload";
@@ -152,6 +156,13 @@ router.get("/pay/:token", async (req: any, res: any) => {
     res.status(404).json({ error: "Lien introuvable" });
     return;
   }
+  if (!(await isPaymentOperationEnabled(link.userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
 
   // Auto-expire
   if (link.expiresAt && new Date() > link.expiresAt && link.status === "active") {
@@ -239,6 +250,13 @@ router.post("/pay/:token/attempt", async (req: any, res: any) => {
     res.status(404).json({ error: "Lien introuvable" });
     return;
   }
+  if (!(await isPaymentOperationEnabled(link.userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
+    return;
+  }
 
   const [attempt] = await db.insert(paymentLinkAttemptsTable).values({
     paymentLinkId: link.id,
@@ -308,6 +326,13 @@ router.post("/pay/:token", async (req: any, res: any) => {
 
   if (!link) {
     res.status(404).json({ error: "NOT_FOUND", message: "Lien de paiement introuvable" });
+    return;
+  }
+  if (!(await isPaymentOperationEnabled(link.userId, "payin"))) {
+    res.status(503).json({
+      error: PAYMENT_UNAVAILABLE_MESSAGE,
+      code: "PAYMENTS_UNAVAILABLE",
+    });
     return;
   }
 
