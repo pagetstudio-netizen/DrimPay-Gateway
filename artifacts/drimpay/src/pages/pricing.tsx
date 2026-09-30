@@ -8,13 +8,33 @@ import {
 import { useT, useLang } from "@/lib/i18n";
 import { useSEO, webPageSchema, faqSchema, SITE_URL } from "@/lib/seo";
 
+type CountryRate = { countryCode: string; operator: string; payin: number; payout: number };
+
 function usePlatformFees() {
-  const [fees, setFees] = useState<{ payin: number; payout: number; countryRates: Array<{ countryCode: string; operator: string; payin: number; payout: number }> }>({ payin: 4.5, payout: 4.5, countryRates: [] });
+  const [fees, setFees] = useState<{ countryRates: CountryRate[]; loading: boolean; error: boolean }>({
+    countryRates: [],
+    loading: true,
+    error: false,
+  });
   useEffect(() => {
-    fetch("/api/fees")
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.payin != null) setFees({ payin: d.payin, payout: d.payout, countryRates: Array.isArray(d.countryRates) ? d.countryRates : [] }); })
-      .catch(() => {});
+    const controller = new AbortController();
+    fetch("/api/fees", { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("Fee schedule unavailable");
+        const data = await response.json();
+        if (!Array.isArray(data?.countryRates)) throw new Error("Invalid fee schedule");
+        const countryRates = data.countryRates.filter((rate: any) =>
+          typeof rate?.countryCode === "string" &&
+          typeof rate?.operator === "string" &&
+          Number.isFinite(rate?.payin) &&
+          Number.isFinite(rate?.payout)
+        );
+        setFees({ countryRates, loading: false, error: false });
+      })
+      .catch(error => {
+        if (error?.name !== "AbortError") setFees({ countryRates: [], loading: false, error: true });
+      });
+    return () => controller.abort();
   }, []);
   return fees;
 }
@@ -25,36 +45,60 @@ function fmtRate(n: number, lang: string) {
 }
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
+const COUNTRY_NAMES: Record<string, { fr: string; en: string }> = {
+  TG: { fr: "Togo", en: "Togo" },
+  SN: { fr: "Sénégal", en: "Senegal" },
+  ML: { fr: "Mali", en: "Mali" },
+  CI: { fr: "Côte d’Ivoire", en: "Côte d’Ivoire" },
+  BJ: { fr: "Bénin", en: "Benin" },
+  BF: { fr: "Burkina Faso", en: "Burkina Faso" },
+  CM: { fr: "Cameroun", en: "Cameroon" },
+};
 
 export default function Pricing() {
   const t = useT();
   const lang = useLang();
+  const fees = usePlatformFees();
+  const countrySummaries = ["TG", "SN", "ML"].map(code => {
+    const rows = fees.countryRates.filter(rate => rate.countryCode.toUpperCase() === code);
+    if (!rows.length) return null;
+    const countryName = COUNTRY_NAMES[code]?.[lang === "fr" ? "fr" : "en"] ?? code;
+    const pairs = [...new Set(rows.map(rate => `${fmtRate(rate.payin, lang)} Pay-in / ${fmtRate(rate.payout, lang)} Pay-out`))];
+    return pairs.length === 1
+      ? `${countryName}: ${pairs[0]}`
+      : `${countryName}: ${lang === "fr" ? "taux variables selon l’opérateur" : "rates vary by operator"}`;
+  }).filter((value): value is string => Boolean(value));
+  const corridorSummary = countrySummaries.join("; ");
+  const ratesSummary = corridorSummary || (lang === "fr"
+    ? "consultez le tableau pour les tarifs actuellement publiés"
+    : "see the table for currently published rates");
+  const feeDescription = lang === "fr"
+    ? `Frais Pay-in et Pay-out affichés par pays et opérateur. ${ratesSummary}. Les tarifs marchands personnalisés restent prioritaires.`
+    : `Pay-in and Pay-out fees are listed by country and operator. ${ratesSummary}. Account-specific merchant rates take priority.`;
   useSEO({
     title: lang === "fr"
-       ? "Tarification DrimPay — frais Pay-in & Pay-out par pays et opérateur"
-       : "DrimPay Pricing — Pay-in & Pay-out fees by country and operator",
-    description: lang === "fr"
-       ? "Tarification transparente DrimPay : les frais Pay-in et Pay-out varient selon le pays et l'opérateur. Le tarif de base est de 4,5% au Togo, au Sénégal et au Mali. Sans abonnement."
-       : "Transparent DrimPay pricing: Pay-in and Pay-out fees vary by country and operator. The base rate is 4.5% in Togo, Senegal and Mali. No subscription.",
+      ? "Tarification DrimPay — frais Pay-in et Pay-out par pays et opérateur"
+      : "DrimPay Pricing — Pay-in and Pay-out fees by country and operator",
+    description: feeDescription,
     keywords: lang === "fr"
-       ? "tarifs paiement Afrique, frais Mobile Money par pays, opérateur, Pay-in, Pay-out, API paiement"
-       : "Africa payment pricing, Mobile Money fees by country and operator, Pay-in, Pay-out, payment API cost",
+      ? "tarifs paiement Afrique, frais Mobile Money par pays et opérateur, Togo, Sénégal, Mali, Pay-in, Pay-out"
+      : "Africa payment pricing, Mobile Money fees by country and operator, Togo, Senegal, Mali, Pay-in, Pay-out",
     jsonLd: [
       webPageSchema(
         `${SITE_URL}/${lang}/pricing`,
         lang === "fr" ? "Tarification DrimPay" : "DrimPay Pricing",
-         lang === "fr" ? "Frais Pay-in et Pay-out variables selon le pays et l'opérateur, avec un tarif de base de 4,5% au Togo, au Sénégal et au Mali." : "Pay-in and Pay-out fees vary by country and operator, with a 4.5% base rate in Togo, Senegal and Mali.",
+        feeDescription,
         [{ name: lang === "fr" ? "Tarification" : "Pricing", url: `${SITE_URL}/${lang}/pricing` }],
       ),
       faqSchema(lang === "fr" ? [
-         { question: "Comment sont calculés les frais DrimPay ?", answer: "Les taux Pay-in et Pay-out dépendent du pays et de l'opérateur sélectionnés. Le tarif de base est de 4,5% au Togo, au Sénégal et au Mali ; consultez le tableau par corridor pour le taux effectif. Les accords marchands personnalisés restent prioritaires." },
-         { question: "Les frais sont-ils les mêmes pour chaque opérateur ?", answer: "Non. Le taux effectif est publié par pays et opérateur et peut différer selon le corridor. Le tarif affiché avant une transaction est celui qui s'applique." },
+        { question: "Comment sont calculés les frais DrimPay ?", answer: `Les frais Pay-in et Pay-out dépendent du pays et de l'opérateur. ${ratesSummary}. Les tarifs marchands personnalisés restent prioritaires.` },
+        { question: "Les frais sont-ils les mêmes pour chaque opérateur ?", answer: "Non. Le taux effectif est publié par pays et opérateur; le tarif marchand personnalisé, s’il existe, peut le remplacer." },
         { question: "Pourquoi le Payout n'est-il pas disponible pour les particuliers ?", answer: "Le Payout (décaissement) est réservé aux comptes entreprise vérifiés (KYB). Les particuliers peuvent uniquement encaisser des paiements via le Payin." },
         { question: "Y a-t-il un abonnement mensuel ?", answer: "Non. DrimPay fonctionne sur un modèle pay-as-you-go. Vous payez uniquement sur les transactions réussies." },
         { question: "DrimPay est-il disponible en mode sandbox ?", answer: "Oui. Chaque compte DrimPay inclut un environnement sandbox complet pour tester vos intégrations sans argent réel." },
       ] : [
-         { question: "How are DrimPay fees calculated?", answer: "Pay-in and Pay-out rates depend on the selected country and operator. The base rate is 4.5% in Togo, Senegal and Mali; use the corridor table for the effective rate. Account-specific merchant agreements take priority." },
-         { question: "Are fees the same for every operator?", answer: "No. The effective rate is published for each country and operator and may differ by corridor. The rate shown before a transaction is the rate that applies." },
+        { question: "How are DrimPay fees calculated?", answer: `Pay-in and Pay-out fees depend on the selected country and operator. ${ratesSummary}. Account-specific merchant rates take priority.` },
+        { question: "Are fees the same for every operator?", answer: "No. The effective rate is published by country and operator; an account-specific merchant rate may replace it." },
         { question: "Why is Payout not available for personal accounts?", answer: "Payout (disbursement) is reserved for KYB-verified business accounts. Personal accounts can only collect payments via Payin." },
         { question: "Is there a monthly subscription?", answer: "No. DrimPay operates on a pay-as-you-go model. You only pay on successful transactions." },
         { question: "Is sandbox mode available?", answer: "Yes. Every DrimPay account includes a full sandbox environment for testing integrations without real money." },
@@ -64,8 +108,6 @@ export default function Pricing() {
 
   const p = t.pricing.personal;
   const b = t.pricing.businessCard;
-  const fees = usePlatformFees();
-  const rateStr = fmtRate(fees.payin, lang);
 
   return (
     <div className="bg-[#F8F6F1]">
@@ -235,10 +277,9 @@ export default function Pricing() {
               </thead>
               <tbody>
                 {t.pricing.feeRows.map((row, i) => {
-                  // Pay-in and Pay-out use live platform defaults; exchange fees remain separate.
-                  const displayFee = i === 0 ? fmtRate(fees.payin, lang) : i === 1 ? fmtRate(fees.payout, lang) : null;
-                  const feePersonal = displayFee ?? row.feePersonal;
-                  const feeBusiness = displayFee ?? row.feeBusiness;
+                  const routeBasedFee = lang === "fr" ? "Voir le tableau par pays" : "See country table";
+                  const feePersonal = i < 2 ? routeBasedFee : row.feePersonal;
+                  const feeBusiness = i < 2 ? routeBasedFee : row.feeBusiness;
                   return (
                   <tr key={i} className="border-b border-[#E5E3DC] last:border-0 hover:bg-[#F8F6F1] transition-colors">
                     <td className="px-5 py-4 font-semibold text-[#0f0f0f]">{row.type}</td>
@@ -283,7 +324,13 @@ export default function Pricing() {
                   </tr>)}</tbody>
                 </table>
               </div>
-            ) : <p className="text-sm text-[#0f0f0f]/45 italic">{lang === "fr" ? "Les tarifs par corridor sont chargés depuis l'API." : "Corridor rates are loaded from the API."}</p>}
+            ) : fees.loading ? (
+              <p className="text-sm text-[#0f0f0f]/45 italic">{lang === "fr" ? "Chargement des tarifs…" : "Loading rates…"}</p>
+            ) : fees.error ? (
+              <p role="alert" className="text-sm text-red-600">{lang === "fr" ? "Impossible de charger le barème. Réessayez plus tard." : "Unable to load the fee schedule. Please try again later."}</p>
+            ) : (
+              <p className="text-sm text-[#0f0f0f]/45 italic">{lang === "fr" ? "Aucun opérateur actif n’est publié pour le moment." : "No active operators are published yet."}</p>
+            )}
           </div>
         </div>
       </div>

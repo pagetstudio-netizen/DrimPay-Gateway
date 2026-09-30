@@ -3388,6 +3388,46 @@ router.delete("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
 
 // ─── Public: QR payment ───────────────────────────────────────────────────────
 
+router.get("/qr/:reference/fee-rate", async (req, res) => {
+  const reference = req.params.reference;
+  const countryCode = typeof req.query.countryCode === "string" ? req.query.countryCode.trim().toUpperCase() : "";
+  const operator = typeof req.query.operator === "string" ? req.query.operator.trim() : "";
+  if (!countryCode || !operator) {
+    res.status(400).json({ error: "Pays et opérateur requis." });
+    return;
+  }
+
+  const [qr] = await db
+    .select()
+    .from(qrCodesTable)
+    .where(eq(qrCodesTable.reference, reference));
+  if (!qr) {
+    res.status(404).json({ error: "QR code introuvable." });
+    return;
+  }
+  if (qr.status !== "active" || (qr.expiresAt && new Date(qr.expiresAt) < new Date())) {
+    res.status(410).json({ error: "Ce QR code est inactif ou expiré." });
+    return;
+  }
+
+  const configuredCountries = Array.isArray(qr.countryCodes) && qr.countryCodes.length > 0
+    ? qr.countryCodes.map(code => String(code).toUpperCase())
+    : Object.keys(COUNTRY_OPERATORS);
+  if (!configuredCountries.includes(countryCode)) {
+    res.status(400).json({ error: "Ce pays n'est pas disponible pour ce QR code." });
+    return;
+  }
+  const activeOperators = await listActiveOperators(countryCode);
+  if (!activeOperators.includes(operator)) {
+    res.status(400).json({ error: "Cet opérateur n'est pas disponible pour ce QR code." });
+    return;
+  }
+
+  const rate = await getFeeRate(qr.userId, "payin", countryCode, operator);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ payin: Number((rate * 100).toFixed(4)), countryCode, operator });
+});
+
 router.get("/qr/:reference", async (req, res) => {
   const { reference } = req.params;
   const [qr] = await db
