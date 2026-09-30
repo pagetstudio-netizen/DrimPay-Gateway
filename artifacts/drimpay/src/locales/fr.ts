@@ -111,7 +111,7 @@ export const fr = {
   pricing: {
     badge: "Tarification Transparente",
     title: "Des frais simples et prévisibles",
-    desc: "Pas de frais cachés. Pas de minimums mensuels. Payez uniquement ce que vous traitez. Tous les comptes (entreprise & personnel) accèdent au Payin et Payout à un taux variable selon le pays et l opérateur (base 4,5% au Togo, au Sénégal et au Mali).",
+    desc: "Pas de frais cachés. Pas de minimum mensuel. Payez uniquement les transactions réussies. Tous les comptes (entreprise et particulier) accèdent au Pay-in et au Pay-out à un taux variable selon le pays et l’opérateur (tarif de base de 4,5 % au Togo, au Sénégal et au Mali).",
     mostPopular: "Le plus populaire",
     personalLabel: "Pour les particuliers",
     businessLabel: "Pour les entreprises",
@@ -121,7 +121,7 @@ export const fr = {
       rate: "taux variable",
       per: "sur Payin & Payout",
       negotiable: "Négociable selon volume",
-      desc: "Pour les particuliers qui souhaitent encaisser et décaisser des paiements Mobile Money. Taux variable selon le pays et l opérateur sur chaque transaction réussie, Payin comme Payout.",
+      desc: "Pour les particuliers qui souhaitent encaisser et décaisser des paiements Mobile Money. Taux variable selon le pays et l’opérateur sur chaque transaction réussie, Pay-in comme Pay-out.",
       features: [
         "taux variable sur Payin (Mobile Money)",
         "taux variable sur Payout (Mobile Money)",
@@ -137,7 +137,7 @@ export const fr = {
       badge: "Recommandé",
       rate: "taux variable",
       per: "sur Payin & Payout",
-      desc: "Pour les entreprises qui souhaitent encaisser et décaisser des paiements Mobile Money. Taux variable selon le pays et l opérateur sur chaque transaction réussie, Payin comme Payout.",
+      desc: "Pour les entreprises qui souhaitent encaisser et décaisser des paiements Mobile Money. Taux variable selon le pays et l’opérateur sur chaque transaction réussie, Pay-in comme Pay-out.",
       features: [
         "taux variable sur Payin (Mobile Money)",
         "taux variable sur Payout (Mobile Money)",

@@ -259828,6 +259828,17 @@ function defaultCountryFee(countryCode, type, defaults2 = {}) {
   if (configuredRate !== null && configuredRate !== void 0) return configuredRate / 100;
   return ["TG", "SN", "ML"].includes(countryCode.trim().toUpperCase()) ? SPECIAL_COUNTRY_DEFAULTS[type] / 100 : null;
 }
+function resolveFeeRate(type, merchantPercent, countryCode, operator, operatorRates, countryDefaults, platformDefaultRate) {
+  const merchantValue = typeof merchantPercent === "number" ? merchantPercent : Number.parseFloat(String(merchantPercent ?? ""));
+  if (validPercent(merchantValue)) return merchantValue / 100;
+  if (countryCode && operator) {
+    const operatorPercent = operatorRates[operatorFeeConfigKey(countryCode, operator)]?.[type];
+    if (validPercent(operatorPercent)) return operatorPercent / 100;
+  }
+  const countryRate = countryCode ? defaultCountryFee(countryCode, type, countryDefaults) : null;
+  if (countryRate !== null) return countryRate;
+  return Number.isFinite(platformDefaultRate) && platformDefaultRate >= 0 && platformDefaultRate <= 1 ? platformDefaultRate : DEFAULT_FEE_RATE;
+}
 async function getPlatformDefaultFee(type, settings) {
   const key = type === "payin" ? "default_payin_fee_percent" : "default_payout_fee_percent";
   const rows = settings ?? await db.select({ key: adminSettingsTable.key, value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, key));
@@ -259848,18 +259859,16 @@ async function getFeeRate(userId, type, countryCode, operator) {
     db.select({ value: adminSettingsTable.value }).from(adminSettingsTable).where(eq(adminSettingsTable.key, COUNTRY_FEE_RATES_SETTING)).limit(1)
   ]);
   const merchantPercent = type === "payin" ? user?.payinFeePercent : user?.payoutFeePercent;
-  if (merchantPercent !== null && merchantPercent !== void 0) {
-    const merchantRate = parseFloat(String(merchantPercent)) / 100;
-    if (Number.isFinite(merchantRate) && merchantRate >= 0 && merchantRate <= 1) return merchantRate;
-  }
-  if (countryCode && operator && operatorSetting?.value) {
-    const configured = parseOperatorFeeRates(operatorSetting.value)[operatorFeeConfigKey(countryCode, operator)];
-    const operatorPercent = configured?.[type];
-    if (operatorPercent !== null && operatorPercent !== void 0) return operatorPercent / 100;
-  }
-  const countryRate = countryCode ? defaultCountryFee(countryCode, type, parseCountryFeeDefaults(countrySetting?.value)) : null;
-  if (countryRate !== null && countryRate !== void 0) return countryRate;
-  return getPlatformDefaultFee(type, platformSettings);
+  const platformDefaultRate = await getPlatformDefaultFee(type, platformSettings);
+  return resolveFeeRate(
+    type,
+    merchantPercent,
+    countryCode,
+    operator,
+    parseOperatorFeeRates(operatorSetting?.value),
+    parseCountryFeeDefaults(countrySetting?.value),
+    platformDefaultRate
+  );
 }
 
 // src/routes/stats.ts
@@ -259896,10 +259905,10 @@ router3.get("/fees", async (_req, res) => {
         payout: override?.payout ?? (countryPayout === null ? payout : countryPayout * 100)
       };
     });
-    res.setHeader("Cache-Control", "public, max-age=300");
+    res.setHeader("Cache-Control", "public, max-age=60");
     res.json({ payin, payout, payin_display: `${payin}%`, payout_display: `${payout}%`, countryRates });
   } catch {
-    res.json({ payin: 3.5, payout: 3.5, payin_display: "3.5%", payout_display: "3.5%" });
+    res.status(503).json({ error: "Impossible de charger le bar\xE8me des frais.", countryRates: [] });
   }
 });
 router3.get("/stats/platform", async (req, res) => {
@@ -281659,6 +281668,37 @@ router11.delete("/dashboard/qr-codes/:id", requireAuth, async (req, res) => {
   }
   await db.delete(qrCodesTable).where(and(eq(qrCodesTable.id, id), eq(qrCodesTable.userId, userId)));
   res.json({ ok: true });
+});
+router11.get("/qr/:reference/fee-rate", async (req, res) => {
+  const reference = req.params.reference;
+  const countryCode = typeof req.query.countryCode === "string" ? req.query.countryCode.trim().toUpperCase() : "";
+  const operator = typeof req.query.operator === "string" ? req.query.operator.trim() : "";
+  if (!countryCode || !operator) {
+    res.status(400).json({ error: "Pays et op\xE9rateur requis." });
+    return;
+  }
+  const [qr] = await db.select().from(qrCodesTable).where(eq(qrCodesTable.reference, reference));
+  if (!qr) {
+    res.status(404).json({ error: "QR code introuvable." });
+    return;
+  }
+  if (qr.status !== "active" || qr.expiresAt && new Date(qr.expiresAt) < /* @__PURE__ */ new Date()) {
+    res.status(410).json({ error: "Ce QR code est inactif ou expir\xE9." });
+    return;
+  }
+  const configuredCountries = Array.isArray(qr.countryCodes) && qr.countryCodes.length > 0 ? qr.countryCodes.map((code) => String(code).toUpperCase()) : Object.keys(COUNTRY_OPERATORS);
+  if (!configuredCountries.includes(countryCode)) {
+    res.status(400).json({ error: "Ce pays n'est pas disponible pour ce QR code." });
+    return;
+  }
+  const activeOperators = await listActiveOperators(countryCode);
+  if (!activeOperators.includes(operator)) {
+    res.status(400).json({ error: "Cet op\xE9rateur n'est pas disponible pour ce QR code." });
+    return;
+  }
+  const rate = await getFeeRate(qr.userId, "payin", countryCode, operator);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ payin: Number((rate * 100).toFixed(4)), countryCode, operator });
 });
 router11.get("/qr/:reference", async (req, res) => {
   const { reference } = req.params;

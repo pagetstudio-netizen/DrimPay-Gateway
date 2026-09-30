@@ -155,7 +155,7 @@ export default function Pricing() {
               </div>
 
               <div className="mb-2">
-                <span className="text-5xl font-extrabold text-[#0f0f0f]">{rateStr}</span>
+                <span className="text-5xl font-extrabold text-[#0f0f0f]">{p.rate}</span>
                 <span className="text-[#0f0f0f]/40 text-sm ml-2">{p.per}</span>
               </div>
 
@@ -217,7 +217,7 @@ export default function Pricing() {
               </div>
 
               <div className="mb-6">
-                <span className="text-5xl font-extrabold text-[#0f0f0f]">{rateStr}</span>
+                <span className="text-5xl font-extrabold text-[#0f0f0f]">{b.rate}</span>
                 <span className="text-[#0f0f0f]/40 text-sm ml-2">{b.per}</span>
               </div>
 

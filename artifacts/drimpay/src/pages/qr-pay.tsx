@@ -168,6 +168,8 @@ export default function QrPayPage() {
   const [isSandbox, setIsSandbox]           = useState(false);
   const [submitting, setSubmitting]         = useState(false);
   const [feeRate, setFeeRate]               = useState<number | null>(null);
+  const [feeRateError, setFeeRateError]     = useState("");
+  const [feeQuoteRetry, setFeeQuoteRetry]   = useState(0);
 
   useEffect(() => {
     if (!reference) return;
@@ -194,14 +196,30 @@ export default function QrPayPage() {
   const displayAmount      = parseFloat(amount || "0");
   useEffect(() => {
     setFeeRate(null);
-    if (!selectedCountry || !selectedOperator) return;
-    fetch(`${BASE}/api/fees?countryCode=${encodeURIComponent(selectedCountry)}&operator=${encodeURIComponent(selectedOperator)}`)
-      .then(r => r.json())
-      .then(d => {
-        const match = Array.isArray(d?.countryRates) ? d.countryRates.find((r: any) => r.countryCode === selectedCountry && r.operator === selectedOperator) : null;
-        if (typeof match?.payin === "number") setFeeRate(match.payin / 100);
-      }).catch(() => {});
-  }, [selectedCountry, selectedOperator]);
+    setFeeRateError("");
+    if (!reference || !selectedCountry || !selectedOperator) return;
+
+    const controller = new AbortController();
+    fetch(
+      `${BASE}/api/qr/${encodeURIComponent(reference)}/fee-rate?countryCode=${encodeURIComponent(selectedCountry)}&operator=${encodeURIComponent(selectedOperator)}`,
+      { signal: controller.signal },
+    )
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data?.error ?? "Impossible de charger les frais.");
+        if (typeof data?.payin !== "number" || !Number.isFinite(data.payin) || data.payin < 0 || data.payin > 100) {
+          throw new Error("Le taux de frais reçu est invalide.");
+        }
+        setFeeRate(data.payin / 100);
+      })
+      .catch(error => {
+        if (error?.name !== "AbortError") {
+          setFeeRateError(error?.message ?? "Impossible de charger les frais.");
+        }
+      });
+
+    return () => controller.abort();
+  }, [reference, selectedCountry, selectedOperator, feeQuoteRetry]);
   const platformFee        = feeRate === null ? 0 : Math.round(displayAmount * feeRate * 100) / 100;
   const merchantNet        = Math.round((displayAmount - platformFee) * 100) / 100;
   const operatorLabel      = OPERATOR_BRAND[selectedOperator]?.label ?? selectedOperator;
@@ -463,8 +481,8 @@ export default function QrPayPage() {
                       { label: "Marchand",  value: qr?.merchantName ?? "" },
                       { label: "QR",         value: qr?.name ?? "" },
                       { label: "Montant",    value: `${displayAmount.toLocaleString("fr-FR")} ${currency}` },
-                      { label: `Frais (${feeRate === null ? "taux en chargement" : `${(feeRate * 100).toLocaleString("fr-FR")}% — ${selectedCountry}/${operatorLabel}`})`, value: `${platformFee.toLocaleString("fr-FR")} ${currency}`, sub: true },
-                      { label: "Net marchand", value: `${merchantNet.toLocaleString("fr-FR")} ${currency}`, sub: true },
+                      { label: `Frais (${feeRate === null ? (feeRateError ? "indisponible" : "taux en chargement") : `${(feeRate * 100).toLocaleString("fr-FR")}% — ${selectedCountry}/${operatorLabel}`})`, value: feeRate === null ? "—" : `${platformFee.toLocaleString("fr-FR")} ${currency}`, sub: true },
+                      { label: "Net marchand", value: feeRate === null ? "—" : `${merchantNet.toLocaleString("fr-FR")} ${currency}`, sub: true },
                       { label: "Opérateur", value: operatorLabel },
                       { label: "Téléphone", value: phone },
                     ].map(({ label, value, sub }) => (
@@ -474,12 +492,29 @@ export default function QrPayPage() {
                       </div>
                     ))}
                   </div>
+                  {feeRateError ? (
+                    <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                      <p>{feeRateError}</p>
+                      <button
+                        type="button"
+                        onClick={() => setFeeQuoteRetry(attempt => attempt + 1)}
+                        className="mt-2 font-semibold underline underline-offset-2"
+                      >
+                        Réessayer le chargement des frais
+                      </button>
+                    </div>
+                  ) : feeRate === null ? (
+                    <p className="mt-3 flex items-center gap-2 text-xs text-gray-500" role="status">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Chargement du tarif marchand…
+                    </p>
+                  ) : null}
                   <button
                     onClick={handleConfirm}
-                    disabled={submitting}
+                    disabled={submitting || feeRate === null}
                     className="w-full h-12 mt-5 rounded-xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 active:bg-gray-950 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {submitting ? "Traitement…" : "Payer maintenant"}
+                    {submitting ? "Traitement…" : feeRateError ? "Tarif indisponible" : feeRate === null ? "Chargement du tarif…" : "Payer maintenant"}
                   </button>
                 </motion.div>
               )}

@@ -113,7 +113,7 @@ export const en: Translations = {
   pricing: {
     badge: "Transparent Pricing",
     title: "Simple, predictable fees",
-    desc: "No hidden charges. No monthly minimums. Pay only for what you process. All accounts (personal &amp; business) access both Payin and Payout at a country and operator-specific rate (4.5% base in Togo, Senegal and Mali).",
+    desc: "No hidden charges. No monthly minimums. Pay only for what you process. All accounts (personal & business) access both Payin and Payout at a country- and operator-specific rate (4.5% base in Togo, Senegal, and Mali).",
     mostPopular: "Most Popular",
     personalLabel: "For Individuals",
     businessLabel: "For Businesses",
