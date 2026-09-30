@@ -265,6 +265,14 @@ export interface StatusCheckResult {
 // Statuts définitifs — le fournisseur ne reviendra plus dessus
 const SETTLED_STATUSES = new Set<string>(["success", "failed", "cancelled", "expired"]);
 
+export const CLAPAY_PAYOUT_POLL_OPTIONS = {
+  intervalMs: 10_000,
+  maxDurationMs: 60_000,
+  initialDelayMs: 10_000,
+  maxAttempts: 5,
+  operation: "payout" as const,
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -343,6 +351,8 @@ export async function pollUntilSettled(
     intervalMs?: number;
     maxDurationMs?: number;
     operation?: "payin" | "payout";
+    initialDelayMs?: number;
+    maxAttempts?: number;
   },
 ): Promise<StatusCheckResult | null> {
   if (!gatewayRef) return null;
@@ -350,14 +360,15 @@ export async function pollUntilSettled(
   const intervalMs    = options?.intervalMs    ?? 3_000;
   const maxDurationMs = options?.maxDurationMs ?? 25_000;
   const operation     = options?.operation     ?? "payin";
+  const maxAttempts   = options?.maxAttempts    ?? Number.POSITIVE_INFINITY;
   const deadline      = Date.now() + maxDurationMs;
   let lastResult: StatusCheckResult | null = null;
   let attempt = 0;
 
-  // First check after a short initial wait (fournisseur peut déjà avoir une réponse)
-  await sleep(Math.min(intervalMs, 2_000));
+  // First check after a short initial wait unless a provider needs a specific cadence.
+  await sleep(options?.initialDelayMs ?? Math.min(intervalMs, 2_000));
 
-  while (Date.now() < deadline) {
+  while (Date.now() < deadline && attempt < maxAttempts) {
     attempt++;
     try {
       const result = await fetchStatus(aggregator, client, gatewayRef, operation);
@@ -375,6 +386,8 @@ export async function pollUntilSettled(
       console.warn(`[Poll#${attempt}] ${aggregator}/${gatewayRef} check error: ${err.message}`);
     }
 
+    if (attempt >= maxAttempts) break;
+
     // Attendre avant la prochaine tentative si on n'a pas encore dépassé le délai
     if (Date.now() + intervalMs < deadline) {
       await sleep(intervalMs);
@@ -383,9 +396,15 @@ export async function pollUntilSettled(
     }
   }
 
-  console.info(
-    `[Poll] Timeout après ${maxDurationMs}ms — dernier statut: ${lastResult?.status ?? "null"}. Le webhook confirmera.`,
-  );
+  if (attempt >= maxAttempts) {
+    console.info(
+      `[Poll] Nombre maximal de vérifications atteint (${maxAttempts}) — dernier statut: ${lastResult?.status ?? "null"}.`,
+    );
+  } else {
+    console.info(
+      `[Poll] Timeout après ${maxDurationMs}ms — dernier statut: ${lastResult?.status ?? "null"}. Le webhook confirmera.`,
+    );
+  }
   return lastResult;
 }
 

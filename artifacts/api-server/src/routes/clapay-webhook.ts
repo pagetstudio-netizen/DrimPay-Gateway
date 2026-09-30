@@ -138,7 +138,7 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
         gateway: "clapay",
       });
       console.log(`[Clapay Webhook] Transaction payin ${tx.reference} → ${newStatus} (crédité: ${credited})`);
-    } else if (tx.type === "payout" && (newStatus === "failed" || newStatus === "cancelled")) {
+    } else if (tx.type === "payout" && (newStatus === "failed" || newStatus === "cancelled" || newStatus === "expired")) {
       // Payout échoué → statut + remboursement atomique, idempotent via clause WHERE.
       const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
       const refunded = await db.transaction(async (trx) => {
@@ -152,7 +152,7 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
           })
           .where(and(
             eq(transactionsTable.id, tx.id),
-            sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`,
+             sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success', 'reversed')`,
           ))
           .returning();
         if (!row) return false;
@@ -176,7 +176,7 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
       }
     } else {
       // Payout succès ou statut intermédiaire — juste le statut, pas de crédit.
-      await db
+      const [updated] = await db
         .update(transactionsTable)
         .set({
           status: newStatus as any,
@@ -184,7 +184,22 @@ router.post("/webhooks/clapay", async (req: any, res: any) => {
           failureReason: event.failure_reason ?? null,
           updatedAt: new Date(),
         })
-        .where(eq(transactionsTable.id, tx.id));
+        .where(and(
+          eq(transactionsTable.id, tx.id),
+          sql`${transactionsTable.status} NOT IN ('success', 'failed', 'reversed', 'cancelled', 'expired')`,
+        ))
+        .returning({ id: transactionsTable.id });
+
+      if (!updated) {
+        const [current] = await db
+          .select({ status: transactionsTable.status })
+          .from(transactionsTable)
+          .where(eq(transactionsTable.id, tx.id));
+        if (current?.status !== newStatus) {
+          console.warn(`[Clapay Webhook] Statut ${newStatus} ignoré pour ${tx.reference}; état final actuel: ${current?.status ?? "inconnu"}`);
+          return;
+        }
+      }
     }
 
     // Synchroniser le statut du reversement si la transaction vient d'un REV-

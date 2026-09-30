@@ -275347,6 +275347,13 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
   }
 }
 var SETTLED_STATUSES = /* @__PURE__ */ new Set(["success", "failed", "cancelled", "expired"]);
+var CLAPAY_PAYOUT_POLL_OPTIONS = {
+  intervalMs: 1e4,
+  maxDurationMs: 6e4,
+  initialDelayMs: 1e4,
+  maxAttempts: 5,
+  operation: "payout"
+};
 function sleep2(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -275396,11 +275403,12 @@ async function pollUntilSettled(aggregator, client2, gatewayRef, options) {
   const intervalMs = options?.intervalMs ?? 3e3;
   const maxDurationMs = options?.maxDurationMs ?? 25e3;
   const operation = options?.operation ?? "payin";
+  const maxAttempts = options?.maxAttempts ?? Number.POSITIVE_INFINITY;
   const deadline = Date.now() + maxDurationMs;
   let lastResult = null;
   let attempt = 0;
-  await sleep2(Math.min(intervalMs, 2e3));
-  while (Date.now() < deadline) {
+  await sleep2(options?.initialDelayMs ?? Math.min(intervalMs, 2e3));
+  while (Date.now() < deadline && attempt < maxAttempts) {
     attempt++;
     try {
       const result = await fetchStatus(aggregator, client2, gatewayRef, operation);
@@ -275415,15 +275423,22 @@ async function pollUntilSettled(aggregator, client2, gatewayRef, options) {
     } catch (err) {
       console.warn(`[Poll#${attempt}] ${aggregator}/${gatewayRef} check error: ${err.message}`);
     }
+    if (attempt >= maxAttempts) break;
     if (Date.now() + intervalMs < deadline) {
       await sleep2(intervalMs);
     } else {
       break;
     }
   }
-  console.info(
-    `[Poll] Timeout apr\xE8s ${maxDurationMs}ms \u2014 dernier statut: ${lastResult?.status ?? "null"}. Le webhook confirmera.`
-  );
+  if (attempt >= maxAttempts) {
+    console.info(
+      `[Poll] Nombre maximal de v\xE9rifications atteint (${maxAttempts}) \u2014 dernier statut: ${lastResult?.status ?? "null"}.`
+    );
+  } else {
+    console.info(
+      `[Poll] Timeout apr\xE8s ${maxDurationMs}ms \u2014 dernier statut: ${lastResult?.status ?? "null"}. Le webhook confirmera.`
+    );
+  }
   return lastResult;
 }
 async function checkOperatorAvailable(countryCode, operatorName, blockKind) {
@@ -276029,6 +276044,14 @@ router11.get("/dashboard/transactions", requireAuth, async (req, res) => {
     limit: parseInt(limit)
   });
 });
+function isClapayGatewaySnapshot(snapshot) {
+  if (!snapshot) return false;
+  try {
+    return JSON.parse(snapshot)?.gateway === "clapay";
+  } catch {
+    return /"gateway"\s*:\s*"clapay"/i.test(snapshot);
+  }
+}
 router11.get("/dashboard/payments", requireAuth, async (req, res) => {
   const userId = req.session.userId;
   const currentMode = req.session.mode ?? "sandbox";
@@ -276048,10 +276071,133 @@ router11.get("/dashboard/payments", requireAuth, async (req, res) => {
   }
   const [{ total }] = await db.select({ total: count() }).from(transactionsTable).where(and(...conditions));
   res.json({
-    transactions: txs.map((tx) => sanitizeMerchantTransaction(tx)),
+    transactions: txs.map((tx) => ({
+      ...sanitizeMerchantTransaction(tx),
+      clapayStatusCheckAvailable: tx.type === "payout" && tx.mode === "live" && (tx.status === "pending" || tx.status === "processing") && !!(tx.externalRef || tx.gatewayReference) && isClapayGatewaySnapshot(tx.gatewayPayload)
+    })),
     total,
     page: pageNum,
     limit: limitNum
+  });
+});
+router11.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const currentMode = req.session.mode ?? "sandbox";
+  const txId = Number.parseInt(req.params.id, 10);
+  if (!Number.isSafeInteger(txId) || txId <= 0) {
+    res.status(400).json({ error: "Identifiant de transaction invalide." });
+    return;
+  }
+  const [tx] = await db.select().from(transactionsTable).where(and(
+    eq(transactionsTable.id, txId),
+    eq(transactionsTable.userId, userId),
+    eq(transactionsTable.mode, currentMode)
+  ));
+  if (!tx) {
+    res.status(404).json({ error: "Transaction introuvable." });
+    return;
+  }
+  if (tx.type !== "payout" || tx.mode !== "live" || !isClapayGatewaySnapshot(tx.gatewayPayload)) {
+    res.status(409).json({ error: "Cette transaction n'est pas un retrait Clapay v\xE9rifiable." });
+    return;
+  }
+  if (tx.status !== "pending" && tx.status !== "processing") {
+    res.json({
+      providerStatus: tx.status,
+      transactionStatus: tx.status,
+      alreadySettled: true
+    });
+    return;
+  }
+  const providerReference = tx.externalRef || tx.gatewayReference;
+  if (!providerReference) {
+    res.status(409).json({ error: "La r\xE9f\xE9rence Clapay de cette transaction est manquante." });
+    return;
+  }
+  if (!isClapayConfigured()) {
+    res.status(503).json({ error: "La v\xE9rification Clapay est temporairement indisponible." });
+    return;
+  }
+  let statusCheck;
+  try {
+    statusCheck = await getClapayClient().getStatus(providerReference);
+  } catch (err) {
+    console.warn(`[Clapay Manual Status] V\xE9rification \xE9chou\xE9e pour ${tx.reference}: ${err?.message ?? "erreur fournisseur"}`);
+    res.status(502).json({ error: "Clapay ne peut pas \xEAtre contact\xE9 pour le moment. R\xE9essayez." });
+    return;
+  }
+  if (statusCheck.our_reference && statusCheck.our_reference !== tx.reference) {
+    console.warn(`[Clapay Manual Status] R\xE9f\xE9rence interne incoh\xE9rente pour la transaction ${tx.id}`);
+    res.status(409).json({ error: "Clapay a renvoy\xE9 une r\xE9f\xE9rence de transaction diff\xE9rente. Aucun statut n'a \xE9t\xE9 modifi\xE9." });
+    return;
+  }
+  const providerStatus = statusCheck.status;
+  const terminalStatus = ["success", "failed", "cancelled", "expired"].includes(providerStatus);
+  if (!terminalStatus) {
+    const [updated] = await db.update(transactionsTable).set({
+      gatewayReference: statusCheck.clapay_reference || tx.gatewayReference,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(and(
+      eq(transactionsTable.id, tx.id),
+      sql`${transactionsTable.status} IN ('pending', 'processing')`
+    )).returning({ status: transactionsTable.status });
+    res.json({
+      providerStatus,
+      transactionStatus: updated?.status ?? tx.status,
+      gatewayReference: statusCheck.clapay_reference || tx.gatewayReference
+    });
+    return;
+  }
+  const failureReason = statusCheck.failure_reason ?? "Rejet\xE9 par le fournisseur";
+  const failed = providerStatus !== "success";
+  const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
+  const settlement = await db.transaction(async (trx) => {
+    const [updated] = await trx.update(transactionsTable).set({
+      status: providerStatus,
+      gatewayReference: statusCheck.clapay_reference || providerReference,
+      failureReason: failed ? failureReason : null,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(and(
+      eq(transactionsTable.id, tx.id),
+      sql`${transactionsTable.status} NOT IN ('success', 'failed', 'reversed', 'cancelled', 'expired')`
+    )).returning({ id: transactionsTable.id });
+    if (!updated) {
+      const [current] = await trx.select({ status: transactionsTable.status }).from(transactionsTable).where(eq(transactionsTable.id, tx.id));
+      if (tx.reference.startsWith("REV-") && current?.status === providerStatus) {
+        await trx.update(reversementsTable).set({
+          status: failed ? "failed" : "completed",
+          ...failed ? { failureReason } : {}
+        }).where(eq(reversementsTable.reference, tx.reference));
+      }
+      return {
+        applied: false,
+        transactionStatus: current?.status ?? tx.status
+      };
+    }
+    if (failed) {
+      await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, tx.walletId));
+    }
+    if (tx.reference.startsWith("REV-")) {
+      await trx.update(reversementsTable).set({
+        status: failed ? "failed" : "completed",
+        ...failed ? { failureReason } : {}
+      }).where(eq(reversementsTable.reference, tx.reference));
+    }
+    return { applied: true, transactionStatus: providerStatus };
+  });
+  if (!settlement.applied && settlement.transactionStatus !== providerStatus) {
+    res.status(409).json({
+      error: "Le statut Clapay diff\xE8re du statut d\xE9j\xE0 enregistr\xE9. La transaction n'a pas \xE9t\xE9 modifi\xE9e.",
+      providerStatus,
+      transactionStatus: settlement.transactionStatus
+    });
+    return;
+  }
+  res.json({
+    providerStatus,
+    transactionStatus: settlement.transactionStatus,
+    gatewayReference: statusCheck.clapay_reference || providerReference,
+    reconciled: settlement.applied
   });
 });
 router11.post("/dashboard/transactions/:id/resend-webhook", requireAuth, async (req, res) => {
@@ -276590,7 +276736,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
           const refunded = await db.transaction(async (trx) => {
             const [row] = await trx.update(transactionsTable).set({ status: statusCheck.status, failureReason: statusCheck.failureReason ?? "Rejet\xE9 par le fournisseur", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(and(
               eq(transactionsTable.id, tx2.id),
-              sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
+              sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success', 'reversed')`
             )).returning();
             if (!row) return false;
             await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, wallet.id));
@@ -277346,16 +277492,22 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
     (async () => {
       try {
         const { client: client2 } = await resolveAggregator(countryCode, operator, "payout");
-        const statusCheck = await pollUntilSettled(resolvedAggregator, client2, result.externalRef, {
+        const pollOptions = resolvedAggregator === "clapay" ? CLAPAY_PAYOUT_POLL_OPTIONS : {
           intervalMs: 3e3,
           maxDurationMs: 3e4,
           operation: "payout"
-        });
+        };
+        const statusCheck = await pollUntilSettled(resolvedAggregator, client2, result.externalRef, pollOptions);
         if (!statusCheck) return;
         console.info(`[Reversement][BG] ${reference} \u2192 statut fournisseur: ${statusCheck.status}`);
         if (statusCheck.status === "failed" || statusCheck.status === "cancelled" || statusCheck.status === "expired") {
           const refunded = await db.transaction(async (trx) => {
-            const [row] = await trx.update(transactionsTable).set({ status: statusCheck.status, failureReason: statusCheck.failureReason ?? "Rejet\xE9 par le fournisseur", updatedAt: /* @__PURE__ */ new Date() }).where(and(
+            const [row] = await trx.update(transactionsTable).set({
+              status: statusCheck.status,
+              gatewayReference: statusCheck.gatewayReference,
+              failureReason: statusCheck.failureReason ?? "Rejet\xE9 par le fournisseur",
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where(and(
               eq(transactionsTable.id, tx.id),
               sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
             )).returning();
@@ -277388,7 +277540,7 @@ router11.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (
           } catch {
           }
         } else if (statusCheck.status === "success") {
-          await db.update(transactionsTable).set({ status: "success", updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+          await db.update(transactionsTable).set({ status: "success", gatewayReference: statusCheck.gatewayReference, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
           await db.update(reversementsTable).set({ status: "completed" }).where(eq(reversementsTable.id, reversement.id));
         }
       } catch (e) {
@@ -282957,7 +283109,7 @@ router15.post("/webhooks/clapay", async (req, res) => {
         gateway: "clapay"
       });
       console.log(`[Clapay Webhook] Transaction payin ${tx.reference} \u2192 ${newStatus} (cr\xE9dit\xE9: ${credited})`);
-    } else if (tx.type === "payout" && (newStatus === "failed" || newStatus === "cancelled")) {
+    } else if (tx.type === "payout" && (newStatus === "failed" || newStatus === "cancelled" || newStatus === "expired")) {
       const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
       const refunded = await db.transaction(async (trx) => {
         const [row] = await trx.update(transactionsTable).set({
@@ -282967,7 +283119,7 @@ router15.post("/webhooks/clapay", async (req, res) => {
           updatedAt: /* @__PURE__ */ new Date()
         }).where(and(
           eq(transactionsTable.id, tx.id),
-          sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`
+          sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success', 'reversed')`
         )).returning();
         if (!row) return false;
         await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${totalDebit}` }).where(eq(walletsTable.id, tx.walletId));
@@ -282997,12 +283149,22 @@ router15.post("/webhooks/clapay", async (req, res) => {
         console.log(`[Clapay Webhook] Payout ${tx.reference} d\xE9j\xE0 r\xE9gl\xE9 \u2014 remboursement ignor\xE9 (idempotence)`);
       }
     } else {
-      await db.update(transactionsTable).set({
+      const [updated] = await db.update(transactionsTable).set({
         status: newStatus,
         gatewayReference: event.clapay_reference,
         failureReason: event.failure_reason ?? null,
         updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq(transactionsTable.id, tx.id));
+      }).where(and(
+        eq(transactionsTable.id, tx.id),
+        sql`${transactionsTable.status} NOT IN ('success', 'failed', 'reversed', 'cancelled', 'expired')`
+      )).returning({ id: transactionsTable.id });
+      if (!updated) {
+        const [current] = await db.select({ status: transactionsTable.status }).from(transactionsTable).where(eq(transactionsTable.id, tx.id));
+        if (current?.status !== newStatus) {
+          console.warn(`[Clapay Webhook] Statut ${newStatus} ignor\xE9 pour ${tx.reference}; \xE9tat final actuel: ${current?.status ?? "inconnu"}`);
+          return;
+        }
+      }
     }
     if (tx.type === "payout" && tx.reference.startsWith("REV-")) {
       const revStatus = newStatus === "success" ? "completed" : newStatus === "failed" || newStatus === "cancelled" ? "failed" : "pending";

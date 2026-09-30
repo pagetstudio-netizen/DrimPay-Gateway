@@ -39,8 +39,8 @@ import { sendContractEmail, sendKybProcessingEmail } from "../lib/mailer";
 import { sendWhatsAppContractNotification } from "../lib/whatsapp";
 import { uploadKybDocument, downloadContractTemplate, uploadPaymentLinkImage } from "../lib/storage";
 import { withRetry } from "../lib/retry";
-import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, checkOperatorAvailable, listActiveOperators, type AggregatorCode } from "../lib/aggregator-router";
-import { ClapayClient, ClapayError } from "../lib/clapay";
+import { resolveAggregator, routePayout, AggregatorNotConfiguredError, pollUntilSettled, CLAPAY_PAYOUT_POLL_OPTIONS, checkOperatorAvailable, listActiveOperators, type AggregatorCode } from "../lib/aggregator-router";
+import { ClapayClient, ClapayError, getClapayClient, isClapayConfigured } from "../lib/clapay";
 import { PayDunyaClient, PayDunyaError } from "../lib/paydunya";
 import { BabimoClient, BabimoError, isBabimoPayoutSupported } from "../lib/babimo";
 import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
@@ -431,6 +431,15 @@ router.get("/dashboard/transactions", requireAuth, async (req, res) => {
   });
 });
 
+function isClapayGatewaySnapshot(snapshot: string | null | undefined): boolean {
+  if (!snapshot) return false;
+  try {
+    return JSON.parse(snapshot)?.gateway === "clapay";
+  } catch {
+    return /"gateway"\s*:\s*"clapay"/i.test(snapshot);
+  }
+}
+
 router.get("/dashboard/payments", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
@@ -467,10 +476,183 @@ router.get("/dashboard/payments", requireAuth, async (req, res) => {
     .where(and(...conditions));
 
   res.json({
-    transactions: txs.map((tx) => sanitizeMerchantTransaction(tx)),
+    transactions: txs.map((tx) => ({
+      ...sanitizeMerchantTransaction(tx),
+      clapayStatusCheckAvailable:
+        tx.type === "payout" &&
+        tx.mode === "live" &&
+        (tx.status === "pending" || tx.status === "processing") &&
+        !!(tx.externalRef || tx.gatewayReference) &&
+        isClapayGatewaySnapshot(tx.gatewayPayload),
+    })),
     total,
     page: pageNum,
     limit: limitNum,
+  });
+});
+
+router.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
+  const txId = Number.parseInt(req.params.id, 10);
+
+  if (!Number.isSafeInteger(txId) || txId <= 0) {
+    res.status(400).json({ error: "Identifiant de transaction invalide." });
+    return;
+  }
+
+  const [tx] = await db
+    .select()
+    .from(transactionsTable)
+    .where(and(
+      eq(transactionsTable.id, txId),
+      eq(transactionsTable.userId, userId),
+      eq(transactionsTable.mode, currentMode),
+    ));
+
+  if (!tx) {
+    res.status(404).json({ error: "Transaction introuvable." });
+    return;
+  }
+  if (
+    tx.type !== "payout" ||
+    tx.mode !== "live" ||
+    !isClapayGatewaySnapshot(tx.gatewayPayload)
+  ) {
+    res.status(409).json({ error: "Cette transaction n'est pas un retrait Clapay vérifiable." });
+    return;
+  }
+  if (tx.status !== "pending" && tx.status !== "processing") {
+    res.json({
+      providerStatus: tx.status,
+      transactionStatus: tx.status,
+      alreadySettled: true,
+    });
+    return;
+  }
+
+  const providerReference = tx.externalRef || tx.gatewayReference;
+  if (!providerReference) {
+    res.status(409).json({ error: "La référence Clapay de cette transaction est manquante." });
+    return;
+  }
+  if (!isClapayConfigured()) {
+    res.status(503).json({ error: "La vérification Clapay est temporairement indisponible." });
+    return;
+  }
+
+  let statusCheck;
+  try {
+    statusCheck = await getClapayClient().getStatus(providerReference);
+  } catch (err: any) {
+    console.warn(`[Clapay Manual Status] Vérification échouée pour ${tx.reference}: ${err?.message ?? "erreur fournisseur"}`);
+    res.status(502).json({ error: "Clapay ne peut pas être contacté pour le moment. Réessayez." });
+    return;
+  }
+
+  if (statusCheck.our_reference && statusCheck.our_reference !== tx.reference) {
+    console.warn(`[Clapay Manual Status] Référence interne incohérente pour la transaction ${tx.id}`);
+    res.status(409).json({ error: "Clapay a renvoyé une référence de transaction différente. Aucun statut n'a été modifié." });
+    return;
+  }
+
+  const providerStatus = statusCheck.status;
+  const terminalStatus = ["success", "failed", "cancelled", "expired"].includes(providerStatus);
+  if (!terminalStatus) {
+    const [updated] = await db
+      .update(transactionsTable)
+      .set({
+        gatewayReference: statusCheck.clapay_reference || tx.gatewayReference,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(transactionsTable.id, tx.id),
+        sql`${transactionsTable.status} IN ('pending', 'processing')`,
+      ))
+      .returning({ status: transactionsTable.status });
+
+    res.json({
+      providerStatus,
+      transactionStatus: updated?.status ?? tx.status,
+      gatewayReference: statusCheck.clapay_reference || tx.gatewayReference,
+    });
+    return;
+  }
+
+  const failureReason = statusCheck.failure_reason ?? "Rejeté par le fournisseur";
+  const failed = providerStatus !== "success";
+  const totalDebit = parseFloat(tx.amount) + parseFloat(tx.fee);
+  const settlement = await db.transaction(async (trx) => {
+    const [updated] = await trx
+      .update(transactionsTable)
+      .set({
+        status: providerStatus as any,
+        gatewayReference: statusCheck.clapay_reference || providerReference,
+        failureReason: failed ? failureReason : null,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(transactionsTable.id, tx.id),
+        sql`${transactionsTable.status} NOT IN ('success', 'failed', 'reversed', 'cancelled', 'expired')`,
+      ))
+      .returning({ id: transactionsTable.id });
+
+    if (!updated) {
+      const [current] = await trx
+        .select({ status: transactionsTable.status })
+        .from(transactionsTable)
+        .where(eq(transactionsTable.id, tx.id));
+
+      if (tx.reference.startsWith("REV-") && current?.status === providerStatus) {
+        await trx
+          .update(reversementsTable)
+          .set({
+            status: failed ? "failed" : "completed",
+            ...(failed ? { failureReason } : {}),
+          })
+          .where(eq(reversementsTable.reference, tx.reference));
+      }
+
+      return {
+        applied: false,
+        transactionStatus: current?.status ?? tx.status,
+      };
+    }
+
+    if (failed) {
+      await trx
+        .update(walletsTable)
+        .set({ balance: sql`${walletsTable.balance} + ${totalDebit}` })
+        .where(eq(walletsTable.id, tx.walletId));
+    }
+
+    if (tx.reference.startsWith("REV-")) {
+      await trx
+        .update(reversementsTable)
+        .set({
+          status: failed ? "failed" : "completed",
+          ...(failed ? { failureReason } : {}),
+        })
+        .where(eq(reversementsTable.reference, tx.reference));
+    }
+
+    return { applied: true, transactionStatus: providerStatus };
+  });
+
+  if (!settlement.applied && settlement.transactionStatus !== providerStatus) {
+    res.status(409).json({
+      error: "Le statut Clapay diffère du statut déjà enregistré. La transaction n'a pas été modifiée.",
+      providerStatus,
+      transactionStatus: settlement.transactionStatus,
+    });
+    return;
+  }
+
+  res.json({
+    providerStatus,
+    transactionStatus: settlement.transactionStatus,
+    gatewayReference: statusCheck.clapay_reference || providerReference,
+    reconciled: settlement.applied,
   });
 });
 
@@ -1015,7 +1197,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
               .set({ status: statusCheck.status as any, failureReason: statusCheck.failureReason ?? "Rejeté par le fournisseur", externalRef: gatewayRef, updatedAt: new Date() })
               .where(and(
                 eq(transactionsTable.id, tx.id),
-                sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`,
+                 sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success', 'reversed')`,
               ))
               .returning();
             if (!row) return false;
@@ -1916,11 +2098,14 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
     (async () => {
       try {
         const { client } = await resolveAggregator(countryCode, operator, "payout");
-        const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, {
-          intervalMs: 3_000,
-          maxDurationMs: 30_000,
-          operation: "payout",
-        });
+        const pollOptions = resolvedAggregator === "clapay"
+          ? CLAPAY_PAYOUT_POLL_OPTIONS
+          : {
+              intervalMs: 3_000,
+              maxDurationMs: 30_000,
+              operation: "payout" as const,
+            };
+        const statusCheck = await pollUntilSettled(resolvedAggregator, client, result.externalRef, pollOptions);
         if (!statusCheck) return;
         console.info(`[Reversement][BG] ${reference} → statut fournisseur: ${statusCheck.status}`);
 
@@ -1931,7 +2116,12 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
           const refunded = await db.transaction(async (trx) => {
             const [row] = await trx
               .update(transactionsTable)
-              .set({ status: statusCheck.status as any, failureReason: statusCheck.failureReason ?? "Rejeté par le fournisseur", updatedAt: new Date() })
+              .set({
+                status: statusCheck.status as any,
+                gatewayReference: statusCheck.gatewayReference,
+                failureReason: statusCheck.failureReason ?? "Rejeté par le fournisseur",
+                updatedAt: new Date(),
+              })
               .where(and(
                 eq(transactionsTable.id, tx.id),
                 sql`${transactionsTable.status} NOT IN ('failed', 'cancelled', 'expired', 'success')`,
@@ -1961,7 +2151,7 @@ router.post("/dashboard/reversements", requireAuth, payoutRateLimiter, async (re
           } catch {}
         } else if (statusCheck.status === "success") {
           await db.update(transactionsTable)
-            .set({ status: "success", updatedAt: new Date() })
+            .set({ status: "success", gatewayReference: statusCheck.gatewayReference, updatedAt: new Date() })
             .where(eq(transactionsTable.id, tx.id));
           await db.update(reversementsTable)
             .set({ status: "completed" })

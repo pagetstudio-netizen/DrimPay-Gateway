@@ -39,6 +39,7 @@ type Tx = {
   gatewayReference?: string;
   mnoReference?: string;
   mode: "sandbox" | "live";
+  clapayStatusCheckAvailable?: boolean;
   failureReason?: string;
   webhookUrl?: string;
   webhookLastStatusCode?: number;
@@ -283,6 +284,8 @@ export default function DashboardPayments() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Tx | null>(null);
+  const [checkingClapayId, setCheckingClapayId] = useState<number | null>(null);
+  const [clapayCheckMessages, setClapayCheckMessages] = useState<Record<number, string>>({});
   const limit = 20;
 
   // ── Attempts ──
@@ -326,6 +329,41 @@ export default function DashboardPayments() {
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const attemptsTotalPages = Math.max(1, Math.ceil(attemptsTotal / ALIMIT));
+
+  const verifyClapayStatus = async (tx: Tx) => {
+    setCheckingClapayId(tx.id);
+    setClapayCheckMessages((current) => ({ ...current, [tx.id]: "" }));
+    try {
+      const response = await fetch(`/api/dashboard/transactions/${tx.id}/verify-clapay-status`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "La vérification Clapay a échoué.");
+      }
+
+      setClapayCheckMessages((current) => ({
+        ...current,
+        [tx.id]: `Clapay : ${data.providerStatus}`,
+      }));
+      setSelected((current) => current?.id === tx.id
+        ? {
+            ...current,
+            status: data.transactionStatus,
+            gatewayReference: data.gatewayReference ?? current.gatewayReference,
+          }
+        : current);
+      await load();
+    } catch (error: any) {
+      setClapayCheckMessages((current) => ({
+        ...current,
+        [tx.id]: error?.message ?? "La vérification Clapay a échoué.",
+      }));
+    } finally {
+      setCheckingClapayId(null);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -448,15 +486,39 @@ export default function DashboardPayments() {
                             {tx.type === "payin" ? "Pay-in" : "Pay-out"}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5"><StatusBadge status={tx.status} /></td>
+                        <td className="px-4 py-3.5">
+                          <StatusBadge status={tx.status} />
+                          {clapayCheckMessages[tx.id] && (
+                            <p className="mt-1 text-[11px] text-muted-foreground">{clapayCheckMessages[tx.id]}</p>
+                          )}
+                        </td>
                         <td className="px-4 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
                           {new Date(tx.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
                         </td>
                         <td className="px-4 py-3.5 text-right">
-                          <Button size="sm" variant="outline" className="h-7 text-xs font-semibold border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                            onClick={(e) => { e.stopPropagation(); setSelected(tx); }}>
-                            Details
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            {tx.clapayStatusCheckAvailable && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs font-semibold"
+                                title="Vérifier le statut chez Clapay"
+                                aria-label="Vérifier le statut chez Clapay"
+                                disabled={checkingClapayId === tx.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void verifyClapayStatus(tx);
+                                }}
+                              >
+                                <RefreshCw className={cn("w-3 h-3 mr-1", checkingClapayId === tx.id && "animate-spin")} />
+                                {checkingClapayId === tx.id ? "Vérification…" : "Vérifier"}
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline" className="h-7 text-xs font-semibold border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                              onClick={(e) => { e.stopPropagation(); setSelected(tx); }}>
+                              Details
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
