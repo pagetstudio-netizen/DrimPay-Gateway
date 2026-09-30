@@ -62,7 +62,7 @@ export default function HowItWorks() {
       {/* ── HERO ────────────────────────────────────────────────── */}
       <div className="pt-32 pb-16">
         <div className="container mx-auto px-4 md:px-8">
-          <motion.div initial="hidden" animate="visible" variants={fadeUp} className="max-w-2xl mb-20">
+          <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mx-auto max-w-2xl mb-20 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#B5F03C]/20 border border-[#B5F03C]/30 mb-6 text-xs font-semibold text-[#3a7a00]">{t.hiw.badge}</div>
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6 text-[#0f0f0f] leading-[1.02]">{t.hiw.title}</h1>
             <p className="text-xl text-[#0f0f0f]/55 leading-relaxed">{t.hiw.desc}</p>

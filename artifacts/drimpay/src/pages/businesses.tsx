@@ -33,7 +33,7 @@ export default function Businesses() {
       {/* ── HERO ────────────────────────────────────────────────── */}
       <div className="pt-32 pb-16">
         <div className="container mx-auto px-4 md:px-8">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mb-20">
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mx-auto max-w-2xl mb-20 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#B5F03C]/20 border border-[#B5F03C]/30 mb-6 text-xs font-semibold text-[#3a7a00]">
               <Building2 className="w-3 h-3" /> {t.businesses.badge}
             </div>
@@ -43,7 +43,7 @@ export default function Businesses() {
 
           {/* ── PROCESS STEPS ───────────────────────────────────────── */}
           <div className="mb-24">
-            <h2 className="text-2xl font-extrabold mb-12 text-[#0f0f0f]">{t.businesses.processTitle}</h2>
+            <h2 className="text-2xl font-extrabold mb-12 text-center text-[#0f0f0f]">{t.businesses.processTitle}</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {t.businesses.steps.map((step, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: i * 0.1 }} className="relative bg-white rounded-2xl p-6 border border-[#E5E3DC]">
@@ -63,7 +63,7 @@ export default function Businesses() {
         <div className="container mx-auto px-4 md:px-8">
           <div className="grid lg:grid-cols-2 gap-12">
             <div>
-              <h2 className="text-2xl font-extrabold mb-8 text-[#0f0f0f]">{t.businesses.docsTitle}</h2>
+              <h2 className="text-2xl font-extrabold mb-8 text-center text-[#0f0f0f]">{t.businesses.docsTitle}</h2>
 
               {/* ── Personal account ──────────────────────────────── */}
               <div className="mb-6 p-5 rounded-2xl border border-[#B5F03C]/40 bg-[#B5F03C]/8">
@@ -118,7 +118,7 @@ export default function Businesses() {
             </div>
 
             <div>
-              <h2 className="text-2xl font-extrabold mb-8 text-[#0f0f0f]">{t.businesses.benefitsTitle}</h2>
+              <h2 className="text-2xl font-extrabold mb-8 text-center text-[#0f0f0f]">{t.businesses.benefitsTitle}</h2>
               <div className="p-8 rounded-2xl border border-[#B5F03C]/40 bg-[#B5F03C]/8 mb-6">
                 <div className="flex items-center gap-3 mb-6">
                   <Star className="w-6 h-6 text-[#3a7a00]" />

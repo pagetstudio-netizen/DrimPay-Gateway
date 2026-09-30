@@ -96,7 +96,7 @@ export default function Contact() {
       <div className="pt-32 pb-20">
         <div className="container mx-auto px-4 md:px-8">
 
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mb-16">
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mx-auto max-w-2xl mb-16 text-center">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6 text-[#0f0f0f] leading-[1.02]">{t.contact.title}</h1>
             <p className="text-xl text-[#0f0f0f]/55">{t.contact.desc}</p>
           </motion.div>

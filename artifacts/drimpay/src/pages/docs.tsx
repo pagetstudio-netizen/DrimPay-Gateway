@@ -49,7 +49,7 @@ export default function Docs() {
             transition={{ duration: 0.5 }}
           >
             {/* ── BRAND CARD ──────────────────────────────────────── */}
-            <div className="inline-flex items-center gap-4 px-5 py-3.5 rounded-2xl border border-[#E5E3DC] bg-white shadow-sm mb-10">
+            <div className="mx-auto inline-flex items-center gap-4 px-5 py-3.5 rounded-2xl border border-[#E5E3DC] bg-white shadow-sm mb-10">
               <div className="w-10 h-10 rounded-xl bg-[#0f0f0f] flex items-center justify-center shrink-0">
                 <img src={apiIcon} alt="DrimPay" className="w-6 h-6 object-contain" />
               </div>
@@ -62,11 +62,11 @@ export default function Docs() {
             </div>
 
             {/* ── HEADER ──────────────────────────────────────────── */}
-            <div className="mb-6 flex items-center gap-4">
+            <div className="mb-6 flex items-center justify-center gap-4">
               <span className="text-xs font-bold uppercase tracking-widest text-[#0f0f0f]/35">{t.docs.badge}</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tighter text-[#0f0f0f]">{t.docs.title}</h1>
-            <p className="text-xl text-[#0f0f0f]/55 mb-14 max-w-2xl leading-relaxed">{t.docs.desc}</p>
+            <h1 className="text-center text-4xl md:text-5xl font-extrabold mb-4 tracking-tighter text-[#0f0f0f]">{t.docs.title}</h1>
+            <p className="mx-auto max-w-2xl text-center text-xl text-[#0f0f0f]/55 mb-14 leading-relaxed">{t.docs.desc}</p>
 
             {/* ── PAYIN / PAYOUT CARDS ────────────────────────────── */}
             <div className="grid md:grid-cols-2 gap-6 mb-16">

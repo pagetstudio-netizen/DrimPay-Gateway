@@ -26,7 +26,7 @@ export default function Privacy() {
     <div className="pt-24 pb-20">
       <div className="container mx-auto px-4 md:px-8 max-w-3xl">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <div className="mb-12">
+          <div className="mb-12 text-center">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{t.privacy.title}</h1>
             <p className="text-muted-foreground">{t.privacy.effectiveDate}</p>
           </div>

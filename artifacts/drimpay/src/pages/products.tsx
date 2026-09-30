@@ -42,17 +42,17 @@ function ProductPage({ config }: { config: ProductConfig }) {
   return (
     <div className="bg-[#F8F6F1] pt-32 pb-24">
       <div className="container mx-auto px-4 md:px-8 max-w-4xl">
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#B5F03C]/20 border border-[#B5F03C]/30 mb-6 text-xs font-semibold text-[#3a7a00]">
             {config.icon} {t ? config.badgeFr : config.badgeEn}
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6 text-[#0f0f0f] leading-[1.02]">
             {t ? config.titleFr : config.titleEn}
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mb-10 leading-relaxed">
+          <p className="mx-auto max-w-2xl text-lg text-muted-foreground mb-10 leading-relaxed">
             {t ? config.subFr : config.subEn}
           </p>
-          <div className="flex flex-wrap gap-4 mb-16">
+          <div className="flex flex-wrap justify-center gap-4 mb-16">
             <Link href="/signup" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0f0f0f] text-white font-semibold hover:bg-black/80 transition-colors">
               {t ? "Créer un compte" : "Create an account"} <ArrowRight className="w-4 h-4" />
             </Link>

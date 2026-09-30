@@ -115,7 +115,7 @@ export default function Countries() {
             variants={stagger}
             initial="hidden"
             animate="visible"
-            className="mb-14"
+            className="mb-14 text-center"
           >
             {/* Badge */}
             <motion.div
@@ -131,14 +131,14 @@ export default function Countries() {
             <motion.h1
               variants={fadeUp}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter mb-5 text-[#0f0f0f] leading-[1.02] max-w-3xl"
+              className="mx-auto max-w-3xl text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter mb-5 text-[#0f0f0f] leading-[1.02]"
             >
               {t.countries.title}
             </motion.h1>
             <motion.p
               variants={fadeUp}
               transition={{ duration: 0.55 }}
-              className="text-lg text-[#0f0f0f]/55 leading-relaxed max-w-2xl"
+              className="mx-auto max-w-2xl text-lg text-[#0f0f0f]/55 leading-relaxed"
             >
               {t.countries.desc}
             </motion.p>

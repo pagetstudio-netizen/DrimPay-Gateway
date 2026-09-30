@@ -110,6 +110,7 @@ export default function About() {
             variants={stagger}
             initial="hidden"
             animate="visible"
+            className="text-center"
           >
             {/* Badge */}
             <motion.div
@@ -125,7 +126,7 @@ export default function About() {
             <motion.h1
               variants={fadeUp}
               transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-              className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tighter mb-7 text-[#0f0f0f] leading-[1.02] max-w-4xl"
+              className="mx-auto max-w-4xl text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tighter mb-7 text-[#0f0f0f] leading-[1.02]"
             >
               {t.about.title}{" "}
               <span className="relative inline-block" style={{ color: "#3a7a00" }}>
@@ -144,7 +145,7 @@ export default function About() {
             <motion.p
               variants={fadeUp}
               transition={{ duration: 0.55, delay: 0.1 }}
-              className="text-lg sm:text-xl text-[#0f0f0f]/55 leading-relaxed max-w-2xl mb-10"
+              className="mx-auto max-w-2xl text-lg sm:text-xl text-[#0f0f0f]/55 leading-relaxed mb-10"
             >
               {t.about.p1}
             </motion.p>
@@ -153,7 +154,7 @@ export default function About() {
             <motion.div
               variants={fadeUp}
               transition={{ duration: 0.5, delay: 0.15 }}
-              className="flex flex-col sm:flex-row gap-3"
+              className="flex flex-col sm:flex-row justify-center gap-3"
             >
               <Link href="/signup">
                 <motion.button
@@ -273,10 +274,10 @@ export default function About() {
             whileInView="visible"
             viewport={viewport}
             transition={{ duration: 0.5 }}
-            className="mb-12"
+            className="mb-12 text-center"
           >
             <p className="text-[#B5F03C] text-xs font-bold uppercase tracking-widest mb-3">Pourquoi nous existons</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight max-w-xl">
+            <h2 className="mx-auto max-w-xl text-3xl sm:text-4xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight">
               Mission & Vision
             </h2>
           </motion.div>
@@ -349,10 +350,10 @@ export default function About() {
             whileInView="visible"
             viewport={viewport}
             transition={{ duration: 0.5 }}
-            className="mb-12"
+            className="mb-12 text-center"
           >
             <p className="text-[#B5F03C] text-xs font-bold uppercase tracking-widest mb-3">Ce qui nous guide</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight max-w-xl">
+            <h2 className="mx-auto max-w-xl text-3xl sm:text-4xl font-extrabold text-[#0f0f0f] leading-tight tracking-tight">
               Nos valeurs fondamentales
             </h2>
           </motion.div>

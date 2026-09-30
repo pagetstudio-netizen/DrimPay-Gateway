@@ -21,7 +21,7 @@ export default function DashboardPreview() {
   return (
     <div className="pt-24 pb-20">
       <div className="container mx-auto px-4 md:px-8">
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-2xl mb-8">
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mx-auto max-w-2xl mb-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border mb-6 text-xs font-medium">Dashboard Preview</div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">Your payment command center.</h1>
           <p className="text-xl text-muted-foreground">This is a preview of the DrimPay merchant dashboard. Create an account to access your real dashboard with live data.</p>
