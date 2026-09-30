@@ -4,16 +4,18 @@ DrimPay is a complete fintech platform — a public marketing/developer site plu
 
 ## Run & Operate
 
+- Replit preview: use the **Start application** workflow (`pnpm install && PORT=5000 node start.cjs`). It serves the public site and API together on port 5000 from the committed build.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
-Required env vars: `SUPABASE_DATABASE_URL`, `SESSION_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`
+Required for database-backed features: `SUPABASE_DATABASE_URL`, `SESSION_SECRET`
 
 > The app uses `SUPABASE_DATABASE_URL` (primary) with `DATABASE_URL` as fallback. Always set `SUPABASE_DATABASE_URL` on any deployment (Plesk, production, etc.).
-> `SUPABASE_SERVICE_ROLE_KEY` is mandatory for KYB document uploads — files are stored exclusively in Supabase Storage (bucket `kyb-documents`). Without it the server will reject document uploads with a 500 error.
+> `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` configure Supabase Storage. The service-role key is mandatory for KYB document uploads (bucket `kyb-documents`); without it, document uploads fail.
+> The public site can render without Supabase, but sign-in, dashboard data, and KYB features need a working Supabase project and its schema.
 
 ## Stack
 
