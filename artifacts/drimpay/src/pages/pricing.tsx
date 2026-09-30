@@ -9,32 +9,80 @@ import { useT, useLang } from "@/lib/i18n";
 import { useSEO, webPageSchema, faqSchema, SITE_URL } from "@/lib/seo";
 
 type CountryRate = { countryCode: string; operator: string; payin: number; payout: number };
+type PlatformFees = {
+  countryRates: CountryRate[];
+  defaultPayin: number | null;
+  defaultPayout: number | null;
+  loading: boolean;
+  error: boolean;
+};
 
 function usePlatformFees() {
-  const [fees, setFees] = useState<{ countryRates: CountryRate[]; loading: boolean; error: boolean }>({
+  const [fees, setFees] = useState<PlatformFees>({
     countryRates: [],
+    defaultPayin: null,
+    defaultPayout: null,
     loading: true,
     error: false,
   });
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/fees", { signal: controller.signal })
-      .then(async response => {
+    let active = true;
+    let controller: AbortController | undefined;
+    const loadFees = async () => {
+      controller?.abort();
+      controller = new AbortController();
+      const requestController = controller;
+      setFees(current => ({ ...current, loading: current.defaultPayin === null, error: false }));
+
+      try {
+        const response = await fetch("/api/fees", {
+          signal: requestController.signal,
+          cache: "no-store",
+        });
         if (!response.ok) throw new Error("Fee schedule unavailable");
         const data = await response.json();
-        if (!Array.isArray(data?.countryRates)) throw new Error("Invalid fee schedule");
+        if (
+          !Array.isArray(data?.countryRates) ||
+          !Number.isFinite(data?.payin) ||
+          !Number.isFinite(data?.payout)
+        ) {
+          throw new Error("Invalid fee schedule");
+        }
         const countryRates = data.countryRates.filter((rate: any) =>
           typeof rate?.countryCode === "string" &&
           typeof rate?.operator === "string" &&
           Number.isFinite(rate?.payin) &&
           Number.isFinite(rate?.payout)
         );
-        setFees({ countryRates, loading: false, error: false });
-      })
-      .catch(error => {
-        if (error?.name !== "AbortError") setFees({ countryRates: [], loading: false, error: true });
-      });
-    return () => controller.abort();
+        if (active) {
+          setFees({
+            countryRates,
+            defaultPayin: data.payin,
+            defaultPayout: data.payout,
+            loading: false,
+            error: false,
+          });
+        }
+      } catch (error: any) {
+        if (active && error?.name !== "AbortError") {
+          setFees(current => ({ ...current, loading: false, error: true }));
+        }
+      }
+    };
+    const refreshOnFocus = () => { void loadFees(); };
+    const refreshWhenVisible = () => {
+      if (!document.hidden) void loadFees();
+    };
+
+    void loadFees();
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      active = false;
+      controller?.abort();
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, []);
   return fees;
 }
@@ -68,13 +116,22 @@ export default function Pricing() {
       ? `${countryName}: ${pairs[0]}`
       : `${countryName}: ${lang === "fr" ? "taux variables selon l’opérateur" : "rates vary by operator"}`;
   }).filter((value): value is string => Boolean(value));
-  const corridorSummary = countrySummaries.join("; ");
-  const ratesSummary = corridorSummary || (lang === "fr"
-    ? "consultez le tableau pour les tarifs actuellement publiés"
-    : "see the table for currently published rates");
+  const ratesSummary = fees.defaultPayin !== null && fees.defaultPayout !== null
+    ? [
+        ...countrySummaries,
+        lang === "fr"
+          ? `Autres pays : ${fmtRate(fees.defaultPayin, lang)} au Pay-in et ${fmtRate(fees.defaultPayout, lang)} au Pay-out par défaut, avant toute règle spécifique de pays ou d’opérateur`
+          : `Other countries: ${fmtRate(fees.defaultPayin, lang)} default for Pay-in and ${fmtRate(fees.defaultPayout, lang)} for Pay-out, before any country- or operator-specific rule`,
+      ].join("; ")
+    : fees.loading
+      ? lang === "fr" ? "Chargement des tarifs actuellement configurés." : "Loading currently configured rates."
+      : fees.error
+        ? lang === "fr" ? "Les tarifs n’ont pas pu être chargés. Réessayez dans quelques instants." : "Rates could not be loaded. Please try again shortly."
+        : lang === "fr" ? "Les tarifs actuels sont indiqués dans le tableau ci-dessous." : "Current rates are listed in the table below.";
+  const pricingDescription = `${t.pricing.desc} ${ratesSummary}`;
   const feeDescription = lang === "fr"
-    ? `Frais Pay-in et Pay-out par pays et opérateur. ${ratesSummary}. Plafond journalier jusqu'à 2 000 000 XOF, selon les conditions applicables chez chaque opérateur.`
-    : `Pay-in and Pay-out fees by country and operator. ${ratesSummary}. Daily cap up to XOF 2,000,000, subject to each operator's applicable limits and terms.`;
+    ? `${pricingDescription} Plafond journalier jusqu'à 2 000 000 XOF, selon les conditions applicables chez chaque opérateur.`
+    : `${pricingDescription} Daily cap up to XOF 2,000,000, subject to each operator's applicable limits and terms.`;
   useSEO({
     title: lang === "fr"
       ? "Tarification DrimPay — frais Pay-in et Pay-out par pays et opérateur"
@@ -120,7 +177,7 @@ export default function Pricing() {
               <Zap className="w-3 h-3" /> {t.pricing.badge}
             </div>
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6 text-[#0f0f0f] leading-[1.02]">{t.pricing.title}</h1>
-            <p className="text-xl text-[#0f0f0f]/55 leading-relaxed">{t.pricing.desc}</p>
+            <p className="text-xl text-[#0f0f0f]/55 leading-relaxed">{pricingDescription}</p>
           </motion.div>
         </div>
       </div>

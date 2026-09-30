@@ -111,7 +111,7 @@ export const fr = {
   pricing: {
     badge: "Tarification Transparente",
     title: "Des frais simples et prévisibles",
-    desc: "Pas de frais cachés. Pas de minimum mensuel. Payez uniquement les transactions réussies. Tous les comptes (entreprise et particulier) accèdent au Pay-in et au Pay-out à un taux variable selon le pays et l’opérateur (tarif de base de 4,5 % au Togo, au Sénégal et au Mali).",
+    desc: "Pas de frais cachés. Pas de minimum mensuel. Payez uniquement les transactions réussies. Tous les comptes (entreprise et particulier) accèdent au Pay-in et au Pay-out; les tarifs de base dépendent du pays et de l’opérateur.",
     mostPopular: "Le plus populaire",
     personalLabel: "Pour les particuliers",
     businessLabel: "Pour les entreprises",

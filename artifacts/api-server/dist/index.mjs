@@ -259905,7 +259905,7 @@ router3.get("/fees", async (_req, res) => {
         payout: override?.payout ?? (countryPayout === null ? payout : countryPayout * 100)
       };
     });
-    res.setHeader("Cache-Control", "public, max-age=60");
+    res.setHeader("Cache-Control", "no-store");
     res.json({ payin, payout, payin_display: `${payin}%`, payout_display: `${payout}%`, countryRates });
   } catch {
     res.status(503).json({ error: "Impossible de charger le bar\xE8me des frais.", countryRates: [] });
