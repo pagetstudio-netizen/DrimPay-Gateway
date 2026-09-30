@@ -3,6 +3,7 @@ import {
   buildBabimoClientReference,
   normalizeBabimoPhone,
 } from "./babimo";
+import { toNowWalletOperatorCode } from "./clapay";
 
 export type GatewayOperation = "payin" | "payout";
 
@@ -31,6 +32,32 @@ export interface GatewayPayloadSnapshotParams {
 export function buildGatewayPayloadSnapshot(
   params: GatewayPayloadSnapshotParams,
 ): Record<string, unknown> {
+  if (params.gateway === "clapay") {
+    const requestBody: Record<string, unknown> = {
+      transaction_id: params.reference,
+      amount: params.amount,
+      callback_url: params.callback_url,
+      country_code: params.country_code,
+      operators_code: [toNowWalletOperatorCode(params.operator)],
+      method: params.operation === "payout" ? "CASHIN" : "MERCHANT",
+      tunnel: "API",
+      additional_infos: {
+        customer_phone: params.phone,
+      },
+    };
+
+    if (params.operation === "payout" || params.return_url) {
+      requestBody.return_url = params.return_url ?? params.callback_url;
+    }
+
+    return {
+      gateway: params.gateway,
+      method: "POST",
+      endpoint: "/init/payment",
+      request_body: requestBody,
+    };
+  }
+
   if (params.gateway === "babimo") {
     const paymentMethod = babimoPaymentMethod(
       params.operator,

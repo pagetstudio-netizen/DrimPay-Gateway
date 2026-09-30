@@ -29,6 +29,7 @@ const schema = z.object({
   countryCode: z.string().min(2, "Pays requis"),
   operator: z.string().min(1, "Opérateur requis"),
   phone: z.string().min(8, "Numéro invalide"),
+  operatorOtp: z.string().max(32).optional(),
   description: z.string().optional(),
   externalRef: z.string().optional(),
 });
@@ -58,7 +59,7 @@ export default function Payout() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { amount: "", countryCode: "", operator: "", phone: "", description: "", externalRef: "" },
+    defaultValues: { amount: "", countryCode: "", operator: "", phone: "", operatorOtp: "", description: "", externalRef: "" },
   });
 
   const fetchData = () => {
@@ -81,11 +82,13 @@ export default function Payout() {
     const c = COUNTRIES.find((c) => c.code === code) ?? null;
     setSelectedCountry(c);
     form.setValue("operator", "");
+    form.setValue("operatorOtp", "");
   };
 
   const selectedWallet = wallets.find((w) => w.countryCode === selectedCountry?.code);
   const watchedCountry = form.watch("countryCode");
   const watchedOperator = form.watch("operator");
+  const otpOperatorSelected = /^(orange(?:\s+money)?|om|telecel)$/i.test(watchedOperator.trim());
 
   useEffect(() => {
     setFeeRate(null);
@@ -133,6 +136,7 @@ export default function Payout() {
         countryCode: values.countryCode,
         operator: values.operator,
         phone: values.phone,
+        operatorOtp: values.operatorOtp?.trim() || undefined,
         description: values.description,
         externalRef: values.externalRef,
       }),
@@ -224,7 +228,10 @@ export default function Payout() {
                         <CountryPicker
                           options={operatorOptions}
                           value={field.value}
-                          onChange={field.onChange}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("operatorOtp", "");
+                          }}
                           placeholder={selectedCountry ? "Sélectionner un opérateur" : "Sélectionnez un pays d'abord"}
                           title="Opérateur Mobile Money"
                           disabled={!selectedCountry}
@@ -238,10 +245,37 @@ export default function Payout() {
                   <FormField control={form.control} name="phone" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Numéro destinataire</FormLabel>
-                      <FormControl><Input placeholder="+228 90 00 00 00" {...field} /></FormControl>
+                      <FormControl>
+                        <Input
+                          placeholder="+228 90 00 00 00"
+                          {...field}
+                          onChange={(event) => {
+                            field.onChange(event);
+                            form.setValue("operatorOtp", "");
+                          }}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
+
+                  {otpOperatorSelected && (
+                    <FormField control={form.control} name="operatorOtp" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Code OTP opérateur (si demandé)</FormLabel>
+                        <FormControl>
+                          <Input
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            placeholder="Saisir le code reçu"
+                            maxLength={32}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
 
                   {/* Montant */}
                   <FormField control={form.control} name="amount" render={({ field }) => (

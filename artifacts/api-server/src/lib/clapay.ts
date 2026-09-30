@@ -8,7 +8,7 @@
  *   CLAPAY_WEBHOOK_SECRET → secret de vérification des webhooks entrants
  *
  * Endpoints Nowallet V3 :
- *   POST /init/payment          → initier un pay-in (collect)
+ *   POST /init/payment          → initier un pay-in (MERCHANT) ou un payout (CASHIN)
  *   POST /check/status/payment  → vérifier le statut (body: { signature })
  *
  * Format body /init/payment :
@@ -34,7 +34,7 @@ import crypto from "crypto";
 // ─── Redact sensitive fields before logging ───────────────────────────────────
 const SENSITIVE_KEYS = new Set([
   "phone", "customer_phone", "email", "customer_email",
-  "customer_firstname", "customer_lastname", "customer_name",
+  "customer_firstname", "customer_lastname", "customer_name", "operator_otp",
   "account_alias", "name",
 ]);
 
@@ -156,6 +156,8 @@ export interface ClapayPayoutRequest {
   reference: string;
   description?: string;
   callback_url: string;
+  return_url?: string;
+  operator_otp?: string;
 }
 
 export interface ClapayPayoutResponse {
@@ -349,16 +351,61 @@ export class ClapayClient {
     };
   }
 
-  // ─── Initiate Pay-Out — Non supporté par Clapay Nowallet V3 ─────────────
+  // ─── Initiate Pay-Out — Nowallet V3 POST /init/payment ────────────────────
   //
-  // L'API Nowallet V3 (spec OAS 3.0) ne comporte aucun endpoint de payout.
-  // Seuls les pay-ins sont supportés programmatiquement.
-  // Pour les retraits, configurez l'opérateur sur PayDunya dans Admin → Opérateurs.
-  async initiatePayout(_params: ClapayPayoutRequest): Promise<ClapayPayoutResponse> {
-    throw new Error(
-      "Clapay ne supporte pas les retraits via API. " +
-      "Modifiez la passerelle de l'opérateur vers PayDunya dans Admin → Opérateurs."
-    );
+  // La documentation distingue method=CASHIN (PAYOUT) de MERCHANT (PAYIN).
+  // Le tunnel API exige un seul operators_code et customer_phone.
+  async initiatePayout(params: ClapayPayoutRequest): Promise<ClapayPayoutResponse> {
+    const operatorCode = toNowWalletOperatorCode(params.operator);
+    const requestBody: Record<string, any> = {
+      transaction_id: params.reference,
+      amount: params.amount,
+      callback_url: params.callback_url,
+      // The DTO marks return_url as required; API mode does not redirect the
+      // beneficiary, so use the callback URL when no separate URL is supplied.
+      return_url: params.return_url ?? params.callback_url,
+      country_code: params.country_code,
+      operators_code: [operatorCode],
+      method: "CASHIN",
+      tunnel: "API",
+      additional_infos: {
+        customer_phone: params.phone,
+      },
+    };
+
+    if (OTP_REQUIRED_OPERATORS.has(operatorCode) && params.operator_otp) {
+      requestBody.operator_otp = params.operator_otp;
+    }
+
+    const raw = await this.request<any>("POST", "/init/payment", requestBody);
+    const statusPayment = String(raw?.status_payment ?? raw?.status ?? "");
+    const normalizedStatus = statusPayment.toUpperCase();
+    const signature: string =
+      raw?.signature ??
+      raw?.id ??
+      raw?.reference ??
+      "";
+    const rejected = raw?.success === false ||
+      ["FAILED", "ERROR", "REJECTED", "EXPIRED", "CANCELLED", "CANCELED"].includes(normalizedStatus);
+    const accepted = raw?.success === true ||
+      ["INITIATED", "PENDING", "PROCESSING", "SUCCESS", "SUCCESSFUL", "COMPLETED"].includes(normalizedStatus) ||
+      !!signature;
+    const success = !rejected && accepted;
+    const mappedStatus = this._mapStatus(statusPayment);
+    const status: ClapayPayoutResponse["status"] =
+      !success || mappedStatus === "expired" || mappedStatus === "cancelled"
+        ? "failed"
+        : mappedStatus;
+
+    return {
+      success,
+      // signature is the unique id used by /check/status/payment. Keep the
+      // merchant reference as fallback so webhook settlement can still match.
+      clapay_reference: signature || params.reference,
+      status,
+      message: raw?.message ?? raw?.observation_error ?? raw?.error ??
+        (!success ? statusPayment || "Clapay rejected payout" : undefined),
+    };
   }
 
   // ─── Check transaction status — POST /check/status/payment ────────────────

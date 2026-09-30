@@ -106907,6 +106907,7 @@ var init_clapay = __esm({
       "customer_firstname",
       "customer_lastname",
       "customer_name",
+      "operator_otp",
       "account_alias",
       "name"
     ]);
@@ -107080,15 +107081,47 @@ var init_clapay = __esm({
           message: raw?.message ?? statusPayment ?? void 0
         };
       }
-      // ─── Initiate Pay-Out — Non supporté par Clapay Nowallet V3 ─────────────
+      // ─── Initiate Pay-Out — Nowallet V3 POST /init/payment ────────────────────
       //
-      // L'API Nowallet V3 (spec OAS 3.0) ne comporte aucun endpoint de payout.
-      // Seuls les pay-ins sont supportés programmatiquement.
-      // Pour les retraits, configurez l'opérateur sur PayDunya dans Admin → Opérateurs.
-      async initiatePayout(_params) {
-        throw new Error(
-          "Clapay ne supporte pas les retraits via API. Modifiez la passerelle de l'op\xE9rateur vers PayDunya dans Admin \u2192 Op\xE9rateurs."
-        );
+      // La documentation distingue method=CASHIN (PAYOUT) de MERCHANT (PAYIN).
+      // Le tunnel API exige un seul operators_code et customer_phone.
+      async initiatePayout(params) {
+        const operatorCode = toNowWalletOperatorCode(params.operator);
+        const requestBody = {
+          transaction_id: params.reference,
+          amount: params.amount,
+          callback_url: params.callback_url,
+          // The DTO marks return_url as required; API mode does not redirect the
+          // beneficiary, so use the callback URL when no separate URL is supplied.
+          return_url: params.return_url ?? params.callback_url,
+          country_code: params.country_code,
+          operators_code: [operatorCode],
+          method: "CASHIN",
+          tunnel: "API",
+          additional_infos: {
+            customer_phone: params.phone
+          }
+        };
+        if (OTP_REQUIRED_OPERATORS.has(operatorCode) && params.operator_otp) {
+          requestBody.operator_otp = params.operator_otp;
+        }
+        const raw = await this.request("POST", "/init/payment", requestBody);
+        const statusPayment = String(raw?.status_payment ?? raw?.status ?? "");
+        const normalizedStatus = statusPayment.toUpperCase();
+        const signature = raw?.signature ?? raw?.id ?? raw?.reference ?? "";
+        const rejected = raw?.success === false || ["FAILED", "ERROR", "REJECTED", "EXPIRED", "CANCELLED", "CANCELED"].includes(normalizedStatus);
+        const accepted = raw?.success === true || ["INITIATED", "PENDING", "PROCESSING", "SUCCESS", "SUCCESSFUL", "COMPLETED"].includes(normalizedStatus) || !!signature;
+        const success2 = !rejected && accepted;
+        const mappedStatus = this._mapStatus(statusPayment);
+        const status = !success2 || mappedStatus === "expired" || mappedStatus === "cancelled" ? "failed" : mappedStatus;
+        return {
+          success: success2,
+          // signature is the unique id used by /check/status/payment. Keep the
+          // merchant reference as fallback so webhook settlement can still match.
+          clapay_reference: signature || params.reference,
+          status,
+          message: raw?.message ?? raw?.observation_error ?? raw?.error ?? (!success2 ? statusPayment || "Clapay rejected payout" : void 0)
+        };
       }
       // ─── Check transaction status — POST /check/status/payment ────────────────
       async getStatus(clapaySignature) {
@@ -278429,7 +278462,31 @@ init_gombo_plus();
 
 // src/lib/gateway-payload.ts
 init_babimo();
+init_clapay();
 function buildGatewayPayloadSnapshot(params) {
+  if (params.gateway === "clapay") {
+    const requestBody = {
+      transaction_id: params.reference,
+      amount: params.amount,
+      callback_url: params.callback_url,
+      country_code: params.country_code,
+      operators_code: [toNowWalletOperatorCode(params.operator)],
+      method: params.operation === "payout" ? "CASHIN" : "MERCHANT",
+      tunnel: "API",
+      additional_infos: {
+        customer_phone: params.phone
+      }
+    };
+    if (params.operation === "payout" || params.return_url) {
+      requestBody.return_url = params.return_url ?? params.callback_url;
+    }
+    return {
+      gateway: params.gateway,
+      method: "POST",
+      endpoint: "/init/payment",
+      request_body: requestBody
+    };
+  }
   if (params.gateway === "babimo") {
     const paymentMethod = babimoPaymentMethod(
       params.operator,
@@ -279261,7 +279318,8 @@ var payoutSchema = external_exports2.object({
   operator: external_exports2.string().min(1),
   phone: external_exports2.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Num\xE9ro de t\xE9l\xE9phone invalide (chiffres uniquement, 8\u201320 caract\xE8res)"),
   description: external_exports2.string().optional(),
-  externalRef: external_exports2.string().optional()
+  externalRef: external_exports2.string().optional(),
+  operatorOtp: external_exports2.string().max(32).optional()
 });
 router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
   const withdrawalLock = await getWithdrawalLockStatus(req.session.userId);
@@ -279296,7 +279354,7 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
   const userId = req.session.userId;
   const [userRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
   const currentMode = req.session.mode ?? "sandbox";
-  const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
+  const { amount, currency, countryCode, operator, phone, description, externalRef, operatorOtp } = parsed.data;
   const opCheck = await checkOperatorAvailable(countryCode, operator, "withdrawals");
   if (!opCheck.ok) {
     res.status(opCheck.status).json({ error: opCheck.error });
@@ -279396,7 +279454,8 @@ router11.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, r
           phone,
           reference,
           callback_url: callbackUrl,
-          description
+          description,
+          operator_otp: operatorOtp
         });
         console.log(`[Payout] \u2190 R\xE9ponse Clapay: ${JSON.stringify(r)}`);
         if (!r.success) throw new ClapayError(r.message ?? "\xC9chec Clapay", 502, r);

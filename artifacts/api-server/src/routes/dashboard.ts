@@ -729,6 +729,7 @@ const payoutSchema = z.object({
   phone: z.string().regex(/^\+?[\d][\d\s\-().]{6,19}$/, "Numéro de téléphone invalide (chiffres uniquement, 8–20 caractères)"),
   description: z.string().optional(),
   externalRef: z.string().optional(),
+  operatorOtp: z.string().max(32).optional(),
 });
 
 router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res) => {
@@ -771,7 +772,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
   const [userRecord] = await db.select({ accountType: usersTable.accountType }).from(usersTable).where(eq(usersTable.id, userId));
 
   const currentMode = (req.session.mode ?? "sandbox") as "sandbox" | "live";
-  const { amount, currency, countryCode, operator, phone, description, externalRef } = parsed.data;
+  const { amount, currency, countryCode, operator, phone, description, externalRef, operatorOtp } = parsed.data;
 
   // Check operator availability
   const opCheck = await checkOperatorAvailable(countryCode, operator, "withdrawals");
@@ -873,7 +874,7 @@ router.post("/dashboard/payout", requireAuth, payoutRateLimiter, async (req, res
       if (aggregator === "clapay") {
         const r = await (client as ClapayClient).initiatePayout({
           amount, currency, country_code: countryCode, operator, phone,
-          reference, callback_url: callbackUrl, description,
+          reference, callback_url: callbackUrl, description, operator_otp: operatorOtp,
         });
         console.log(`[Payout] ← Réponse Clapay: ${JSON.stringify(r)}`);
         if (!r.success) throw new ClapayError(r.message ?? "Échec Clapay", 502, r);

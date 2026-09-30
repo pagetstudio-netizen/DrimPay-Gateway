@@ -253,6 +253,7 @@ export interface PayoutParams {
   reference: string;
   description?: string;
   callback_url: string;
+  operator_otp?: string;
 }
 
 export interface StatusCheckResult {
