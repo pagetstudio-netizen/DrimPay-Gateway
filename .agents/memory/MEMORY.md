@@ -18,3 +18,4 @@
 - [DrimPay API pay-in initiation](drimpay-api-payin-initiation.md) — return the provider payment URL as processing; final settlement remains asynchronous and idempotent.
 - [Post-merge setup hook](post-merge-setup-hook.md) — post-merge automation requires an explicit workspace script path and timeout.
 - [Browser source visibility](browser-source-visibility.md) — frontend code can always be inspected; protect admin data server-side and lazy-load internal screens.
+- [Python shell side effect](replit-python-runtime-side-effect.md) — one-off `python3` use can add a Python module to `.replit`; restore it if the Node workspace does not need it.
