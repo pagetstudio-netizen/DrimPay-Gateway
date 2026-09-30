@@ -68,7 +68,7 @@ function storedPaymentUrl(gatewayPayload: string | null | undefined): string | n
 }
 
 // ─── Auth middleware: session (dashboard) OR Bearer API key ──────────────────
-async function resolveUser(
+export async function resolveUser(
   req: any,
   res: any,
   next: any
@@ -148,7 +148,7 @@ function assertGeoMatch(walletCountry: string, requestCountry: string, res: any)
 }
 
 // ─── Webhook delivery with HMAC + retry ──────────────────────────────────────
-async function deliverWebhook(
+export async function deliverWebhook(
   webhookUrl: string,
   payload: object,
   signatureKey: string,

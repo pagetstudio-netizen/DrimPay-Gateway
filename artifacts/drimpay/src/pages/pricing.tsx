@@ -116,9 +116,21 @@ export default function Pricing() {
       ? `${countryName}: ${pairs[0]}`
       : `${countryName}: ${lang === "fr" ? "taux variables selon l’opérateur" : "rates vary by operator"}`;
   }).filter((value): value is string => Boolean(value));
+  const specialRateRows = fees.countryRates.filter(rate =>
+    ["TG", "SN", "ML"].includes(rate.countryCode.toUpperCase())
+  );
+  const specialRatePairs = [...new Set(specialRateRows.map(rate =>
+    `${fmtRate(rate.payin, lang)} Pay-in / ${fmtRate(rate.payout, lang)} Pay-out`
+  ))];
+  const allSpecialCountriesHaveRates = ["TG", "SN", "ML"].every(code =>
+    specialRateRows.some(rate => rate.countryCode.toUpperCase() === code)
+  );
+  const specialRatesSummary = specialRatePairs.length === 1 && allSpecialCountriesHaveRates
+    ? `${lang === "fr" ? "Togo, Sénégal et Mali" : "Togo, Senegal and Mali"}: ${specialRatePairs[0]}`
+    : countrySummaries.join("; ");
   const ratesSummary = fees.defaultPayin !== null && fees.defaultPayout !== null
     ? [
-        ...countrySummaries,
+        specialRatesSummary,
         lang === "fr"
           ? `Autres pays : ${fmtRate(fees.defaultPayin, lang)} au Pay-in et ${fmtRate(fees.defaultPayout, lang)} au Pay-out par défaut, avant toute règle spécifique de pays ou d’opérateur`
           : `Other countries: ${fmtRate(fees.defaultPayin, lang)} default for Pay-in and ${fmtRate(fees.defaultPayout, lang)} for Pay-out, before any country- or operator-specific rule`,

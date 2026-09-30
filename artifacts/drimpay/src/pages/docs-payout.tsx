@@ -25,7 +25,6 @@ const SECTIONS = [
   { id: "send", label: "Send a Pay-out", group: "ENDPOINTS" },
   { id: "status", label: "Check Status", group: "ENDPOINTS" },
   { id: "list", label: "List Transactions", group: "ENDPOINTS" },
-  { id: "mass", label: "Mass Pay-out", group: "ENDPOINTS" },
   { id: "webhooks", label: "Webhooks", group: "WEBHOOKS" },
   { id: "resend", label: "Resend Webhook", group: "WEBHOOKS" },
   { id: "retry", label: "Retry Logic", group: "WEBHOOKS" },
@@ -118,7 +117,7 @@ export default function DocsPayout() {
 
   const sendExamples: Record<string, string> = {
     "curl": `# Sandbox — utilisez sandbox-api/v2 + clé dp_sandbox_sk_ pour tester
-curl -X POST https://drimpay.com/sandbox-api/v2/payout/send \\
+curl -X POST https://drimpay.com/sandbox-api/v2/payout/initiate \\
   -H "Authorization: Bearer dp_sandbox_sk_xxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -127,13 +126,13 @@ curl -X POST https://drimpay.com/sandbox-api/v2/payout/send \\
     "country_code": "SN",
     "operator": "orange",
     "phone": "+221770000000",
-    "order_id": "PAYOUT-20240501-042",
+    "external_ref": "PAYOUT-20240501-042",
     "webhook_url": "https://yourapp.com/webhook/drimpay",
     "description": "Supplier payment May 2026"
   }'
 
 # Live — remplacez par api/v2 + clé dp_live_sk_ en production
-# curl -X POST https://drimpay.com/api/v2/payout/send \\
+# curl -X POST https://drimpay.com/api/v2/payout/initiate \\
 #   -H "Authorization: Bearer dp_live_sk_xxxxxxxxxxxxxxxx" ...`,
     "node.js": `// Sandbox: use sandbox-api/v2 + dp_sandbox_sk_ key for testing
 // Live:    use api/v2       + dp_live_sk_    key in production
@@ -141,7 +140,7 @@ const BASE_URL = "https://drimpay.com/sandbox-api/v2"; // ← change to api/v2 f
 const API_KEY  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx";      // ← your sandbox key
 
 const response = await fetch(
-  \`\${BASE_URL}/payout/send\`,
+  \`\${BASE_URL}/payout/initiate\`,
   {
     method: "POST",
     headers: {
@@ -154,7 +153,7 @@ const response = await fetch(
       country_code: "SN",
       operator: "orange",
       phone: "+221770000000",
-      order_id: "PAYOUT-20240501-042",
+      external_ref: "PAYOUT-20240501-042",
       webhook_url: "https://yourapp.com/webhook/drimpay",
       description: "Supplier payment May 2026",
     }),
@@ -168,7 +167,7 @@ console.log(data.reference); // SN-X9Y8Z7W6V5U4...`,
 $base_url = "https://drimpay.com/sandbox-api/v2"; // ← change to api/v2 for live
 $api_key  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx";      // ← your sandbox key
 
-$ch = curl_init("$base_url/payout/send");
+$ch = curl_init("$base_url/payout/initiate");
 curl_setopt_array($ch, [
   CURLOPT_POST => true,
   CURLOPT_RETURNTRANSFER => true,
@@ -182,7 +181,7 @@ curl_setopt_array($ch, [
     "country_code"=> "SN",
     "operator"    => "orange",
     "phone"       => "+221770000000",
-    "order_id"    => "PAYOUT-20240501-042",
+    "external_ref"=> "PAYOUT-20240501-042",
     "webhook_url" => "https://yourapp.com/webhook/drimpay",
     "description" => "Supplier payment May 2026",
   ]),
@@ -197,7 +196,7 @@ BASE_URL = "https://drimpay.com/sandbox-api/v2"  # ← change to api/v2 for live
 API_KEY  = "dp_sandbox_sk_xxxxxxxxxxxxxxxx"       # ← your sandbox key
 
 response = requests.post(
-    f"{BASE_URL}/payout/send",
+    f"{BASE_URL}/payout/initiate",
     headers={
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
@@ -208,7 +207,7 @@ response = requests.post(
         "country_code": "SN",
         "operator": "orange",
         "phone": "+221770000000",
-        "order_id": "PAYOUT-20240501-042",
+        "external_ref": "PAYOUT-20240501-042",
         "webhook_url": "https://yourapp.com/webhook/drimpay",
         "description": "Supplier payment May 2026",
     },
@@ -343,8 +342,8 @@ print(data["reference"])`,
 
             <section id="introduction" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-orange-400" /> Introduction</h2>
-              <p className="text-muted-foreground leading-relaxed mb-4">
-                The DrimPay Pay-out API enables you to push money directly to any Mobile Money wallet. This is ideal for supplier payments, agent commissions, salary disbursements, customer refunds, and mass payroll.
+      <p className="text-muted-foreground leading-relaxed mb-4">
+                The DrimPay Pay-out API enables you to send money directly to a Mobile Money wallet. Use it for individual supplier payments, commissions, and customer refunds.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 Funds are debited from your <strong className="text-foreground">country-specific wallet</strong>. You must have an active wallet with sufficient balance in the destination country before initiating a pay-out. Pay-out is available to <strong className="text-foreground">all accounts</strong> (personal &amp; business). DrimPay charges the effective country/operator rate ({payoutFeeLabel}) per transaction. The beneficiary receives exactly <strong className="text-foreground">amount</strong>; the total deducted from your wallet is <strong className="text-foreground">amount + fee</strong>.
@@ -359,8 +358,7 @@ print(data["reference"])`,
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   { icon: Zap, title: "Near-instant delivery", desc: "Funds arrive on the recipient's phone within minutes" },
-                  { icon: Users, title: "Mass disbursement", desc: "Send to up to 50,000 recipients in a single batch request" },
-                  { icon: Shield, title: "Idempotent & safe", desc: "Unique order_id prevents duplicate payouts" },
+                  { icon: Shield, title: "Idempotent & safe", desc: "A unique external_ref prevents duplicate payouts" },
                 ].map(({ icon: Icon, title, desc }) => (
                   <div key={title} className="p-4 rounded-xl border border-border bg-card">
                     <Icon className="w-5 h-5 text-orange-400 mb-2" />
@@ -408,55 +406,35 @@ print(data["reference"])`,
 
             <section id="sandbox" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Terminal className="w-5 h-5 text-orange-400" /> Sandbox / Test Mode</h2>
-              <p className="text-muted-foreground mb-4">Sandbox wallets are pre-funded with test credits. Use these phone numbers to simulate outcomes:</p>
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b border-border bg-muted/20">
-                    <th className="text-left px-4 py-3 font-semibold">Phone number</th>
-                    <th className="text-left px-4 py-3 font-semibold">Simulates</th>
-                    <th className="text-left px-4 py-3 font-semibold">Result</th>
-                  </tr></thead>
-                  <tbody>
-                    {[
-                      ["+22190000001", "Successful disbursement", "success"],
-                      ["+22190000002", "Recipient account inactive", "failed"],
-                      ["+22190000003", "Network timeout", "failed"],
-                      ["+22190000004", "Invalid phone number", "failed"],
-                      ["+22190000005", "Slow delivery (45s)", "success"],
-                    ].map(([phone, sim, res]) => (
-                      <tr key={phone} className="border-b border-border/50 last:border-0">
-                        <td className="px-4 py-3 font-mono text-xs text-orange-400">{phone}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{sim}</td>
-                        <td className="px-4 py-3"><Badge color={res === "success" ? "green" : "red"}>{res}</Badge></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
+                <p className="text-sm text-muted-foreground">Sandbox payouts are simulated: no mobile-money provider is contacted and the response is marked successful immediately. The payout still requires an active Sandbox wallet with enough funds. Sandbox mode does not currently simulate provider rejection using special phone numbers.</p>
               </div>
             </section>
 
             <section id="request" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Code className="w-5 h-5 text-orange-400" /> Request Format</h2>
-              <p className="text-muted-foreground mb-4">All requests must use <code className="text-primary font-mono text-sm">Content-Type: application/json</code>. Use a unique <code className="text-primary font-mono text-sm">order_id</code> per payout for idempotency — retrying with the same ID returns the original response without sending money twice.</p>
+              <p className="text-muted-foreground mb-4">All requests must use <code className="text-primary font-mono text-sm">Content-Type: application/json</code>. Send a unique <code className="text-primary font-mono text-sm">external_ref</code> for idempotency. The compatibility alias <code className="text-primary font-mono text-sm">order_id</code> is also accepted; if both are sent, they must match. Retrying the same request returns the existing payout rather than sending money twice.</p>
             </section>
 
             <section id="response" className="mb-14 scroll-mt-20">
               <h2 className="text-2xl font-bold mb-4">Response Format</h2>
-              <p className="text-muted-foreground mb-4">Successful responses return HTTP <Badge color="green">201</Badge>. The beneficiary receives exactly the requested <strong className="text-foreground">amount</strong>. The merchant pays the fee, so the wallet debit is <strong className="text-foreground">amount + fee</strong>.</p>
+              <p className="text-muted-foreground mb-4">A new payout returns HTTP <Badge color="green">201</Badge>; an identical idempotent retry returns HTTP <Badge color="blue">200</Badge>. Live payouts are returned as <code className="font-mono text-primary">processing</code> after the provider accepts them; Sandbox payouts are simulated as <code className="font-mono text-primary">success</code>. The beneficiary receives the requested <strong className="text-foreground">amount</strong>; the wallet debit is <strong className="text-foreground">amount + fee</strong>.</p>
               <CodeBlock lang="json" code={`{
   "reference": "SN-X9Y8Z7W6V5U4T3S2R1Q0P9O8",
+  "external_ref": "PAYOUT-20240501-042",
   "order_id": "PAYOUT-20240501-042",
-  "status": "pending",
+  "status": "processing",
   "amount": 10000,
   "fee": ${fees?.payout == null ? "—" : Math.round(10000 * fees.payout / 100)},
-  "total_debited": ${fees?.payout == null ? "—" : 10000 + Math.round(10000 * fees.payout / 100)},
+  "total_debit": ${fees?.payout == null ? "—" : 10000 + Math.round(10000 * fees.payout / 100)},
   "currency": "XOF",
   "country_code": "SN",
   "operator": "orange",
   "phone": "+221770000000",
-  "wallet_balance_after": 89700,
   "mode": "live",
-  "created_at": "2026-05-06T09:00:00.000Z"
+  "gateway_reference": "provider-reference",
+  "created_at": "2026-05-06T09:00:00.000Z",
+  "idempotent": false
 }`} />
             </section>
 

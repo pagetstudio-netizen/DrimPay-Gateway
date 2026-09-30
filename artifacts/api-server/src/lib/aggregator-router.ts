@@ -554,8 +554,12 @@ export async function routePayin(params: PayinParams): Promise<NormalizedPayinRe
   }
 }
 
-export async function routePayout(params: PayoutParams): Promise<NormalizedPayoutResult> {
-  const { aggregator, client } = await resolveAggregator(params.country_code, params.operator, "payout");
+export async function routePayout(
+  params: PayoutParams,
+  resolvedRoute?: RouteResult,
+): Promise<NormalizedPayoutResult> {
+  const { aggregator, client } = resolvedRoute
+    ?? await resolveAggregator(params.country_code, params.operator, "payout");
 
   if (aggregator === "clapay") {
     const c = client as ClapayClient;
