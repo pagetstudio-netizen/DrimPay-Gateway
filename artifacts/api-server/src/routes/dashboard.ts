@@ -93,7 +93,7 @@ router.get("/dashboard/mode", requireAuth, async (req, res) => {
   const [user] = await db
     .select({ dashboardMode: usersTable.dashboardMode })
     .from(usersTable)
-    .where(eq(usersTable.id, req.session.userId))
+    .where(eq(usersTable.id, req.session.userId!))
     .limit(1);
   if (!user) {
     res.status(401).json({ error: "Authentication required" });
@@ -136,7 +136,7 @@ router.post("/dashboard/mode", requireAuth, async (req, res) => {
   const [user] = await db
     .update(usersTable)
     .set({ dashboardMode: mode })
-    .where(eq(usersTable.id, req.session.userId))
+    .where(eq(usersTable.id, req.session.userId!))
     .returning({ id: usersTable.id });
   if (!user) {
     res.status(401).json({ error: "Authentication required" });
