@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CLAPAY_PAYIN_POLL_OPTIONS,
   sendPayinProcessingResponse,
   startPayinStatusPolling,
 } from "../src/lib/payin-response";
@@ -78,4 +79,35 @@ test("returns the Wave payment URL before blocked status polling settles", async
   releasePolling();
   await settlementFinished;
   assert.equal(settlementCalled, true);
+});
+
+test("Clapay pay-in status checks start after seven seconds and stop after five attempts", async () => {
+  let receivedOptions: unknown;
+  let resolvePollingComplete!: () => void;
+  const pollingComplete = new Promise<void>((resolve) => {
+    resolvePollingComplete = resolve;
+  });
+
+  startPayinStatusPolling({
+    aggregator: "clapay",
+    client: { name: "clapay-test-client" },
+    externalRef: "clapay-provider-reference",
+    transactionId: 43,
+    reference: "TG-TEST-CLAPAY",
+  }, {
+    pollUntilSettled: async (_aggregator, _client, _reference, options) => {
+      receivedOptions = options;
+      return {
+        status: "processing",
+        gatewayReference: "clapay-provider-reference",
+      };
+    },
+    settlePayinStatus: async (params) => {
+      assert.equal(params.status, "processing");
+      resolvePollingComplete();
+    },
+  });
+
+  await pollingComplete;
+  assert.deepEqual(receivedOptions, CLAPAY_PAYIN_POLL_OPTIONS);
 });

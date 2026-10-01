@@ -279318,17 +279318,22 @@ init_babimo();
 init_gombo_plus();
 
 // src/lib/payin-response.ts
+var CLAPAY_PAYIN_POLL_OPTIONS = {
+  intervalMs: 7e3,
+  maxDurationMs: 6e4,
+  initialDelayMs: 7e3,
+  maxAttempts: 5,
+  operation: "payin"
+};
 function startPayinStatusPolling(params, dependencies) {
   void (async () => {
     try {
+      const pollingOptions = params.aggregator === "clapay" ? CLAPAY_PAYIN_POLL_OPTIONS : { intervalMs: 4e3, maxDurationMs: 2e4 };
       const statusCheck = await dependencies.pollUntilSettled(
         params.aggregator,
         params.client,
         params.externalRef,
-        {
-          intervalMs: 4e3,
-          maxDurationMs: 2e4
-        }
+        pollingOptions
       );
       await dependencies.settlePayinStatus({
         txId: params.transactionId,

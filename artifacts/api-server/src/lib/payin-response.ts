@@ -1,15 +1,28 @@
 import type { AggregatorCode, StatusCheckResult } from "./aggregator-router";
 import type { SettlePayinParams } from "./payin-settlement";
 
+export const CLAPAY_PAYIN_POLL_OPTIONS = {
+  intervalMs: 7_000,
+  maxDurationMs: 60_000,
+  initialDelayMs: 7_000,
+  maxAttempts: 5,
+  operation: "payin" as const,
+};
+
+export interface PayinPollingOptions {
+  intervalMs: number;
+  maxDurationMs: number;
+  initialDelayMs?: number;
+  maxAttempts?: number;
+  operation?: "payin" | "payout";
+}
+
 export interface PayinPollingDependencies {
   pollUntilSettled: (
     aggregator: AggregatorCode,
     client: unknown,
     gatewayReference: string,
-    options: {
-      intervalMs: number;
-      maxDurationMs: number;
-    },
+    options: PayinPollingOptions,
   ) => Promise<StatusCheckResult | null>;
   settlePayinStatus: (params: SettlePayinParams) => Promise<unknown>;
 }
@@ -33,14 +46,14 @@ export function startPayinStatusPolling(
 ): void {
   void (async () => {
     try {
+      const pollingOptions = params.aggregator === "clapay"
+        ? CLAPAY_PAYIN_POLL_OPTIONS
+        : { intervalMs: 4_000, maxDurationMs: 20_000 };
       const statusCheck = await dependencies.pollUntilSettled(
         params.aggregator,
         params.client,
         params.externalRef,
-        {
-          intervalMs: 4_000,
-          maxDurationMs: 20_000,
-        },
+        pollingOptions,
       );
 
       await dependencies.settlePayinStatus({
