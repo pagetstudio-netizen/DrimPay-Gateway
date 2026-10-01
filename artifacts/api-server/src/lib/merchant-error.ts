@@ -19,8 +19,16 @@ const FAILURE_STATUSES = new Set(["failed", "cancelled", "expired"]);
  * La raison technique reste disponible dans la ligne DB pour l'administration.
  */
 export function sanitizeMerchantTransaction<T extends Record<string, unknown>>(transaction: T) {
-  const { failureReason: _failureReason, ...safeTransaction } = transaction;
-  return safeTransaction;
+  const {
+    failureReason: _failureReason,
+    gatewayPayload,
+    ...safeTransaction
+  } = transaction;
+
+  return {
+    ...safeTransaction,
+    gatewayName: merchantGatewayName(gatewayPayload),
+  };
 }
 
 export function merchantFailureLabel(status: string, failureReason?: unknown) {
