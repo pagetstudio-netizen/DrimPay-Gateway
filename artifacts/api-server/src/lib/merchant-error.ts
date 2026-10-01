@@ -1,9 +1,8 @@
 /**
  * Message générique renvoyé aux marchands/clients en cas d'échec de transaction.
  *
- * Le nom du prestataire (Clapay, PayDunya) et le message d'erreur brut du
- * fournisseur ne doivent JAMAIS apparaître dans une réponse API ou une page
- * publique. La vraie raison de l'échec reste stockée dans
+ * Les noms et messages bruts du fournisseur ne doivent pas apparaître dans les
+ * réponses marchandes. La vraie raison de l'échec reste stockée dans
  * `transactions.failureReason` et n'est visible que côté admin (dashboard
  * admin / endpoint /admin/transactions), et est envoyée en temps réel dans
  * le groupe Telegram admin via `notifyTransactionFailure`.
@@ -21,14 +20,11 @@ const FAILURE_STATUSES = new Set(["failed", "cancelled", "expired"]);
 export function sanitizeMerchantTransaction<T extends Record<string, unknown>>(transaction: T) {
   const {
     failureReason: _failureReason,
-    gatewayPayload,
+    gatewayPayload: _gatewayPayload,
     ...safeTransaction
   } = transaction;
 
-  return {
-    ...safeTransaction,
-    gatewayName: merchantGatewayName(gatewayPayload),
-  };
+  return safeTransaction;
 }
 
 export function merchantFailureLabel(status: string, failureReason?: unknown) {

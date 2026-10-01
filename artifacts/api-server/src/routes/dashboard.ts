@@ -520,7 +520,7 @@ router.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, asy
     tx.mode !== "live" ||
     !isClapayGatewaySnapshot(tx.gatewayPayload)
   ) {
-    res.status(409).json({ error: "Cette transaction n'est pas un retrait Clapay vérifiable." });
+    res.status(409).json({ error: "Cette transaction ne peut pas être vérifiée avec cette action." });
     return;
   }
   if (tx.status !== "pending" && tx.status !== "processing") {
@@ -534,11 +534,11 @@ router.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, asy
 
   const providerReference = tx.externalRef || tx.gatewayReference;
   if (!providerReference) {
-    res.status(409).json({ error: "La référence Clapay de cette transaction est manquante." });
+    res.status(409).json({ error: "La référence de cette transaction est manquante." });
     return;
   }
   if (!isClapayConfigured()) {
-    res.status(503).json({ error: "La vérification Clapay est temporairement indisponible." });
+    res.status(503).json({ error: "La vérification du statut est temporairement indisponible." });
     return;
   }
 
@@ -547,13 +547,13 @@ router.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, asy
     statusCheck = await getClapayClient().getStatus(providerReference);
   } catch (err: any) {
     console.warn(`[Clapay Manual Status] Vérification échouée pour ${tx.reference}: ${err?.message ?? "erreur fournisseur"}`);
-    res.status(502).json({ error: "Clapay ne peut pas être contacté pour le moment. Réessayez." });
+    res.status(502).json({ error: "Le fournisseur de paiement ne peut pas être contacté pour le moment. Réessayez." });
     return;
   }
 
   if (statusCheck.our_reference && statusCheck.our_reference !== tx.reference) {
     console.warn(`[Clapay Manual Status] Référence interne incohérente pour la transaction ${tx.id}`);
-    res.status(409).json({ error: "Clapay a renvoyé une référence de transaction différente. Aucun statut n'a été modifié." });
+    res.status(409).json({ error: "Le fournisseur a renvoyé une référence de transaction différente. Aucun statut n'a été modifié." });
     return;
   }
 
@@ -642,7 +642,7 @@ router.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, asy
 
   if (!settlement.applied && settlement.transactionStatus !== providerStatus) {
     res.status(409).json({
-      error: "Le statut Clapay diffère du statut déjà enregistré. La transaction n'a pas été modifiée.",
+      error: "Le statut du fournisseur diffère du statut déjà enregistré. La transaction n'a pas été modifiée.",
       providerStatus,
       transactionStatus: settlement.transactionStatus,
     });

@@ -266094,7 +266094,11 @@ var GENERIC_ERROR_MESSAGE = "Une erreur s'est produite. Veuillez r\xE9essayer pl
 var MERCHANT_FAILURE_LABEL = "\xC9chou\xE9";
 var FAILURE_STATUSES = /* @__PURE__ */ new Set(["failed", "cancelled", "expired"]);
 function sanitizeMerchantTransaction(transaction) {
-  const { failureReason: _failureReason, ...safeTransaction } = transaction;
+  const {
+    failureReason: _failureReason,
+    gatewayPayload: _gatewayPayload,
+    ...safeTransaction
+  } = transaction;
   return safeTransaction;
 }
 function merchantFailureLabel(status, failureReason) {
@@ -276138,7 +276142,7 @@ router11.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, a
     return;
   }
   if (tx.type !== "payout" || tx.mode !== "live" || !isClapayGatewaySnapshot(tx.gatewayPayload)) {
-    res.status(409).json({ error: "Cette transaction n'est pas un retrait Clapay v\xE9rifiable." });
+    res.status(409).json({ error: "Cette transaction ne peut pas \xEAtre v\xE9rifi\xE9e avec cette action." });
     return;
   }
   if (tx.status !== "pending" && tx.status !== "processing") {
@@ -276151,11 +276155,11 @@ router11.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, a
   }
   const providerReference = tx.externalRef || tx.gatewayReference;
   if (!providerReference) {
-    res.status(409).json({ error: "La r\xE9f\xE9rence Clapay de cette transaction est manquante." });
+    res.status(409).json({ error: "La r\xE9f\xE9rence de cette transaction est manquante." });
     return;
   }
   if (!isClapayConfigured()) {
-    res.status(503).json({ error: "La v\xE9rification Clapay est temporairement indisponible." });
+    res.status(503).json({ error: "La v\xE9rification du statut est temporairement indisponible." });
     return;
   }
   let statusCheck;
@@ -276163,12 +276167,12 @@ router11.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, a
     statusCheck = await getClapayClient().getStatus(providerReference);
   } catch (err) {
     console.warn(`[Clapay Manual Status] V\xE9rification \xE9chou\xE9e pour ${tx.reference}: ${err?.message ?? "erreur fournisseur"}`);
-    res.status(502).json({ error: "Clapay ne peut pas \xEAtre contact\xE9 pour le moment. R\xE9essayez." });
+    res.status(502).json({ error: "Le fournisseur de paiement ne peut pas \xEAtre contact\xE9 pour le moment. R\xE9essayez." });
     return;
   }
   if (statusCheck.our_reference && statusCheck.our_reference !== tx.reference) {
     console.warn(`[Clapay Manual Status] R\xE9f\xE9rence interne incoh\xE9rente pour la transaction ${tx.id}`);
-    res.status(409).json({ error: "Clapay a renvoy\xE9 une r\xE9f\xE9rence de transaction diff\xE9rente. Aucun statut n'a \xE9t\xE9 modifi\xE9." });
+    res.status(409).json({ error: "Le fournisseur a renvoy\xE9 une r\xE9f\xE9rence de transaction diff\xE9rente. Aucun statut n'a \xE9t\xE9 modifi\xE9." });
     return;
   }
   const providerStatus = statusCheck.status;
@@ -276227,7 +276231,7 @@ router11.post("/dashboard/transactions/:id/verify-clapay-status", requireAuth, a
   });
   if (!settlement.applied && settlement.transactionStatus !== providerStatus) {
     res.status(409).json({
-      error: "Le statut Clapay diff\xE8re du statut d\xE9j\xE0 enregistr\xE9. La transaction n'a pas \xE9t\xE9 modifi\xE9e.",
+      error: "Le statut du fournisseur diff\xE8re du statut d\xE9j\xE0 enregistr\xE9. La transaction n'a pas \xE9t\xE9 modifi\xE9e.",
       providerStatus,
       transactionStatus: settlement.transactionStatus
     });
