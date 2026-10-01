@@ -104,6 +104,16 @@ function fmt(n: string | number, currency: string) {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${currency}`;
 }
 
+function safePaymentUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 function PendingMonitor({ reference, onDone }: { reference: string; onDone: (tx: any) => void }) {
   const [status, setStatus] = useState<TxStatus>("pending");
   const [tx, setTx] = useState<any>(null);
@@ -178,6 +188,10 @@ export default function Payin() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
+  const [clapayInstructions, setClapayInstructions] = useState<{
+    ussdCode: string | null;
+    paymentUrl: string | null;
+  } | null>(null);
   const [error, setError] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<(typeof COUNTRIES)[0] | null>(null);
   const [payinRate, setPayinRate] = useState<number | null>(null);
@@ -223,6 +237,7 @@ export default function Payin() {
     setSubmitting(true);
     setError("");
     setPendingRef(null);
+    setClapayInstructions(null);
     const country = COUNTRIES.find((c) => c.code === values.countryCode);
     const orderId = `ORDER-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
@@ -250,6 +265,14 @@ export default function Payin() {
       return;
     }
 
+    if (data.gateway === "clapay") {
+      setClapayInstructions({
+        ussdCode: typeof data.ussd_code === "string" && data.ussd_code.trim()
+          ? data.ussd_code
+          : null,
+        paymentUrl: safePaymentUrl(data.payment_url),
+      });
+    }
     setPendingRef(data.reference);
     form.reset();
     setSelectedCountry(null);
@@ -285,9 +308,44 @@ export default function Payin() {
                     className="mb-4"
                   >
                     <PendingMonitor reference={pendingRef} onDone={handlePaymentDone} />
+                    {clapayInstructions && (
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="mt-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 text-sm"
+                      >
+                        <p className="font-semibold">Instructions Clapay · Moov Money</p>
+                        {clapayInstructions.ussdCode && (
+                          <p className="mt-2">
+                            Code ou consigne USSD :{" "}
+                            <code className="break-all rounded bg-background px-1.5 py-0.5">
+                              {clapayInstructions.ussdCode}
+                            </code>
+                          </p>
+                        )}
+                        {clapayInstructions.paymentUrl && (
+                          <a
+                            className="mt-2 inline-block text-primary underline underline-offset-2"
+                            href={clapayInstructions.paymentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Ouvrir la page de paiement Clapay
+                          </a>
+                        )}
+                        {!clapayInstructions.ussdCode && !clapayInstructions.paymentUrl && (
+                          <p className="mt-2 text-muted-foreground">
+                            Clapay n’a renvoyé ni code USSD ni lien. Le message de validation sur le téléphone dépend encore de Clapay et de Moov.
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <button
                       className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      onClick={() => setPendingRef(null)}
+                      onClick={() => {
+                        setPendingRef(null);
+                        setClapayInstructions(null);
+                      }}
                     >
                       Nouveau pay-in
                     </button>
