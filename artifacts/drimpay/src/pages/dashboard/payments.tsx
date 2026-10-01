@@ -37,6 +37,7 @@ type Tx = {
   description?: string;
   externalRef?: string;
   gatewayReference?: string;
+  gatewayName?: string | null;
   mnoReference?: string;
   mode: "sandbox" | "live";
   clapayStatusCheckAvailable?: boolean;
@@ -62,6 +63,14 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border", s.cls)}>
       <s.icon className="w-3 h-3" /> {s.label}
+    </span>
+  );
+}
+
+function GatewayBadge({ name }: { name?: string | null }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-300">
+      {name || "Non renseigné"}
     </span>
   );
 }
@@ -181,6 +190,7 @@ function DetailPanel({ tx, onClose }: { tx: Tx; onClose: () => void }) {
 
           <DetailRow label="Reference" value={tx.reference} mono />
           <DetailRow label="Order ID" value={tx.orderId} mono />
+          <DetailRow label="Gateway" value={tx.gatewayName ?? "Non renseigné"} />
 
           <div className="py-3 border-b border-border/50">
             <p className="text-xs text-muted-foreground mb-1">Amount</p>
@@ -452,6 +462,7 @@ export default function DashboardPayments() {
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fee</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
+                      <th className="hidden md:table-cell text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gateway</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
                       <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
@@ -461,13 +472,13 @@ export default function DashboardPayments() {
                     {loading ? (
                       Array.from({ length: 8 }).map((_, i) => (
                         <tr key={i} className="border-b border-border/50">
-                          {Array.from({ length: 7 }).map((_, j) => (
+                          {Array.from({ length: 8 }).map((_, j) => (
                             <td key={j} className="px-4 py-3.5"><div className="h-4 bg-muted/40 rounded animate-pulse" style={{ width: `${60 + j * 10}%` }} /></td>
                           ))}
                         </tr>
                       ))
                     ) : txs.length === 0 ? (
-                      <tr><td colSpan={7}><EmptyStateTd /></td></tr>
+                      <tr><td colSpan={8}><EmptyStateTd /></td></tr>
                     ) : txs.map((tx) => (
                       <tr key={tx.id} className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer" onClick={() => setSelected(tx)}>
                         <td className="px-4 py-3.5">
@@ -485,6 +496,12 @@ export default function DashboardPayments() {
                             {tx.type === "payin" ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
                             {tx.type === "payin" ? "Pay-in" : "Pay-out"}
                           </span>
+                          <div className="mt-1 md:hidden">
+                            <GatewayBadge name={tx.gatewayName} />
+                          </div>
+                        </td>
+                        <td className="hidden md:table-cell px-4 py-3.5">
+                          <GatewayBadge name={tx.gatewayName} />
                         </td>
                         <td className="px-4 py-3.5">
                           <StatusBadge status={tx.status} />
