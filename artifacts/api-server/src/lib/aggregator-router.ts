@@ -337,8 +337,9 @@ async function fetchStatus(
  * Polling du statut chez le fournisseur jusqu'à obtenir un statut définitif.
  *
  * Stratégie recommandée :
- *   - Pay-in  : intervalMs=4000, maxDurationMs=20000 (l'utilisateur doit approuver sur son téléphone)
- *   - Payout  : intervalMs=3000, maxDurationMs=30000 (automatisé, règle en quelques secondes)
+ *   - Pay-in standard : intervalMs=4000, maxDurationMs=20000
+ *   - Pay-in Clapay : 7-second spacing, up to five checks (see payin-response)
+ *   - Payout : cadence configured by the payout route
  *
  * Si le délai max est atteint sans statut définitif, retourne le dernier statut connu
  * (le webhook du fournisseur confirme ensuite le statut final).

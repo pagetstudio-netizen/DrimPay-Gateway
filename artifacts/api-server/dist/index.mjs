@@ -284658,19 +284658,32 @@ router20.post("/pay/:token", async (req, res) => {
       }),
       updatedAt: /* @__PURE__ */ new Date()
     }).where(eq(transactionsTable.id, tx.id));
-    const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
-      intervalMs: 4e3,
-      maxDurationMs: 2e4
-    });
-    const verifiedStatus = statusCheck?.status ?? "processing";
-    const verifiedFailureReason = statusCheck?.failureReason;
-    await settlePayinStatus({
-      txId: tx.id,
-      status: verifiedStatus,
-      gatewayReference: externalRef,
-      failureReason: verifiedFailureReason,
-      gateway: aggregator
-    });
+    let verifiedStatus = "processing";
+    if (aggregator === "clapay") {
+      startPayinStatusPolling({
+        aggregator,
+        client: client2,
+        externalRef,
+        transactionId: tx.id,
+        reference
+      }, {
+        pollUntilSettled,
+        settlePayinStatus
+      });
+    } else {
+      const statusCheck = await pollUntilSettled(aggregator, client2, externalRef, {
+        intervalMs: 4e3,
+        maxDurationMs: 2e4
+      });
+      verifiedStatus = statusCheck?.status ?? "processing";
+      await settlePayinStatus({
+        txId: tx.id,
+        status: verifiedStatus,
+        gatewayReference: externalRef,
+        failureReason: statusCheck?.failureReason,
+        gateway: aggregator
+      });
+    }
     if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
       res.status(502).json({
         error: GENERIC_ERROR_MESSAGE,

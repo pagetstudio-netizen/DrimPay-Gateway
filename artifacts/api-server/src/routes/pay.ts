@@ -31,6 +31,7 @@ import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
 import { buildGatewayPayloadSnapshot } from "../lib/gateway-payload";
 import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
+import { startPayinStatusPolling } from "../lib/payin-response";
 import {
   isPaymentOperationEnabled,
   PAYMENT_UNAVAILABLE_MESSAGE,
@@ -621,22 +622,35 @@ router.post("/pay/:token", async (req: any, res: any) => {
       })
       .where(eq(transactionsTable.id, tx.id));
 
-    // Polling du statut chez le fournisseur (lien de paiement = 4s × max 20s)
-    // L'utilisateur doit approuver sur son téléphone. On poll jusqu'à 20s,
-    // puis le webhook confirme le statut final si toujours en attente.
-    const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
-      intervalMs: 4_000,
-      maxDurationMs: 20_000,
-    });
-    const verifiedStatus = statusCheck?.status ?? "processing";
-    const verifiedFailureReason = statusCheck?.failureReason;
-    await settlePayinStatus({
-      txId: tx.id,
-      status: verifiedStatus as any,
-      gatewayReference: externalRef,
-      failureReason: verifiedFailureReason,
-      gateway: aggregator,
-    });
+    let verifiedStatus: string = "processing";
+    if (aggregator === "clapay") {
+      // Keep the payment-link response fast; verify Clapay status in the
+      // background at the configured 7-second cadence, up to five checks.
+      startPayinStatusPolling({
+        aggregator,
+        client,
+        externalRef,
+        transactionId: tx.id,
+        reference,
+      }, {
+        pollUntilSettled,
+        settlePayinStatus,
+      });
+    } else {
+      // Other providers keep their existing short synchronous verification.
+      const statusCheck = await pollUntilSettled(aggregator, client, externalRef, {
+        intervalMs: 4_000,
+        maxDurationMs: 20_000,
+      });
+      verifiedStatus = statusCheck?.status ?? "processing";
+      await settlePayinStatus({
+        txId: tx.id,
+        status: verifiedStatus as any,
+        gatewayReference: externalRef,
+        failureReason: statusCheck?.failureReason,
+        gateway: aggregator,
+      });
+    }
 
     if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
       res.status(502).json({
