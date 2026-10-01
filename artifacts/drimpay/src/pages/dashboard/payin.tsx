@@ -104,16 +104,6 @@ function fmt(n: string | number, currency: string) {
   return `${parseFloat(String(n)).toLocaleString("fr-FR")} ${currency}`;
 }
 
-function safePaymentUrl(value: unknown): string | null {
-  if (typeof value !== "string" || !value.trim()) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
 function PendingMonitor({ reference, onDone }: { reference: string; onDone: (tx: any) => void }) {
   const [status, setStatus] = useState<TxStatus>("pending");
   const [tx, setTx] = useState<any>(null);
@@ -190,7 +180,6 @@ export default function Payin() {
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [clapayInstructions, setClapayInstructions] = useState<{
     ussdCode: string | null;
-    paymentUrl: string | null;
   } | null>(null);
   const [error, setError] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<(typeof COUNTRIES)[0] | null>(null);
@@ -270,7 +259,6 @@ export default function Payin() {
         ussdCode: typeof data.ussd_code === "string" && data.ussd_code.trim()
           ? data.ussd_code
           : null,
-        paymentUrl: safePaymentUrl(data.payment_url),
       });
     }
     setPendingRef(data.reference);
@@ -317,25 +305,15 @@ export default function Payin() {
                         <p className="font-semibold">Instructions Clapay · Moov Money</p>
                         {clapayInstructions.ussdCode && (
                           <p className="mt-2">
-                            Code ou consigne USSD :{" "}
+                            Code ou consigne USSD renvoyé par Clapay :{" "}
                             <code className="break-all rounded bg-background px-1.5 py-0.5">
                               {clapayInstructions.ussdCode}
                             </code>
                           </p>
                         )}
-                        {clapayInstructions.paymentUrl && (
-                          <a
-                            className="mt-2 inline-block text-primary underline underline-offset-2"
-                            href={clapayInstructions.paymentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Ouvrir la page de paiement Clapay
-                          </a>
-                        )}
-                        {!clapayInstructions.ussdCode && !clapayInstructions.paymentUrl && (
+                        {!clapayInstructions.ussdCode && (
                           <p className="mt-2 text-muted-foreground">
-                            Clapay n’a renvoyé ni code USSD ni lien. Le message de validation sur le téléphone dépend encore de Clapay et de Moov.
+                            Le parcours reste dans DrimPay; aucun lien externe n’est requis. Gardez cette page ouverte : le statut se met à jour automatiquement pendant que la demande Moov est en cours.
                           </p>
                         )}
                       </div>
