@@ -275715,6 +275715,46 @@ async function settlePayinStatus(params) {
   return { credited: true };
 }
 
+// src/lib/payin-response.ts
+var CLAPAY_PAYIN_POLL_OPTIONS = {
+  intervalMs: 7e3,
+  maxDurationMs: 6e4,
+  initialDelayMs: 7e3,
+  maxAttempts: 5,
+  operation: "payin"
+};
+function startPayinStatusPolling(params, dependencies) {
+  void (async () => {
+    try {
+      const pollingOptions = params.aggregator === "clapay" ? CLAPAY_PAYIN_POLL_OPTIONS : { intervalMs: 4e3, maxDurationMs: 2e4 };
+      const statusCheck = await dependencies.pollUntilSettled(
+        params.aggregator,
+        params.client,
+        params.externalRef,
+        pollingOptions
+      );
+      await dependencies.settlePayinStatus({
+        txId: params.transactionId,
+        status: statusCheck?.status ?? "processing",
+        gatewayReference: params.externalRef,
+        failureReason: statusCheck?.failureReason,
+        gateway: params.aggregator
+      });
+    } catch (pollError) {
+      console.warn(
+        `[API Payin] Background status poll failed for ${params.reference}: ${pollError?.message ?? pollError}`
+      );
+    }
+  })();
+}
+function sendPayinProcessingResponse(res, body) {
+  res.status(201).json({
+    ...body,
+    status: "processing",
+    verified_status: "processing"
+  });
+}
+
 // src/lib/base-urls.ts
 function normalizeBase(url2) {
   return url2.trimEnd().replace(/\/+$/, "");
@@ -278270,6 +278310,18 @@ router11.post("/pay/:token", async (req, res) => {
       gatewayRef = r.gomboplus_reference;
     }
     await db.update(transactionsTable).set({ status: "processing", externalRef: gatewayRef, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
+    if (aggregator === "clapay") {
+      startPayinStatusPolling({
+        aggregator,
+        client: client2,
+        externalRef: gatewayRef,
+        transactionId: tx.id,
+        reference
+      }, {
+        pollUntilSettled,
+        settlePayinStatus
+      });
+    }
     await db.update(paymentLinksTable).set({ uses: sql`${paymentLinksTable.uses} + 1` }).where(eq(paymentLinksTable.id, link.id));
     res.status(201).json({
       reference,
@@ -279316,48 +279368,6 @@ init_clapay();
 init_paydunya();
 init_babimo();
 init_gombo_plus();
-
-// src/lib/payin-response.ts
-var CLAPAY_PAYIN_POLL_OPTIONS = {
-  intervalMs: 7e3,
-  maxDurationMs: 6e4,
-  initialDelayMs: 7e3,
-  maxAttempts: 5,
-  operation: "payin"
-};
-function startPayinStatusPolling(params, dependencies) {
-  void (async () => {
-    try {
-      const pollingOptions = params.aggregator === "clapay" ? CLAPAY_PAYIN_POLL_OPTIONS : { intervalMs: 4e3, maxDurationMs: 2e4 };
-      const statusCheck = await dependencies.pollUntilSettled(
-        params.aggregator,
-        params.client,
-        params.externalRef,
-        pollingOptions
-      );
-      await dependencies.settlePayinStatus({
-        txId: params.transactionId,
-        status: statusCheck?.status ?? "processing",
-        gatewayReference: params.externalRef,
-        failureReason: statusCheck?.failureReason,
-        gateway: params.aggregator
-      });
-    } catch (pollError) {
-      console.warn(
-        `[API Payin] Background status poll failed for ${params.reference}: ${pollError?.message ?? pollError}`
-      );
-    }
-  })();
-}
-function sendPayinProcessingResponse(res, body) {
-  res.status(201).json({
-    ...body,
-    status: "processing",
-    verified_status: "processing"
-  });
-}
-
-// src/routes/v2payin.ts
 var router12 = (0, import_express12.Router)();
 var rateLimitStore = /* @__PURE__ */ new Map();
 function checkRateLimit(keyId) {

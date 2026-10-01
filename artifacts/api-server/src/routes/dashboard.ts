@@ -46,6 +46,7 @@ import { BabimoClient, BabimoError, isBabimoPayoutSupported } from "../lib/babim
 import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
 import { buildGatewayPayloadSnapshot } from "../lib/gateway-payload";
 import { settlePayinStatus } from "../lib/payin-settlement";
+import { startPayinStatusPolling } from "../lib/payin-response";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { ensureLatestMerchantWebhookSecret, ensureWebhookSecretForApiKey } from "../lib/webhook-secrets";
 import { getFeeRate } from "../lib/fee-rates";
@@ -2983,6 +2984,19 @@ router.post("/pay/:token", async (req, res) => {
     await db.update(transactionsTable)
       .set({ status: "processing", externalRef: gatewayRef, updatedAt: new Date() })
       .where(eq(transactionsTable.id, tx.id));
+
+    if (aggregator === "clapay") {
+      startPayinStatusPolling({
+        aggregator,
+        client,
+        externalRef: gatewayRef,
+        transactionId: tx.id,
+        reference,
+      }, {
+        pollUntilSettled,
+        settlePayinStatus,
+      });
+    }
 
     await db.update(paymentLinksTable)
       .set({ uses: sql`${paymentLinksTable.uses} + 1` })
