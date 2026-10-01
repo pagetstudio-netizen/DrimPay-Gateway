@@ -214,6 +214,31 @@ export async function resolveAggregator(
   }
 }
 
+/**
+ * Recrée le client du fournisseur enregistré sur une transaction historique.
+ * Ne bascule pas vers le routage courant : celui-ci peut avoir changé depuis
+ * l'initiation du retrait.
+ */
+export async function resolveAggregatorByCode(
+  aggregator: AggregatorCode,
+  countryCode: string,
+): Promise<RouteResult> {
+  if (aggregator === "clapay" && isClapayConfigured()) {
+    return { aggregator, client: getClapayClient(), opAgg: null };
+  }
+  if (aggregator === "paydunya" && isPayDunyaConfigured()) {
+    return { aggregator, client: getPayDunyaClient(), opAgg: null };
+  }
+  if (aggregator === "babimo" && isBabimoConfigured(countryCode)) {
+    return { aggregator, client: getBabimoClient(countryCode), opAgg: null };
+  }
+  if (aggregator === "gomboplus" && isGomboPlusConfigured()) {
+    return { aggregator, client: getGomboPlusClient(), opAgg: null };
+  }
+
+  throw new AggregatorNotConfiguredError(aggregator);
+}
+
 // ─── Status types ─────────────────────────────────────────────────────────────
 
 export interface NormalizedPayinResult {
@@ -331,6 +356,16 @@ async function fetchStatus(
       failureReason: r.failure_reason,
     };
   }
+}
+
+export async function checkAggregatorStatus(
+  aggregator: AggregatorCode,
+  client: ClapayClient | PayDunyaClient | BabimoClient | GomboPlusClient,
+  gatewayRef: string,
+  operation: "payin" | "payout" = "payin",
+): Promise<StatusCheckResult> {
+  if (!gatewayRef.trim()) throw new Error("Référence fournisseur manquante");
+  return fetchStatus(aggregator, client, gatewayRef, operation);
 }
 
 /**

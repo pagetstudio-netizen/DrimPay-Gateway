@@ -145,7 +145,22 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [syncing, setSyncing]     = useState(false);
   const [syncResult, setSyncResult] = useState<{ gatewayStatus: string; credited: boolean; aggregator: string } | null>(null);
+  const [payoutAction, setPayoutAction] = useState<"sync" | "approve" | null>(null);
+  const [payoutActionDone, setPayoutActionDone] = useState(false);
+  const [payoutActionResult, setPayoutActionResult] = useState<{
+    action: string;
+    gatewayStatus?: string;
+    aggregator?: string;
+    message: string;
+  } | null>(null);
   const [tab, setTab]             = useState<"info" | "merchant" | "gateway">("info");
+
+  useEffect(() => {
+    setPayoutAction(null);
+    setPayoutActionDone(false);
+    setPayoutActionResult(null);
+    setResolveError(null);
+  }, [tx.id]);
 
   const resendWebhook = async () => {
     setResending(true);
@@ -184,6 +199,66 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
       setResolveError(e.message);
     }
     setResolving(false);
+  };
+
+  const syncPayout = async () => {
+    setPayoutAction("sync");
+    setPayoutActionResult(null);
+    setResolveError(null);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/transactions/${tx.id}/sync-payout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setResolveError(d.error ?? "Erreur de synchronisation");
+        return;
+      }
+      setPayoutActionResult({
+        action: d.action,
+        gatewayStatus: d.gatewayStatus,
+        aggregator: d.aggregator,
+        message: d.message,
+      });
+      if (d.applied || d.action === "unchanged") {
+        setPayoutActionDone(true);
+        onResolved?.();
+      }
+    } catch (e: any) {
+      setResolveError(e.message ?? "Erreur de synchronisation");
+    } finally {
+      setPayoutAction(null);
+    }
+  };
+
+  const manuallyApprovePayout = async () => {
+    const confirmed = window.confirm(
+      `Valider manuellement le retrait ${tx.reference} ?\n\nAucun fournisseur ne sera interrogé. Confirmez uniquement si le bénéficiaire a bien reçu les fonds. Le wallet du marchand a déjà été débité à la création; aucun nouveau débit ne sera effectué.`,
+    );
+    if (!confirmed) return;
+
+    setPayoutAction("approve");
+    setPayoutActionResult(null);
+    setResolveError(null);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/transactions/${tx.id}/manual-approve-payout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setResolveError(d.error ?? "Erreur de validation");
+        return;
+      }
+      setPayoutActionDone(true);
+      setPayoutActionResult({ action: "manual", message: d.message });
+      onResolved?.();
+    } catch (e: any) {
+      setResolveError(e.message ?? "Erreur de validation");
+    } finally {
+      setPayoutAction(null);
+    }
   };
 
   let parsedRequest: object | null = null;
@@ -268,7 +343,7 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
               )}
               {resolveError && (
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3">
-                  <p className="text-xs text-red-500 font-semibold mb-1">Erreur résolution</p>
+                  <p className="text-xs text-red-500 font-semibold mb-1">Erreur action admin</p>
                   <p className="text-sm text-red-700">{resolveError}</p>
                 </div>
               )}
@@ -285,6 +360,21 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
                   <p className="text-sm" style={{ color: syncResult.credited ? "#166534" : "#1e40af" }}>
                     {syncResult.credited ? "Wallet crédité avec succès." : "Statut mis à jour — aucun crédit (paiement non confirmé ou déjà traité)."}
                   </p>
+                </div>
+              )}
+              {payoutActionResult && (
+                <div className={cn(
+                  "rounded-xl p-3 border",
+                  payoutActionResult.action === "wait"
+                    ? "bg-blue-50 border-blue-100"
+                    : "bg-green-50 border-green-100",
+                )}>
+                  <p className="text-xs font-semibold mb-1 text-gray-700">
+                    {payoutActionResult.aggregator
+                      ? `Vérification ${payoutActionResult.aggregator} · statut fournisseur : ${payoutActionResult.gatewayStatus}`
+                      : "Validation manuelle"}
+                  </p>
+                  <p className="text-sm text-gray-700">{payoutActionResult.message}</p>
                 </div>
               )}
               <div className="flex gap-3">
@@ -313,6 +403,29 @@ function TxDetailModal({ tx, onClose, onResolved }: { tx: any; onClose: () => vo
                     <AlertTriangle className="w-4 h-4" />
                     {resolving ? "Résolution en cours…" : "Forcer la résolution (crédit manuel)"}
                   </button>
+                </div>
+              )}
+              {tx.type === "payout" && tx.mode === "live" && ["pending", "processing"].includes(tx.status) && !payoutActionDone && (
+                <div className="space-y-2">
+                  <button
+                    onClick={syncPayout}
+                    disabled={payoutAction !== null}
+                    className="w-full px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className={cn("w-4 h-4", payoutAction === "sync" && "animate-spin")} />
+                    {payoutAction === "sync" ? "Vérification en cours…" : "Vérifier + synchroniser"}
+                  </button>
+                  <button
+                    onClick={manuallyApprovePayout}
+                    disabled={payoutAction !== null}
+                    className="w-full px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {payoutAction === "approve" ? "Validation en cours…" : "Valider manuellement (sans fournisseur)"}
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">
+                    La validation manuelle ne vérifie pas le transfert et ne débite pas à nouveau le wallet.
+                  </p>
                 </div>
               )}
             </>

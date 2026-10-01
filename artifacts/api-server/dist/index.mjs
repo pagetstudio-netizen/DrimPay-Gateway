@@ -275350,6 +275350,21 @@ async function resolveAggregator(countryCode, operatorName, operation = "payin")
     throw new AggregatorNotConfiguredError("gomboplus");
   }
 }
+async function resolveAggregatorByCode(aggregator, countryCode) {
+  if (aggregator === "clapay" && isClapayConfigured()) {
+    return { aggregator, client: getClapayClient(), opAgg: null };
+  }
+  if (aggregator === "paydunya" && isPayDunyaConfigured()) {
+    return { aggregator, client: getPayDunyaClient(), opAgg: null };
+  }
+  if (aggregator === "babimo" && isBabimoConfigured(countryCode)) {
+    return { aggregator, client: getBabimoClient(countryCode), opAgg: null };
+  }
+  if (aggregator === "gomboplus" && isGomboPlusConfigured()) {
+    return { aggregator, client: getGomboPlusClient(), opAgg: null };
+  }
+  throw new AggregatorNotConfiguredError(aggregator);
+}
 var SETTLED_STATUSES = /* @__PURE__ */ new Set(["success", "failed", "cancelled", "expired"]);
 var CLAPAY_PAYOUT_POLL_OPTIONS = {
   intervalMs: 1e4,
@@ -275401,6 +275416,10 @@ async function fetchStatus(aggregator, client2, gatewayRef, operation = "payin")
       failureReason: r.failure_reason
     };
   }
+}
+async function checkAggregatorStatus(aggregator, client2, gatewayRef, operation = "payin") {
+  if (!gatewayRef.trim()) throw new Error("R\xE9f\xE9rence fournisseur manquante");
+  return fetchStatus(aggregator, client2, gatewayRef, operation);
 }
 async function pollUntilSettled(aggregator, client2, gatewayRef, options) {
   if (!gatewayRef) return null;
@@ -280870,6 +280889,33 @@ async function generateContractPdf(data) {
 
 // src/routes/admin.ts
 init_mailer();
+
+// src/lib/payout-admin-status.ts
+function payoutAggregatorFromSnapshot(snapshot) {
+  if (!snapshot) return null;
+  try {
+    const parsed = JSON.parse(snapshot);
+    if (typeof parsed?.gateway !== "string") return null;
+    const gateway = parsed.gateway.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (gateway === "clapay" || gateway === "paydunya" || gateway === "babimo" || gateway === "gomboplus") {
+      return gateway;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+function decidePayoutSyncAction(transactionStatus, providerStatus) {
+  if (transactionStatus !== "pending" && transactionStatus !== "processing") return "unchanged";
+  const status = providerStatus.toLowerCase();
+  if (status === "success" || status === "completed" || status === "paid") return "complete";
+  if (["failed", "error", "rejected", "declined", "cancelled", "canceled", "expired"].includes(status)) {
+    return "refund";
+  }
+  return "wait";
+}
+
+// src/routes/admin.ts
 var contractUpload = (0, import_multer2.default)({
   storage: import_multer2.default.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
@@ -281899,6 +281945,159 @@ router14.post(AP + "/transactions/:id/sync-gateway", requireAdmin, async (req, r
   } catch {
     console.error("[admin/sync-gateway] synchronization failed");
     res.status(500).json({ error: "Erreur lors de la synchronisation" });
+  }
+});
+router14.post(AP + "/transactions/:id/sync-payout", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      res.status(400).json({ error: "ID invalide" });
+      return;
+    }
+    const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
+    if (!tx) {
+      res.status(404).json({ error: "Transaction introuvable" });
+      return;
+    }
+    if (tx.type !== "payout") {
+      res.status(400).json({ error: "Cette action est r\xE9serv\xE9e aux retraits" });
+      return;
+    }
+    if (tx.mode !== "live") {
+      res.status(400).json({ error: "La synchronisation fournisseur est r\xE9serv\xE9e aux retraits live" });
+      return;
+    }
+    if (tx.status !== "pending" && tx.status !== "processing") {
+      res.status(409).json({ error: "Ce retrait n'est plus en attente de r\xE8glement" });
+      return;
+    }
+    const aggregator = payoutAggregatorFromSnapshot(tx.gatewayPayload);
+    if (!aggregator) {
+      res.status(400).json({ error: "Le fournisseur d'origine est absent ou invalide dans le snapshot du retrait" });
+      return;
+    }
+    const gatewayRef = tx.externalRef || tx.gatewayReference;
+    if (!gatewayRef) {
+      res.status(400).json({ error: "Aucune r\xE9f\xE9rence fournisseur n'est enregistr\xE9e pour ce retrait" });
+      return;
+    }
+    const { client: client2 } = await resolveAggregatorByCode(aggregator, tx.countryCode);
+    const providerResult = await checkAggregatorStatus(aggregator, client2, gatewayRef, "payout");
+    const action = decidePayoutSyncAction(tx.status, providerResult.status);
+    let applied = false;
+    let refundAmount = null;
+    if (action === "complete" || action === "refund") {
+      const status = action === "complete" ? "success" : providerResult.status === "cancelled" ? "cancelled" : providerResult.status === "expired" ? "expired" : "failed";
+      const amount = Number(tx.amount);
+      const fee = Number(tx.fee ?? 0);
+      if (action === "refund") {
+        refundAmount = amount + fee;
+        if (!Number.isFinite(refundAmount) || refundAmount < 0) {
+          res.status(500).json({ error: "Montant de remboursement invalide" });
+          return;
+        }
+      }
+      applied = await db.transaction(async (trx) => {
+        const [updated] = await trx.update(transactionsTable).set({
+          status,
+          gatewayReference: providerResult.gatewayReference || tx.gatewayReference,
+          failureReason: action === "refund" ? providerResult.failureReason ?? `Retrait refus\xE9 par le fournisseur (${providerResult.status})` : null,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(and(
+          eq(transactionsTable.id, tx.id),
+          eq(transactionsTable.type, "payout"),
+          eq(transactionsTable.mode, "live"),
+          inArray(transactionsTable.status, ["pending", "processing"])
+        )).returning({ id: transactionsTable.id, walletId: transactionsTable.walletId, mode: transactionsTable.mode });
+        if (!updated) return false;
+        if (action !== "refund") return true;
+        const [wallet] = await trx.select({ id: walletsTable.id, mode: walletsTable.mode }).from(walletsTable).where(eq(walletsTable.id, updated.walletId)).for("update");
+        if (!wallet || wallet.mode !== updated.mode) {
+          throw new Error("Wallet introuvable ou mode incompatible avec le retrait");
+        }
+        const [creditedWallet] = await trx.update(walletsTable).set({ balance: sql`${walletsTable.balance} + ${refundAmount}` }).where(and(
+          eq(walletsTable.id, wallet.id),
+          eq(walletsTable.mode, updated.mode)
+        )).returning({ id: walletsTable.id });
+        if (!creditedWallet) throw new Error("Remboursement du wallet impossible");
+        return true;
+      });
+    }
+    const effectiveAction = applied ? action : action === "wait" ? "wait" : "unchanged";
+    await logAdminAction(
+      req.session.userId,
+      "SYNC_PAYOUT_FROM_PROVIDER",
+      "transaction",
+      String(id),
+      JSON.stringify({
+        reference: tx.reference,
+        aggregator,
+        providerStatus: providerResult.status,
+        action: effectiveAction,
+        refundAmount: applied && action === "refund" ? refundAmount : void 0
+      }),
+      req.ip
+    );
+    res.json({
+      ok: true,
+      aggregator,
+      gatewayStatus: providerResult.status,
+      action: effectiveAction,
+      applied,
+      refundAmount: applied && action === "refund" ? refundAmount : null,
+      message: effectiveAction === "complete" ? "Retrait confirm\xE9 par le fournisseur et marqu\xE9 comme r\xE9ussi." : effectiveAction === "refund" ? `\xC9chec confirm\xE9; ${refundAmount} ${tx.currency} ont \xE9t\xE9 recr\xE9dit\xE9s au wallet.` : effectiveAction === "wait" ? "Le fournisseur indique que le retrait est toujours en cours." : "Le retrait avait d\xE9j\xE0 \xE9t\xE9 r\xE9gl\xE9; aucune modification ni aucun remboursement n'a \xE9t\xE9 appliqu\xE9."
+    });
+  } catch {
+    console.error("[admin/sync-payout] synchronization failed");
+    res.status(502).json({ error: "Impossible de v\xE9rifier ou synchroniser le retrait aupr\xE8s du fournisseur" });
+  }
+});
+router14.post(AP + "/transactions/:id/manual-approve-payout", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      res.status(400).json({ error: "ID invalide" });
+      return;
+    }
+    const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, id));
+    if (!tx) {
+      res.status(404).json({ error: "Transaction introuvable" });
+      return;
+    }
+    if (tx.type !== "payout") {
+      res.status(400).json({ error: "Cette action est r\xE9serv\xE9e aux retraits" });
+      return;
+    }
+    if (tx.mode !== "live") {
+      res.status(400).json({ error: "La validation manuelle est r\xE9serv\xE9e aux retraits live" });
+      return;
+    }
+    const [updated] = await db.update(transactionsTable).set({ status: "success", failureReason: null, updatedAt: /* @__PURE__ */ new Date() }).where(and(
+      eq(transactionsTable.id, tx.id),
+      eq(transactionsTable.type, "payout"),
+      eq(transactionsTable.mode, "live"),
+      inArray(transactionsTable.status, ["pending", "processing"])
+    )).returning({ id: transactionsTable.id });
+    if (!updated) {
+      res.status(409).json({ error: "Ce retrait n'est plus en attente de validation" });
+      return;
+    }
+    await logAdminAction(
+      req.session.userId,
+      "MANUAL_APPROVE_PAYOUT",
+      "transaction",
+      String(id),
+      `ref: ${tx.reference} | amount: ${tx.amount} ${tx.currency} | aucun appel fournisseur; aucun nouveau d\xE9bit wallet`,
+      req.ip
+    );
+    res.json({
+      ok: true,
+      applied: true,
+      message: "Retrait valid\xE9 manuellement. Aucun fournisseur n'a \xE9t\xE9 appel\xE9 et le wallet n'a pas \xE9t\xE9 d\xE9bit\xE9 une seconde fois."
+    });
+  } catch {
+    console.error("[admin/manual-approve-payout] update failed");
+    res.status(500).json({ error: "Impossible de valider le retrait" });
   }
 });
 router14.get(AP + "/wallets", requireAdmin, async (_req, res) => {
