@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Settings, Save, RefreshCw, AlertTriangle, CheckCircle2,
   Send, Bot, Eye, EyeOff, Zap, Search, Mail, MessageCircle,
-  Phone, Plus, Trash2, Percent,
+  Phone, Plus, Trash2, Percent, Wallet,
 } from "lucide-react";
 import { AdminLayout } from "./layout";
 import { cn } from "@/lib/utils";
@@ -756,6 +756,236 @@ function ContactInfoSection() {
   );
 }
 
+interface BalanceCountryOption {
+  code: string;
+  name: string;
+  flag?: string;
+  currency: string;
+}
+
+function ClapayBalancesSection() {
+  const [countries, setCountries] = useState<BalanceCountryOption[]>([]);
+  const [countriesLoading, setCountriesLoading] = useState(true);
+  const [countriesError, setCountriesError] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCurrency, setSelectedCurrency] = useState("XOF");
+  const [singleBalance, setSingleBalance] = useState<unknown>(null);
+  const [globalBalance, setGlobalBalance] = useState<unknown>(null);
+  const [hasSingleBalance, setHasSingleBalance] = useState(false);
+  const [hasGlobalBalance, setHasGlobalBalance] = useState(false);
+  const [singleCheckedAt, setSingleCheckedAt] = useState<string | null>(null);
+  const [globalCheckedAt, setGlobalCheckedAt] = useState<string | null>(null);
+  const [singleLoading, setSingleLoading] = useState(false);
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const [singleError, setSingleError] = useState<string | null>(null);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const currencies = [...new Set(countries.map(country => country.currency).filter(Boolean))].sort();
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetch("/api/countries", { credentials: "include" });
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data)) {
+          throw new Error(data?.error ?? "Impossible de charger la liste des pays");
+        }
+        const options: BalanceCountryOption[] = data
+          .filter((country: any) =>
+            typeof country?.code === "string" &&
+            typeof country?.name === "string" &&
+            typeof country?.currency === "string",
+          )
+          .map((country: any) => ({
+            code: country.code.toUpperCase(),
+            name: country.name,
+            flag: country.flag,
+            currency: country.currency.toUpperCase(),
+          }));
+        if (active) {
+          setCountries(options);
+          setSelectedCountry(current => options.some(country => country.code === current) ? current : options[0]?.code ?? "");
+          const availableCurrencies = [...new Set(options.map(country => country.currency))].sort();
+          setSelectedCurrency(current => availableCurrencies.includes(current) ? current : availableCurrencies[0] ?? "XOF");
+          if (options.length === 0) setCountriesError("Aucun pays configuré n'est disponible.");
+        }
+      } catch (error: any) {
+        if (active) setCountriesError(error?.message ?? "Impossible de charger la liste des pays");
+      } finally {
+        if (active) setCountriesLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const checkSingleBalance = async () => {
+    if (!selectedCountry) return;
+    setSingleLoading(true);
+    setSingleError(null);
+    setSingleBalance(null);
+    setHasSingleBalance(false);
+    setSingleCheckedAt(null);
+    try {
+      const response = await fetch(
+        `${ADMIN_BASE}/clapay/balances/single/${encodeURIComponent(selectedCountry)}`,
+        { credentials: "include" },
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error ?? "Impossible de consulter le solde Clapay");
+      setSingleBalance(data);
+      setHasSingleBalance(true);
+      setSingleCheckedAt(new Date().toLocaleString("fr-FR"));
+    } catch (error: any) {
+      setSingleError(error?.message ?? "Erreur réseau lors de la consultation");
+    } finally {
+      setSingleLoading(false);
+    }
+  };
+
+  const checkGlobalBalance = async () => {
+    if (!selectedCurrency) return;
+    setGlobalLoading(true);
+    setGlobalError(null);
+    setGlobalBalance(null);
+    setHasGlobalBalance(false);
+    setGlobalCheckedAt(null);
+    try {
+      const response = await fetch(
+        `${ADMIN_BASE}/clapay/balances/global/${encodeURIComponent(selectedCurrency)}`,
+        { credentials: "include" },
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error ?? "Impossible de consulter le solde Clapay");
+      setGlobalBalance(data);
+      setHasGlobalBalance(true);
+      setGlobalCheckedAt(new Date().toLocaleString("fr-FR"));
+    } catch (error: any) {
+      setGlobalError(error?.message ?? "Erreur réseau lors de la consultation");
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700"><Wallet className="w-5 h-5" /></div>
+          <div>
+            <h2 className="font-bold text-gray-900">Portefeuilles Clapay</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Consultez les soldes Clapay par pays ou les soldes globaux par devise. Les identifiants restent côté serveur.
+            </p>
+          </div>
+        </div>
+        {countriesError && (
+          <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+            {countriesError}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">Solde d’un pays</h3>
+            <p className="text-xs text-gray-500 mt-1">Interroge le solde du pays sélectionné chez Clapay.</p>
+          </div>
+          <label className="block">
+            <span className="block text-sm font-medium text-gray-700 mb-1.5">Pays</span>
+            <select
+              value={selectedCountry}
+              onChange={event => {
+                setSelectedCountry(event.target.value);
+                setSingleBalance(null);
+                setHasSingleBalance(false);
+                setSingleCheckedAt(null);
+                setSingleError(null);
+              }}
+              disabled={countriesLoading || countries.length === 0}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+            >
+              {countriesLoading && <option value="">Chargement des pays…</option>}
+              {!countriesLoading && countries.map(country => (
+                <option key={country.code} value={country.code}>
+                  {country.flag ? `${country.flag} ` : ""}{country.name} ({country.code}) · {country.currency}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            onClick={checkSingleBalance}
+            disabled={singleLoading || countriesLoading || !selectedCountry}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-4 h-4", singleLoading && "animate-spin")} />
+            {singleLoading ? "Consultation…" : "Consulter le solde du pays"}
+          </button>
+          {singleError && <p className="text-sm text-red-700">{singleError}</p>}
+          {hasSingleBalance ? (
+            <div className="rounded-xl border border-gray-200 bg-gray-950 overflow-hidden">
+              <div className="px-3 py-2 text-xs text-gray-400 border-b border-white/10">
+                Réponse Clapay{singleCheckedAt ? ` · ${singleCheckedAt}` : ""}
+              </div>
+              <pre className="p-4 text-xs leading-relaxed text-emerald-100 overflow-auto max-h-72 whitespace-pre-wrap break-words">
+                {JSON.stringify(singleBalance, null, 2)}
+              </pre>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">Le résultat apparaîtra ici après consultation.</p>
+          )}
+        </section>
+
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">Soldes globaux</h3>
+            <p className="text-xs text-gray-500 mt-1">Interroge les soldes de tous les pays dans la devise choisie.</p>
+          </div>
+          <label className="block">
+            <span className="block text-sm font-medium text-gray-700 mb-1.5">Devise</span>
+            <select
+              value={selectedCurrency}
+              onChange={event => {
+                setSelectedCurrency(event.target.value);
+                setGlobalBalance(null);
+                setHasGlobalBalance(false);
+                setGlobalCheckedAt(null);
+                setGlobalError(null);
+              }}
+              disabled={countriesLoading || currencies.length === 0}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+            >
+              {currencies.map(currency => <option key={currency} value={currency}>{currency}</option>)}
+            </select>
+          </label>
+          <button
+            onClick={checkGlobalBalance}
+            disabled={globalLoading || countriesLoading || !selectedCurrency}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-4 h-4", globalLoading && "animate-spin")} />
+            {globalLoading ? "Consultation…" : "Consulter les soldes globaux"}
+          </button>
+          {globalError && <p className="text-sm text-red-700">{globalError}</p>}
+          {hasGlobalBalance ? (
+            <div className="rounded-xl border border-gray-200 bg-gray-950 overflow-hidden">
+              <div className="px-3 py-2 text-xs text-gray-400 border-b border-white/10">
+                Réponse Clapay{globalCheckedAt ? ` · ${globalCheckedAt}` : ""}
+              </div>
+              <pre className="p-4 text-xs leading-relaxed text-blue-100 overflow-auto max-h-72 whitespace-pre-wrap break-words">
+                {JSON.stringify(globalBalance, null, 2)}
+              </pre>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">Le résultat apparaîtra ici après consultation.</p>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -833,7 +1063,7 @@ export default function AdminSettings() {
                 <AlertTriangle className="w-4 h-4" /> {saveError}
               </div>
             )}
-            {activeGroup !== "telegram" && activeGroup !== "contact-info" && activeGroup !== "operator-fees" && (
+            {activeGroup !== "telegram" && activeGroup !== "contact-info" && activeGroup !== "operator-fees" && activeGroup !== "clapay-balances" && (
               <button onClick={save} disabled={saving || loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 shadow-sm">
                 <Save className="w-4 h-4" /> {saving ? "Enregistrement..." : "Enregistrer"}
               </button>
@@ -860,6 +1090,10 @@ export default function AdminSettings() {
               className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "operator-fees" ? "bg-emerald-50 text-emerald-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
               <Percent className="w-4 h-4" /> Frais par opérateur
             </button>
+            <button onClick={() => setActiveGroup("clapay-balances")}
+              className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "clapay-balances" ? "bg-emerald-50 text-emerald-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
+              <Wallet className="w-4 h-4" /> Portefeuilles Clapay
+            </button>
             <button onClick={() => setActiveGroup("telegram")}
               className={cn("w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2", activeGroup === "telegram" ? "bg-blue-50 text-blue-700 font-semibold" : "text-gray-600 hover:bg-gray-50")}>
               <Bot className="w-4 h-4" /> Telegram Bot
@@ -878,7 +1112,9 @@ export default function AdminSettings() {
             </button>
           </div>
 
-          {activeGroup === "telegram" ? (
+          {activeGroup === "clapay-balances" ? (
+            <ClapayBalancesSection />
+          ) : activeGroup === "telegram" ? (
             <TelegramSection allValues={values} />
           ) : activeGroup === "smtp" ? (
             <SmtpSection allValues={values} />

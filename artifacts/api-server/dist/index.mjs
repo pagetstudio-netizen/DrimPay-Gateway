@@ -103786,9 +103786,10 @@ var init_clapay = __esm({
         };
       }
       // ─── HTTP helper — logs complets (requête, réponse, statut), jamais crash silencieux ──
-      async request(method, path4, body) {
+      async request(method, path4, body, options = {}) {
         const url2 = `${this.config.baseUrl}${path4}`;
         const startMs = Date.now();
+        const logResponseBody = options.logResponseBody !== false;
         console.log(`[Clapay] \u2192 ${method} ${url2}`);
         if (body) {
           console.log(`[Clapay]   payload: ${JSON.stringify(redactPayload(body))}`);
@@ -103816,11 +103817,11 @@ var init_clapay = __esm({
         const rawText = await response.text();
         if (contentType.includes("text/html") || rawText.trimStart().startsWith("<!DOCTYPE")) {
           const preview = rawText.slice(0, 300).replace(/\s+/g, " ").trim();
-          console.error(`[Clapay] \u2717 HTML re\xE7u au lieu de JSON sur ${url2} \u2014 preview: ${preview}`);
+          console.error(`[Clapay] \u2717 HTML re\xE7u au lieu de JSON sur ${url2}${logResponseBody ? ` \u2014 preview: ${preview}` : ""}`);
           throw new ClapayError(
             "Clapay a retourn\xE9 une page HTML au lieu de JSON. V\xE9rifiez l'URL de base et le token API.",
             response.status,
-            { url: url2, html_preview: preview, retryable: false }
+            { url: url2, ...logResponseBody ? { html_preview: preview } : {}, retryable: false }
           );
         }
         let data;
@@ -103828,14 +103829,16 @@ var init_clapay = __esm({
           data = JSON.parse(rawText);
         } catch {
           const preview = rawText.slice(0, 300);
-          console.error(`[Clapay] \u2717 R\xE9ponse non-JSON (HTTP ${response.status}) sur ${url2} \u2014 raw: ${preview}`);
+          console.error(`[Clapay] \u2717 R\xE9ponse non-JSON (HTTP ${response.status}) sur ${url2}${logResponseBody ? ` \u2014 raw: ${preview}` : ""}`);
           throw new ClapayError(
             `Clapay a retourn\xE9 une r\xE9ponse invalide (HTTP ${response.status}).`,
             response.status,
-            { url: url2, raw_preview: preview, retryable: false }
+            { url: url2, ...logResponseBody ? { raw_preview: preview } : {}, retryable: false }
           );
         }
-        console.log(`[Clapay]   r\xE9ponse JSON: ${JSON.stringify(data).slice(0, 400)}`);
+        if (logResponseBody) {
+          console.log(`[Clapay]   r\xE9ponse JSON: ${JSON.stringify(data).slice(0, 400)}`);
+        }
         if (!response.ok) {
           throw new ClapayError(
             data?.message ?? data?.error ?? `Clapay API error ${response.status}`,
@@ -103943,6 +103946,30 @@ var init_clapay = __esm({
           failure_reason: raw?.observation_error ?? raw?.message ?? void 0,
           completed_at: raw?.completed_at ?? raw?.updated_at ?? void 0
         };
+      }
+      async getSingleBalance(countryCode) {
+        const country = countryCode.trim().toUpperCase();
+        if (!/^[A-Z]{2}$/.test(country)) {
+          throw new Error("Code pays invalide pour la consultation du solde Clapay");
+        }
+        return this.request(
+          "GET",
+          `/check/transactions/single/balances/${encodeURIComponent(country)}`,
+          void 0,
+          { logResponseBody: false }
+        );
+      }
+      async getGlobalBalance(currency) {
+        const normalizedCurrency = currency.trim().toUpperCase();
+        if (!/^[A-Z]{3,5}$/.test(normalizedCurrency)) {
+          throw new Error("Devise invalide pour la consultation du solde Clapay");
+        }
+        return this.request(
+          "GET",
+          `/check/transactions/global/balances/${encodeURIComponent(normalizedCurrency)}`,
+          void 0,
+          { logResponseBody: false }
+        );
       }
       _mapStatus(s) {
         const u = s.toUpperCase();
@@ -280916,6 +280943,7 @@ function decidePayoutSyncAction(transactionStatus, providerStatus) {
 }
 
 // src/routes/admin.ts
+init_clapay();
 var contractUpload = (0, import_multer2.default)({
   storage: import_multer2.default.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
@@ -282544,6 +282572,44 @@ router14.get(AP + "/logs", requireAdmin, async (req, res) => {
   const admins = adminIds.length > 0 ? await db.select({ id: usersTable.id, email: usersTable.email, companyName: usersTable.companyName }).from(usersTable).where(inArray(usersTable.id, adminIds)) : [];
   const adminMap = Object.fromEntries(admins.map((a) => [a.id, a]));
   res.json({ logs: logs.map((l) => ({ ...l, admin: adminMap[l.adminId] ?? null })), total: Number(total), page: pageNum, limit: limitNum });
+});
+router14.get(AP + "/clapay/balances/single/:country", requireAdmin, async (req, res) => {
+  const country = String(req.params.country ?? "").trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(country)) {
+    res.status(400).json({ error: "Code pays invalide" });
+    return;
+  }
+  if (!isClapayConfigured()) {
+    res.status(503).json({ error: "Clapay n'est pas configur\xE9 sur ce serveur" });
+    return;
+  }
+  try {
+    const balance = await getClapayClient().getSingleBalance(country);
+    await logAdminAction(req.session.userId, "VIEW_CLAPAY_SINGLE_BALANCE", "clapay", country, void 0, req.ip);
+    res.json({ countryCode: country, balance });
+  } catch {
+    console.error("[admin/clapay-balance] single-country lookup failed");
+    res.status(502).json({ error: "Impossible de consulter le solde Clapay pour ce pays" });
+  }
+});
+router14.get(AP + "/clapay/balances/global/:currency", requireAdmin, async (req, res) => {
+  const currency = String(req.params.currency ?? "").trim().toUpperCase();
+  if (!/^[A-Z]{3,5}$/.test(currency)) {
+    res.status(400).json({ error: "Code devise invalide" });
+    return;
+  }
+  if (!isClapayConfigured()) {
+    res.status(503).json({ error: "Clapay n'est pas configur\xE9 sur ce serveur" });
+    return;
+  }
+  try {
+    const balance = await getClapayClient().getGlobalBalance(currency);
+    await logAdminAction(req.session.userId, "VIEW_CLAPAY_GLOBAL_BALANCE", "clapay", currency, void 0, req.ip);
+    res.json({ currency, balance });
+  } catch {
+    console.error("[admin/clapay-balance] global lookup failed");
+    res.status(502).json({ error: "Impossible de consulter le solde global Clapay pour cette devise" });
+  }
 });
 router14.get(AP + "/settings", requireAdmin, async (_req, res) => {
   const settings = await db.select().from(adminSettingsTable);

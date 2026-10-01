@@ -214,10 +214,12 @@ export class ClapayClient {
   private async request<T>(
     method: "GET" | "POST" | "PUT",
     path: string,
-    body?: object
+    body?: object,
+    options: { logResponseBody?: boolean } = {},
   ): Promise<T> {
     const url = `${this.config.baseUrl}${path}`;
     const startMs = Date.now();
+    const logResponseBody = options.logResponseBody !== false;
 
     console.log(`[Clapay] → ${method} ${url}`);
     if (body) {
@@ -250,11 +252,11 @@ export class ClapayClient {
 
     if (contentType.includes("text/html") || rawText.trimStart().startsWith("<!DOCTYPE")) {
       const preview = rawText.slice(0, 300).replace(/\s+/g, " ").trim();
-      console.error(`[Clapay] ✗ HTML reçu au lieu de JSON sur ${url} — preview: ${preview}`);
+      console.error(`[Clapay] ✗ HTML reçu au lieu de JSON sur ${url}${logResponseBody ? ` — preview: ${preview}` : ""}`);
       throw new ClapayError(
         "Clapay a retourné une page HTML au lieu de JSON. Vérifiez l'URL de base et le token API.",
         response.status,
-        { url, html_preview: preview, retryable: false },
+        { url, ...(logResponseBody ? { html_preview: preview } : {}), retryable: false },
       );
     }
 
@@ -263,15 +265,17 @@ export class ClapayClient {
       data = JSON.parse(rawText);
     } catch {
       const preview = rawText.slice(0, 300);
-      console.error(`[Clapay] ✗ Réponse non-JSON (HTTP ${response.status}) sur ${url} — raw: ${preview}`);
+      console.error(`[Clapay] ✗ Réponse non-JSON (HTTP ${response.status}) sur ${url}${logResponseBody ? ` — raw: ${preview}` : ""}`);
       throw new ClapayError(
         `Clapay a retourné une réponse invalide (HTTP ${response.status}).`,
         response.status,
-        { url, raw_preview: preview, retryable: false },
+        { url, ...(logResponseBody ? { raw_preview: preview } : {}), retryable: false },
       );
     }
 
-    console.log(`[Clapay]   réponse JSON: ${JSON.stringify(data).slice(0, 400)}`);
+    if (logResponseBody) {
+      console.log(`[Clapay]   réponse JSON: ${JSON.stringify(data).slice(0, 400)}`);
+    }
 
     if (!response.ok) {
       throw new ClapayError(
@@ -425,6 +429,32 @@ export class ClapayClient {
       failure_reason: raw?.observation_error ?? raw?.message ?? undefined,
       completed_at: raw?.completed_at ?? raw?.updated_at ?? undefined,
     };
+  }
+
+  async getSingleBalance(countryCode: string): Promise<unknown> {
+    const country = countryCode.trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(country)) {
+      throw new Error("Code pays invalide pour la consultation du solde Clapay");
+    }
+    return this.request<unknown>(
+      "GET",
+      `/check/transactions/single/balances/${encodeURIComponent(country)}`,
+      undefined,
+      { logResponseBody: false },
+    );
+  }
+
+  async getGlobalBalance(currency: string): Promise<unknown> {
+    const normalizedCurrency = currency.trim().toUpperCase();
+    if (!/^[A-Z]{3,5}$/.test(normalizedCurrency)) {
+      throw new Error("Devise invalide pour la consultation du solde Clapay");
+    }
+    return this.request<unknown>(
+      "GET",
+      `/check/transactions/global/balances/${encodeURIComponent(normalizedCurrency)}`,
+      undefined,
+      { logResponseBody: false },
+    );
   }
 
   private _mapStatus(s: string): ClapayStatusResponse["status"] {

@@ -47,6 +47,7 @@ import {
 import { decidePayoutSyncAction, payoutAggregatorFromSnapshot } from "../lib/payout-admin-status";
 import { approveWalletExchange, rejectWalletExchange } from "../lib/wallet-exchange-service";
 import { getMerchantPaymentControls, setMerchantPaymentControls } from "../lib/admin-settings";
+import { getClapayClient, isClapayConfigured } from "../lib/clapay";
 
 const contractUpload = multer({
   storage: multer.memoryStorage(),
@@ -1875,6 +1876,47 @@ router.get(AP + "/logs", requireAdmin, async (req: any, res: any) => {
   const adminMap = Object.fromEntries(admins.map(a => [a.id, a]));
 
   res.json({ logs: logs.map(l => ({ ...l, admin: adminMap[l.adminId] ?? null })), total: Number(total), page: pageNum, limit: limitNum });
+});
+
+// ─── CLAPAY BALANCES ──────────────────────────────────────────────────────────
+router.get(AP + "/clapay/balances/single/:country", requireAdmin, async (req: any, res: any) => {
+  const country = String(req.params.country ?? "").trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(country)) {
+    res.status(400).json({ error: "Code pays invalide" });
+    return;
+  }
+  if (!isClapayConfigured()) {
+    res.status(503).json({ error: "Clapay n'est pas configuré sur ce serveur" });
+    return;
+  }
+  try {
+    const balance = await getClapayClient().getSingleBalance(country);
+    await logAdminAction(req.session.userId, "VIEW_CLAPAY_SINGLE_BALANCE", "clapay", country, undefined, req.ip);
+    res.json({ countryCode: country, balance });
+  } catch {
+    console.error("[admin/clapay-balance] single-country lookup failed");
+    res.status(502).json({ error: "Impossible de consulter le solde Clapay pour ce pays" });
+  }
+});
+
+router.get(AP + "/clapay/balances/global/:currency", requireAdmin, async (req: any, res: any) => {
+  const currency = String(req.params.currency ?? "").trim().toUpperCase();
+  if (!/^[A-Z]{3,5}$/.test(currency)) {
+    res.status(400).json({ error: "Code devise invalide" });
+    return;
+  }
+  if (!isClapayConfigured()) {
+    res.status(503).json({ error: "Clapay n'est pas configuré sur ce serveur" });
+    return;
+  }
+  try {
+    const balance = await getClapayClient().getGlobalBalance(currency);
+    await logAdminAction(req.session.userId, "VIEW_CLAPAY_GLOBAL_BALANCE", "clapay", currency, undefined, req.ip);
+    res.json({ currency, balance });
+  } catch {
+    console.error("[admin/clapay-balance] global lookup failed");
+    res.status(502).json({ error: "Impossible de consulter le solde global Clapay pour cette devise" });
+  }
 });
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
