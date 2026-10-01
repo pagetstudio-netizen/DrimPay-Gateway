@@ -543,7 +543,6 @@ router.post("/v2/payin/initiate", resolveUser, async (req: any, res: any) => {
         webhook_url: webhook_url ?? null,
         payment_url: paymentUrl,
         ussd_code: ussdCode,
-        ...(aggregator === "clapay" ? { gateway: "clapay" } : {}),
         message: "Prompt de paiement envoyé au téléphone du client",
         gateway_reference: externalRef,
         created_at: tx.createdAt.toISOString(),
