@@ -31,12 +31,19 @@ import { GomboPlusClient, GomboPlusError } from "../lib/gombo-plus";
 import { buildGatewayPayloadSnapshot } from "../lib/gateway-payload";
 import { notifyPayinConfirmed, notifyTransactionFailure } from "../lib/telegram";
 import { settlePayinStatus } from "../lib/payin-settlement";
-import { startPayinStatusPolling } from "../lib/payin-response";
+import {
+  CLAPAY_PAYMENT_LINK_POLL_OPTIONS,
+  startPayinStatusPolling,
+} from "../lib/payin-response";
 import {
   isPaymentOperationEnabled,
   PAYMENT_UNAVAILABLE_MESSAGE,
 } from "../lib/admin-settings";
-import { GENERIC_ERROR_MESSAGE, merchantFailureLabel } from "../lib/merchant-error";
+import {
+  classifyPublicPayinError,
+  GENERIC_ERROR_MESSAGE,
+  merchantFailureLabel,
+} from "../lib/merchant-error";
 import { getWebhookBaseUrl, getFrontendBaseUrl } from "../lib/base-urls";
 import { buildMerchantPayloadSnapshot } from "../lib/merchant-payload";
 import { ensureLatestMerchantWebhookSecret } from "../lib/webhook-secrets";
@@ -141,6 +148,9 @@ router.get("/pay/status/:reference", async (req: any, res: any) => {
     amount: tx.amount,
     currency: tx.currency,
     failureReason: merchantFailureLabel(tx.status, tx.failureReason),
+    failureCode: ["failed", "cancelled", "expired"].includes(tx.status)
+      ? classifyPublicPayinError(tx.failureReason ?? tx.status)
+      : undefined,
   });
 });
 
@@ -386,7 +396,8 @@ router.post("/pay/:token", async (req: any, res: any) => {
   // invalid request could leave a pending transaction that blocks valid retries.
   const opCheck = await checkOperatorAvailable(countryCode, operator, "paymentLinks");
   if (!opCheck.ok) {
-    res.status(opCheck.status).json({ error: opCheck.error });
+    const code = classifyPublicPayinError(opCheck.error);
+    res.status(opCheck.status).json({ error: GENERIC_ERROR_MESSAGE, code });
     return;
   }
 
@@ -622,16 +633,18 @@ router.post("/pay/:token", async (req: any, res: any) => {
       })
       .where(eq(transactionsTable.id, tx.id));
 
-    let verifiedStatus: string = "processing";
+  let verifiedStatus: string = "processing";
+  let statusFailureReason: string | undefined;
     if (aggregator === "clapay") {
       // Keep the payment-link response fast; verify Clapay status in the
-      // background at the configured 7-second cadence, up to five checks.
+      // background through the full confirmation window shown to customers.
       startPayinStatusPolling({
         aggregator,
         client,
         externalRef,
         transactionId: tx.id,
         reference,
+        pollingOptions: CLAPAY_PAYMENT_LINK_POLL_OPTIONS,
       }, {
         pollUntilSettled,
         settlePayinStatus,
@@ -643,11 +656,12 @@ router.post("/pay/:token", async (req: any, res: any) => {
         maxDurationMs: 20_000,
       });
       verifiedStatus = statusCheck?.status ?? "processing";
+    statusFailureReason = statusCheck?.failureReason;
       await settlePayinStatus({
         txId: tx.id,
         status: verifiedStatus as any,
         gatewayReference: externalRef,
-        failureReason: statusCheck?.failureReason,
+      failureReason: statusFailureReason,
         gateway: aggregator,
       });
     }
@@ -655,6 +669,7 @@ router.post("/pay/:token", async (req: any, res: any) => {
     if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
       res.status(502).json({
         error: GENERIC_ERROR_MESSAGE,
+        code: classifyPublicPayinError(statusFailureReason ?? verifiedStatus),
         reference, status: verifiedStatus,
       });
       return;
@@ -686,7 +701,11 @@ router.post("/pay/:token", async (req: any, res: any) => {
             : err instanceof GomboPlusError
               ? "gomboplus"
               : "?";
-    res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference });
+    res.status(502).json({
+      error: GENERIC_ERROR_MESSAGE,
+      code: classifyPublicPayinError(realReason),
+      reference,
+    });
     await db.update(transactionsTable)
       .set({ status: "failed", failureReason: realReason, updatedAt: new Date() })
       .where(eq(transactionsTable.id, tx.id));

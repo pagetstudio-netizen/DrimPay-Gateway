@@ -103973,7 +103973,7 @@ var init_clapay = __esm({
       }
       _mapStatus(s) {
         const u = s.toUpperCase();
-        if (u === "SUCCESS" || u === "SUCCESSFUL" || u === "COMPLETED") return "success";
+        if (u === "SUCCESS" || u === "SUCCESSFUL" || u === "COMPLETED" || u === "PAID") return "success";
         if (u === "FAILED" || u === "ERROR" || u === "REJECTED") return "failed";
         if (u === "EXPIRED") return "expired";
         if (u === "CANCELLED" || u === "CANCELED") return "cancelled";
@@ -266120,6 +266120,97 @@ var import_multer = __toESM(require_multer(), 1);
 var GENERIC_ERROR_MESSAGE = "Une erreur s'est produite. Veuillez r\xE9essayer plus tard.";
 var MERCHANT_FAILURE_LABEL = "\xC9chou\xE9";
 var FAILURE_STATUSES = /* @__PURE__ */ new Set(["failed", "cancelled", "expired"]);
+var PUBLIC_ERROR_CODES = /* @__PURE__ */ new Set([
+  "OPERATOR_UNAVAILABLE",
+  "INVALID_PHONE",
+  "INVALID_CONFIRMATION_CODE",
+  "INSUFFICIENT_FUNDS",
+  "PAYMENT_DECLINED",
+  "PAYMENT_FAILED",
+  "PAYMENT_TEMPORARY_FAILURE",
+  "PAYMENT_UNAVAILABLE",
+  "OTP_REQUIRED",
+  "INVALID_REQUEST",
+  "INVALID_LINK",
+  "PAYMENT_LINK_EXPIRED",
+  "PAYMENT_LINK_UNAVAILABLE",
+  "UNSUPPORTED_COUNTRY",
+  "PHONE_UNAVAILABLE"
+]);
+var PUBLIC_ERROR_CODE_ALIASES = {
+  OPERATOR_MAINTENANCE: "OPERATOR_UNAVAILABLE",
+  OPERATOR_NOT_AVAILABLE: "OPERATOR_UNAVAILABLE",
+  OPERATOR_DISABLED: "OPERATOR_UNAVAILABLE",
+  SERVICE_UNAVAILABLE: "OPERATOR_UNAVAILABLE",
+  INVALID_NUMBER: "INVALID_PHONE",
+  INVALID_MSISDN: "INVALID_PHONE",
+  WRONG_NUMBER: "INVALID_PHONE",
+  INVALID_OTP: "INVALID_CONFIRMATION_CODE",
+  WRONG_OTP: "INVALID_CONFIRMATION_CODE",
+  OTP_INVALID: "INVALID_CONFIRMATION_CODE",
+  PIN_INVALID: "INVALID_CONFIRMATION_CODE",
+  INSUFFICIENT_BALANCE: "INSUFFICIENT_FUNDS",
+  INSUFFICIENT_FUNDS: "INSUFFICIENT_FUNDS",
+  DECLINED: "PAYMENT_DECLINED",
+  PAYMENT_REJECTED: "PAYMENT_DECLINED",
+  FAILED: "PAYMENT_FAILED",
+  PAYMENT_FAILED: "PAYMENT_FAILED",
+  PAYMENTS_UNAVAILABLE: "PAYMENT_UNAVAILABLE",
+  PAYMENTS_DISABLED: "PAYMENT_UNAVAILABLE",
+  PAYMENT_UNAVAILABLE: "PAYMENT_UNAVAILABLE",
+  INVALID_REQUEST: "INVALID_REQUEST",
+  REQUEST_INVALID: "INVALID_REQUEST",
+  NOT_FOUND: "INVALID_LINK",
+  LINK_NOT_FOUND: "INVALID_LINK",
+  LINK_EXPIRED: "PAYMENT_LINK_EXPIRED",
+  LINK_INACTIVE: "PAYMENT_LINK_UNAVAILABLE",
+  LINK_EXHAUSTED: "PAYMENT_LINK_UNAVAILABLE",
+  PHONE_BLACKLISTED: "PHONE_UNAVAILABLE",
+  INVALID_COUNTRY: "UNSUPPORTED_COUNTRY"
+};
+function normalizeErrorText(value) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+function classifyPublicPayinError(reason) {
+  const raw = reason instanceof Error ? reason.message : typeof reason === "string" ? reason : "";
+  const normalized = normalizeErrorText(raw);
+  const code = normalized.toUpperCase().replace(/\s+/g, "_");
+  if (PUBLIC_ERROR_CODES.has(code)) {
+    return code;
+  }
+  const aliased = PUBLIC_ERROR_CODE_ALIASES[code];
+  if (aliased) return aliased;
+  if (/\b(introuvable|not found|invalid link)\b/.test(normalized)) {
+    return "INVALID_LINK";
+  }
+  if (/\b(link|lien)\b/.test(normalized) && /\b(expired|expire)\b/.test(normalized)) {
+    return "PAYMENT_LINK_EXPIRED";
+  }
+  const operatorMentioned = /\b(operator|operateur|service|payment method|methode de paiement)\b/.test(normalized);
+  if (operatorMentioned && /\b(unavailable|indisponible|maintenance|not available|blocked|bloque|suspended|suspendu|inactive|inactif)\b/.test(normalized)) {
+    return "OPERATOR_UNAVAILABLE";
+  }
+  const phoneMentioned = /\b(phone|telephone|numero|number|msisdn|recipient)\b/.test(normalized);
+  const invalidInput = /\b(invalid|incorrect|wrong|malformed|not valid|invalide|inexact|non valide|incorrect)\b/.test(normalized);
+  if (phoneMentioned && invalidInput) return "INVALID_PHONE";
+  const confirmationCodeMentioned = /\b(otp|pin|passcode|confirmation code|code)\b/.test(normalized);
+  if (confirmationCodeMentioned && /\b(invalid|incorrect|wrong|expired|invalide|expire|incorrect)\b/.test(normalized)) {
+    return "INVALID_CONFIRMATION_CODE";
+  }
+  if (/\b(insufficient funds|insufficient balance|not enough funds|low balance|solde insuffisant|fonds insuffisants)\b/.test(normalized)) {
+    return "INSUFFICIENT_FUNDS";
+  }
+  if (/\b(connection refused|econnrefused|connect(?:ion)? reset|socket hang up)\b/.test(normalized)) {
+    return "PAYMENT_TEMPORARY_FAILURE";
+  }
+  if (/\b(declined|rejected|refused|denied|refuse|rejete|non accepte)\b/.test(normalized)) {
+    return "PAYMENT_DECLINED";
+  }
+  if (/\b(failed|failure|echec|echoue|annule|cancelled|canceled|expired|expire)\b/.test(normalized)) {
+    return "PAYMENT_FAILED";
+  }
+  return "PAYMENT_TEMPORARY_FAILURE";
+}
 function sanitizeMerchantTransaction(transaction) {
   const {
     failureReason: _failureReason,
@@ -275773,10 +275864,17 @@ var CLAPAY_PAYIN_POLL_OPTIONS = {
   maxAttempts: 5,
   operation: "payin"
 };
+var CLAPAY_PAYMENT_LINK_POLL_OPTIONS = {
+  intervalMs: 7e3,
+  maxDurationMs: 185e3,
+  initialDelayMs: 7e3,
+  maxAttempts: 25,
+  operation: "payin"
+};
 function startPayinStatusPolling(params, dependencies) {
   void (async () => {
     try {
-      const pollingOptions = params.aggregator === "clapay" ? CLAPAY_PAYIN_POLL_OPTIONS : { intervalMs: 4e3, maxDurationMs: 2e4 };
+      const pollingOptions = params.pollingOptions ?? (params.aggregator === "clapay" ? CLAPAY_PAYIN_POLL_OPTIONS : { intervalMs: 4e3, maxDurationMs: 2e4 });
       const statusCheck = await dependencies.pollUntilSettled(
         params.aggregator,
         params.client,
@@ -284562,7 +284660,8 @@ router20.get("/pay/status/:reference", async (req, res) => {
     status: normalizedStatus,
     amount: tx.amount,
     currency: tx.currency,
-    failureReason: merchantFailureLabel(tx.status, tx.failureReason)
+    failureReason: merchantFailureLabel(tx.status, tx.failureReason),
+    failureCode: ["failed", "cancelled", "expired"].includes(tx.status) ? classifyPublicPayinError(tx.failureReason ?? tx.status) : void 0
   });
 });
 router20.get("/pay/:token", async (req, res) => {
@@ -284731,7 +284830,8 @@ router20.post("/pay/:token", async (req, res) => {
   const webhookSecret = await ensureLatestMerchantWebhookSecret(link.userId, "live");
   const opCheck = await checkOperatorAvailable(countryCode, operator, "paymentLinks");
   if (!opCheck.ok) {
-    res.status(opCheck.status).json({ error: opCheck.error });
+    const code = classifyPublicPayinError(opCheck.error);
+    res.status(opCheck.status).json({ error: GENERIC_ERROR_MESSAGE, code });
     return;
   }
   const isOrangeMoneyOp = /^orange( money)?$/i.test(operator.trim());
@@ -284938,13 +285038,15 @@ router20.post("/pay/:token", async (req, res) => {
       updatedAt: /* @__PURE__ */ new Date()
     }).where(eq(transactionsTable.id, tx.id));
     let verifiedStatus = "processing";
+    let statusFailureReason;
     if (aggregator === "clapay") {
       startPayinStatusPolling({
         aggregator,
         client: client2,
         externalRef,
         transactionId: tx.id,
-        reference
+        reference,
+        pollingOptions: CLAPAY_PAYMENT_LINK_POLL_OPTIONS
       }, {
         pollUntilSettled,
         settlePayinStatus
@@ -284955,17 +285057,19 @@ router20.post("/pay/:token", async (req, res) => {
         maxDurationMs: 2e4
       });
       verifiedStatus = statusCheck?.status ?? "processing";
+      statusFailureReason = statusCheck?.failureReason;
       await settlePayinStatus({
         txId: tx.id,
         status: verifiedStatus,
         gatewayReference: externalRef,
-        failureReason: statusCheck?.failureReason,
+        failureReason: statusFailureReason,
         gateway: aggregator
       });
     }
     if (verifiedStatus === "failed" || verifiedStatus === "cancelled" || verifiedStatus === "expired") {
       res.status(502).json({
         error: GENERIC_ERROR_MESSAGE,
+        code: classifyPublicPayinError(statusFailureReason ?? verifiedStatus),
         reference,
         status: verifiedStatus
       });
@@ -284987,7 +285091,11 @@ router20.post("/pay/:token", async (req, res) => {
   } catch (err) {
     const realReason = err?.message ?? String(err);
     const gatewayName = err instanceof ClapayError ? "clapay" : err instanceof PayDunyaError ? "paydunya" : err instanceof BabimoError ? "babimo" : err instanceof GomboPlusError ? "gomboplus" : "?";
-    res.status(502).json({ error: GENERIC_ERROR_MESSAGE, reference });
+    res.status(502).json({
+      error: GENERIC_ERROR_MESSAGE,
+      code: classifyPublicPayinError(realReason),
+      reference
+    });
     await db.update(transactionsTable).set({ status: "failed", failureReason: realReason, updatedAt: /* @__PURE__ */ new Date() }).where(eq(transactionsTable.id, tx.id));
     try {
       const [merchant] = await db.select({ companyName: usersTable.companyName }).from(usersTable).where(eq(usersTable.id, tx.userId));

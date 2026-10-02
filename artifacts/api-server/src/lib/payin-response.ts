@@ -9,6 +9,14 @@ export const CLAPAY_PAYIN_POLL_OPTIONS = {
   operation: "payin" as const,
 };
 
+export const CLAPAY_PAYMENT_LINK_POLL_OPTIONS = {
+  intervalMs: 7_000,
+  maxDurationMs: 185_000,
+  initialDelayMs: 7_000,
+  maxAttempts: 25,
+  operation: "payin" as const,
+};
+
 export interface PayinPollingOptions {
   intervalMs: number;
   maxDurationMs: number;
@@ -33,6 +41,7 @@ export interface StartPayinPollingParams {
   externalRef: string;
   transactionId: number;
   reference: string;
+  pollingOptions?: PayinPollingOptions;
 }
 
 /**
@@ -46,9 +55,9 @@ export function startPayinStatusPolling(
 ): void {
   void (async () => {
     try {
-      const pollingOptions = params.aggregator === "clapay"
+      const pollingOptions = params.pollingOptions ?? (params.aggregator === "clapay"
         ? CLAPAY_PAYIN_POLL_OPTIONS
-        : { intervalMs: 4_000, maxDurationMs: 20_000 };
+        : { intervalMs: 4_000, maxDurationMs: 20_000 });
       const statusCheck = await dependencies.pollUntilSettled(
         params.aggregator,
         params.client,

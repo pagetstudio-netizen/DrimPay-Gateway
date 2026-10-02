@@ -459,7 +459,7 @@ export class ClapayClient {
 
   private _mapStatus(s: string): ClapayStatusResponse["status"] {
     const u = s.toUpperCase();
-    if (u === "SUCCESS" || u === "SUCCESSFUL" || u === "COMPLETED") return "success";
+    if (u === "SUCCESS" || u === "SUCCESSFUL" || u === "COMPLETED" || u === "PAID") return "success";
     if (u === "FAILED" || u === "ERROR" || u === "REJECTED") return "failed";
     if (u === "EXPIRED") return "expired";
     if (u === "CANCELLED" || u === "CANCELED") return "cancelled";

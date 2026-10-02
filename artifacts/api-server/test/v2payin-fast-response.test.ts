@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CLAPAY_PAYMENT_LINK_POLL_OPTIONS,
   CLAPAY_PAYIN_POLL_OPTIONS,
   sendPayinProcessingResponse,
   startPayinStatusPolling,
@@ -110,4 +111,42 @@ test("Clapay pay-in status checks start after seven seconds and stop after five 
 
   await pollingComplete;
   assert.deepEqual(receivedOptions, CLAPAY_PAYIN_POLL_OPTIONS);
+});
+
+test("Clapay payment links use the full customer confirmation window", async () => {
+  let receivedOptions: unknown;
+  let resolvePollingComplete!: () => void;
+  const pollingComplete = new Promise<void>((resolve) => {
+    resolvePollingComplete = resolve;
+  });
+
+  startPayinStatusPolling({
+    aggregator: "clapay",
+    client: { name: "clapay-link-test-client" },
+    externalRef: "clapay-link-provider-reference",
+    transactionId: 44,
+    reference: "TG-TEST-CLAPAY-LINK",
+    pollingOptions: CLAPAY_PAYMENT_LINK_POLL_OPTIONS,
+  }, {
+    pollUntilSettled: async (_aggregator, _client, _reference, options) => {
+      receivedOptions = options;
+      return {
+        status: "processing",
+        gatewayReference: "clapay-link-provider-reference",
+      };
+    },
+    settlePayinStatus: async (params) => {
+      assert.equal(params.status, "processing");
+      resolvePollingComplete();
+    },
+  });
+
+  await pollingComplete;
+  assert.deepEqual(receivedOptions, {
+    intervalMs: 7_000,
+    maxDurationMs: 185_000,
+    initialDelayMs: 7_000,
+    maxAttempts: 25,
+    operation: "payin",
+  });
 });
