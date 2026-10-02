@@ -97,7 +97,7 @@ bash scripts/deploy-plesk.sh
 ```
 start.cjs
 ```
-Configurer l'application Plesk avec **Node.js 20 ou supérieur** (le bundle serveur cible Node 20).
+Configurer l'application Plesk avec **Node.js 24** (version épinglée dans `.nvmrc`; le bundle serveur cible Node 20 et reste compatible).
 > **Ne pas utiliser** `artifacts/api-server/dist/index.mjs` directement — Passenger charge les fichiers `.mjs` via `require()` ce qui provoque `ERR_REQUIRE_ESM`. Le wrapper `start.cjs` charge correctement le bundle ESM via `import()` dynamique.
 > Pas besoin de `pnpm install` ni de `npm run build` sur Plesk — tout est déjà compilé.
 >
